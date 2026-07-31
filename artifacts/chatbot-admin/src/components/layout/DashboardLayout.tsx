@@ -461,15 +461,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   return (
     <div className="flex h-dvh w-full bg-background overflow-hidden text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col overflow-y-auto overflow-x-hidden">
-        <div className="py-5 flex items-center px-5 border-b border-border">
+      <aside className="w-64 border-r border-border bg-card flex flex-col h-dvh overflow-x-hidden">
+        {/* Logo */}
+        <div className="py-5 flex items-center px-5 border-b border-border shrink-0">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mr-3 shrink-0">
             <Bot className="w-6 h-6 text-primary" />
           </div>
           <span className="font-bold text-xl tracking-tight whitespace-nowrap">Mission Control</span>
         </div>
 
-        <div className="px-4 pt-4 pb-2">
+        {/* User info */}
+        <div className="px-4 pt-4 pb-2 shrink-0">
           <div className="px-2 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {role === "admin" ? t("nav_admin_portal") : t("nav_client_portal")}
           </div>
@@ -485,12 +487,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
 
         {role === "admin" && (
-          <div className="px-6 pb-3">
+          <div className="px-6 pb-3 shrink-0">
             <LiveStatusBar />
           </div>
         )}
 
-        <nav className="flex-1 px-4 space-y-0.5">
+        {/* Nav — scrolls if items overflow, fills all remaining height */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-0.5 space-y-0.5">
           {links.map((link) => {
             const Icon = link.icon;
             const isActive = location === link.href;
@@ -509,7 +512,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           })}
         </nav>
 
-        <div className="mt-auto sticky bottom-0 p-4 border-t border-border bg-card shrink-0">
+        {/* Sign out — always pinned at the bottom, never scrolls away */}
+        <div className="p-4 border-t border-border bg-card shrink-0">
           <Button
             variant="ghost"
             className="w-full justify-start text-muted-foreground hover:text-foreground"
