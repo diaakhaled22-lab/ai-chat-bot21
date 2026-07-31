@@ -1,0 +1,11 @@
+- [OpenRouter integration pattern](openrouter-setup.md) — lazy proxy client; user supplies OPENROUTER_API_KEY directly (Replit AI Integrations declined)
+- [Conversations provider column](conversations-provider.md) — provider field added to conversations table to scope OpenAI vs OpenRouter rows; validate provider on every write route
+- [Google Sheets is a write target](google-sheets-write-target.md) — sheet header row defines fields to capture from chat; bot writes/updates rows, doesn't read sheet into AI context
+- [api-server static assets need /api prefix](widget-static-routing.md) — static files (e.g. widget.js) must be mounted under /api like API routes, or they silently misroute through the proxy
+- [Knowledge files feed AI prompt](knowledge-files-prompt.md) — uploaded docs/sheets are a second, additive context source alongside the website-scrape section, both capped and appended to sysContent
+- [pnpm object-storage-web wiring](object-storage-web-wiring.md) — root overrides need literal version pins, not $react refs, when react isn't a root direct dependency
+- [Pre-existing unrelated typecheck failures](pre-existing-typecheck-failures.md) — integrations-openai-ai-server/ai-react have known failures unrelated to feature work; confirmed via git stash, don't re-diagnose
+- [Messenger channel pattern](messenger-channel-pattern.md) — adding a chat channel touches 5 fixed spots (schema, openapi+codegen, dedicated route file, client.ts/admin.ts whitelists, ClientCompany.tsx UI)
+- [Object Storage sidecar limitation](object-storage-sidecar.md) — sidecar 401 in agent/dev sessions; knowledge file uploads bypass GCS via direct multer route + in-memory text extraction
+- [Fresh database bootstrap](fresh-database-bootstrap.md) — imported environments need schema push plus an explicit documented-admin seed before login can be verified
+- [Cross-channel language enforcement](cross-channel-language-enforcement.md) — detect the latest message server-side, constrain every AI prompt, and sanitize replies before delivery

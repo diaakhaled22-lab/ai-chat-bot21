@@ -1,0 +1,20 @@
+{
+  "name": "@workspace/integrations-openrouter-ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./batch": "./src/batch/index.ts"
+  },
+  "dependencies": {
+    "openai": "^6.45.0",
+    "p-limit": "^6.2.0",
+    "p-retry": "^6.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "^5.9.3"
+  }
+}
