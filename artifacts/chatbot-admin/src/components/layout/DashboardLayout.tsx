@@ -459,9 +459,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const currentPage = links.find((l) => l.href === location)?.label ?? "";
 
   return (
-    <div className="flex h-dvh w-full bg-background overflow-hidden text-foreground">
+    <div className="flex h-full w-full bg-background overflow-hidden text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col h-dvh overflow-hidden">
+      <aside className="w-64 border-r border-border bg-card flex flex-col overflow-hidden">
         {/* Logo */}
         <div className="py-5 flex items-center px-5 border-b border-border shrink-0">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mr-3 shrink-0">
