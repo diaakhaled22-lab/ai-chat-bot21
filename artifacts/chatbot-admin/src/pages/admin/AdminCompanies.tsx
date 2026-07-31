@@ -539,7 +539,7 @@ export default function AdminCompanies() {
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
         {/* Table header */}
-        <div className="grid grid-cols-[minmax(180px,2fr)_70px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1060px]">
+        <div className="grid grid-cols-[56px_80px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 border-b border-border bg-muted/30 px-2 py-3 min-w-[960px]">
           {["Company", "My ID", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", ""].map((h, i, arr) => (
             <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
               {h}
@@ -551,7 +551,7 @@ export default function AdminCompanies() {
         {isLoading ? (
           <div className="divide-y divide-border min-w-[1060px]">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[minmax(180px,2fr)_70px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-4 items-center">
+              <div key={i} className="grid grid-cols-[56px_80px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-2 py-4 items-center">
                 <div className="flex items-center px-2">
                   <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
                 </div>
@@ -583,7 +583,7 @@ export default function AdminCompanies() {
               return (
                 <div
                   key={company.id}
-                  className="group grid grid-cols-[minmax(180px,2fr)_70px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-3.5 items-center hover:bg-muted/20 transition-colors"
+                  className="group grid grid-cols-[56px_80px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-2 py-3.5 items-center hover:bg-muted/20 transition-colors"
                 >
                   {/* Company */}
                   <div className="flex items-center px-2">
