@@ -420,10 +420,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const logout = useLogout();
   const { data: user } = useGetMe();
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
 
   const handleLogout = () => {
     logout.mutate(undefined, {
       onSuccess: () => {
+        queryClient.clear();
         setLocation(role === "admin" ? "/login" : "/client-login");
       },
     });
