@@ -541,7 +541,7 @@ export default function AdminCompanies() {
         {/* Table header */}
         <div className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1060px]">
           {["My ID", "Company", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", ""].map((h, i, arr) => (
-            <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${i === 2 ? "pl-[13px] pr-2" : "px-2"} ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
+            <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${i === 2 ? "px-2 text-center" : "px-2"} ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
               {h}
             </div>
           ))}
@@ -556,7 +556,7 @@ export default function AdminCompanies() {
                 <div className="flex items-center px-2">
                   <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
                 </div>
-                <div className="pl-[13px] pr-2"><Skeleton className="h-4 w-24" /></div>
+                <div className="px-2 flex justify-center"><Skeleton className="h-4 w-24" /></div>
                 <div className="px-2"><Skeleton className="h-4 w-20" /></div>
                 <div className="px-2"><Skeleton className="h-6 w-16 rounded-full" /></div>
                 <div className="px-2"><Skeleton className="h-3 w-20" /></div>
@@ -598,8 +598,8 @@ export default function AdminCompanies() {
                   </div>
 
                   {/* Company Name */}
-                  <div className="pl-[13px] pr-2 min-w-0">
-                    <span className="text-sm truncate block">{company.name}</span>
+                  <div className="px-2 min-w-0 flex justify-center">
+                    <span className="text-sm truncate">{company.name}</span>
                   </div>
 
                   {/* Client */}
