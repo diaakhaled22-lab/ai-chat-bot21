@@ -465,7 +465,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card flex flex-col overflow-hidden">
         {/* Logo */}
-        <div className="py-5 flex items-center px-5 border-b border-border shrink-0">
+        <div className="py-[15px] flex items-center px-5 border-b border-border shrink-0">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mr-3 shrink-0">
             <Bot className="w-6 h-6 text-primary" />
           </div>
