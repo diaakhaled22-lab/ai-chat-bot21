@@ -531,7 +531,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="py-[15px] border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-8 shrink-0">
-          <p className="text-sm font-semibold text-foreground">{currentPage}</p>
+          <p className="text-sm font-medium text-foreground">{currentPage}</p>
           <div className="flex items-center gap-1">
             <LanguageToggle />
             <ThemeToggle />
