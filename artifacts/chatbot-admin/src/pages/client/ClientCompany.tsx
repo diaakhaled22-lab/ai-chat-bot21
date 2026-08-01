@@ -1643,14 +1643,14 @@ export default function ClientCompany() {
                 </div>
                 <Link href="/client/wordpress">
                   <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 ${
-                    wpIntegration?.status === "connected" ? "border-orange-500/40 bg-orange-500/5"
+                    wpIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"
                     : wpIntegration?.status === "error" ? "border-red-500/40 bg-red-500/5"
                     : "border-border/40 bg-background"
                   }`}>
                     <div className="text-base">🔌</div>
                     <div className="font-medium">WordPress</div>
                     <div className={`text-[10px] ${
-                      wpIntegration?.status === "connected" ? "text-orange-500"
+                      wpIntegration?.status === "connected" ? "text-primary"
                       : wpIntegration?.status === "error" ? "text-red-500"
                       : "text-muted-foreground"
                     }`}>
