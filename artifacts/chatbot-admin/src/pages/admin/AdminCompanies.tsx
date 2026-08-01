@@ -539,8 +539,8 @@ export default function AdminCompanies() {
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
         {/* Table header */}
-        <div className="grid grid-cols-[minmax(180px,2fr)_70px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1060px]">
-          {["Company", "My ID", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", ""].map((h, i, arr) => (
+        <div className="grid grid-cols-[70px_minmax(180px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1060px]">
+          {["My ID", "Company", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", ""].map((h, i, arr) => (
             <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
               {h}
             </div>
@@ -551,11 +551,11 @@ export default function AdminCompanies() {
         {isLoading ? (
           <div className="divide-y divide-border min-w-[1060px]">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[minmax(180px,2fr)_70px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-4 items-center">
+              <div key={i} className="grid grid-cols-[70px_minmax(180px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-4 items-center">
+                <div className="px-2"><Skeleton className="h-4 w-10" /></div>
                 <div className="flex items-center px-2">
                   <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
                 </div>
-                <div className="px-2"><Skeleton className="h-4 w-10" /></div>
                 <div className="px-2"><Skeleton className="h-4 w-24" /></div>
                 <div className="px-2"><Skeleton className="h-4 w-20" /></div>
                 <div className="px-2"><Skeleton className="h-6 w-16 rounded-full" /></div>
@@ -583,18 +583,18 @@ export default function AdminCompanies() {
               return (
                 <div
                   key={company.id}
-                  className="group grid grid-cols-[minmax(180px,2fr)_70px_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-3.5 items-center hover:bg-muted/20 transition-colors"
+                  className="group grid grid-cols-[70px_minmax(180px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-3.5 items-center hover:bg-muted/20 transition-colors"
                 >
+                  {/* My ID */}
+                  <div className="px-2">
+                    <span className="text-sm font-mono text-muted-foreground">#{company.id}</span>
+                  </div>
+
                   {/* Company */}
                   <div className="flex items-center px-2">
                     <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColor(company.id)} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm`}>
                       {getInitials(company.name)}
                     </div>
-                  </div>
-
-                  {/* My ID */}
-                  <div className="px-2">
-                    <span className="text-sm font-mono text-muted-foreground">#{company.id}</span>
                   </div>
 
                   {/* Company Name */}
