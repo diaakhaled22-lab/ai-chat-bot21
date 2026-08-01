@@ -1641,8 +1641,8 @@ export default function ClientCompany() {
                     {company.googleSheetsEnabled ? "✓ Enabled" : "Disabled"}
                   </div>
                 </div>
-                <Link href="/client/wordpress">
-                  <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 ${
+                <Link href="/client/wordpress" className="block h-full">
+                  <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 h-full ${
                     wpIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"
                     : wpIntegration?.status === "error" ? "border-red-500/40 bg-red-500/5"
                     : "border-border/40 bg-background"
