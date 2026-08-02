@@ -383,6 +383,32 @@ export const DeleteChatLogResponse = zod.unknown()
 
 
 /**
+ * @summary Get the platform-wide chat log auto-delete retention setting
+ */
+export const getAdminChatLogRetentionResponseRetentionDaysMax = 7;
+
+
+
+export const GetAdminChatLogRetentionResponse = zod.object({
+  "retentionDays": zod.number().min(1).max(getAdminChatLogRetentionResponseRetentionDaysMax)
+})
+
+
+/**
+ * @summary Update the platform-wide chat log auto-delete retention setting
+ */
+export const updateAdminChatLogRetentionBodyRetentionDaysMax = 7;
+
+
+
+export const UpdateAdminChatLogRetentionBody = zod.object({
+  "retentionDays": zod.number().min(1).max(updateAdminChatLogRetentionBodyRetentionDaysMax)
+})
+
+export const UpdateAdminChatLogRetentionResponse = zod.unknown()
+
+
+/**
  * @summary Get admin settings
  */
 export const GetAdminSettingsResponse = zod.object({
@@ -619,6 +645,32 @@ export const DeleteClientChatLogParams = zod.object({
 })
 
 export const DeleteClientChatLogResponse = zod.unknown()
+
+
+/**
+ * @summary Get the client's chat log auto-delete retention setting
+ */
+export const getClientChatLogRetentionResponseRetentionDaysMax = 7;
+
+
+
+export const GetClientChatLogRetentionResponse = zod.object({
+  "retentionDays": zod.number().min(1).max(getClientChatLogRetentionResponseRetentionDaysMax)
+})
+
+
+/**
+ * @summary Update the client's chat log auto-delete retention setting
+ */
+export const updateClientChatLogRetentionBodyRetentionDaysMax = 7;
+
+
+
+export const UpdateClientChatLogRetentionBody = zod.object({
+  "retentionDays": zod.number().min(1).max(updateClientChatLogRetentionBodyRetentionDaysMax)
+})
+
+export const UpdateClientChatLogRetentionResponse = zod.unknown()
 
 
 /**

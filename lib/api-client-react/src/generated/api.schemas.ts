@@ -388,6 +388,22 @@ export interface AdminSettingsInput {
   username?: string | null;
 }
 
+export interface ChatLogRetentionResult {
+  /**
+     * @minimum 1
+     * @maximum 7
+     */
+  retentionDays: number;
+}
+
+export interface ChatLogRetentionInput {
+  /**
+     * @minimum 1
+     * @maximum 7
+     */
+  retentionDays: number;
+}
+
 export interface ClientSettingsInput {
   currentPassword?: string;
   /** @nullable */

@@ -815,6 +815,59 @@ router.get("/client/tickets", async (req, res) => {
   }
 });
 
+// GET /client/chat-log-retention
+router.get("/client/chat-log-retention", async (req, res) => {
+  try {
+    const [company] = await db
+      .select({ chatLogRetentionDays: companiesTable.chatLogRetentionDays })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    let retentionDays = company?.chatLogRetentionDays ?? null;
+    if (retentionDays === null) {
+      const [adminRow] = await db
+        .select()
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, "chat_log_retention_days"))
+        .limit(1);
+      retentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 7;
+    }
+    res.json({ retentionDays });
+  } catch (err) {
+    logger.error({ err }, "Get client chat log retention error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /client/chat-log-retention
+router.put("/client/chat-log-retention", async (req, res) => {
+  try {
+    const days = Number((req.body as Record<string, unknown>).retentionDays);
+    if (!Number.isInteger(days) || days < 1 || days > 7) {
+      res.status(400).json({ error: "retentionDays must be an integer between 1 and 7" });
+      return;
+    }
+    const [company] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+    if (!company) {
+      res.status(404).json({ error: "No company found" });
+      return;
+    }
+    await db
+      .update(companiesTable)
+      .set({ chatLogRetentionDays: days })
+      .where(eq(companiesTable.id, company.id));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Update client chat log retention error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // PUT /client/settings
 router.put("/client/settings", async (req, res) => {
   try {

@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db } from "@workspace/db";
-import { companiesTable, companyActivityLogsTable, notificationsTable, usersTable } from "@workspace/db";
+import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTable, notificationsTable, usersTable } from "@workspace/db";
 import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
@@ -129,6 +129,42 @@ async function sendRenewalReminders() {
 
 setInterval(sendRenewalReminders, 60 * 60 * 1000);
 sendRenewalReminders();
+
+// Auto-purge chat logs older than each company's retention setting (default 7 days)
+async function purgeOldChatLogs() {
+  try {
+    const [adminRow] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "chat_log_retention_days"))
+      .limit(1);
+    const globalRetentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 7;
+
+    const companies = await db
+      .select({ id: companiesTable.id, chatLogRetentionDays: companiesTable.chatLogRetentionDays })
+      .from(companiesTable);
+
+    let totalDeleted = 0;
+    for (const company of companies) {
+      const retentionDays = company.chatLogRetentionDays ?? globalRetentionDays;
+      const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+      const deleted = await db
+        .delete(chatLogsTable)
+        .where(and(eq(chatLogsTable.companyId, company.id), lt(chatLogsTable.createdAt, cutoff)))
+        .returning({ id: chatLogsTable.id });
+      totalDeleted += deleted.length;
+    }
+
+    if (totalDeleted > 0) {
+      logger.info({ count: totalDeleted }, "Purged old chat logs based on retention policy");
+    }
+  } catch (err) {
+    logger.error({ err }, "Error purging old chat logs");
+  }
+}
+
+setInterval(purgeOldChatLogs, 60 * 60 * 1000); // Run every hour
+purgeOldChatLogs();
 
 // AutoSync: re-scrape website URLs every 6 hours for companies with websiteAutoSync enabled
 setInterval(syncAllAutoSyncCompanies, 6 * 60 * 60 * 1000);

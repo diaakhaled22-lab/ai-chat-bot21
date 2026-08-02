@@ -1,21 +1,24 @@
 import { useState } from "react";
-import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey } from "@workspace/api-client-react";
+import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useUpdateClientChatLogRetention, getGetClientChatLogRetentionQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2 } from "lucide-react";
+import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+
+const RETENTION_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 
 export default function ClientChatLogs() {
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [pendingRetention, setPendingRetention] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -25,6 +28,10 @@ export default function ClientChatLogs() {
     toDate: toDate || undefined,
   });
   const deleteChatLog = useDeleteClientChatLog();
+  const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
+  const updateRetention = useUpdateClientChatLogRetention();
+
+  const currentRetention = pendingRetention ?? retentionData?.retentionDays ?? 7;
 
   const handleDelete = (id: number) => {
     if (!confirm("Delete this chat log entry? This cannot be undone.")) return;
@@ -35,6 +42,20 @@ export default function ClientChatLogs() {
       },
       onError: (error: any) => {
         toast({ title: "Failed to delete chat log", description: error.message, variant: "destructive" });
+      },
+    });
+  };
+
+  const handleSaveRetention = () => {
+    if (pendingRetention === null) return;
+    updateRetention.mutate({ data: { retentionDays: pendingRetention } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetClientChatLogRetentionQueryKey() });
+        setPendingRetention(null);
+        toast({ title: "Retention policy saved", description: `Chat logs will be deleted after ${pendingRetention} day${pendingRetention === 1 ? "" : "s"}.` });
+      },
+      onError: (error: any) => {
+        toast({ title: "Failed to save retention policy", description: error.message, variant: "destructive" });
       },
     });
   };
@@ -73,6 +94,52 @@ export default function ClientChatLogs() {
           Refresh
         </Button>
       </div>
+
+      {/* Retention Policy */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-base">Auto-Delete Policy</CardTitle>
+          </div>
+          <CardDescription>
+            Chat logs older than the selected number of days will be automatically deleted.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            {retentionLoading ? (
+              <Skeleton className="h-9 w-[160px]" />
+            ) : (
+              <Select
+                value={String(currentRetention)}
+                onValueChange={(val) => setPendingRetention(Number(val))}
+              >
+                <SelectTrigger className="w-[160px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RETENTION_OPTIONS.map((d) => (
+                    <SelectItem key={d} value={String(d)}>
+                      {d} {d === 1 ? "day" : "days"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              onClick={handleSaveRetention}
+              disabled={pendingRetention === null || updateRetention.isPending}
+              size="sm"
+            >
+              {updateRetention.isPending ? "Saving…" : "Save"}
+            </Button>
+            {pendingRetention !== null && (
+              <span className="text-xs text-muted-foreground">Unsaved changes</span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-4">
         <div className="flex-1 flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">

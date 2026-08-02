@@ -25,6 +25,8 @@ import type {
   AdminStats,
   AuthResult,
   ChatLog,
+  ChatLogRetentionInput,
+  ChatLogRetentionResult,
   Client,
   ClientInput,
   ClientSettingsInput,
@@ -1402,6 +1404,153 @@ export const useDeleteChatLog = <TError = ErrorType<void>,
       return useMutation(getDeleteChatLogMutationOptions(options));
     }
 
+export const getGetAdminChatLogRetentionUrl = () => {
+
+
+
+
+  return `/api/admin/chat-log-retention`
+}
+
+/**
+ * @summary Get the platform-wide chat log auto-delete retention setting
+ */
+export const getAdminChatLogRetention = async ( options?: RequestInit): Promise<ChatLogRetentionResult> => {
+
+  return customFetch<ChatLogRetentionResult>(getGetAdminChatLogRetentionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminChatLogRetentionQueryKey = () => {
+    return [
+    `/api/admin/chat-log-retention`
+    ] as const;
+    }
+
+
+export const getGetAdminChatLogRetentionQueryOptions = <TData = Awaited<ReturnType<typeof getAdminChatLogRetention>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminChatLogRetention>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminChatLogRetentionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminChatLogRetention>>> = ({ signal }) => getAdminChatLogRetention({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminChatLogRetention>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminChatLogRetentionQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminChatLogRetention>>>
+export type GetAdminChatLogRetentionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the platform-wide chat log auto-delete retention setting
+ */
+
+export function useGetAdminChatLogRetention<TData = Awaited<ReturnType<typeof getAdminChatLogRetention>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminChatLogRetention>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminChatLogRetentionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminChatLogRetentionUrl = () => {
+
+
+
+
+  return `/api/admin/chat-log-retention`
+}
+
+/**
+ * @summary Update the platform-wide chat log auto-delete retention setting
+ */
+export const updateAdminChatLogRetention = async (chatLogRetentionInput: ChatLogRetentionInput, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUpdateAdminChatLogRetentionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chatLogRetentionInput)
+  }
+);}
+
+
+
+
+export const getUpdateAdminChatLogRetentionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminChatLogRetention>>, TError,{data: BodyType<ChatLogRetentionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminChatLogRetention>>, TError,{data: BodyType<ChatLogRetentionInput>}, TContext> => {
+
+const mutationKey = ['updateAdminChatLogRetention'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminChatLogRetention>>, {data: BodyType<ChatLogRetentionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAdminChatLogRetention(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminChatLogRetentionMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminChatLogRetention>>>
+    export type UpdateAdminChatLogRetentionMutationBody = BodyType<ChatLogRetentionInput>
+    export type UpdateAdminChatLogRetentionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update the platform-wide chat log auto-delete retention setting
+ */
+export const useUpdateAdminChatLogRetention = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminChatLogRetention>>, TError,{data: BodyType<ChatLogRetentionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminChatLogRetention>>,
+        TError,
+        {data: BodyType<ChatLogRetentionInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminChatLogRetentionMutationOptions(options));
+    }
+
 export const getGetAdminSettingsUrl = () => {
 
 
@@ -1988,6 +2137,153 @@ export const useDeleteClientChatLog = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteClientChatLogMutationOptions(options));
+    }
+
+export const getGetClientChatLogRetentionUrl = () => {
+
+
+
+
+  return `/api/client/chat-log-retention`
+}
+
+/**
+ * @summary Get the client's chat log auto-delete retention setting
+ */
+export const getClientChatLogRetention = async ( options?: RequestInit): Promise<ChatLogRetentionResult> => {
+
+  return customFetch<ChatLogRetentionResult>(getGetClientChatLogRetentionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetClientChatLogRetentionQueryKey = () => {
+    return [
+    `/api/client/chat-log-retention`
+    ] as const;
+    }
+
+
+export const getGetClientChatLogRetentionQueryOptions = <TData = Awaited<ReturnType<typeof getClientChatLogRetention>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClientChatLogRetention>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetClientChatLogRetentionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClientChatLogRetention>>> = ({ signal }) => getClientChatLogRetention({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getClientChatLogRetention>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetClientChatLogRetentionQueryResult = NonNullable<Awaited<ReturnType<typeof getClientChatLogRetention>>>
+export type GetClientChatLogRetentionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the client's chat log auto-delete retention setting
+ */
+
+export function useGetClientChatLogRetention<TData = Awaited<ReturnType<typeof getClientChatLogRetention>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClientChatLogRetention>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetClientChatLogRetentionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateClientChatLogRetentionUrl = () => {
+
+
+
+
+  return `/api/client/chat-log-retention`
+}
+
+/**
+ * @summary Update the client's chat log auto-delete retention setting
+ */
+export const updateClientChatLogRetention = async (chatLogRetentionInput: ChatLogRetentionInput, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUpdateClientChatLogRetentionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chatLogRetentionInput)
+  }
+);}
+
+
+
+
+export const getUpdateClientChatLogRetentionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClientChatLogRetention>>, TError,{data: BodyType<ChatLogRetentionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateClientChatLogRetention>>, TError,{data: BodyType<ChatLogRetentionInput>}, TContext> => {
+
+const mutationKey = ['updateClientChatLogRetention'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateClientChatLogRetention>>, {data: BodyType<ChatLogRetentionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateClientChatLogRetention(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateClientChatLogRetentionMutationResult = NonNullable<Awaited<ReturnType<typeof updateClientChatLogRetention>>>
+    export type UpdateClientChatLogRetentionMutationBody = BodyType<ChatLogRetentionInput>
+    export type UpdateClientChatLogRetentionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update the client's chat log auto-delete retention setting
+ */
+export const useUpdateClientChatLogRetention = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClientChatLogRetention>>, TError,{data: BodyType<ChatLogRetentionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateClientChatLogRetention>>,
+        TError,
+        {data: BodyType<ChatLogRetentionInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateClientChatLogRetentionMutationOptions(options));
     }
 
 export const getUpdateClientSettingsUrl = () => {

@@ -658,6 +658,41 @@ router.delete("/admin/chat-logs/:id", async (req, res) => {
   }
 });
 
+// GET /admin/chat-log-retention
+router.get("/admin/chat-log-retention", async (req, res) => {
+  try {
+    const [row] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "chat_log_retention_days"))
+      .limit(1);
+    const retentionDays = row?.value ? parseInt(row.value, 10) : 7;
+    res.json({ retentionDays });
+  } catch (err) {
+    logger.error({ err }, "Get chat log retention error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /admin/chat-log-retention
+router.put("/admin/chat-log-retention", async (req, res) => {
+  try {
+    const days = Number((req.body as Record<string, unknown>).retentionDays);
+    if (!Number.isInteger(days) || days < 1 || days > 7) {
+      res.status(400).json({ error: "retentionDays must be an integer between 1 and 7" });
+      return;
+    }
+    await db
+      .insert(adminConfigTable)
+      .values({ key: "chat_log_retention_days", value: String(days) })
+      .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: String(days) } });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Update chat log retention error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /admin/tickets
 // GET /admin/ticket-analytics
 router.get("/admin/ticket-analytics", async (req, res) => {

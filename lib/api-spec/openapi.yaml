@@ -365,6 +365,32 @@ paths:
         "404":
           description: Not found
 
+  /admin/chat-log-retention:
+    get:
+      operationId: getAdminChatLogRetention
+      tags: [admin-settings]
+      summary: Get the platform-wide chat log auto-delete retention setting
+      responses:
+        "200":
+          description: Retention setting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLogRetentionResult"
+    put:
+      operationId: updateAdminChatLogRetention
+      tags: [admin-settings]
+      summary: Update the platform-wide chat log auto-delete retention setting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatLogRetentionInput"
+      responses:
+        "200":
+          description: Updated
+
   /admin/settings:
     get:
       operationId: getAdminSettings
@@ -505,6 +531,32 @@ paths:
           description: Deleted
         "404":
           description: Not found
+
+  /client/chat-log-retention:
+    get:
+      operationId: getClientChatLogRetention
+      tags: [client-settings]
+      summary: Get the client's chat log auto-delete retention setting
+      responses:
+        "200":
+          description: Retention setting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatLogRetentionResult"
+    put:
+      operationId: updateClientChatLogRetention
+      tags: [client-settings]
+      summary: Update the client's chat log auto-delete retention setting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatLogRetentionInput"
+      responses:
+        "200":
+          description: Updated
 
   /client/settings:
     put:
@@ -1016,6 +1068,24 @@ components:
           type: ["string", "null"]
         username:
           type: ["string", "null"]
+
+    ChatLogRetentionResult:
+      type: object
+      required: [retentionDays]
+      properties:
+        retentionDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+
+    ChatLogRetentionInput:
+      type: object
+      required: [retentionDays]
+      properties:
+        retentionDays:
+          type: integer
+          minimum: 1
+          maximum: 7
 
     ClientSettingsInput:
       type: object

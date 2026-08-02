@@ -13,6 +13,8 @@ export * from './authResult';
 export * from './authResultRole';
 export * from './chatLog';
 export * from './chatLogChannel';
+export * from './chatLogRetentionInput';
+export * from './chatLogRetentionResult';
 export * from './client';
 export * from './clientInput';
 export * from './clientSettingsInput';
