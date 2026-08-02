@@ -5,6 +5,7 @@ import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTab
 import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
+import bcrypt from "bcryptjs";
 
 const rawPort = process.env["PORT"];
 
@@ -18,6 +19,29 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+async function ensureAdminExists() {
+  try {
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"))
+      .limit(1);
+
+    if (existing) return;
+
+    const passwordHash = await bcrypt.hash("admin123", 10);
+    await db.insert(usersTable).values({
+      name: "Admin",
+      username: "admin",
+      passwordHash,
+      role: "admin",
+    });
+    logger.warn("No admin user found — created default admin (username: admin, password: admin123). Change this password immediately.");
+  } catch (err) {
+    logger.error({ err }, "Failed to ensure admin user exists");
+  }
 }
 
 async function expireCompanies() {
@@ -173,6 +197,9 @@ syncAllAutoSyncCompanies();
 // AutoSync: re-sync WordPress integrations every 6 hours
 setInterval(syncAllWordPressIntegrations, 6 * 60 * 60 * 1000);
 syncAllWordPressIntegrations();
+
+// Ensure at least one admin account exists on every startup (guards against DB resets)
+ensureAdminExists();
 
 app.listen(port, (err) => {
   if (err) {
