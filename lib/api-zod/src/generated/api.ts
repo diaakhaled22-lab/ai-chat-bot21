@@ -560,7 +560,8 @@ export const UpdateClientCompanyBody = zod.object({
   "messengerPageId": zod.string().nullish(),
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
-  "websiteAutoSync": zod.boolean().optional()
+  "websiteAutoSync": zod.boolean().optional(),
+  "fabEnabled": zod.boolean().optional()
 })
 
 export const UpdateClientCompanyResponse = zod.object({

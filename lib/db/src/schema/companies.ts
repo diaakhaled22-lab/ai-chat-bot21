@@ -36,6 +36,7 @@ export const companiesTable = pgTable("companies", {
   websiteAutoSync: boolean("website_auto_sync").notNull().default(false),
   websiteContentCache: text("website_content_cache"),
   websiteLastSynced: timestamp("website_last_synced", { withTimezone: true }),
+  fabEnabled: boolean("fab_enabled").notNull().default(false),
   chatLogRetentionDays: integer("chat_log_retention_days"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

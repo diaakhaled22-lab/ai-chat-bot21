@@ -1791,13 +1791,67 @@ export default function ClientCompany() {
           { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null,          color: "violet", isWidget: hasWebsite },
         ];
 
-        const snippetLines: string[] = [`<div class="chatbot-links" style="display:flex;gap:12px;">`];
-        if (telegramLink) snippetLines.push(`  <a href="${telegramLink}" target="_blank" rel="noopener" title="Chat on Telegram" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.telegram}</a>`);
-        if (whatsappLink) snippetLines.push(`  <a href="${whatsappLink}" target="_blank" rel="noopener" title="Chat on WhatsApp" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.whatsapp}</a>`);
-        if (messengerLink) snippetLines.push(`  <a href="${messengerLink}" target="_blank" rel="noopener" title="Chat on Messenger" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.messenger}</a>`);
-        if (hasWebsite) snippetLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.widget}</a>`);
-        snippetLines.push(`</div>`);
-        const snippet = snippetLines.join("\n");
+        // Standard snippet (static icon links)
+        const standardLines: string[] = [`<div class="chatbot-links" style="display:flex;gap:12px;">`];
+        if (telegramLink) standardLines.push(`  <a href="${telegramLink}" target="_blank" rel="noopener" title="Chat on Telegram" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.telegram}</a>`);
+        if (whatsappLink) standardLines.push(`  <a href="${whatsappLink}" target="_blank" rel="noopener" title="Chat on WhatsApp" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.whatsapp}</a>`);
+        if (messengerLink) standardLines.push(`  <a href="${messengerLink}" target="_blank" rel="noopener" title="Chat on Messenger" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.messenger}</a>`);
+        if (hasWebsite) standardLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.widget}</a>`);
+        standardLines.push(`</div>`);
+
+        // FAB snippet (floating action button)
+        const fabItemBase = `opacity:0;transform:scale(0) translateY(10px);transition:opacity .18s ease,transform .18s ease;width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.2);`;
+        const fabItems: string[] = [];
+        if (telegramLink) fabItems.push(`    <button onclick="window.open('${telegramLink}','_blank','noopener noreferrer')" title="Telegram" aria-label="Chat on Telegram" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.telegram}</button>`);
+        if (whatsappLink) fabItems.push(`    <button onclick="window.open('${whatsappLink}','_blank','noopener noreferrer')" title="WhatsApp" aria-label="Chat on WhatsApp" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.whatsapp}</button>`);
+        if (messengerLink) fabItems.push(`    <button onclick="window.open('${messengerLink}','_blank','noopener noreferrer')" title="Messenger" aria-label="Chat on Messenger" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.messenger}</button>`);
+        if (hasWebsite) fabItems.push(`    <button onclick="window.ChatWidget&&window.ChatWidget.open('${company.websiteChatbotKey}')" title="Website Chat" aria-label="Chat on website" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.widget}</button>`);
+        const fabSnippet = `<!-- Chatbot FAB Widget -->
+<div id="cfab" style="position:fixed;bottom:24px;right:24px;z-index:2147483647;">
+  <div id="cfab-menu" style="position:absolute;bottom:64px;right:6px;display:none;flex-direction:column-reverse;gap:10px;align-items:center;">
+${fabItems.join('\n')}
+  </div>
+  <button id="cfab-btn" onclick="cfabToggle(this)" data-open="0" aria-label="Open chat menu"
+    style="width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;padding:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 4px 20px rgba(99,102,241,.5);display:flex;align-items:center;justify-content:center;transition:transform .15s;outline:none;"
+    onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+<script>
+function cfabToggle(btn) {
+  var menu = document.getElementById('cfab-menu');
+  var items = menu.querySelectorAll('.cfab-item');
+  var open = btn.dataset.open === '1';
+  if (open) {
+    items.forEach(function(el) { el.style.opacity = '0'; el.style.transform = 'scale(0) translateY(10px)'; });
+    setTimeout(function() { menu.style.display = 'none'; }, 200);
+    btn.dataset.open = '0';
+  } else {
+    menu.style.display = 'flex';
+    requestAnimationFrame(function() {
+      items.forEach(function(el, i) {
+        setTimeout(function() { el.style.opacity = '1'; el.style.transform = 'scale(1) translateY(0)'; }, i * 60);
+      });
+    });
+    btn.dataset.open = '1';
+  }
+}
+(function() {
+  var isRtl = document.dir === 'rtl' || document.documentElement.getAttribute('dir') === 'rtl';
+  var fab = document.getElementById('cfab');
+  var menu = document.getElementById('cfab-menu');
+  if (isRtl && fab) { fab.style.right = 'auto'; fab.style.left = '24px'; }
+  if (isRtl && menu) { menu.style.right = 'auto'; menu.style.left = '6px'; }
+  document.addEventListener('click', function(e) {
+    var btn = document.getElementById('cfab-btn');
+    if (btn && btn.dataset.open === '1' && !document.getElementById('cfab').contains(e.target)) {
+      cfabToggle(btn);
+    }
+  });
+})();
+</script>`;
+
+        const snippet = company.fabEnabled ? fabSnippet : standardLines.join("\n");
 
         return (
           <Card className="bg-card border-border/50 border-emerald-500/20">

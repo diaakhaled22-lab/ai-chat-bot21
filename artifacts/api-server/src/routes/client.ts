@@ -64,6 +64,7 @@ router.get("/client/company", async (req, res) => {
       websiteChatbotKey: company.websiteChatbotKey,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
+      fabEnabled: company.fabEnabled,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
@@ -331,6 +332,7 @@ router.put("/client/company", async (req, res) => {
     if (data.websiteChatbotKey !== undefined) updates.websiteChatbotKey = data.websiteChatbotKey;
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
     if (data.websiteAutoSync !== undefined) updates.websiteAutoSync = data.websiteAutoSync;
+    if (data.fabEnabled !== undefined) updates.fabEnabled = data.fabEnabled;
 
     const [company] = await db
       .update(companiesTable)
@@ -395,6 +397,7 @@ router.put("/client/company", async (req, res) => {
       websiteChatbotKey: company.websiteChatbotKey,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
+      fabEnabled: company.fabEnabled,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),

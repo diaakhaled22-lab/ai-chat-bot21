@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   MessageCircle, Send, Loader2, Check, AlertTriangle,
-  Zap, Copy,
+  Zap, Copy, Layers,
 } from "lucide-react";
 import {
   useGetClientCompany,
@@ -33,6 +33,7 @@ const formSchema = z.object({
   messengerApiKey:           z.string().optional().or(z.literal("")),
   messengerPageId:           z.string().optional().or(z.literal("")),
   websiteChatbotKey:         z.string().optional().or(z.literal("")),
+  fabEnabled:                z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -78,6 +79,7 @@ export default function ClientChannels() {
       messengerApiKey:           "",
       messengerPageId:           "",
       websiteChatbotKey:         "",
+      fabEnabled:                false,
     },
   });
 
@@ -92,6 +94,7 @@ export default function ClientChannels() {
         messengerApiKey:           company.messengerApiKey           ?? "",
         messengerPageId:           company.messengerPageId           ?? "",
         websiteChatbotKey:         company.websiteChatbotKey         ?? "",
+        fabEnabled:                company.fabEnabled                ?? false,
       });
       /* auto-enable switch if channel already has credentials */
       if (company.telegramBotApiKey)  setTelegramOn(true);
@@ -115,6 +118,7 @@ export default function ClientChannels() {
       messengerApiKey:           values.messengerApiKey           || null,
       messengerPageId:           values.messengerPageId           || null,
       websiteChatbotKey:         values.websiteChatbotKey         || null,
+      fabEnabled:                values.fabEnabled                ?? false,
     };
     updateCompany.mutate({ data }, {
       onSuccess: () => {
@@ -502,6 +506,36 @@ export default function ClientChannels() {
             </AccordionItem>
 
           </Accordion>
+
+          {/* ── Floating Action Button ───────────────────────── */}
+          <div className="rounded-xl border border-border/50 bg-card px-4 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-primary shrink-0" />
+                  <span className="font-semibold text-sm">Enable Floating Action Button</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed pl-6">
+                  Adds a floating button to your website that expands to show all active channel icons. The embed snippet in the Company tab updates automatically to include the FAB code.
+                </p>
+              </div>
+              <FormField
+                control={form.control}
+                name="fabEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex-shrink-0 pt-0.5">
+                    <FormControl>
+                      <Switch
+                        checked={!!field.value}
+                        onCheckedChange={field.onChange}
+                        aria-label="Enable Floating Action Button"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
 
           {/* ── Sticky Save ──────────────────────────────────── */}
           <div className="flex justify-end pt-2 sticky bottom-6 z-10">
