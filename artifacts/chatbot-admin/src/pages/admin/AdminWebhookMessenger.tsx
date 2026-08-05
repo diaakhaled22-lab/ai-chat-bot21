@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send } from "lucide-react";
+import { ChannelIcon } from "@/components/ChannelIcon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -179,7 +180,7 @@ function PlatformCredentialsSection() {
       <Card className="border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Send className="w-4 h-4 text-sky-400" /> Telegram Webhook
+            <ChannelIcon channel="telegram" size={18} /> Telegram Webhook
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -194,7 +195,7 @@ function PlatformCredentialsSection() {
       <Card className="border-green-500/30 bg-gradient-to-br from-green-500/5 to-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <span>💬</span> WhatsApp Webhook
+            <ChannelIcon channel="whatsapp" size={18} /> WhatsApp Webhook
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -283,7 +284,7 @@ export default function AdminWebhookMessenger() {
       {/* Messenger section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <span className="text-lg">📨</span>
+          <ChannelIcon channel="messenger" size={22} />
           <h2 className="text-lg font-semibold">Messenger</h2>
           <Badge variant="secondary">{messengerCompanies.length}</Badge>
         </div>
@@ -360,8 +361,8 @@ export default function AdminWebhookMessenger() {
               <div className="divide-y divide-border/40">
                 {recentLogs.map((log) => (
                   <div key={log.id} className="py-3 flex items-start gap-3">
-                    <span className="text-base shrink-0 mt-0.5">
-                      {log.channel === "messenger" ? "📨" : "💬"}
+                    <span className="shrink-0 mt-0.5">
+                      <ChannelIcon channel={log.channel === "messenger" ? "messenger" : "whatsapp"} size={18} />
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">

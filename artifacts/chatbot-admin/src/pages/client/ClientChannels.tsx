@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { ChannelIcon } from "@/components/ChannelIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -185,7 +186,7 @@ export default function ClientChannels() {
             <AccordionItem value="telegram" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
               <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl shrink-0">✈️</span>
+                  <ChannelIcon channel="telegram" size={22} />
                   <span className="font-semibold">Telegram</span>
                   <ChannelBadge active={!!company?.telegramBotApiKey} />
                   {/* master switch — stopPropagation so accordion doesn't toggle */}
@@ -288,7 +289,7 @@ export default function ClientChannels() {
             <AccordionItem value="whatsapp" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
               <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl shrink-0">💬</span>
+                  <ChannelIcon channel="whatsapp" size={22} />
                   <span className="font-semibold">WhatsApp</span>
                   <ChannelBadge active={!!company?.whatsappApiToken} />
                   <div
@@ -381,7 +382,7 @@ export default function ClientChannels() {
             <AccordionItem value="messenger" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
               <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl shrink-0">📨</span>
+                  <ChannelIcon channel="messenger" size={22} />
                   <span className="font-semibold">Messenger</span>
                   <ChannelBadge active={!!company?.messengerApiKey} />
                   <div
@@ -450,7 +451,7 @@ export default function ClientChannels() {
             <AccordionItem value="widget" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
               <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xl shrink-0">🌐</span>
+                  <ChannelIcon channel="widget" size={22} />
                   <span className="font-semibold">Website Widget</span>
                   <ChannelBadge active={!!company?.websiteChatbotKey} />
                   <div
@@ -530,11 +531,11 @@ export default function ClientChannels() {
         </p>
         <div className="grid grid-cols-4 gap-3 text-center text-xs">
           {[
-            { emoji: "✈️", label: "Telegram",  active: !!company?.telegramBotApiKey,  color: "sky" },
-            { emoji: "💬", label: "WhatsApp",  active: !!company?.whatsappApiToken,   color: "green" },
-            { emoji: "📨", label: "Messenger", active: !!company?.messengerApiKey,    color: "blue" },
-            { emoji: "🌐", label: "Widget",    active: !!company?.websiteChatbotKey,  color: "violet" },
-          ].map(({ emoji, label, active, color }) => (
+            { channel: "telegram" as const, label: "Telegram",  active: !!company?.telegramBotApiKey,  color: "sky" },
+            { channel: "whatsapp" as const, label: "WhatsApp",  active: !!company?.whatsappApiToken,   color: "green" },
+            { channel: "messenger" as const, label: "Messenger", active: !!company?.messengerApiKey,    color: "blue" },
+            { channel: "widget" as const,    label: "Widget",    active: !!company?.websiteChatbotKey,  color: "violet" },
+          ].map(({ channel, label, active, color }) => (
             <div
               key={label}
               className={`rounded-lg border p-2.5 space-y-1 transition-colors ${
@@ -543,7 +544,7 @@ export default function ClientChannels() {
                   : "border-border/40 bg-background"
               }`}
             >
-              <div className="text-base">{emoji}</div>
+              <div className="flex justify-center"><ChannelIcon channel={channel} size={20} /></div>
               <div className="font-medium">{label}</div>
               <div className={`text-[10px] ${active ? `text-${color}-500` : "text-muted-foreground"}`}>
                 {active ? "✓ Active" : "Not set"}

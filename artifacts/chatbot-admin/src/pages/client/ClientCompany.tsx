@@ -11,6 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
+import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
@@ -405,7 +406,7 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
     <Card className="bg-card border-border/50 border-blue-500/30">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
-          <span className="text-lg">📨</span> Messenger Setup
+          <ChannelIcon channel="messenger" size={20} /> Messenger Setup
         </CardTitle>
         <CardDescription>
           Your Page Access Token is saved. In the Meta App Dashboard, add this URL as your webhook and use the Verify Token below.
@@ -519,7 +520,7 @@ function WhatsAppSetupCard({ company }: { company: { isActive: boolean; whatsapp
     <Card className="bg-card border-border/50 border-green-500/30">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
-          <span className="text-lg">💬</span> WhatsApp Setup
+          <ChannelIcon channel="whatsapp" size={20} /> WhatsApp Setup
         </CardTitle>
         <CardDescription>
           Your credentials are saved. Use the webhook URL and verify token below in your Meta App Dashboard → WhatsApp → Configuration.
@@ -1522,7 +1523,7 @@ export default function ClientCompany() {
         <Card className="bg-card border-border/50 border-sky-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
-              <span className="text-lg">✈️</span> Telegram Bot Setup
+              <ChannelIcon channel="telegram" size={20} /> Telegram Bot Setup
             </CardTitle>
             <CardDescription>
               Your bot token is saved. You need to register the webhook once so Telegram knows where to send messages.
@@ -1784,17 +1785,17 @@ export default function ClientCompany() {
         };
 
         const icons = [
-          { key: "telegram", emoji: "✈️", label: "Telegram", href: telegramLink, color: "sky" },
-          { key: "whatsapp", emoji: "💬", label: "WhatsApp", href: whatsappLink, color: "green" },
-          { key: "messenger", emoji: "📨", label: "Messenger", href: messengerLink, color: "blue" },
-          { key: "website", emoji: "🌐", label: "Website Chat", href: null, color: "violet", isWidget: hasWebsite },
-        ] as const;
+          { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink,  color: "sky",    isWidget: false },
+          { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",     href: whatsappLink,  color: "green",  isWidget: false },
+          { key: "messenger", channel: "messenger" as const, label: "Messenger",    href: messengerLink, color: "blue",   isWidget: false },
+          { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null,          color: "violet", isWidget: hasWebsite },
+        ];
 
         const snippetLines: string[] = [`<div class="chatbot-links" style="display:flex;gap:12px;">`];
-        if (telegramLink) snippetLines.push(`  <a href="${telegramLink}" target="_blank" rel="noopener" title="Chat on Telegram">✈️</a>`);
-        if (whatsappLink) snippetLines.push(`  <a href="${whatsappLink}" target="_blank" rel="noopener" title="Chat on WhatsApp">💬</a>`);
-        if (messengerLink) snippetLines.push(`  <a href="${messengerLink}" target="_blank" rel="noopener" title="Chat on Messenger">📨</a>`);
-        if (hasWebsite) snippetLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website">🌐</a>`);
+        if (telegramLink) snippetLines.push(`  <a href="${telegramLink}" target="_blank" rel="noopener" title="Chat on Telegram" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.telegram}</a>`);
+        if (whatsappLink) snippetLines.push(`  <a href="${whatsappLink}" target="_blank" rel="noopener" title="Chat on WhatsApp" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.whatsapp}</a>`);
+        if (messengerLink) snippetLines.push(`  <a href="${messengerLink}" target="_blank" rel="noopener" title="Chat on Messenger" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.messenger}</a>`);
+        if (hasWebsite) snippetLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.widget}</a>`);
         snippetLines.push(`</div>`);
         const snippet = snippetLines.join("\n");
 
@@ -1821,7 +1822,7 @@ export default function ClientCompany() {
                           : "border-border/40 bg-background opacity-50 cursor-not-allowed"
                       }`}
                     >
-                      <span className="text-2xl">{icon.emoji}</span>
+                      <ChannelIcon channel={icon.channel} size={28} />
                       <span className="text-xs font-medium">{icon.label}</span>
                       {!enabled && <span className="text-[10px] text-muted-foreground">Not set up</span>}
                     </div>
