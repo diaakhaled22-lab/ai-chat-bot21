@@ -632,6 +632,7 @@ export default function ClientCompany() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
+  const [fabPreviewOpen, setFabPreviewOpen] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [tgRegistering, setTgRegistering] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
@@ -1913,10 +1914,114 @@ function cfabToggle(btn) {
                 </p>
               )}
 
+              {/* ── FAB Live Preview ─────────────────────────────── */}
+              {company.fabEnabled && (() => {
+                const fabChannels = [
+                  telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",    href: telegramLink  },
+                  whatsappLink  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",    href: whatsappLink  },
+                  messengerLink && { key: "messenger", channel: "messenger" as const, label: "Messenger",   href: messengerLink },
+                  hasWebsite    && { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null          },
+                ].filter(Boolean) as { key: string; channel: "telegram" | "whatsapp" | "messenger" | "widget"; label: string; href: string | null }[];
+
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</p>
+                    <div
+                      className="relative rounded-xl border border-border/50 bg-muted/20 overflow-hidden cursor-default select-none"
+                      style={{ height: 240 }}
+                      onClick={() => setFabPreviewOpen(false)}
+                    >
+                      {/* Mock website lines */}
+                      <div className="p-5 space-y-2.5 pointer-events-none">
+                        {[3, 2, 4, 2.5, 3.5].map((w, i) => (
+                          <div key={i} className="h-2 bg-foreground/10 rounded-full" style={{ width: `${w * 15}%` }} />
+                        ))}
+                      </div>
+
+                      {/* FAB — absolute so it stays inside the preview box */}
+                      <div className="absolute bottom-4 right-4" style={{ zIndex: 10 }}>
+                        {/* Channel items fanning upward */}
+                        <div
+                          className="absolute right-1.5 flex flex-col-reverse items-center gap-2.5"
+                          style={{ bottom: 64, pointerEvents: fabPreviewOpen ? "auto" : "none" }}
+                        >
+                          {fabChannels.map((ch, i) => (
+                            <button
+                              key={ch.key}
+                              title={ch.label}
+                              aria-label={ch.label}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (ch.href) window.open(ch.href, "_blank", "noopener noreferrer");
+                                else toast({ title: "Website Chat", description: "On your live site this opens the embedded widget." });
+                              }}
+                              style={{
+                                width: 44, height: 44,
+                                borderRadius: "50%",
+                                border: "none",
+                                padding: 0,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 2px 12px rgba(0,0,0,.25)",
+                                opacity: fabPreviewOpen ? 1 : 0,
+                                transform: fabPreviewOpen ? "scale(1) translateY(0)" : "scale(0) translateY(8px)",
+                                transition: `opacity .18s ease ${fabPreviewOpen ? i * 60 : 0}ms, transform .18s ease ${fabPreviewOpen ? i * 60 : 0}ms`,
+                              }}
+                            >
+                              <ChannelIcon channel={ch.channel} size={36} />
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Main FAB button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setFabPreviewOpen((v) => !v); }}
+                          aria-label="Open chat menu"
+                          title={fabPreviewOpen ? "Close" : "Open chat menu"}
+                          style={{
+                            width: 56, height: 56,
+                            borderRadius: "50%",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                            background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                            boxShadow: "0 4px 20px rgba(99,102,241,.5)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "transform .15s",
+                            outline: "none",
+                            transform: fabPreviewOpen ? "rotate(45deg) scale(1.06)" : "rotate(0) scale(1)",
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
+                            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Click-outside hint */}
+                      {!fabPreviewOpen && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-xs text-muted-foreground/60 bg-background/60 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                            Click the button →
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Embed Snippet</p>
                 <p className="text-xs text-muted-foreground">
-                  Paste this anywhere on your website to show the icons above. If you include the website icon, also embed the Website Widget script (see above) on the same page so <code className="bg-muted px-1 rounded">window.ChatWidget</code> exists.
+                  {company.fabEnabled
+                    ? <>Paste this on your website — it adds the floating button shown above. If Website Chat is included, also embed the Website Widget script on the same page so <code className="bg-muted px-1 rounded">window.ChatWidget</code> exists.</>
+                    : <>Paste this anywhere on your website to show the icons above. If you include the website icon, also embed the Website Widget script (see above) on the same page so <code className="bg-muted px-1 rounded">window.ChatWidget</code> exists.</>
+                  }
                 </p>
                 <div className="relative group">
                   <pre className="bg-background text-foreground p-4 rounded-lg overflow-x-auto border border-emerald-500/30 font-mono text-xs leading-relaxed shadow-inner whitespace-pre-wrap">
