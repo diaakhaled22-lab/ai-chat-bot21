@@ -633,6 +633,7 @@ export default function ClientCompany() {
   const [copied, setCopied] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
   const [fabPreviewOpen, setFabPreviewOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [tgRegistering, setTgRegistering] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
@@ -803,6 +804,7 @@ export default function ClientCompany() {
   const showQuotaBanner = quotaData && quotaData.warning !== "none" && quotaData.warning !== "ok";
 
   return (
+    <>
     <div className="space-y-8 max-w-4xl pb-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configuration</h1>
@@ -2049,5 +2051,98 @@ function cfabToggle(btn) {
       })()}
 
     </div>
+
+    {/* ── Real fixed FAB overlay — visible on the page when enabled ── */}
+    {company?.fabEnabled && (() => {
+      const telegramLink  = company.telegramBotUsername ? `https://t.me/${company.telegramBotUsername}` : null;
+      const whatsappLink  = company.whatsappNumber      ? `https://wa.me/${company.whatsappNumber.replace(/\D/g, "")}` : null;
+      const messengerLink = company.messengerPageId     ? `https://m.me/${company.messengerPageId}` : null;
+      const hasWebsite    = !!company.websiteChatbotKey;
+
+      const channels = [
+        telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",    href: telegramLink  },
+        whatsappLink  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",    href: whatsappLink  },
+        messengerLink && { key: "messenger", channel: "messenger" as const, label: "Messenger",   href: messengerLink },
+        hasWebsite    && { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null          },
+      ].filter(Boolean) as { key: string; channel: "telegram" | "whatsapp" | "messenger" | "widget"; label: string; href: string | null }[];
+
+      return (
+        <>
+          {/* backdrop — closes the menu on outside click */}
+          {fabOpen && (
+            <div
+              className="fixed inset-0"
+              style={{ zIndex: 2147483645 }}
+              onClick={() => setFabOpen(false)}
+            />
+          )}
+
+          <div
+            className="fixed bottom-6 right-6 flex flex-col-reverse items-center gap-3"
+            style={{ zIndex: 2147483646 }}
+          >
+            {/* Channel buttons — fan upward with spring animation */}
+            {channels.map((ch, i) => (
+              <button
+                key={ch.key}
+                title={ch.label}
+                aria-label={ch.label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (ch.href) window.open(ch.href, "_blank", "noopener noreferrer");
+                  else toast({ title: "Website Chat", description: "On your live site this opens the embedded widget." });
+                }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 16px rgba(0,0,0,.35)",
+                  opacity: fabOpen ? 1 : 0,
+                  transform: fabOpen ? "scale(1) translateY(0)" : "scale(0) translateY(12px)",
+                  transition: `opacity .2s ease ${fabOpen ? i * 65 : 0}ms, transform .2s cubic-bezier(.34,1.56,.64,1) ${fabOpen ? i * 65 : 0}ms`,
+                  pointerEvents: fabOpen ? "auto" : "none",
+                }}
+              >
+                <ChannelIcon channel={ch.channel} size={40} />
+              </button>
+            ))}
+
+            {/* Main FAB button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setFabOpen((v) => !v); }}
+              aria-label={fabOpen ? "Close chat menu" : "Open chat menu"}
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: "50%",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                boxShadow: "0 6px 24px rgba(99,102,241,.55)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "transform .2s cubic-bezier(.34,1.56,.64,1)",
+                outline: "none",
+                transform: fabOpen ? "rotate(45deg) scale(1.08)" : "rotate(0) scale(1)",
+                flexShrink: 0,
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </>
+      );
+    })()}
+    </>
   );
 }
