@@ -1803,55 +1803,76 @@ export default function ClientCompany() {
         if (hasWebsite) standardLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.widget}</a>`);
         standardLines.push(`</div>`);
 
-        // FAB snippet (floating action button)
-        const fabItemBase = `opacity:0;transform:scale(0) translateY(10px);transition:opacity .18s ease,transform .18s ease;width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.2);`;
-        const fabItems: string[] = [];
-        if (telegramLink) fabItems.push(`    <button onclick="window.open('${telegramLink}','_blank','noopener noreferrer')" title="Telegram" aria-label="Chat on Telegram" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.telegram}</button>`);
-        if (whatsappLink) fabItems.push(`    <button onclick="window.open('${whatsappLink}','_blank','noopener noreferrer')" title="WhatsApp" aria-label="Chat on WhatsApp" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.whatsapp}</button>`);
-        if (messengerLink) fabItems.push(`    <button onclick="window.open('${messengerLink}','_blank','noopener noreferrer')" title="Messenger" aria-label="Chat on Messenger" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.messenger}</button>`);
-        if (hasWebsite) fabItems.push(`    <button onclick="window.ChatWidget&&window.ChatWidget.open('${company.websiteChatbotKey}')" title="Website Chat" aria-label="Chat on website" class="cfab-item" style="${fabItemBase}">${CHANNEL_SVG_SNIPPETS.widget}</button>`);
+        // FAB snippet (floating action button) — self-contained HTML + scoped CSS + vanilla JS
+        const fabRows: string[] = [];
+        if (telegramLink)  fabRows.push(`    <div class="cfab-row" role="listitem">\n      <span class="cfab-tip">Telegram</span>\n      <button class="cfab-item" type="button" onclick="window.open('${telegramLink}','_blank','noopener noreferrer')" aria-label="Chat on Telegram">${CHANNEL_SVG_SNIPPETS.telegram}</button>\n    </div>`);
+        if (whatsappLink)  fabRows.push(`    <div class="cfab-row" role="listitem">\n      <span class="cfab-tip">WhatsApp</span>\n      <button class="cfab-item" type="button" onclick="window.open('${whatsappLink}','_blank','noopener noreferrer')" aria-label="Chat on WhatsApp">${CHANNEL_SVG_SNIPPETS.whatsapp}</button>\n    </div>`);
+        if (messengerLink) fabRows.push(`    <div class="cfab-row" role="listitem">\n      <span class="cfab-tip">Messenger</span>\n      <button class="cfab-item" type="button" onclick="window.open('${messengerLink}','_blank','noopener noreferrer')" aria-label="Chat on Messenger">${CHANNEL_SVG_SNIPPETS.messenger}</button>\n    </div>`);
+        if (hasWebsite)    fabRows.push(`    <div class="cfab-row" role="listitem">\n      <span class="cfab-tip">Website Chat</span>\n      <button class="cfab-item" type="button" onclick="window.ChatWidget&&window.ChatWidget.open('${company.websiteChatbotKey}')" aria-label="Open website chat">${CHANNEL_SVG_SNIPPETS.widget}</button>\n    </div>`);
+
         const fabSnippet = `<!-- Chatbot FAB Widget -->
-<div id="cfab" style="position:fixed;bottom:24px;right:24px;z-index:2147483647;">
-  <div id="cfab-menu" style="position:absolute;bottom:64px;right:6px;display:none;flex-direction:column-reverse;gap:10px;align-items:center;">
-${fabItems.join('\n')}
+<style>
+#cfab{position:fixed;bottom:24px;right:24px;z-index:2147483647;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:12px;}
+#cfab-btn{position:relative;width:60px;height:60px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
+#cfab-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(124,58,237,.65);}
+#cfab-btn:focus-visible{outline:3px solid rgba(124,58,237,.7);outline-offset:3px;}
+.cfab-icon{transition:transform .3s cubic-bezier(.34,1.56,.64,1);display:block;}
+#cfab-btn[data-open="1"] .cfab-icon{transform:rotate(45deg);}
+#cfab-pulse{position:absolute;inset:0;border-radius:50%;background:#7c3aed;animation:cfab-pulse 2.2s ease-out infinite;pointer-events:none;}
+@keyframes cfab-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.8)}100%{opacity:0;transform:scale(1.8)}}
+#cfab-menu{display:flex;flex-direction:column-reverse;gap:10px;align-items:flex-end;}
+.cfab-row{display:flex;align-items:center;gap:10px;justify-content:flex-end;opacity:0;transform:translateY(12px) scale(.85);pointer-events:none;transition:opacity .2s ease,transform .24s cubic-bezier(.34,1.56,.64,1);}
+.cfab-row.cfab-on{opacity:1;transform:none;pointer-events:auto;}
+.cfab-item{width:50px;height:50px;border-radius:50%;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;}
+.cfab-item:hover{transform:scale(1.14);box-shadow:0 6px 22px rgba(0,0,0,.32);}
+.cfab-item:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:2px;border-radius:50%;}
+.cfab-tip{background:rgba(15,15,15,.82);color:#fff;font:500 12px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:5px 11px;border-radius:7px;white-space:nowrap;pointer-events:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+@media(max-width:500px){#cfab{bottom:16px;right:16px;}.cfab-tip{display:none;}.cfab-item{width:46px;height:46px;}.cfab-btn{width:56px;height:56px;}}
+</style>
+<div id="cfab" role="complementary" aria-label="Chat support options">
+  <div id="cfab-menu" role="list" aria-label="Chat channels">
+${fabRows.join('\n')}
   </div>
-  <button id="cfab-btn" onclick="cfabToggle(this)" data-open="0" aria-label="Open chat menu"
-    style="width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;padding:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 4px 20px rgba(99,102,241,.5);display:flex;align-items:center;justify-content:center;transition:transform .15s;outline:none;"
-    onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <button id="cfab-btn" data-open="0" type="button" aria-label="Open chat menu" aria-haspopup="true" aria-expanded="false" aria-controls="cfab-menu">
+    <span id="cfab-pulse" aria-hidden="true"></span>
+    <svg class="cfab-icon" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 </div>
 <script>
-function cfabToggle(btn) {
-  var menu = document.getElementById('cfab-menu');
-  var items = menu.querySelectorAll('.cfab-item');
-  var open = btn.dataset.open === '1';
-  if (open) {
-    items.forEach(function(el) { el.style.opacity = '0'; el.style.transform = 'scale(0) translateY(10px)'; });
-    setTimeout(function() { menu.style.display = 'none'; }, 200);
-    btn.dataset.open = '0';
-  } else {
-    menu.style.display = 'flex';
-    requestAnimationFrame(function() {
-      items.forEach(function(el, i) {
-        setTimeout(function() { el.style.opacity = '1'; el.style.transform = 'scale(1) translateY(0)'; }, i * 60);
-      });
+(function(){
+  var btn=document.getElementById('cfab-btn'),
+      menu=document.getElementById('cfab-menu'),
+      pulse=document.getElementById('cfab-pulse');
+  function getRows(){ return Array.from(menu.querySelectorAll('.cfab-row')); }
+  function openMenu(){
+    btn.dataset.open='1'; btn.setAttribute('aria-expanded','true');
+    if(pulse) pulse.style.display='none';
+    getRows().forEach(function(r,i){
+      r.style.transitionDelay=(i*65)+'ms';
+      setTimeout(function(){ r.classList.add('cfab-on'); },10);
     });
-    btn.dataset.open = '1';
   }
-}
-(function() {
-  var isRtl = document.dir === 'rtl' || document.documentElement.getAttribute('dir') === 'rtl';
-  var fab = document.getElementById('cfab');
-  var menu = document.getElementById('cfab-menu');
-  if (isRtl && fab) { fab.style.right = 'auto'; fab.style.left = '24px'; }
-  if (isRtl && menu) { menu.style.right = 'auto'; menu.style.left = '6px'; }
-  document.addEventListener('click', function(e) {
-    var btn = document.getElementById('cfab-btn');
-    if (btn && btn.dataset.open === '1' && !document.getElementById('cfab').contains(e.target)) {
-      cfabToggle(btn);
-    }
+  function closeMenu(){
+    btn.dataset.open='0'; btn.setAttribute('aria-expanded','false');
+    if(pulse) pulse.style.display='';
+    getRows().forEach(function(r){ r.style.transitionDelay='0ms'; r.classList.remove('cfab-on'); });
+  }
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    btn.dataset.open==='1' ? closeMenu() : openMenu();
   });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&btn.dataset.open==='1'){ closeMenu(); btn.focus(); }
+  });
+  document.addEventListener('click',function(e){
+    var f=document.getElementById('cfab');
+    if(btn.dataset.open==='1'&&f&&!f.contains(e.target)) closeMenu();
+  });
+  if(document.dir==='rtl'||document.documentElement.dir==='rtl'){
+    var f=document.getElementById('cfab');
+    if(f){ f.style.right='auto'; f.style.left='24px'; }
+    getRows().forEach(function(r){ r.style.flexDirection='row-reverse'; });
+  }
 })();
 </script>`;
 
@@ -1961,9 +1982,9 @@ function cfabToggle(btn) {
       const hasWebsite    = !!company.websiteChatbotKey;
 
       const channels = [
-        telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",    href: telegramLink  },
-        whatsappLink  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",    href: whatsappLink  },
-        messengerLink && { key: "messenger", channel: "messenger" as const, label: "Messenger",   href: messengerLink },
+        telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink  },
+        whatsappLink  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",     href: whatsappLink  },
+        messengerLink && { key: "messenger", channel: "messenger" as const, label: "Messenger",    href: messengerLink },
         hasWebsite    && { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null          },
       ].filter(Boolean) as { key: string; channel: "telegram" | "whatsapp" | "messenger" | "widget"; label: string; href: string | null }[];
 
@@ -1979,67 +2000,87 @@ function cfabToggle(btn) {
           )}
 
           <div
-            className="fixed bottom-6 right-6 flex flex-col-reverse items-center gap-3"
+            className="fixed bottom-6 right-6 flex flex-col-reverse items-end gap-3"
             style={{ zIndex: 2147483646 }}
           >
-            {/* Channel buttons — fan upward with spring animation */}
+            {/* Channel rows — label + button, fan upward */}
             {channels.map((ch, i) => (
-              <button
+              <div
                 key={ch.key}
-                title={ch.label}
-                aria-label={ch.label}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (ch.href) window.open(ch.href, "_blank", "noopener noreferrer");
-                  else toast({ title: "Website Chat", description: "On your live site this opens the embedded widget." });
-                }}
+                className="flex items-center gap-2.5 justify-end"
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 16px rgba(0,0,0,.35)",
                   opacity: fabOpen ? 1 : 0,
-                  transform: fabOpen ? "scale(1) translateY(0)" : "scale(0) translateY(12px)",
-                  transition: `opacity .2s ease ${fabOpen ? i * 65 : 0}ms, transform .2s cubic-bezier(.34,1.56,.64,1) ${fabOpen ? i * 65 : 0}ms`,
+                  transform: fabOpen ? "translateY(0) scale(1)" : "translateY(12px) scale(0.85)",
+                  transition: `opacity .2s ease ${fabOpen ? i * 65 : 0}ms, transform .24s cubic-bezier(.34,1.56,.64,1) ${fabOpen ? i * 65 : 0}ms`,
                   pointerEvents: fabOpen ? "auto" : "none",
                 }}
               >
-                <ChannelIcon channel={ch.channel} size={40} />
-              </button>
+                {/* Tooltip label */}
+                <span className="text-xs font-medium text-white bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-md whitespace-nowrap select-none pointer-events-none">
+                  {ch.label}
+                </span>
+                {/* Channel button */}
+                <button
+                  aria-label={ch.label}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (ch.href) window.open(ch.href, "_blank", "noopener noreferrer");
+                    else toast({ title: "Website Chat", description: "On your live site this opens the embedded widget." });
+                  }}
+                  className="transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 rounded-full flex-shrink-0"
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "50%",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 16px rgba(0,0,0,.3)",
+                    background: "transparent",
+                  }}
+                >
+                  <ChannelIcon channel={ch.channel} size={44} />
+                </button>
+              </div>
             ))}
 
-            {/* Main FAB button */}
-            <button
-              onClick={(e) => { e.stopPropagation(); setFabOpen((v) => !v); }}
-              aria-label={fabOpen ? "Close chat menu" : "Open chat menu"}
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: "50%",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-                boxShadow: "0 6px 24px rgba(99,102,241,.55)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "transform .2s cubic-bezier(.34,1.56,.64,1)",
-                outline: "none",
-                transform: fabOpen ? "rotate(45deg) scale(1.08)" : "rotate(0) scale(1)",
-                flexShrink: 0,
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            {/* Main FAB trigger */}
+            <div className="relative flex-shrink-0">
+              {/* Pulse ring — idle only */}
+              {!fabOpen && (
+                <span
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: "#7c3aed",
+                    animation: "cfab-admin-pulse 2.2s ease-out infinite",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
+              <style>{`@keyframes cfab-admin-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.75)}100%{opacity:0;transform:scale(1.75)}}`}</style>
+              <button
+                onClick={(e) => { e.stopPropagation(); setFabOpen((v) => !v); }}
+                aria-label={fabOpen ? "Close chat menu" : "Open chat menu"}
+                aria-expanded={fabOpen}
+                className="relative flex items-center justify-center rounded-full border-none cursor-pointer transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 focus-visible:outline-offset-3"
+                style={{
+                  width: 60,
+                  height: 60,
+                  background: "#7c3aed",
+                  boxShadow: "0 6px 24px rgba(124,58,237,.55)",
+                  transform: fabOpen ? "rotate(45deg) scale(1.08)" : "rotate(0) scale(1)",
+                  transition: "transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .2s",
+                  outline: "none",
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </>
       );
