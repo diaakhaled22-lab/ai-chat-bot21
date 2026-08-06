@@ -1735,6 +1735,27 @@ export default function ClientCompany() {
                 <p className="text-xs text-muted-foreground">
                   Paste this tag anywhere in your website's HTML — it creates a floating chat button automatically.
                 </p>
+
+                {/* FAB preview */}
+                <div className="flex items-center gap-4 rounded-lg border border-violet-500/20 bg-violet-500/5 px-5 py-4">
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className="flex h-14 w-14 items-center justify-center rounded-full shadow-lg"
+                      style={{ background: "#7c3aed", boxShadow: "0 4px 20px rgba(124,58,237,.45)" }}
+                      aria-label="Chat button preview"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white">
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                      </svg>
+                    </div>
+                    <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">This button will float on your site</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Fixed to the bottom-right corner of every page — works on any website or WordPress site.</p>
+                  </div>
+                </div>
+
                 <div className="relative group">
                   <pre className="bg-background text-foreground p-4 rounded-lg overflow-x-auto border border-violet-500/30 font-mono text-xs leading-relaxed shadow-inner">
 {`<script
