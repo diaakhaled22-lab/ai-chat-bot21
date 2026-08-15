@@ -172,6 +172,7 @@ export const ListCompaniesResponseItem = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -217,6 +218,7 @@ export const GetCompanyResponse = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -265,6 +267,7 @@ export const UpdateCompanyMyIdResponse = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -325,6 +328,7 @@ export const ToggleCompanyStatusResponse = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -462,6 +466,7 @@ export const GetClientCompanyResponse = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -494,7 +499,8 @@ export const CreateClientCompanyBody = zod.object({
   "messengerPageId": zod.string().nullish(),
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
-  "websiteAutoSync": zod.boolean().optional()
+  "websiteAutoSync": zod.boolean().optional(),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.')
 })
 
 export const CreateClientCompanyResponse = zod.object({
@@ -528,6 +534,7 @@ export const CreateClientCompanyResponse = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -561,7 +568,7 @@ export const UpdateClientCompanyBody = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional(),
-  "fabEnabled": zod.boolean().optional()
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.')
 })
 
 export const UpdateClientCompanyResponse = zod.object({
@@ -595,6 +602,7 @@ export const UpdateClientCompanyResponse = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()

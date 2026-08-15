@@ -842,6 +842,9 @@ components:
         websiteAutoSync:
           type: boolean
           description: Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.
+        fabEnabled:
+          type: boolean
+          description: Whether the client website embed snippet should use the floating action button.
         websiteLastSynced:
           type: ["string", "null"]
           description: ISO timestamp of when the website content was last successfully synced.
@@ -902,6 +905,9 @@ components:
           type: ["string", "null"]
         websiteAutoSync:
           type: boolean
+        fabEnabled:
+          type: boolean
+          description: Whether the client website embed snippet should use the floating action button.
 
     CompanyStatusUpdate:
       type: object

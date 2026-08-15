@@ -81,6 +81,8 @@ export interface Company {
   websiteDataUrl?: string | null;
   /** Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts. */
   websiteAutoSync?: boolean;
+  /** Whether the client website embed snippet should use the floating action button. */
+  fabEnabled?: boolean;
   /**
      * ISO timestamp of when the website content was last successfully synced.
      * @nullable
