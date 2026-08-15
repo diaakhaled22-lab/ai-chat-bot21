@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,9 +34,13 @@ const formSchema = z.object({
   messengerPageId:           z.string().optional().or(z.literal("")),
   websiteChatbotKey:         z.string().optional().or(z.literal("")),
   fabEnabled:                z.boolean().optional(),
+  fabPositionX:              z.number().min(0).max(100).optional(),
+  fabPositionY:              z.number().min(0).max(100).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+const DEFAULT_FAB_POSITION = { x: 92, y: 86 };
+const FAB_POSITION_LIMITS = { minX: 8, maxX: 92, minY: 10, maxY: 90 };
 
 /* ── small status badge ─────────────────────────────────────── */
 function ChannelBadge({ active }: { active: boolean }) {
@@ -63,6 +67,8 @@ export default function ClientChannels() {
   const [whatsappOn,  setWhatsappOn]  = useState(false);
   const [messengerOn, setMessengerOn] = useState(false);
   const [widgetOn,    setWidgetOn]    = useState(false);
+  const fabPreviewRef = useRef<HTMLDivElement>(null);
+  const [draggingFab, setDraggingFab] = useState(false);
 
   /* ── Telegram webhook helpers ────────────────────────────── */
   const [tgRegistering, setTgRegistering] = useState(false);
@@ -80,6 +86,8 @@ export default function ClientChannels() {
       messengerPageId:           "",
       websiteChatbotKey:         "",
       fabEnabled:                false,
+      fabPositionX:              DEFAULT_FAB_POSITION.x,
+      fabPositionY:              DEFAULT_FAB_POSITION.y,
     },
   });
 
@@ -95,6 +103,8 @@ export default function ClientChannels() {
         messengerPageId:           company.messengerPageId           ?? "",
         websiteChatbotKey:         company.websiteChatbotKey         ?? "",
         fabEnabled:                company.fabEnabled                ?? false,
+        fabPositionX:              company.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
+        fabPositionY:              company.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
       });
       /* auto-enable switch if channel already has credentials */
       if (company.telegramBotApiKey)  setTelegramOn(true);
@@ -119,6 +129,8 @@ export default function ClientChannels() {
       messengerPageId:           values.messengerPageId           || null,
       websiteChatbotKey:         values.websiteChatbotKey         || null,
       fabEnabled:                values.fabEnabled                ?? false,
+      fabPositionX:              values.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
+      fabPositionY:              values.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
     };
     updateCompany.mutate({ data }, {
       onSuccess: () => {
@@ -129,6 +141,38 @@ export default function ClientChannels() {
         toast({ title: "Failed to save", description: error.message, variant: "destructive" });
       },
     });
+  };
+
+  const fabPositionX = form.watch("fabPositionX") ?? DEFAULT_FAB_POSITION.x;
+  const fabPositionY = form.watch("fabPositionY") ?? DEFAULT_FAB_POSITION.y;
+
+  const updateFabPosition = (clientX: number, clientY: number) => {
+    const preview = fabPreviewRef.current;
+    if (!preview) return;
+    const bounds = preview.getBoundingClientRect();
+    const x = Math.round(((clientX - bounds.left) / bounds.width) * 100);
+    const y = Math.round(((clientY - bounds.top) / bounds.height) * 100);
+    form.setValue("fabPositionX", Math.min(FAB_POSITION_LIMITS.maxX, Math.max(FAB_POSITION_LIMITS.minX, x)), {
+      shouldDirty: true,
+    });
+    form.setValue("fabPositionY", Math.min(FAB_POSITION_LIMITS.maxY, Math.max(FAB_POSITION_LIMITS.minY, y)), {
+      shouldDirty: true,
+    });
+  };
+
+  const moveFabByKeyboard = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step = event.shiftKey ? 5 : 1;
+    let nextX = fabPositionX;
+    let nextY = fabPositionY;
+    if (event.key === "ArrowLeft") nextX -= step;
+    if (event.key === "ArrowRight") nextX += step;
+    if (event.key === "ArrowUp") nextY -= step;
+    if (event.key === "ArrowDown") nextY += step;
+    if (nextX !== fabPositionX || nextY !== fabPositionY) {
+      event.preventDefault();
+      form.setValue("fabPositionX", Math.min(FAB_POSITION_LIMITS.maxX, Math.max(FAB_POSITION_LIMITS.minX, nextX)), { shouldDirty: true });
+      form.setValue("fabPositionY", Math.min(FAB_POSITION_LIMITS.maxY, Math.max(FAB_POSITION_LIMITS.minY, nextY)), { shouldDirty: true });
+    }
   };
 
   const registerTelegramWebhook = async () => {
@@ -535,6 +579,94 @@ export default function ClientChannels() {
                 )}
               />
             </div>
+
+            <input type="hidden" {...form.register("fabPositionX", { valueAsNumber: true })} />
+            <input type="hidden" {...form.register("fabPositionY", { valueAsNumber: true })} />
+
+            {form.watch("fabEnabled") && (
+              <div className="mt-5 space-y-3 border-t border-border/40 pt-5">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Choose button placement</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Drag the button inside the website preview. This position will be used by the live embed.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      form.setValue("fabPositionX", DEFAULT_FAB_POSITION.x, { shouldDirty: true });
+                      form.setValue("fabPositionY", DEFAULT_FAB_POSITION.y, { shouldDirty: true });
+                    }}
+                  >
+                    Reset position
+                  </Button>
+                </div>
+
+                <div
+                  ref={fabPreviewRef}
+                  className="relative h-64 overflow-hidden rounded-xl border border-border/60 bg-slate-100 shadow-inner dark:bg-slate-950"
+                  aria-label="Website preview for positioning the floating action button"
+                >
+                  <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,rgba(100,116,139,.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,.18)_1px,transparent_1px)] [background-size:28px_28px]" />
+                  <div className="absolute inset-x-0 top-0 flex h-9 items-center gap-1.5 border-b border-slate-300/70 bg-white/75 px-3 dark:border-slate-700/70 dark:bg-slate-900/75">
+                    <span className="h-2 w-2 rounded-full bg-red-400/80" />
+                    <span className="h-2 w-2 rounded-full bg-amber-400/80" />
+                    <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
+                    <span className="ml-2 h-2 w-24 rounded-full bg-slate-300/70 dark:bg-slate-700/70" />
+                  </div>
+                  <div className="absolute inset-x-8 top-20 space-y-3">
+                    <div className="h-3 w-2/5 rounded-full bg-slate-300/70 dark:bg-slate-700/70" />
+                    <div className="h-2 w-4/5 rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
+                    <div className="h-2 w-3/5 rounded-full bg-slate-200/80 dark:bg-slate-800/80" />
+                  </div>
+                  <button
+                    type="button"
+                    className={`absolute z-10 flex h-14 w-14 touch-none select-none items-center justify-center rounded-full border-0 bg-violet-600 shadow-[0_8px_24px_rgba(124,58,237,.45)] transition-shadow ${
+                      draggingFab ? "cursor-grabbing shadow-[0_12px_30px_rgba(124,58,237,.65)]" : "cursor-grab"
+                    }`}
+                    style={{
+                      left: `${fabPositionX}%`,
+                      top: `${fabPositionY}%`,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                    aria-label="Drag to choose the floating button position"
+                    aria-roledescription="draggable button"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      setDraggingFab(true);
+                      updateFabPosition(event.clientX, event.clientY);
+                    }}
+                    onPointerMove={(event) => {
+                      if (draggingFab) updateFabPosition(event.clientX, event.clientY);
+                    }}
+                    onPointerUp={(event) => {
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                        event.currentTarget.releasePointerCapture(event.pointerId);
+                      }
+                      setDraggingFab(false);
+                    }}
+                    onPointerCancel={() => setDraggingFab(false)}
+                    onKeyDown={moveFabByKeyboard}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-3 left-3 rounded-md bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
+                    Drag anywhere within the preview
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Horizontal: {fabPositionX}%</span>
+                  <span>Vertical: {fabPositionY}%</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Sticky Save ──────────────────────────────────── */}

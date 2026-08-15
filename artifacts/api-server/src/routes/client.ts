@@ -65,6 +65,8 @@ router.get("/client/company", async (req, res) => {
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,
+      fabPositionX: company.fabPositionX,
+      fabPositionY: company.fabPositionY,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
@@ -333,6 +335,8 @@ router.put("/client/company", async (req, res) => {
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
     if (data.websiteAutoSync !== undefined) updates.websiteAutoSync = data.websiteAutoSync;
     if (data.fabEnabled !== undefined) updates.fabEnabled = data.fabEnabled;
+    if (data.fabPositionX !== undefined) updates.fabPositionX = data.fabPositionX;
+    if (data.fabPositionY !== undefined) updates.fabPositionY = data.fabPositionY;
 
     const [company] = await db
       .update(companiesTable)
@@ -398,6 +402,8 @@ router.put("/client/company", async (req, res) => {
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,
+      fabPositionX: company.fabPositionX,
+      fabPositionY: company.fabPositionY,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),

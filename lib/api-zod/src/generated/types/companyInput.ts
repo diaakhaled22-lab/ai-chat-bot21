@@ -56,4 +56,14 @@ export interface CompanyInput {
   websiteAutoSync?: boolean;
   /** Whether the client website embed snippet should use the floating action button. */
   fabEnabled?: boolean;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  fabPositionX?: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  fabPositionY?: number;
 }

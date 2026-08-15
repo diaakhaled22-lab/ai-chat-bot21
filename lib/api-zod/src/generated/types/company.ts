@@ -84,6 +84,18 @@ export interface Company {
   /** Whether the client website embed snippet should use the floating action button. */
   fabEnabled?: boolean;
   /**
+     * Horizontal FAB position as a viewport percentage from 0 to 100.
+     * @minimum 0
+     * @maximum 100
+     */
+  fabPositionX?: number;
+  /**
+     * Vertical FAB position as a viewport percentage from 0 to 100.
+     * @minimum 0
+     * @maximum 100
+     */
+  fabPositionY?: number;
+  /**
      * ISO timestamp of when the website content was last successfully synced.
      * @nullable
      */

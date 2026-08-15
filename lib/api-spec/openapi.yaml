@@ -845,6 +845,16 @@ components:
         fabEnabled:
           type: boolean
           description: Whether the client website embed snippet should use the floating action button.
+        fabPositionX:
+          type: integer
+          description: Horizontal FAB position as a viewport percentage from 0 to 100.
+          minimum: 0
+          maximum: 100
+        fabPositionY:
+          type: integer
+          description: Vertical FAB position as a viewport percentage from 0 to 100.
+          minimum: 0
+          maximum: 100
         websiteLastSynced:
           type: ["string", "null"]
           description: ISO timestamp of when the website content was last successfully synced.
@@ -908,6 +918,14 @@ components:
         fabEnabled:
           type: boolean
           description: Whether the client website embed snippet should use the floating action button.
+        fabPositionX:
+          type: integer
+          minimum: 0
+          maximum: 100
+        fabPositionY:
+          type: integer
+          minimum: 0
+          maximum: 100
 
     CompanyStatusUpdate:
       type: object

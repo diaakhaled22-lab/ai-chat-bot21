@@ -141,6 +141,14 @@ export const DeleteClientResponse = zod.unknown()
 /**
  * @summary List all companies
  */
+export const listCompaniesResponseFabPositionXMin = 0;
+export const listCompaniesResponseFabPositionXMax = 100;
+
+export const listCompaniesResponseFabPositionYMin = 0;
+export const listCompaniesResponseFabPositionYMax = 100;
+
+
+
 export const ListCompaniesResponseItem = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
@@ -173,6 +181,8 @@ export const ListCompaniesResponseItem = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(listCompaniesResponseFabPositionXMin).max(listCompaniesResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(listCompaniesResponseFabPositionYMin).max(listCompaniesResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -186,6 +196,14 @@ export const ListCompaniesResponse = zod.array(ListCompaniesResponseItem)
 export const GetCompanyParams = zod.object({
   "id": zod.coerce.number()
 })
+
+export const getCompanyResponseFabPositionXMin = 0;
+export const getCompanyResponseFabPositionXMax = 100;
+
+export const getCompanyResponseFabPositionYMin = 0;
+export const getCompanyResponseFabPositionYMax = 100;
+
+
 
 export const GetCompanyResponse = zod.object({
   "id": zod.number(),
@@ -219,6 +237,8 @@ export const GetCompanyResponse = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(getCompanyResponseFabPositionXMin).max(getCompanyResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(getCompanyResponseFabPositionYMin).max(getCompanyResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -235,6 +255,14 @@ export const UpdateCompanyMyIdParams = zod.object({
 export const UpdateCompanyMyIdBody = zod.object({
   "myId": zod.string().nullish()
 })
+
+export const updateCompanyMyIdResponseFabPositionXMin = 0;
+export const updateCompanyMyIdResponseFabPositionXMax = 100;
+
+export const updateCompanyMyIdResponseFabPositionYMin = 0;
+export const updateCompanyMyIdResponseFabPositionYMax = 100;
+
+
 
 export const UpdateCompanyMyIdResponse = zod.object({
   "id": zod.number(),
@@ -268,6 +296,8 @@ export const UpdateCompanyMyIdResponse = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(updateCompanyMyIdResponseFabPositionXMin).max(updateCompanyMyIdResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(updateCompanyMyIdResponseFabPositionYMin).max(updateCompanyMyIdResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -296,6 +326,14 @@ export const ToggleCompanyStatusBody = zod.object({
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start. Null clears the date.'),
   "activationEnd": zod.string().nullish().describe('ISO 8601 timestamp for subscription end. Null clears the date.')
 })
+
+export const toggleCompanyStatusResponseFabPositionXMin = 0;
+export const toggleCompanyStatusResponseFabPositionXMax = 100;
+
+export const toggleCompanyStatusResponseFabPositionYMin = 0;
+export const toggleCompanyStatusResponseFabPositionYMax = 100;
+
+
 
 export const ToggleCompanyStatusResponse = zod.object({
   "id": zod.number(),
@@ -329,6 +367,8 @@ export const ToggleCompanyStatusResponse = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(toggleCompanyStatusResponseFabPositionXMin).max(toggleCompanyStatusResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(toggleCompanyStatusResponseFabPositionYMin).max(toggleCompanyStatusResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -435,6 +475,14 @@ export const UpdateAdminSettingsResponse = zod.unknown()
 /**
  * @summary Get client's company
  */
+export const getClientCompanyResponseFabPositionXMin = 0;
+export const getClientCompanyResponseFabPositionXMax = 100;
+
+export const getClientCompanyResponseFabPositionYMin = 0;
+export const getClientCompanyResponseFabPositionYMax = 100;
+
+
+
 export const GetClientCompanyResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
@@ -467,6 +515,8 @@ export const GetClientCompanyResponse = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(getClientCompanyResponseFabPositionXMin).max(getClientCompanyResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(getClientCompanyResponseFabPositionYMin).max(getClientCompanyResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -476,6 +526,14 @@ export const GetClientCompanyResponse = zod.object({
 /**
  * @summary Create client's company
  */
+export const createClientCompanyBodyFabPositionXMin = 0;
+export const createClientCompanyBodyFabPositionXMax = 100;
+
+export const createClientCompanyBodyFabPositionYMin = 0;
+export const createClientCompanyBodyFabPositionYMax = 100;
+
+
+
 export const CreateClientCompanyBody = zod.object({
   "name": zod.string(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
@@ -500,8 +558,18 @@ export const CreateClientCompanyBody = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional(),
-  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.')
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(createClientCompanyBodyFabPositionXMin).max(createClientCompanyBodyFabPositionXMax).optional(),
+  "fabPositionY": zod.number().min(createClientCompanyBodyFabPositionYMin).max(createClientCompanyBodyFabPositionYMax).optional()
 })
+
+export const createClientCompanyResponseFabPositionXMin = 0;
+export const createClientCompanyResponseFabPositionXMax = 100;
+
+export const createClientCompanyResponseFabPositionYMin = 0;
+export const createClientCompanyResponseFabPositionYMax = 100;
+
+
 
 export const CreateClientCompanyResponse = zod.object({
   "id": zod.number(),
@@ -535,6 +603,8 @@ export const CreateClientCompanyResponse = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(createClientCompanyResponseFabPositionXMin).max(createClientCompanyResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(createClientCompanyResponseFabPositionYMin).max(createClientCompanyResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -544,6 +614,14 @@ export const CreateClientCompanyResponse = zod.object({
 /**
  * @summary Update client's company
  */
+export const updateClientCompanyBodyFabPositionXMin = 0;
+export const updateClientCompanyBodyFabPositionXMax = 100;
+
+export const updateClientCompanyBodyFabPositionYMin = 0;
+export const updateClientCompanyBodyFabPositionYMax = 100;
+
+
+
 export const UpdateClientCompanyBody = zod.object({
   "name": zod.string(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
@@ -568,8 +646,18 @@ export const UpdateClientCompanyBody = zod.object({
   "websiteChatbotKey": zod.string().nullish(),
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional(),
-  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.')
+  "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(updateClientCompanyBodyFabPositionXMin).max(updateClientCompanyBodyFabPositionXMax).optional(),
+  "fabPositionY": zod.number().min(updateClientCompanyBodyFabPositionYMin).max(updateClientCompanyBodyFabPositionYMax).optional()
 })
+
+export const updateClientCompanyResponseFabPositionXMin = 0;
+export const updateClientCompanyResponseFabPositionXMax = 100;
+
+export const updateClientCompanyResponseFabPositionYMin = 0;
+export const updateClientCompanyResponseFabPositionYMax = 100;
+
+
 
 export const UpdateClientCompanyResponse = zod.object({
   "id": zod.number(),
@@ -603,6 +691,8 @@ export const UpdateClientCompanyResponse = zod.object({
   "websiteDataUrl": zod.string().nullish(),
   "websiteAutoSync": zod.boolean().optional().describe('Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts.'),
   "fabEnabled": zod.boolean().optional().describe('Whether the client website embed snippet should use the floating action button.'),
+  "fabPositionX": zod.number().min(updateClientCompanyResponseFabPositionXMin).max(updateClientCompanyResponseFabPositionXMax).optional().describe('Horizontal FAB position as a viewport percentage from 0 to 100.'),
+  "fabPositionY": zod.number().min(updateClientCompanyResponseFabPositionYMin).max(updateClientCompanyResponseFabPositionYMax).optional().describe('Vertical FAB position as a viewport percentage from 0 to 100.'),
   "websiteLastSynced": zod.string().nullish().describe('ISO timestamp of when the website content was last successfully synced.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()

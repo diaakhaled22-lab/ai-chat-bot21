@@ -1780,6 +1780,10 @@ export default function ClientCompany() {
         const whatsappLink = company.whatsappNumber ? `https://wa.me/${company.whatsappNumber.replace(/\D/g, "")}` : null;
         const messengerLink = company.messengerPageId ? `https://m.me/${company.messengerPageId}` : null;
         const hasWebsite = !!company.websiteChatbotKey;
+        const fabPositionX = Math.min(92, Math.max(8, company.fabPositionX ?? 92));
+        const fabPositionY = Math.min(90, Math.max(10, company.fabPositionY ?? 86));
+        const fabVerticalClass = fabPositionY < 38 ? "cfab-down" : "";
+        const fabHorizontalClass = fabPositionX < 25 ? "cfab-left" : fabPositionX > 75 ? "cfab-right" : "cfab-center";
 
         const COLOR_CLASSES: Record<string, string> = {
           sky: "border-sky-500/40 bg-sky-500/5 hover:bg-sky-500/10",
@@ -1812,7 +1816,7 @@ export default function ClientCompany() {
 
         const fabSnippet = `<!-- Chatbot FAB Widget -->
 <style>
-#cfab{position:fixed;bottom:24px;right:24px;z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
+#cfab{position:fixed;left:${fabPositionX}%;top:${fabPositionY}%;transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
 #cfab-btn{position:relative;width:60px;height:60px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
 #cfab-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(124,58,237,.65);}
 #cfab-btn:focus-visible{outline:3px solid rgba(124,58,237,.7);outline-offset:3px;}
@@ -1821,14 +1825,17 @@ export default function ClientCompany() {
 #cfab-pulse{position:absolute;inset:0;border-radius:50%;background:#7c3aed;animation:cfab-pulse 2.2s ease-out infinite;pointer-events:none;}
 @keyframes cfab-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.8)}100%{opacity:0;transform:scale(1.8)}}
 #cfab-menu{display:flex;flex-direction:column;gap:10px;align-items:flex-end;}
+#cfab.cfab-down{flex-direction:column-reverse;}
+#cfab.cfab-left,#cfab.cfab-left #cfab-menu{align-items:flex-start;}
+#cfab.cfab-center,#cfab.cfab-center #cfab-menu{align-items:center;}
 .cfab-row{display:flex;align-items:center;justify-content:flex-end;opacity:0;transform:translateY(12px) scale(.85);pointer-events:none;transition:opacity .2s ease,transform .24s cubic-bezier(.34,1.56,.64,1);}
 .cfab-row.cfab-on{opacity:1;transform:none;pointer-events:auto;}
 .cfab-item{width:50px;height:50px;border-radius:50%;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;}
 .cfab-item:hover{transform:scale(1.14);box-shadow:0 6px 22px rgba(0,0,0,.32);}
 .cfab-item:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:2px;border-radius:50%;}
-@media(max-width:500px){#cfab{bottom:16px;right:16px;}.cfab-item{width:46px;height:46px;}.cfab-btn{width:56px;height:56px;}}
+@media(max-width:500px){.cfab-item{width:46px;height:46px;}}
 </style>
-<div id="cfab" role="complementary" aria-label="Chat support options">
+<div id="cfab" class="${fabVerticalClass} ${fabHorizontalClass}" role="complementary" aria-label="Chat support options">
   <div id="cfab-menu" role="list" aria-label="Chat channels">
 ${fabRows.join('\n')}
   </div>
@@ -1868,8 +1875,6 @@ ${fabRows.join('\n')}
     if(btn.dataset.open==='1'&&f&&!f.contains(e.target)) closeMenu();
   });
   if(document.dir==='rtl'||document.documentElement.dir==='rtl'){
-    var f=document.getElementById('cfab');
-    if(f){ f.style.right='auto'; f.style.left='24px'; }
     getRows().forEach(function(r){ r.style.flexDirection='row-reverse'; });
   }
 })();
@@ -1999,8 +2004,13 @@ ${fabRows.join('\n')}
           )}
 
           <div
-            className="fixed bottom-6 right-6 flex flex-col items-end gap-3"
-            style={{ zIndex: 2147483646 }}
+            className="fixed flex flex-col items-end gap-3"
+            style={{
+              left: `${Math.min(92, Math.max(8, company.fabPositionX ?? 92))}%`,
+              top: `${Math.min(90, Math.max(10, company.fabPositionY ?? 86))}%`,
+              transform: "translate(-50%, -50%)",
+              zIndex: 2147483646,
+            }}
           >
             {/* Channel rows — icons only, opening upward */}
             {channels.map((ch, i) => (
