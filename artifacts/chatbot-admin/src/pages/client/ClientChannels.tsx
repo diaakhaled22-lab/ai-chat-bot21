@@ -39,8 +39,8 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-const DEFAULT_FAB_POSITION = { x: 92, y: 86 };
-const FAB_POSITION_LIMITS = { minX: 8, maxX: 92, minY: 10, maxY: 90 };
+const DEFAULT_FAB_POSITION = { x: 96, y: 92 };
+const FAB_POSITION_LIMITS = { minX: 4, maxX: 96, minY: 6, maxY: 94 };
 
 /* ── small status badge ─────────────────────────────────────── */
 function ChannelBadge({ active }: { active: boolean }) {
@@ -629,8 +629,8 @@ export default function ClientChannels() {
                       draggingFab ? "cursor-grabbing shadow-[0_12px_30px_rgba(124,58,237,.65)]" : "cursor-grab"
                     }`}
                     style={{
-                      left: `${fabPositionX}%`,
-                      top: `${fabPositionY}%`,
+                      left: `clamp(52px, ${fabPositionX}%, calc(100% - 52px))`,
+                      top: `clamp(52px, ${fabPositionY}%, calc(100% - 52px))`,
                       transform: "translate(-50%, -50%)",
                     }}
                     aria-label="Drag to choose the floating button position"

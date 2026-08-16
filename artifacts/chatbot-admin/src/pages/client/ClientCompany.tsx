@@ -1781,8 +1781,8 @@ export default function ClientCompany() {
         const whatsappLink = company.whatsappNumber ? `https://wa.me/${company.whatsappNumber.replace(/\D/g, "")}` : null;
         const messengerLink = company.messengerPageId ? `https://m.me/${company.messengerPageId}` : null;
         const hasWebsite = !!company.websiteChatbotKey;
-        const fabPositionX = Math.min(92, Math.max(8, company.fabPositionX ?? 92));
-        const fabPositionY = Math.min(90, Math.max(10, company.fabPositionY ?? 86));
+        const fabPositionX = Math.min(96, Math.max(4, company.fabPositionX ?? 96));
+        const fabPositionY = Math.min(94, Math.max(6, company.fabPositionY ?? 92));
         const fabVerticalClass = fabPositionY < 38 ? "cfab-down" : "";
         const fabHorizontalClass = fabPositionX < 25 ? "cfab-left" : fabPositionX > 75 ? "cfab-right" : "cfab-center";
 
@@ -1817,7 +1817,7 @@ export default function ClientCompany() {
 
         const fabSnippet = `<!-- Chatbot FAB Widget -->
 <style>
-#cfab{position:fixed;left:clamp(30px,${fabPositionX}%,calc(100vw - 30px));top:clamp(30px,${fabPositionY}%,calc(100vh - 30px));transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+#cfab{position:fixed;left:clamp(54px,${fabPositionX}%,calc(100vw - 54px));top:clamp(54px,${fabPositionY}%,calc(100vh - 54px));transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
 #cfab-btn{position:relative;width:60px;height:60px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
 #cfab-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(124,58,237,.65);}
 #cfab-btn:focus-visible{outline:3px solid rgba(124,58,237,.7);outline-offset:3px;}
@@ -2008,8 +2008,8 @@ ${fabRows.join('\n')}
           <div
             className="fixed flex flex-col items-end gap-1.5"
             style={{
-              left: `clamp(30px, ${Math.min(92, Math.max(8, company.fabPositionX ?? 92))}%, calc(100vw - 30px))`,
-              top: `clamp(30px, ${Math.min(90, Math.max(10, company.fabPositionY ?? 86))}%, calc(100vh - 30px))`,
+              left: `clamp(54px, ${Math.min(96, Math.max(4, company.fabPositionX ?? 96))}%, calc(100vw - 54px))`,
+              top: `clamp(54px, ${Math.min(94, Math.max(6, company.fabPositionY ?? 92))}%, calc(100vh - 54px))`,
               transform: "translate(-50%, -50%)",
               zIndex: 2147483646,
             }}
