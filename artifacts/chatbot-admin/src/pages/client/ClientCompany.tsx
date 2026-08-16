@@ -1747,7 +1747,8 @@ export default function ClientCompany() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 opacity-100 shadow-sm"
+                    aria-label="Copy Website Widget embed code"
                     onClick={() => {
                       navigator.clipboard.writeText(
                         `<script\n  src="${window.location.origin}/api/widget.js"\n  data-key="${company.websiteChatbotKey}"\n></script>`
@@ -1816,7 +1817,7 @@ export default function ClientCompany() {
 
         const fabSnippet = `<!-- Chatbot FAB Widget -->
 <style>
-#cfab{position:fixed;left:${fabPositionX}%;top:${fabPositionY}%;transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
+#cfab{position:fixed;left:clamp(30px,${fabPositionX}%,calc(100vw - 30px));top:clamp(30px,${fabPositionY}%,calc(100vh - 30px));transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
 #cfab-btn{position:relative;width:60px;height:60px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
 #cfab-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(124,58,237,.65);}
 #cfab-btn:focus-visible{outline:3px solid rgba(124,58,237,.7);outline-offset:3px;}
@@ -1824,7 +1825,7 @@ export default function ClientCompany() {
 #cfab-btn[data-open="1"] .cfab-icon{transform:rotate(45deg);}
 #cfab-pulse{position:absolute;inset:0;border-radius:50%;background:#7c3aed;animation:cfab-pulse 2.2s ease-out infinite;pointer-events:none;}
 @keyframes cfab-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.8)}100%{opacity:0;transform:scale(1.8)}}
-#cfab-menu{display:flex;flex-direction:column;gap:10px;align-items:flex-end;}
+#cfab-menu{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
 #cfab.cfab-down{flex-direction:column-reverse;}
 #cfab.cfab-left,#cfab.cfab-left #cfab-menu{align-items:flex-start;}
 #cfab.cfab-center,#cfab.cfab-center #cfab-menu{align-items:center;}
@@ -1945,9 +1946,9 @@ ${fabRows.join('\n')}
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Embed Snippet</p>
-                <p className="text-xs text-muted-foreground">
+                 <p className="text-xs text-muted-foreground">
                   {company.fabEnabled
-                    ? <>Paste this on your website — it adds the floating button shown above. If Website Chat is included, also embed the Website Widget script on the same page so <code className="bg-muted px-1 rounded">window.ChatWidget</code> exists.</>
+                     ? <>Paste this on your website — the purple FAB button displays the configured channels when clicked. If Website Chat is included, also embed the Website Widget script on the same page so <code className="bg-muted px-1 rounded">window.ChatWidget</code> exists.</>
                     : <>Paste this anywhere on your website to show the icons above. If you include the website icon, also embed the Website Widget script (see above) on the same page so <code className="bg-muted px-1 rounded">window.ChatWidget</code> exists.</>
                   }
                 </p>
@@ -1959,7 +1960,8 @@ ${fabRows.join('\n')}
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 opacity-100 shadow-sm"
+                    aria-label={company.fabEnabled ? "Copy FAB Widget embed code" : "Copy chatbot links embed code"}
                     onClick={() => {
                       navigator.clipboard.writeText(snippet);
                       setCopiedShare(true);
@@ -1967,7 +1969,7 @@ ${fabRows.join('\n')}
                     }}
                   >
                     {copiedShare ? <Check className="w-4 h-4 mr-1.5 text-emerald-500" /> : <Copy className="w-4 h-4 mr-1.5" />}
-                    {copiedShare ? "Copied!" : "Copy"}
+                    {copiedShare ? "Copied!" : company.fabEnabled ? "Copy FAB Code" : "Copy Code"}
                   </Button>
                 </div>
               </div>
@@ -2004,10 +2006,10 @@ ${fabRows.join('\n')}
           )}
 
           <div
-            className="fixed flex flex-col items-end gap-3"
+            className="fixed flex flex-col items-end gap-1.5"
             style={{
-              left: `${Math.min(92, Math.max(8, company.fabPositionX ?? 92))}%`,
-              top: `${Math.min(90, Math.max(10, company.fabPositionY ?? 86))}%`,
+              left: `clamp(30px, ${Math.min(92, Math.max(8, company.fabPositionX ?? 92))}%, calc(100vw - 30px))`,
+              top: `clamp(30px, ${Math.min(90, Math.max(10, company.fabPositionY ?? 86))}%, calc(100vh - 30px))`,
               transform: "translate(-50%, -50%)",
               zIndex: 2147483646,
             }}
