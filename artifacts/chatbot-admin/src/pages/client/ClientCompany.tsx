@@ -641,6 +641,7 @@ export default function ClientCompany() {
   const testGoogleSheet = useTestClientGoogleSheetConnection();
   const testingConnection = testGoogleSheet.isPending;
   const initialized = useRef(false);
+  const fabOverlayRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -681,6 +682,25 @@ export default function ClientCompany() {
       initialized.current = true;
     }
   }, [company, form]);
+
+  useEffect(() => {
+    if (!company?.fabEnabled) return;
+    const fab = fabOverlayRef.current;
+    if (!fab) return;
+
+    const positionFab = () => {
+      const x = Math.min(96, Math.max(4, company.fabPositionX ?? 96));
+      const y = Math.min(94, Math.max(6, company.fabPositionY ?? 92));
+      const edgeX = Math.min(54, window.innerWidth / 2);
+      const edgeY = Math.min(54, window.innerHeight / 2);
+      fab.style.left = `${edgeX + Math.max(0, window.innerWidth - edgeX * 2) * (x / 100)}px`;
+      fab.style.top = `${edgeY + Math.max(0, window.innerHeight - edgeY * 2) * (y / 100)}px`;
+    };
+
+    positionFab();
+    window.addEventListener("resize", positionFab);
+    return () => window.removeEventListener("resize", positionFab);
+  }, [company?.fabEnabled, company?.fabPositionX, company?.fabPositionY]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Transform empty strings to nulls for API
@@ -1817,7 +1837,7 @@ export default function ClientCompany() {
 
         const fabSnippet = `<!-- Chatbot FAB Widget -->
 <style>
-#cfab{position:fixed;left:clamp(54px,${fabPositionX}%,calc(100vw - 54px));top:clamp(54px,${fabPositionY}%,calc(100vh - 54px));transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+#cfab{position:fixed;left:0;top:0;transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
 #cfab-btn{position:relative;width:60px;height:60px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
 #cfab-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(124,58,237,.65);}
 #cfab-btn:focus-visible{outline:3px solid rgba(124,58,237,.7);outline-offset:3px;}
@@ -1849,7 +1869,18 @@ ${fabRows.join('\n')}
 (function(){
   var btn=document.getElementById('cfab-btn'),
       menu=document.getElementById('cfab-menu'),
-      pulse=document.getElementById('cfab-pulse');
+      pulse=document.getElementById('cfab-pulse'),
+      root=document.getElementById('cfab'),
+      fabX=${fabPositionX},
+      fabY=${fabPositionY};
+  function positionFab(){
+    var vw=window.innerWidth, vh=window.innerHeight,
+        edgeX=Math.min(54,vw/2), edgeY=Math.min(54,vh/2);
+    root.style.left=(edgeX+Math.max(0,vw-edgeX*2)*(fabX/100))+'px';
+    root.style.top=(edgeY+Math.max(0,vh-edgeY*2)*(fabY/100))+'px';
+  }
+  positionFab();
+  window.addEventListener('resize',positionFab);
   function getRows(){ return Array.from(menu.querySelectorAll('.cfab-row')); }
   function openMenu(){
     btn.dataset.open='1'; btn.setAttribute('aria-expanded','true');
@@ -2006,10 +2037,11 @@ ${fabRows.join('\n')}
           )}
 
           <div
+            ref={fabOverlayRef}
             className="fixed flex flex-col items-end gap-1.5"
             style={{
-              left: `clamp(54px, ${Math.min(96, Math.max(4, company.fabPositionX ?? 96))}%, calc(100vw - 54px))`,
-              top: `clamp(54px, ${Math.min(94, Math.max(6, company.fabPositionY ?? 92))}%, calc(100vh - 54px))`,
+              left: `${Math.min(96, Math.max(4, company.fabPositionX ?? 96))}%`,
+              top: `${Math.min(94, Math.max(6, company.fabPositionY ?? 92))}%`,
               transform: "translate(-50%, -50%)",
               zIndex: 2147483646,
             }}

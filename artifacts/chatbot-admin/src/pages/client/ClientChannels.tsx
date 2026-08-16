@@ -69,6 +69,7 @@ export default function ClientChannels() {
   const [widgetOn,    setWidgetOn]    = useState(false);
   const fabPreviewRef = useRef<HTMLDivElement>(null);
   const [draggingFab, setDraggingFab] = useState(false);
+  const [fabPreviewSize, setFabPreviewSize] = useState({ width: 0, height: 0 });
 
   /* ── Telegram webhook helpers ────────────────────────────── */
   const [tgRegistering, setTgRegistering] = useState(false);
@@ -143,8 +144,32 @@ export default function ClientChannels() {
     });
   };
 
+  const fabEnabled = form.watch("fabEnabled");
   const fabPositionX = form.watch("fabPositionX") ?? DEFAULT_FAB_POSITION.x;
   const fabPositionY = form.watch("fabPositionY") ?? DEFAULT_FAB_POSITION.y;
+
+  useEffect(() => {
+    if (!fabEnabled) return;
+    const preview = fabPreviewRef.current;
+    if (!preview) return;
+
+    const updateSize = () => {
+      setFabPreviewSize({ width: preview.clientWidth, height: preview.clientHeight });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(preview);
+    return () => observer.disconnect();
+  }, [fabEnabled]);
+
+  const previewEdgeX = Math.min(52, fabPreviewSize.width / 2);
+  const previewEdgeY = Math.min(52, fabPreviewSize.height / 2);
+  const previewLeft = fabPreviewSize.width
+    ? previewEdgeX + Math.max(0, fabPreviewSize.width - previewEdgeX * 2) * (fabPositionX / 100)
+    : `clamp(52px, ${fabPositionX}%, calc(100% - 52px))`;
+  const previewTop = fabPreviewSize.height
+    ? previewEdgeY + Math.max(0, fabPreviewSize.height - previewEdgeY * 2) * (fabPositionY / 100)
+    : `clamp(52px, ${fabPositionY}%, calc(100% - 52px))`;
 
   const updateFabPosition = (clientX: number, clientY: number) => {
     const preview = fabPreviewRef.current;
@@ -583,7 +608,7 @@ export default function ClientChannels() {
             <input type="hidden" {...form.register("fabPositionX", { valueAsNumber: true })} />
             <input type="hidden" {...form.register("fabPositionY", { valueAsNumber: true })} />
 
-            {form.watch("fabEnabled") && (
+            {fabEnabled && (
               <div className="mt-5 space-y-3 border-t border-border/40 pt-5">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
@@ -629,8 +654,8 @@ export default function ClientChannels() {
                       draggingFab ? "cursor-grabbing shadow-[0_12px_30px_rgba(124,58,237,.65)]" : "cursor-grab"
                     }`}
                     style={{
-                      left: `clamp(52px, ${fabPositionX}%, calc(100% - 52px))`,
-                      top: `clamp(52px, ${fabPositionY}%, calc(100% - 52px))`,
+                      left: previewLeft,
+                      top: previewTop,
                       transform: "translate(-50%, -50%)",
                     }}
                     aria-label="Drag to choose the floating button position"
