@@ -38,6 +38,8 @@ router.get("/widget/:key/config", WIDGET_CORS, async (req, res) => {
     res.json({
       name: company.name,
       isActive: company.isActive,
+      fabPositionX: company.fabPositionX,
+      fabPositionY: company.fabPositionY,
     });
   } catch (err) {
     logger.error({ err }, "Widget config error");

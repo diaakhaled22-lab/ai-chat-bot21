@@ -32,6 +32,28 @@
   var voiceLang = localStorage.getItem(VOICE_LANG_KEY) || "en"; // "en" or "ar"
   var SPEAK_KEY = "chatwidget_autospeak_" + widgetKey;
   var autoSpeak = localStorage.getItem(SPEAK_KEY) === "1";
+  var FAB_POSITION_KEY = "chatwidget_fab_position_" + widgetKey;
+  var DEFAULT_FAB_POSITION = { x: 96, y: 92 };
+  var fabPositionX = DEFAULT_FAB_POSITION.x;
+  var fabPositionY = DEFAULT_FAB_POSITION.y;
+  var hasStoredFabPosition = false;
+  var isDraggingFab = false;
+  var fabWasMoved = false;
+  var fabPointerStartX = 0;
+  var fabPointerStartY = 0;
+
+  try {
+    var storedFabPosition = JSON.parse(localStorage.getItem(FAB_POSITION_KEY) || "null");
+    if (
+      storedFabPosition &&
+      Number.isFinite(storedFabPosition.x) &&
+      Number.isFinite(storedFabPosition.y)
+    ) {
+      fabPositionX = Math.min(96, Math.max(4, storedFabPosition.x));
+      fabPositionY = Math.min(96, Math.max(4, storedFabPosition.y));
+      hasStoredFabPosition = true;
+    }
+  } catch (e) {}
 
   function isArabicText(text) {
     return /[\u0600-\u06FF]/.test(text);
@@ -54,12 +76,17 @@
   function createStyles() {
     var style = document.createElement("style");
     style.textContent = [
-      "#cw-container{position:fixed;bottom:24px;right:24px;z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}",
-      "#cw-btn{width:56px;height:56px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;outline:none}",
+      "#cw-container{position:fixed;left:96%;top:92%;z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;transform:translate(-50%,-50%);width:56px;height:56px}",
+      "#cw-btn{width:56px;height:56px;border-radius:50%;background:#7c3aed;border:none;cursor:grab;touch-action:none;box-shadow:0 4px 20px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;outline:none}",
+      "#cw-btn.cw-dragging{cursor:grabbing;box-shadow:0 8px 28px rgba(124,58,237,.6)}",
       "#cw-btn:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(124,58,237,.6)}",
       "#cw-btn svg{width:26px;height:26px;fill:white}",
       "#cw-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid white;display:none}",
-      "#cw-panel{position:absolute;bottom:68px;right:0;width:360px;max-height:520px;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.08)}",
+      "#cw-panel{position:absolute;bottom:68px;right:0;width:min(360px,calc(100vw - 32px));max-height:520px;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.08)}",
+      "#cw-container.cw-panel-left #cw-panel{left:0;right:auto}",
+      "#cw-container.cw-panel-center #cw-panel{left:50%;right:auto;transform:translateX(-50%)}",
+      "#cw-container.cw-panel-right #cw-panel{left:auto;right:0}",
+      "#cw-container.cw-panel-top #cw-panel{top:68px;bottom:auto}",
       "#cw-panel.open{display:flex}",
       "#cw-header{background:#7c3aed;padding:16px 18px;color:white;display:flex;align-items:center;justify-content:space-between}",
       "#cw-header-info{display:flex;align-items:center;gap:10px}",
@@ -103,9 +130,86 @@
       "#cw-powered{text-align:center;padding:5px 0 8px;font-size:10px;color:#9ca3af}",
       "@keyframes cwfadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}",
       "@keyframes cwbounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}",
-      "@media(max-width:420px){#cw-panel{width:calc(100vw - 32px);right:-8px;bottom:72px}}",
     ].join("");
     document.head.appendChild(style);
+  }
+
+  function applyFabPosition() {
+    var container = document.getElementById("cw-container");
+    if (!container) return;
+
+    container.style.left = fabPositionX + "%";
+    container.style.top = fabPositionY + "%";
+    container.classList.remove(
+      "cw-panel-left",
+      "cw-panel-center",
+      "cw-panel-right",
+      "cw-panel-top",
+    );
+    container.classList.add(
+      fabPositionX < 34
+        ? "cw-panel-left"
+        : fabPositionX > 66
+          ? "cw-panel-right"
+          : "cw-panel-center",
+    );
+    container.classList.add(fabPositionY < 50 ? "cw-panel-top" : "cw-panel-bottom");
+  }
+
+  function saveFabPosition() {
+    try {
+      localStorage.setItem(
+        FAB_POSITION_KEY,
+        JSON.stringify({ x: fabPositionX, y: fabPositionY }),
+      );
+    } catch (e) {}
+  }
+
+  function updateFabPosition(clientX, clientY) {
+    var viewportWidth = Math.max(window.innerWidth, 1);
+    var viewportHeight = Math.max(window.innerHeight, 1);
+    fabPositionX = Math.min(96, Math.max(4, Math.round((clientX / viewportWidth) * 100)));
+    fabPositionY = Math.min(96, Math.max(4, Math.round((clientY / viewportHeight) * 100)));
+    applyFabPosition();
+  }
+
+  function startFabDrag(event) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    var btn = event.currentTarget;
+    event.preventDefault();
+    fabPointerStartX = event.clientX;
+    fabPointerStartY = event.clientY;
+    fabWasMoved = false;
+    isDraggingFab = true;
+    btn.classList.add("cw-dragging");
+    try {
+      btn.setPointerCapture(event.pointerId);
+    } catch (e) {}
+  }
+
+  function moveFabDrag(event) {
+    if (!isDraggingFab) return;
+    if (
+      Math.abs(event.clientX - fabPointerStartX) > 4 ||
+      Math.abs(event.clientY - fabPointerStartY) > 4
+    ) {
+      fabWasMoved = true;
+    }
+    if (fabWasMoved) {
+      event.preventDefault();
+      updateFabPosition(event.clientX, event.clientY);
+    }
+  }
+
+  function finishFabDrag(event) {
+    if (!isDraggingFab) return;
+    var btn = event.currentTarget;
+    isDraggingFab = false;
+    btn.classList.remove("cw-dragging");
+    try {
+      if (btn.hasPointerCapture(event.pointerId)) btn.releasePointerCapture(event.pointerId);
+    } catch (e) {}
+    if (fabWasMoved) saveFabPosition();
   }
 
   function createHTML() {
@@ -139,7 +243,7 @@
         '</div>',
         '<div id="cw-powered">Powered by ChatBot Platform</div>',
       '</div>',
-      '<button id="cw-btn" aria-label="Open chat">',
+      '<button id="cw-btn" aria-label="Open chat. Drag to move the chat button." title="Drag to move chat button">',
         '<div id="cw-badge"></div>',
         '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>',
       '</button>',
@@ -340,7 +444,19 @@
     var langEn = document.getElementById("cw-lang-en");
     var langAr = document.getElementById("cw-lang-ar");
 
-    if (btn) btn.addEventListener("click", toggleOpen);
+    if (btn) {
+      btn.addEventListener("pointerdown", startFabDrag);
+      btn.addEventListener("pointermove", moveFabDrag);
+      btn.addEventListener("pointerup", finishFabDrag);
+      btn.addEventListener("pointercancel", finishFabDrag);
+      btn.addEventListener("click", function () {
+        if (fabWasMoved) {
+          fabWasMoved = false;
+          return;
+        }
+        toggleOpen();
+      });
+    }
     if (close) close.addEventListener("click", toggleOpen);
     if (send) send.addEventListener("click", sendMessage);
     if (inp) {
@@ -404,6 +520,11 @@
           var titleEl = document.getElementById("cw-title");
           if (titleEl) titleEl.textContent = data.name;
         }
+        if (!hasStoredFabPosition) {
+          if (Number.isFinite(data.fabPositionX)) fabPositionX = Math.min(96, Math.max(4, data.fabPositionX));
+          if (Number.isFinite(data.fabPositionY)) fabPositionY = Math.min(96, Math.max(4, data.fabPositionY));
+          applyFabPosition();
+        }
         var badge = document.getElementById("cw-badge");
         if (badge && data.isActive) badge.style.display = "block";
       })
@@ -413,6 +534,7 @@
   function init() {
     createStyles();
     createHTML();
+    applyFabPosition();
     bindEvents();
     fetchConfig();
 
