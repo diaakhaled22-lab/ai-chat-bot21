@@ -77,10 +77,10 @@
     var style = document.createElement("style");
     style.textContent = [
       "#cw-container{position:fixed;left:96%;top:92%;z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;transform:translate(-50%,-50%);width:56px;height:56px}",
-      "#cw-btn{width:56px;height:56px;border-radius:50%;background:#7c3aed;border:none;cursor:grab;touch-action:none;box-shadow:0 4px 20px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;outline:none}",
-      "#cw-btn.cw-dragging{cursor:grabbing;box-shadow:0 8px 28px rgba(124,58,237,.6)}",
-      "#cw-btn:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(124,58,237,.6)}",
-      "#cw-btn svg{width:26px;height:26px;fill:white}",
+      "#cw-btn{width:60px;height:60px;border-radius:50%;background:linear-gradient(145deg,#8b32ff 0%,#7028e8 100%);border:none;cursor:grab;touch-action:none;box-shadow:0 8px 22px rgba(124,58,237,.5),inset 0 1px 1px rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;outline:none}",
+      "#cw-btn.cw-dragging{cursor:grabbing;box-shadow:0 10px 30px rgba(124,58,237,.68),inset 0 1px 1px rgba(255,255,255,.18)}",
+      "#cw-btn:hover{transform:scale(1.08);box-shadow:0 10px 28px rgba(124,58,237,.65),inset 0 1px 1px rgba(255,255,255,.18)}",
+      "#cw-btn svg{width:29px;height:29px;fill:none;stroke:white;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}",
       "#cw-badge{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid white;display:none}",
       "#cw-panel{position:absolute;bottom:68px;right:0;width:min(360px,calc(100vw - 32px));max-height:520px;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,.08)}",
       "#cw-container.cw-panel-left #cw-panel{left:0;right:auto}",
@@ -245,7 +245,12 @@
       '</div>',
       '<button id="cw-btn" aria-label="Open chat. Drag to move the chat button." title="Drag to move chat button">',
         '<div id="cw-badge"></div>',
-        '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>',
+        '<svg viewBox="0 0 24 24" aria-hidden="true">',
+          '<path d="M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>',
+          '<circle cx="8" cy="12" r=".5" fill="white" stroke="none"/>',
+          '<circle cx="12" cy="12" r=".5" fill="white" stroke="none"/>',
+          '<circle cx="16" cy="12" r=".5" fill="white" stroke="none"/>',
+        '</svg>',
       '</button>',
     ].join("");
     document.body.appendChild(container);
