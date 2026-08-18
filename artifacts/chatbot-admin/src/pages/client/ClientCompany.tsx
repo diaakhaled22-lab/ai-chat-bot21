@@ -68,6 +68,12 @@ const AI_PROVIDERS = {
       { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (free tier)", free: true },
       { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (higher limits)", free: false },
       { value: "gemini-pro", label: "Gemini Pro (legacy)", free: false },
+      { value: "gemini-3.7-flash", label: "Gemini 3.7 Flash", free: false },
+      { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash", free: false },
+      { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash", free: false },
+      { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro", free: false },
+      { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite", free: false },
+      { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", free: false },
     ],
   },
   openrouter: {
