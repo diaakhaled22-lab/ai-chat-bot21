@@ -56,6 +56,7 @@ const PROVIDERS: AIProvider[] = [
       { id: "gemini-1.5-pro",           label: "Gemini 1.5 Pro",           tier: "paid", description: "Complex reasoning",      contextWindow: "1M" },
       { id: "gemini-2.5-flash-preview", label: "Gemini 2.5 Flash Preview", tier: "paid", description: "Thinking + tool use",   contextWindow: "1M" },
       { id: "gemini-2.5-pro-preview",   label: "Gemini 2.5 Pro Preview",   tier: "paid", description: "Best Gemini, frontier", contextWindow: "1M" },
+      { id: "gemini-2.5-pro",           label: "Gemini 2.5 Pro",           tier: "paid", description: "Advanced reasoning model", contextWindow: "1M" },
     ],
   },
   {
