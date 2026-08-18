@@ -57,6 +57,12 @@ const PROVIDERS: AIProvider[] = [
       { id: "gemini-1.5-pro",           label: "Gemini 1.5 Pro",           tier: "paid", description: "Complex reasoning, 1M token context",        contextWindow: "1M" },
       { id: "gemini-2.5-flash-preview", label: "Gemini 2.5 Flash Preview", tier: "paid", description: "Latest Flash, thinking + tool use",          contextWindow: "1M" },
       { id: "gemini-2.5-pro-preview",   label: "Gemini 2.5 Pro Preview",   tier: "paid", description: "Best Gemini, frontier reasoning",            contextWindow: "1M" },
+      { id: "gemini-3.7-flash",         label: "Gemini 3.7 Flash",         tier: "paid", description: "Fast frontier model for production workloads", contextWindow: "1M" },
+      { id: "gemini-3.6-flash",         label: "Gemini 3.6 Flash",         tier: "paid", description: "Fast, capable general-purpose model",          contextWindow: "1M" },
+      { id: "gemini-3.5-flash",         label: "Gemini 3.5 Flash",         tier: "paid", description: "Fast, capable general-purpose model",          contextWindow: "1M" },
+      { id: "gemini-3.1-pro",           label: "Gemini 3.1 Pro",           tier: "paid", description: "Advanced reasoning for complex tasks",         contextWindow: "1M" },
+      { id: "gemini-3.1-flash-lite",    label: "Gemini 3.1 Flash-Lite",    tier: "paid", description: "Lightweight Flash model for efficient usage",    contextWindow: "1M" },
+      { id: "gemini-3.5-flash-lite",    label: "Gemini 3.5 Flash-Lite",    tier: "paid", description: "Lightweight Flash model for efficient usage",    contextWindow: "1M" },
     ],
   },
   {
