@@ -700,7 +700,11 @@ export default function ClientCompany() {
       const y = Math.min(94, Math.max(6, company.fabPositionY ?? 92));
       const edgeX = Math.min(54, window.innerWidth / 2);
       const edgeY = Math.min(54, window.innerHeight / 2);
-      fab.style.left = `${edgeX + Math.max(0, window.innerWidth - edgeX * 2) * (x / 100)}px`;
+      const isLargeScreen = window.innerWidth >= 768;
+      fab.style.left = isLargeScreen
+        ? x < 50 ? "25px" : "auto"
+        : `${edgeX + Math.max(0, window.innerWidth - edgeX * 2) * (x / 100)}px`;
+      fab.style.right = isLargeScreen && x >= 50 ? "25px" : "auto";
       fab.style.top = `${edgeY + Math.max(0, window.innerHeight - edgeY * 2) * (y / 100)}px`;
     };
 
@@ -1811,7 +1815,7 @@ export default function ClientCompany() {
         const fabPositionX = Math.min(96, Math.max(4, company.fabPositionX ?? 96));
         const fabPositionY = Math.min(94, Math.max(6, company.fabPositionY ?? 92));
         const fabVerticalClass = fabPositionY < 38 ? "cfab-down" : "";
-        const fabHorizontalClass = fabPositionX < 25 ? "cfab-left" : fabPositionX > 75 ? "cfab-right" : "cfab-center";
+        const fabHorizontalClass = fabPositionX < 50 ? "cfab-left" : "cfab-right";
 
         const COLOR_CLASSES: Record<string, string> = {
           sky: "border-sky-500/40 bg-sky-500/5 hover:bg-sky-500/10",
@@ -1883,7 +1887,13 @@ ${fabRows.join('\n')}
   function positionFab(){
     var vw=window.innerWidth, vh=window.innerHeight,
         edgeX=Math.min(54,vw/2), edgeY=Math.min(54,vh/2);
-    root.style.left=(edgeX+Math.max(0,vw-edgeX*2)*(fabX/100))+'px';
+     if(vw>=768){
+       root.style.left=fabX<50?'25px':'auto';
+       root.style.right=fabX>=50?'25px':'auto';
+     } else {
+       root.style.left=(edgeX+Math.max(0,vw-edgeX*2)*(fabX/100))+'px';
+       root.style.right='auto';
+     }
     root.style.top=(edgeY+Math.max(0,vh-edgeY*2)*(fabY/100))+'px';
   }
   positionFab();

@@ -41,6 +41,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 const DEFAULT_FAB_POSITION = { x: 96, y: 92 };
 const FAB_POSITION_LIMITS = { minX: 4, maxX: 96, minY: 6, maxY: 94 };
+const FAB_PREVIEW_EDGE_PX = 25;
+const FAB_PREVIEW_BUTTON_SIZE_PX = 56;
 
 /* ── small status badge ─────────────────────────────────────── */
 function ChannelBadge({ active }: { active: boolean }) {
@@ -164,7 +166,13 @@ export default function ClientChannels() {
 
   const previewEdgeX = Math.min(52, fabPreviewSize.width / 2);
   const previewEdgeY = Math.min(52, fabPreviewSize.height / 2);
-  const previewLeft = fabPreviewSize.width
+  const isLargeFabPreview = fabPreviewSize.width >= 768;
+  const fabIsLeft = fabPositionX < 50;
+  const previewLeft = isLargeFabPreview
+    ? fabIsLeft
+      ? FAB_PREVIEW_EDGE_PX + FAB_PREVIEW_BUTTON_SIZE_PX / 2
+      : fabPreviewSize.width - FAB_PREVIEW_EDGE_PX - FAB_PREVIEW_BUTTON_SIZE_PX / 2
+    : fabPreviewSize.width
     ? previewEdgeX + Math.max(0, fabPreviewSize.width - previewEdgeX * 2) * (fabPositionX / 100)
     : `clamp(52px, ${fabPositionX}%, calc(100% - 52px))`;
   const previewTop = fabPreviewSize.height
@@ -175,11 +183,13 @@ export default function ClientChannels() {
     const preview = fabPreviewRef.current;
     if (!preview) return;
     const bounds = preview.getBoundingClientRect();
-    const x = Math.round(((clientX - bounds.left) / bounds.width) * 100);
     const y = Math.round(((clientY - bounds.top) / bounds.height) * 100);
-    form.setValue("fabPositionX", Math.min(FAB_POSITION_LIMITS.maxX, Math.max(FAB_POSITION_LIMITS.minX, x)), {
-      shouldDirty: true,
-    });
+    if (!isLargeFabPreview) {
+      const x = Math.round(((clientX - bounds.left) / bounds.width) * 100);
+      form.setValue("fabPositionX", Math.min(FAB_POSITION_LIMITS.maxX, Math.max(FAB_POSITION_LIMITS.minX, x)), {
+        shouldDirty: true,
+      });
+    }
     form.setValue("fabPositionY", Math.min(FAB_POSITION_LIMITS.maxY, Math.max(FAB_POSITION_LIMITS.minY, y)), {
       shouldDirty: true,
     });
@@ -189,8 +199,8 @@ export default function ClientChannels() {
     const step = event.shiftKey ? 5 : 1;
     let nextX = fabPositionX;
     let nextY = fabPositionY;
-    if (event.key === "ArrowLeft") nextX -= step;
-    if (event.key === "ArrowRight") nextX += step;
+    if (!isLargeFabPreview && event.key === "ArrowLeft") nextX -= step;
+    if (!isLargeFabPreview && event.key === "ArrowRight") nextX += step;
     if (event.key === "ArrowUp") nextY -= step;
     if (event.key === "ArrowDown") nextY += step;
     if (nextX !== fabPositionX || nextY !== fabPositionY) {
@@ -613,8 +623,8 @@ export default function ClientChannels() {
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold">Choose button placement</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Drag the button inside the website preview. This position will be used by the live embed.
+                     <p className="mt-1 text-xs text-muted-foreground">
+                       Drag the button vertically inside the website preview. On larger screens, horizontal placement is fixed 25px from the selected side.
                     </p>
                   </div>
                   <Button
@@ -682,12 +692,12 @@ export default function ClientChannels() {
                       <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
-                  <div className="absolute bottom-3 left-3 rounded-md bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
-                    Drag anywhere within the preview
+                   <div className="absolute bottom-3 left-3 rounded-md bg-background/80 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
+                     Drag vertically within the preview
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Horizontal: {fabPositionX}%</span>
+                   <span>Horizontal: 25px from {fabIsLeft ? "left" : "right"} on larger screens</span>
                   <span>Vertical: {fabPositionY}%</span>
                 </div>
               </div>
