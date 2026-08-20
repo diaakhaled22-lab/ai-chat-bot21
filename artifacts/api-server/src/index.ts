@@ -5,6 +5,7 @@ import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTab
 import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
+import { refreshAiModels } from "./lib/aiModels";
 import bcrypt from "bcryptjs";
 
 const rawPort = process.env["PORT"];
@@ -197,6 +198,12 @@ syncAllAutoSyncCompanies();
 // AutoSync: re-sync WordPress integrations every 6 hours
 setInterval(syncAllWordPressIntegrations, 6 * 60 * 60 * 1000);
 syncAllWordPressIntegrations();
+
+// Refresh provider model catalogs hourly so new API models appear automatically.
+setInterval(() => {
+  refreshAiModels().catch((err) => logger.warn({ err }, "Scheduled AI model catalog sync failed"));
+}, 60 * 60 * 1000);
+refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog sync failed"));
 
 // Ensure at least one admin account exists on every startup (guards against DB resets)
 ensureAdminExists();

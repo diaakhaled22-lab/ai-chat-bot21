@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 // ── Model catalog ─────────────────────────────────────────────────────────────
 type Tier = "free" | "paid";
@@ -91,11 +92,22 @@ function ModelPicker({
   selectedProvider, selectedModel, onSelect,
 }: { selectedProvider: string; selectedModel: string; onSelect: (provider: string, model: string) => void }) {
   const [activeProvider, setActiveProvider] = useState<string>(selectedProvider || "openai");
+  const { data: syncedCatalog } = useQuery<AiModelCatalogResponse>({
+    queryKey: ["admin-ai-model-catalog"],
+    queryFn: () => customFetch("/api/admin/ai-models") as Promise<AiModelCatalogResponse>,
+    staleTime: 30 * 60 * 1000,
+    refetchInterval: 60 * 60 * 1000,
+  });
   const provider   = PROVIDERS.find((p) => p.id === activeProvider) ?? PROVIDERS[0];
-  const freeModels = provider.models.filter((m) => m.tier === "free");
-  const paidModels = provider.models.filter((m) => m.tier === "paid");
-  const isFreeSelected = selectedProvider === activeProvider && freeModels.some((m) => m.id === selectedModel);
-  const isPaidSelected = selectedProvider === activeProvider && paidModels.some((m) => m.id === selectedModel);
+  const dynamicModels = syncedCatalog?.providers?.[activeProvider] ?? [];
+  const allModels = mergeDynamicModels(
+    provider.models.map((model) => ({ value: model.id, label: model.label, free: model.tier === "free" })),
+    dynamicModels,
+  );
+  const freeModels = allModels.filter((m) => m.free);
+  const paidModels = allModels.filter((m) => !m.free);
+  const isFreeSelected = selectedProvider === activeProvider && freeModels.some((m) => m.value === selectedModel);
+  const isPaidSelected = selectedProvider === activeProvider && paidModels.some((m) => m.value === selectedModel);
   const freeValue = isFreeSelected ? selectedModel : "";
   const paidValue = isPaidSelected ? selectedModel : "";
   const selectClass =
@@ -117,6 +129,10 @@ function ModelPicker({
           </button>
         ))}
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Models are synced automatically every hour from the provider API.
+        {syncedCatalog?.syncedAt && ` Last synced ${new Date(syncedCatalog.syncedAt).toLocaleString()}.`}
+      </p>
 
       {/* Free Tier */}
       <div className="space-y-1.5">
@@ -134,13 +150,13 @@ function ModelPicker({
             className={`${selectClass} ${isFreeSelected ? "border-amber-500/50 bg-amber-500/5" : ""}`}>
             <option value="">— Select free model —</option>
             {freeModels.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}{m.contextWindow ? ` · ${m.contextWindow}` : ""}</option>
+              <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         </div>
         {isFreeSelected && (
-          <p className="text-xs text-muted-foreground px-1">{freeModels.find((m) => m.id === selectedModel)?.description}</p>
+          <p className="text-xs text-muted-foreground px-1">Automatically synced from the provider API.</p>
         )}
       </div>
 
@@ -160,13 +176,13 @@ function ModelPicker({
             className={`${selectClass} ${isPaidSelected ? "border-primary/50 bg-primary/5" : ""}`}>
             <option value="">— Select paid model —</option>
             {paidModels.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}{m.contextWindow ? ` · ${m.contextWindow}` : ""}</option>
+              <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         </div>
         {isPaidSelected && (
-          <p className="text-xs text-muted-foreground px-1">{paidModels.find((m) => m.id === selectedModel)?.description}</p>
+          <p className="text-xs text-muted-foreground px-1">Automatically synced from the provider API.</p>
         )}
       </div>
     </div>

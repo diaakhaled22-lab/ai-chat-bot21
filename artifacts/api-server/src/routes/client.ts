@@ -16,10 +16,21 @@ import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification } from "../lib/email";
+import { getAiModelCatalog } from "../lib/aiModels";
 
 const router = Router();
 // Only enforce client auth on /client/* paths — other paths pass through unguarded
 router.use("/client", requireClient);
+
+// GET /client/ai-models — the same hourly-refreshed catalog used by the admin UI
+router.get("/client/ai-models", async (req, res) => {
+  try {
+    res.json(await getAiModelCatalog());
+  } catch (err) {
+    logger.error({ err }, "Get client AI model catalog error");
+    res.status(500).json({ error: "Unable to load AI model catalog" });
+  }
+});
 
 // GET /client/company
 router.get("/client/company", async (req, res) => {
@@ -1147,29 +1158,6 @@ router.post("/client/chatbot-trial", async (req, res) => {
   }
 });
 
-// Allowlist of provider → allowed model IDs for the client chat route
-// This prevents authenticated clients from abusing admin API keys with arbitrary models
-const ALLOWED_CLIENT_MODELS: Record<string, ReadonlySet<string>> = {
-  openai: new Set([
-    "gpt-4o-mini", "gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "o3-mini", "o1-mini", "o1",
-  ]),
-  anthropic: new Set([
-    "claude-3-haiku-20240307", "claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022",
-    "claude-3-opus-20240229", "claude-sonnet-4-5", "claude-opus-4-5",
-  ]),
-  google: new Set([
-    "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-2.0-flash",
-    "gemini-1.5-pro", "gemini-2.5-flash-preview", "gemini-2.5-pro-preview",
-  ]),
-  openrouter: new Set([
-    "google/gemma-4-31b-it:free", "openai/gpt-oss-20b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free", "nvidia/nemotron-nano-9b-v2:free",
-    "deepseek/deepseek-v4-flash", "deepseek/deepseek-r1", "deepseek/deepseek-v3",
-    "anthropic/claude-3.5-sonnet", "openai/gpt-4o",
-    "mistralai/mistral-large", "meta-llama/llama-3.3-70b-instruct",
-  ]),
-};
-
 // ── Universal multi-provider streaming chat ──────────────────────────────────
 // POST /client/multi-ai/chat — uses admin-saved test keys per provider
 router.post("/client/multi-ai/chat", async (req, res) => {
@@ -1185,8 +1173,12 @@ router.post("/client/multi-ai/chat", async (req, res) => {
       return;
     }
 
-    // Validate provider + model against the curated allowlist
-    const allowedModels = ALLOWED_CLIENT_MODELS[provider];
+    // Validate provider + model against the hourly-refreshed provider catalog.
+    // This keeps newly released models usable without a code change.
+    const modelCatalog = await getAiModelCatalog();
+    const allowedModels = modelCatalog.providers[provider as keyof typeof modelCatalog.providers]
+      ? new Set(modelCatalog.providers[provider as keyof typeof modelCatalog.providers].map((item) => item.id))
+      : undefined;
     if (!allowedModels) {
       res.status(400).json({ error: `Unknown provider: ${provider}` });
       return;

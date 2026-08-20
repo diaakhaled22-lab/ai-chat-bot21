@@ -18,10 +18,21 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
+import { getAiModelCatalog } from "../lib/aiModels";
 
 const router = Router();
 // Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
 router.use("/admin", requireAdmin);
+
+// GET /admin/ai-models — provider catalogs are refreshed automatically every hour
+router.get("/admin/ai-models", async (req, res) => {
+  try {
+    res.json(await getAiModelCatalog());
+  } catch (err) {
+    logger.error({ err }, "Get admin AI model catalog error");
+    res.status(500).json({ error: "Unable to load AI model catalog" });
+  }
+});
 
 // GET /admin/stats
 router.get("/admin/stats", async (req, res) => {

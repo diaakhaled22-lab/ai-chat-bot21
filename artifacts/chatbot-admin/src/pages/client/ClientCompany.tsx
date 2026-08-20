@@ -10,6 +10,7 @@ import {
   getGetClientCompanyQueryKey, getListClientKnowledgeFilesQueryKey, customFetch,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
 import { Input } from "@/components/ui/input";
@@ -627,6 +628,14 @@ export default function ClientCompany() {
     refetchInterval: 60_000,
   });
 
+  const { data: syncedAiModels } = useQuery<AiModelCatalogResponse>({
+    queryKey: ["client-ai-model-catalog"],
+    queryFn: () => customFetch("/api/client/ai-models") as Promise<AiModelCatalogResponse>,
+    enabled: !!company,
+    staleTime: 30 * 60 * 1000,
+    refetchInterval: 60 * 60 * 1000,
+  });
+
   const { data: wpIntegration } = useQuery<{ status: "pending" | "connected" | "error"; totalItems: number } | null>({
     queryKey: ["client-wordpress-status"],
     queryFn: () => customFetch("/api/client/wordpress").catch(() => null),
@@ -1182,7 +1191,10 @@ export default function ClientCompany() {
                   {/* Step 2: Choose Model */}
                   {form.watch("aiProvider") && (() => {
                     const provider = form.watch("aiProvider") as AiProvider;
-                    const allModels = AI_PROVIDERS[provider]?.models ?? [];
+                    const allModels = mergeDynamicModels(
+                      AI_PROVIDERS[provider]?.models ?? [],
+                      syncedAiModels?.providers?.[provider],
+                    );
                     const freeModels = allModels.filter((m) => m.free);
                     const paidModels = allModels.filter((m) => !m.free);
                     const hasBoth = freeModels.length > 0 && paidModels.length > 0;
@@ -1193,7 +1205,12 @@ export default function ClientCompany() {
                     if (hasBoth) {
                       return (
                         <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                          <p className="text-xs font-medium text-muted-foreground">2. Choose Model</p>
+                           <div className="flex items-center justify-between gap-2">
+                             <p className="text-xs font-medium text-muted-foreground">2. Choose Model</p>
+                             <span className="text-[10px] text-muted-foreground">
+                               Synced hourly{syncedAiModels?.syncedAt ? ` · ${new Date(syncedAiModels.syncedAt).toLocaleString()}` : ""}
+                             </span>
+                           </div>
 
                           {/* Free models dropdown */}
                           <div className="space-y-1.5">
@@ -1273,7 +1290,12 @@ export default function ClientCompany() {
 
                     return (
                       <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <p className="text-xs font-medium text-muted-foreground">2. Choose Model</p>
+                         <div className="flex items-center justify-between gap-2">
+                           <p className="text-xs font-medium text-muted-foreground">2. Choose Model</p>
+                           <span className="text-[10px] text-muted-foreground">
+                             Synced hourly{syncedAiModels?.syncedAt ? ` · ${new Date(syncedAiModels.syncedAt).toLocaleString()}` : ""}
+                           </span>
+                         </div>
                         <FormField
                           control={form.control}
                           name="aiModel"
