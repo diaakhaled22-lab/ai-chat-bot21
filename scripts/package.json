@@ -4,13 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "tsx ./src/setup.ts",
     "seed": "tsx ./src/seed.ts",
     "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node server.js",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
