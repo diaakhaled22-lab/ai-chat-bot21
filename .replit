@@ -1,0 +1,71 @@
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/api-server: API Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "artifacts/chatbot-admin: web"
+
+[[workflows.workflow]]
+name = "artifacts/api-server: API Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8080 pnpm --filter @workspace/api-server run dev"
+waitForPort = 8080
+
+[[workflows.workflow]]
+name = "artifacts/chatbot-admin: web"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=21662 BASE_PATH=/ pnpm --filter @workspace/chatbot-admin run dev"
+waitForPort = 21662
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+PORT = "3000"
+
+[[ports]]
+localPort = 3000
+
+[objectStorage]
+defaultBucketID = "replit-objstore-385ccdba-1908-499f-8959-692b91788add"
