@@ -212,8 +212,6 @@ export interface CompanyInput {
   generalInfo?: string | null;
   /** @nullable */
   systemPrompt?: string | null;
-  /** @nullable */
-  securityPrompt?: string | null;
   googleSheetsEnabled?: boolean;
   /** @nullable */
   googleSheetsLink?: string | null;
@@ -506,6 +504,8 @@ export interface WebhookMessageResult {
 export type UpdateCompanyMyIdBody = {
   /** @nullable */
   myId?: string | null;
+  /** @nullable */
+  securityPrompt?: string | null;
 };
 
 export type ListAllChatLogsParams = {

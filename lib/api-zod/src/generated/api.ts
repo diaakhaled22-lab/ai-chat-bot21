@@ -255,7 +255,8 @@ export const UpdateCompanyMyIdParams = zod.object({
 })
 
 export const UpdateCompanyMyIdBody = zod.object({
-  "myId": zod.string().nullish()
+  "myId": zod.string().nullish(),
+  "securityPrompt": zod.string().nullish()
 })
 
 export const updateCompanyMyIdResponseFabPositionXMin = 0;
@@ -546,7 +547,6 @@ export const CreateClientCompanyBody = zod.object({
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "generalInfo": zod.string().nullish(),
   "systemPrompt": zod.string().nullish(),
-  "securityPrompt": zod.string().nullish(),
   "googleSheetsEnabled": zod.boolean().optional(),
   "googleSheetsLink": zod.string().nullish(),
   "googleSheetsName": zod.string().nullish(),
@@ -636,7 +636,6 @@ export const UpdateClientCompanyBody = zod.object({
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "generalInfo": zod.string().nullish(),
   "systemPrompt": zod.string().nullish(),
-  "securityPrompt": zod.string().nullish(),
   "googleSheetsEnabled": zod.boolean().optional(),
   "googleSheetsLink": zod.string().nullish(),
   "googleSheetsName": zod.string().nullish(),

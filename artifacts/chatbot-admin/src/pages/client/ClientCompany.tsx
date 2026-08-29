@@ -13,6 +13,8 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
+import { Badge }
+from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
@@ -120,7 +122,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Company name is required"),
   generalInfo: z.string().optional(),
   systemPrompt: z.string().optional(),
-    securityPrompt: z.string().optional(),
+    
   googleSheetsEnabled: z.boolean().default(false),
   googleSheetsLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   googleSheetsName: z.string().optional().or(z.literal("")),
@@ -435,7 +437,7 @@ export default function ClientCompany() {
       name: "",
       generalInfo: "",
       systemPrompt: "",
-        securityPrompt: "",
+        
       googleSheetsEnabled: false,
       googleSheetsLink: "",
       googleSheetsName: "",
@@ -455,7 +457,7 @@ export default function ClientCompany() {
         name: company.name || "",
         generalInfo: company.generalInfo || "",
         systemPrompt: company.systemPrompt || "",
-          securityPrompt: company.securityPrompt || "",
+          
         googleSheetsEnabled: company.googleSheetsEnabled || false,
         googleSheetsLink: company.googleSheetsLink || "",
         googleSheetsName: company.googleSheetsName || "",
@@ -828,24 +830,24 @@ export default function ClientCompany() {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="securityPrompt"
-                render={({ field }) => (
+                render={() => (
                   <FormItem>
-                    <FormLabel>{t("company_security_prompt")}</FormLabel>
+                    <FormLabel className="flex items-center gap-2 text-muted-foreground">{t("company_security_prompt")} <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1">Admin Only</Badge></FormLabel>
                     <FormControl>
                       <Textarea 
-                        {...field} 
-                        value={field.value ?? ""}
-                        className="bg-background font-mono text-sm min-h-[120px]" 
-                        placeholder={t("company_security_prompt_placeholder")}
+                        disabled
+                        value={company.securityPrompt ?? ""}
+                        className="bg-muted/50 font-mono text-sm min-h-[120px] resize-none cursor-not-allowed opacity-80" 
+                        placeholder="Security rules are managed by the administrator."
                       />
                     </FormControl>
-                    <FormDescription>
+                    <FormDescription className="opacity-80">
                       {t("company_security_prompt_desc")}
                     </FormDescription>
-                    <FormMessage />
                   </FormItem>
                 )}
               />

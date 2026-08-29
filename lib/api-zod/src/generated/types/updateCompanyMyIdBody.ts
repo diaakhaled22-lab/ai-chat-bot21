@@ -9,4 +9,6 @@
 export type UpdateCompanyMyIdBody = {
   /** @nullable */
   myId?: string | null;
+  /** @nullable */
+  securityPrompt?: string | null;
 };

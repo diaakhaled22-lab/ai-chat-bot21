@@ -247,6 +247,8 @@ paths:
               properties:
                 myId:
                   type: ["string", "null"]
+                securityPrompt:
+                  type: ["string", "null"]
       responses:
         "200":
           description: Updated company
@@ -877,8 +879,6 @@ components:
         generalInfo:
           type: ["string", "null"]
         systemPrompt:
-          type: ["string", "null"]
-        securityPrompt:
           type: ["string", "null"]
         googleSheetsEnabled:
           type: boolean

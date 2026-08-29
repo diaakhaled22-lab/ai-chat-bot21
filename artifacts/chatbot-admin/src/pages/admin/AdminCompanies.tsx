@@ -17,8 +17,10 @@ import {
   Power, RefreshCw, Sparkles, RotateCcw,
 } from "lucide-react";
 
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Shield } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
@@ -299,6 +301,8 @@ export default function AdminCompanies() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [viewCompany, setViewCompany] = useState<Company | null>(null);
+  const [editPromptsTarget, setEditPromptsTarget] = useState<Company | null>(null);
+  const [editPromptsValue, setEditPromptsValue] = useState({ systemPrompt: "", securityPrompt: "" });
   const [activationTarget, setActivationTarget] = useState<Company | null>(null);
   const [activationForm, setActivationForm] = useState({ isActive: false, start: "", end: "" });
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
@@ -765,6 +769,17 @@ export default function AdminCompanies() {
                           View Details
                           <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground" />
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setEditPromptsTarget(company);
+                          setEditPromptsValue({
+                            systemPrompt: company.systemPrompt || "",
+                            securityPrompt: company.securityPrompt || ""
+                          });
+                        }}>
+                          <Shield className="w-4 h-4 mr-2" />
+                          Edit System & Security Prompts
+                        </DropdownMenuItem>
+
 
                         <DropdownMenuItem onClick={() => openActivationDialog(company)}>
                           <Power className="w-4 h-4 mr-2" />
@@ -1094,6 +1109,66 @@ export default function AdminCompanies() {
       </Dialog>
 
       {/* ── Company Details ── */}
+      
+      {/* Edit Prompts Dialog */}
+      <Dialog open={!!editPromptsTarget} onOpenChange={(open) => !open && setEditPromptsTarget(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-indigo-500" />
+              Edit Prompts - {editPromptsTarget?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Configure the AI agent's system behavior and security constraints.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>System Prompt (Personality & Instructions)</Label>
+              <Textarea 
+                value={editPromptsValue.systemPrompt}
+                onChange={(e) => setEditPromptsValue(p => ({ ...p, systemPrompt: e.target.value }))}
+                className="font-mono text-sm min-h-[120px]"
+                placeholder="Enter system prompt..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Security Prompt (Constraints & Boundaries)</Label>
+              <Textarea 
+                value={editPromptsValue.securityPrompt}
+                onChange={(e) => setEditPromptsValue(p => ({ ...p, securityPrompt: e.target.value }))}
+                className="font-mono text-sm min-h-[120px] bg-red-500/5 border-red-500/20"
+                placeholder="Enter security prompt..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPromptsTarget(null)}>Cancel</Button>
+            <Button 
+              onClick={() => {
+                const target = editPromptsTarget;
+                if (!target) return;
+                fetch(`/api/admin/companies/${target.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                  body: JSON.stringify({ 
+                    systemPrompt: editPromptsValue.systemPrompt || null, 
+                    securityPrompt: editPromptsValue.securityPrompt || null 
+                  })
+                }).then(() => {
+                  setEditPromptsTarget(null);
+                  window.location.reload();
+                });
+              }}
+            >
+              Save Prompts
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!viewCompany} onOpenChange={(open) => !open && setViewCompany(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

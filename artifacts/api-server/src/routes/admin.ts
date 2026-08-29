@@ -402,10 +402,10 @@ router.patch("/admin/companies/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-    const { myId } = req.body as { myId?: string | null };
+    const { myId, securityPrompt, systemPrompt } = req.body as { myId?: string | null; securityPrompt?: string | null; systemPrompt?: string | null; };
     const [row] = await db
       .update(companiesTable)
-      .set({ myId: myId ?? null })
+      .set({ myId: myId !== undefined ? myId : undefined, securityPrompt: securityPrompt !== undefined ? securityPrompt : undefined, systemPrompt: systemPrompt !== undefined ? systemPrompt : undefined })
       .where(eq(companiesTable.id, id))
       .returning();
     if (!row) { res.status(404).json({ error: "Company not found" }); return; }
