@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown } from "lucide-react";
 import {
   useGetClientCompany, useCreateClientCompany, useUpdateClientCompany, useTestClientGoogleSheetConnection,
   useListClientKnowledgeFiles, useCreateClientKnowledgeFile, useDeleteClientKnowledgeFile,
@@ -365,6 +365,420 @@ function KnowledgeFilesCard() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function WordPressInlineCard() {
+  const { t, lang } = useLanguage();
+  const { toast } = useToast();
+  const [wpData, setWpData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [apiUrl, setApiUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [appPassword, setAppPassword] = useState("");
+  const [autoSync, setAutoSync] = useState(true);
+
+  const loadWp = async () => {
+    try {
+      setLoading(true);
+      const data = await customFetch<any>("/api/client/wordpress");
+      setWpData(data);
+      if (data) {
+        setApiUrl(data.apiUrl || "");
+        setUsername(data.username || "");
+        setAutoSync(data.autoSync ?? true);
+      }
+    } catch {
+      // not configured
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWp();
+  }, []);
+
+  const handleTest = async () => {
+    if (!apiUrl) {
+      toast({ title: lang === "ar" ? "يرجى إدخال الرابط" : "Enter API URL", variant: "destructive" });
+      return;
+    }
+    setTesting(true);
+    try {
+      const res = await customFetch<{ ok: boolean; error?: string; siteName?: string }>("/api/client/wordpress/test", {
+        method: "POST",
+        body: JSON.stringify({ apiUrl, username: username || undefined, appPassword: appPassword || undefined }),
+      });
+      if (res.ok) {
+        toast({ title: lang === "ar" ? "الاتصال ناجح" : "Connection successful", description: res.siteName ? `${res.siteName}` : "WordPress API is reachable" });
+      } else {
+        toast({ title: lang === "ar" ? "فشل الاتصال" : "Connection failed", description: res.error, variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: lang === "ar" ? "فشل الاختبار" : "Test failed", description: e.message, variant: "destructive" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!apiUrl) {
+      toast({ title: lang === "ar" ? "يرجى إدخال رابط ووردبريس" : "Enter WordPress API URL", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await customFetch<any>("/api/client/wordpress", {
+        method: "PUT",
+        body: JSON.stringify({
+          apiUrl,
+          username: username || undefined,
+          appPassword: appPassword || undefined,
+          autoSync,
+        }),
+      });
+      setWpData(saved);
+      setAppPassword("");
+      toast({ title: lang === "ar" ? "تم حفظ إعدادات ووردبريس" : "WordPress settings saved" });
+    } catch (e: any) {
+      toast({ title: lang === "ar" ? "فشل الحفظ" : "Save failed", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await customFetch<{ ok: boolean; integration: any }>("/api/client/wordpress/sync", { method: "POST" });
+      if (res.integration) setWpData(res.integration);
+      toast({
+        title: res.ok ? (lang === "ar" ? "اكتملت المزامنة" : "Sync complete") : (lang === "ar" ? "فشلت المزامنة" : "Sync failed"),
+        description: res.ok ? (lang === "ar" ? `تمت مزامنة ${res.integration?.totalItems ?? 0} عنصر.` : `Synced ${res.integration?.totalItems ?? 0} items.`) : res.integration?.errorMessage,
+        variant: res.ok ? "default" : "destructive",
+      });
+    } catch {
+      toast({ title: lang === "ar" ? "فشلت المزامنة" : "Sync failed", variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <Card className="bg-card border-border/50 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Globe className="w-5 h-5 text-blue-500" />
+            {t("data_source_wordpress")}
+          </CardTitle>
+          <Link href="/client/wordpress">
+            <Button variant="ghost" size="sm" className="text-xs text-primary gap-1">
+              {lang === "ar" ? "الإعدادات المتقدمة" : "Advanced Settings"}
+              <ExternalLink className="w-3 h-3" />
+            </Button>
+          </Link>
+        </div>
+        <CardDescription>{t("data_source_wordpress_desc")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">{lang === "ar" ? "رابط WordPress REST API" : "WordPress REST API URL"}</label>
+              <Input
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+                placeholder="https://yoursite.com/wp-json/"
+                className="bg-background font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "مثال: https://myblog.com/wp-json/" : "Example: https://myblog.com/wp-json/"}</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">{lang === "ar" ? "اسم المستخدم (اختياري)" : "Username (Optional)"}</label>
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">{lang === "ar" ? "كلمة مرور التطبيق (اختياري)" : "Application Password (Optional)"}</label>
+                <PasswordInput
+                  value={appPassword}
+                  onChange={(e) => setAppPassword(e.target.value)}
+                  placeholder={wpData?.hasAppPassword ? "••••••••••••" : "xxxx xxxx xxxx xxxx"}
+                  className="bg-background"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
+              <div>
+                <p className="text-xs font-medium">{lang === "ar" ? "المزامنة التلقائية الدورية" : "Auto-Sync WordPress Content"}</p>
+                <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "مزامنة المقالات والصفحات كل 6 ساعات" : "Sync posts and pages every 6 hours"}</p>
+              </div>
+              <Switch checked={autoSync} onCheckedChange={setAutoSync} />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={testing || !apiUrl} className="text-xs">
+                  {testing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plug className="w-3.5 h-3.5 mr-1" />}
+                  {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
+                </Button>
+                {wpData?.status === "connected" && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleSync} disabled={syncing} className="text-xs">
+                    {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 mr-1" />}
+                    {lang === "ar" ? "مزامنة الآن" : "Sync Now"}
+                  </Button>
+                )}
+              </div>
+              <Button type="button" size="sm" onClick={handleSave} disabled={saving || !apiUrl} className="text-xs">
+                {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                {lang === "ar" ? "حفظ وربط" : "Save & Connect"}
+              </Button>
+            </div>
+
+            {wpData && (
+              <div className="flex items-center justify-between text-xs bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                <span className="text-muted-foreground">
+                  {lang === "ar" ? "الحالة: " : "Status: "}
+                  <strong className={wpData.status === "connected" ? "text-emerald-500" : "text-amber-500"}>
+                    {wpData.status === "connected" ? (lang === "ar" ? "متصل بنجاح" : "Connected") : wpData.status}
+                  </strong>
+                </span>
+                {wpData.totalItems > 0 && (
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? `العناصر المتزامنة: ${wpData.totalItems}` : `Total Synced: ${wpData.totalItems}`}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GetDataKnowledgeSection({ form, company }: { form: any; company: any }) {
+  const { t, lang } = useLanguage();
+  const [isOpen, setIsOpen] = useState(true);
+  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress">("website");
+  const { data: files } = useListClientKnowledgeFiles();
+  const readyFilesCount = files?.filter((f) => f.status === "ready").length ?? 0;
+
+  const websiteUrl = form.watch("websiteDataUrl");
+
+  return (
+    <div className="space-y-4">
+      {/* Master "Get Data" Action / Toggle */}
+      <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shadow-sm shrink-0">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold flex items-center gap-2 text-foreground">
+              {t("get_data_title")}
+              <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">
+              {t("get_data_desc")}
+            </p>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          variant={isOpen ? "default" : "outline"}
+          className="gap-2 shrink-0 font-semibold shadow-sm text-sm h-10 px-4 rounded-xl"
+        >
+          <Database className="w-4 h-4" />
+          {t("get_data_button")}
+          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        </Button>
+      </div>
+
+      {/* When Get Data is active: Show the 3 Sub-Buttons */}
+      {isOpen && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Button 1: Website URL */}
+            <button
+              type="button"
+              onClick={() => setActiveSource("website")}
+              className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                activeSource === "website"
+                  ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
+                  : "border-border/60 bg-card hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                  activeSource === "website" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}>
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{t("data_source_website")}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {websiteUrl ? (lang === "ar" ? "تم تحديد الرابط" : "URL configured") : (lang === "ar" ? "سحب صفحات الويب" : "Scrape web pages")}
+                  </p>
+                </div>
+              </div>
+              {websiteUrl && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+              )}
+            </button>
+
+            {/* Button 2: Uploaded Knowledge Files */}
+            <button
+              type="button"
+              onClick={() => setActiveSource("files")}
+              className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                activeSource === "files"
+                  ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
+                  : "border-border/60 bg-card hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                  activeSource === "files" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}>
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{t("data_source_files")}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {readyFilesCount > 0
+                      ? `${readyFilesCount} ${lang === "ar" ? "ملف جاهز" : "files ready"}`
+                      : (lang === "ar" ? "PDF, Excel, CSV, JSON" : "PDF, Excel, CSV, JSON")}
+                  </p>
+                </div>
+              </div>
+              {readyFilesCount > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                  {readyFilesCount}
+                </span>
+              )}
+            </button>
+
+            {/* Button 3: WordPress */}
+            <button
+              type="button"
+              onClick={() => setActiveSource("wordpress")}
+              className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                activeSource === "wordpress"
+                  ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
+                  : "border-border/60 bg-card hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                  activeSource === "wordpress" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}>
+                  <Plug className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{t("data_source_wordpress")}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {lang === "ar" ? "مزامنة المقالات والمنتجات" : "REST API Sync"}
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Active Data Source Panel */}
+          <div className="transition-all duration-200">
+            {activeSource === "website" && (
+              <Card className="bg-card border-border/50 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Globe className="w-5 h-5 text-primary" />
+                    {t("data_source_website")}
+                  </CardTitle>
+                  <CardDescription>{t("data_source_website_desc")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="websiteDataUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("company_website_url")}</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-background" placeholder="https://yoursite.com" />
+                        </FormControl>
+                        <FormDescription>
+                          {t("company_website_url_desc")}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="websiteAutoSync"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border border-border/50 p-4 bg-muted/20">
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={!form.watch("websiteDataUrl")}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="cursor-pointer">{t("company_website_autosync")}</FormLabel>
+                          <FormDescription>
+                            {t("company_website_autosync_desc")}
+                            {company?.websiteLastSynced && (
+                              <span className="block mt-1 text-primary text-[11px]">
+                                {lang === "ar" ? "آخر مزامنة: " : "Last synced: "} {new Date(company.websiteLastSynced).toLocaleString()}
+                              </span>
+                            )}
+                            {company?.websiteAutoSync && !company?.websiteLastSynced && (
+                              <span className="block mt-1 text-muted-foreground text-[11px]">{lang === "ar" ? "المزامنة معلقة…" : "Sync pending…"}</span>
+                            )}
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  {company?.websiteDataUrl && (
+                    <WebsiteSyncButton companyWebsiteLastSynced={company.websiteLastSynced ?? null} />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeSource === "files" && (
+              company ? <KnowledgeFilesCard /> : null
+            )}
+
+            {activeSource === "wordpress" && (
+              <WordPressInlineCard />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1057,58 +1471,11 @@ export default function ClientCompany() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="websiteDataUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("company_website_url")}</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-background" placeholder="https://..." />
-                    </FormControl>
-                    <FormDescription>
-                      {t("company_website_url_desc")}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="websiteAutoSync"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start gap-3 rounded-lg border border-border/50 p-4 bg-muted/20">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={!form.watch("websiteDataUrl")}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="cursor-pointer">{t("company_website_autosync")}</FormLabel>
-                      <FormDescription>
-                        {t("company_website_autosync_desc")}
-                        {company?.websiteLastSynced && (
-                          <span className="block mt-1 text-primary text-[11px]">
-                            {lang === "ar" ? "آخر مزامنة: " : "Last synced: "} {new Date(company.websiteLastSynced).toLocaleString()}
-                          </span>
-                        )}
-                        {company?.websiteAutoSync && !company?.websiteLastSynced && (
-                          <span className="block mt-1 text-muted-foreground text-[11px]">{lang === "ar" ? "المزامنة معلقة…" : "Sync pending…"}</span>
-                        )}
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              {company?.websiteDataUrl && (
-                <WebsiteSyncButton companyWebsiteLastSynced={company.websiteLastSynced ?? null} />
-              )}
             </CardContent>
           </Card>
 
-          {company && <KnowledgeFilesCard />}
+          {/* ── Master "Get Data" Section with 3 Data Sources ── */}
+          <GetDataKnowledgeSection form={form} company={company} />
 
           <Accordion type="multiple" className="w-full space-y-4" defaultValue={["integrations"]}>
             

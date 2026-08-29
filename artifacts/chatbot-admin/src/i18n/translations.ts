@@ -263,6 +263,17 @@ const translations = {
     usage_quota_used: "used this month",
     usage_channel_breakdown: "Usage by Channel",
     usage_tokens_chart: "Token Distribution",
+
+    // ── Get Data & Knowledge Sources ─────────────────────────────────────────
+    get_data_title: "Knowledge & Data Sources",
+    get_data_button: "Get Data",
+    get_data_desc: "Connect, upload, and sync external data sources to feed your AI chatbot.",
+    data_source_website: "Website URL",
+    data_source_website_desc: "Scrape & sync content directly from your website pages.",
+    data_source_files: "Uploaded Knowledge Files",
+    data_source_files_desc: "Upload PDF, Excel, CSV, or JSON documents for instant AI knowledge.",
+    data_source_wordpress: "WordPress",
+    data_source_wordpress_desc: "Connect via WordPress REST API to sync posts, pages, and products.",
   },
   ar: {
     // ── Navigation ──────────────────────────────────────────────────────────
@@ -526,6 +537,17 @@ const translations = {
     usage_quota_used: "تم استهلاكها هذا الشهر",
     usage_channel_breakdown: "الاستهلاك حسب القناة",
     usage_tokens_chart: "توزيع الرموز",
+
+    // ── Get Data & Knowledge Sources ─────────────────────────────────────────
+    get_data_title: "جلب البيانات ومصادر المعرفة",
+    get_data_button: "جلب البيانات",
+    get_data_desc: "ربط ورفع ومزامنة مصادر البيانات المختلفة لتغذية وتدريب الذكاء الاصطناعي.",
+    data_source_website: "رابط الموقع الإلكتروني",
+    data_source_website_desc: "سحب ومزامنة البيانات تلقائياً من صفحات موقعك الإلكتروني.",
+    data_source_files: "الملفات وقاعدة المعرفة",
+    data_source_files_desc: "رفع مستندات PDF أو Excel أو CSV أو JSON لتغذية قاعدة بيانات البوت فوراً.",
+    data_source_wordpress: "ووردبريس WordPress",
+    data_source_wordpress_desc: "الربط عبر واجهة ووردبريس البرمجية لمزامنة المقالات والصفحات والمنتجات.",
   },
 } as const;
 
