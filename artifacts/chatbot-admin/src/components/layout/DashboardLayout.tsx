@@ -29,6 +29,7 @@ import {
   Database,
   type LucideIcon,
 } from "lucide-react";
+import { PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTheme } from "@/hooks/use-theme";
