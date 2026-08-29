@@ -8,19 +8,8 @@ import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { refreshAiModels } from "./lib/aiModels";
 import bcrypt from "bcryptjs";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+const rawPort = process.env["PORT"] || "8080";
+const port = Number(rawPort) || 8080;
 
 async function ensureAdminExists() {
   try {
