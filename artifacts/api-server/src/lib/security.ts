@@ -361,44 +361,118 @@ export function regenerateSession(req: Request): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Session-IP Binding — detect session hijacking
+// Session Anomaly Detection — smart session hijacking detection
 // ═══════════════════════════════════════════════════════════════════════════
 
 declare module "express-session" {
   interface SessionData {
-    _boundIp?: string;
+    _fingerprint?: {
+      ip: string;
+      userAgent: string;
+      ipChanges: number;
+      lastSeen: number;
+    };
   }
 }
 
+const ANOMALY_THRESHOLDS = {
+  /** Max IP changes allowed within a single session before flagging */
+  maxIpChanges: 5,
+  /** If IP + User-Agent both change at once → instant kill (score = 100) */
+  dualChangeScore: 100,
+  /** Score added per IP change */
+  ipChangeScore: 25,
+  /** Score added if User-Agent changed */
+  uaChangeScore: 60,
+  /** Score threshold to destroy the session */
+  killThreshold: 80,
+};
+
 /**
- * Middleware that binds a session to the client's IP address.
- * If the IP changes mid-session, the session is destroyed (potential hijacking).
+ * Middleware that detects session anomalies using multiple signals:
+ * - IP address changes (common for mobile/VPN — tolerated individually)
+ * - User-Agent changes (rare for legitimate users)
+ * - Rapid IP hopping (many IP changes in a short time)
+ *
+ * Unlike strict IP binding, this allows normal network switches (WiFi→4G)
+ * but catches real hijacking where both IP and User-Agent change at once.
  */
-export function sessionIpBinding(req: Request, res: Response, next: NextFunction) {
+export function sessionAnomalyDetector(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId) {
     next();
     return;
   }
 
   const currentIp = req.ip || req.socket.remoteAddress || "unknown";
+  const currentUa = req.headers["user-agent"] || "unknown";
 
-  if (!req.session._boundIp) {
-    // First request after login — bind the IP
-    req.session._boundIp = currentIp;
+  // First request after login — record the fingerprint
+  if (!req.session._fingerprint) {
+    req.session._fingerprint = {
+      ip: currentIp,
+      userAgent: currentUa,
+      ipChanges: 0,
+      lastSeen: Date.now(),
+    };
     next();
     return;
   }
 
-  if (req.session._boundIp !== currentIp) {
+  const fp = req.session._fingerprint;
+  let anomalyScore = 0;
+  const flags: string[] = [];
+
+  // Check IP change
+  const ipChanged = fp.ip !== currentIp;
+  if (ipChanged) {
+    fp.ipChanges++;
+    anomalyScore += ANOMALY_THRESHOLDS.ipChangeScore;
+    flags.push(`ip_changed(${fp.ip}→${currentIp}, count=${fp.ipChanges})`);
+  }
+
+  // Check User-Agent change
+  const uaChanged = fp.userAgent !== currentUa;
+  if (uaChanged) {
+    anomalyScore += ANOMALY_THRESHOLDS.uaChangeScore;
+    flags.push(`ua_changed`);
+  }
+
+  // Both changed at once — very suspicious
+  if (ipChanged && uaChanged) {
+    anomalyScore = ANOMALY_THRESHOLDS.dualChangeScore;
+    flags.push("dual_change");
+  }
+
+  // Too many IP changes — rapid hopping
+  if (fp.ipChanges > ANOMALY_THRESHOLDS.maxIpChanges) {
+    anomalyScore += 30;
+    flags.push(`rapid_ip_hop(${fp.ipChanges})`);
+  }
+
+  // Kill session if anomaly score exceeds threshold
+  if (anomalyScore >= ANOMALY_THRESHOLDS.killThreshold) {
     logger.warn(
-      { userId: req.session.userId, boundIp: req.session._boundIp, currentIp },
-      "Session IP mismatch — possible session hijacking, destroying session"
+      { userId: req.session.userId, score: anomalyScore, flags, currentIp, originalIp: fp.ip },
+      "🚨 Session anomaly detected — destroying session (possible hijacking)"
     );
     req.session.destroy(() => {
-      res.status(401).json({ error: "Session expired. Please log in again." });
+      res.status(401).json({ error: "Session expired due to unusual activity. Please log in again." });
     });
     return;
   }
+
+  // Log moderate anomalies without killing
+  if (anomalyScore > 0) {
+    logger.info(
+      { userId: req.session.userId, score: anomalyScore, flags, currentIp },
+      "Session anomaly noted (within tolerance)"
+    );
+  }
+
+  // Update fingerprint
+  fp.ip = currentIp;
+  fp.userAgent = currentUa;
+  fp.lastSeen = Date.now();
 
   next();
 }

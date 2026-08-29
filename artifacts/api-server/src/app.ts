@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionIpBinding } from "./lib/security";
+import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionAnomalyDetector } from "./lib/security";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -84,7 +84,7 @@ app.use(
 // ── Security Layers ──────────────────────────────────────────────────────
 app.use(sanitizeInputs);            // Strip null bytes & dangerous control chars
 app.use(suspiciousActivityDetector); // Block SQL injection, XSS, path traversal attempts
-app.use(sessionIpBinding);           // Bind session to IP — detect hijacking
+app.use(sessionAnomalyDetector);     // Smart session anomaly detection
 
 app.use("/api", express.static(path.join(__dirname, "../public")));
 app.use("/api", router);
