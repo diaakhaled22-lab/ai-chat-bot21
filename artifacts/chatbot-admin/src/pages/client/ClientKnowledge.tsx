@@ -485,8 +485,9 @@ export default function ClientKnowledge() {
   }, [company, form]);
 
   const onWebsiteSave = async (data: z.infer<typeof websiteFormSchema>) => {
+    if (!company) return;
     try {
-      await updateCompany.mutateAsync({ data });
+      await updateCompany.mutateAsync({ data: { ...company, ...data } as any });
       toast({ title: lang === "ar" ? "تم حفظ إعدادات الموقع" : "Website settings saved" });
     } catch (err: any) {
       toast({ title: lang === "ar" ? "فشل الحفظ" : "Save failed", description: err.message, variant: "destructive" });
