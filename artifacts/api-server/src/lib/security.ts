@@ -301,6 +301,11 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  // Content Security Policy — prevents XSS, clickjacking, data injection
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
+  );
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
@@ -328,4 +333,164 @@ export function validatePassword(password: string): string | null {
     return "Password must contain at least one number";
   }
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Session Fixation Protection — regenerate session ID after login
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Regenerates the session ID while preserving session data.
+ * Call this immediately after successful authentication to prevent
+ * session fixation attacks.
+ */
+export function regenerateSession(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const sessionData = { ...req.session } as Record<string, unknown>;
+    req.session.regenerate((err) => {
+      if (err) {
+        logger.error({ err }, "Session regeneration failed");
+        reject(err);
+        return;
+      }
+      // Restore session data after regeneration
+      Object.assign(req.session, sessionData);
+      resolve();
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Session-IP Binding — detect session hijacking
+// ═══════════════════════════════════════════════════════════════════════════
+
+declare module "express-session" {
+  interface SessionData {
+    _boundIp?: string;
+  }
+}
+
+/**
+ * Middleware that binds a session to the client's IP address.
+ * If the IP changes mid-session, the session is destroyed (potential hijacking).
+ */
+export function sessionIpBinding(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.userId) {
+    next();
+    return;
+  }
+
+  const currentIp = req.ip || req.socket.remoteAddress || "unknown";
+
+  if (!req.session._boundIp) {
+    // First request after login — bind the IP
+    req.session._boundIp = currentIp;
+    next();
+    return;
+  }
+
+  if (req.session._boundIp !== currentIp) {
+    logger.warn(
+      { userId: req.session.userId, boundIp: req.session._boundIp, currentIp },
+      "Session IP mismatch — possible session hijacking, destroying session"
+    );
+    req.session.destroy(() => {
+      res.status(401).json({ error: "Session expired. Please log in again." });
+    });
+    return;
+  }
+
+  next();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Suspicious Activity Detection — detect & log attack patterns
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ATTACK_PATTERNS = [
+  /(\b(union|select|insert|update|delete|drop|alter|exec|execute)\b.*\b(from|into|table|database|where)\b)/i,
+  /<script[\s>]/i,
+  /javascript\s*:/i,
+  /on(error|load|click|mouseover)\s*=/i,
+  /\.\.\//g,                        // path traversal
+  /\/etc\/(passwd|shadow)/i,        // Linux file access
+  /\bcmd\b.*\/c\b/i,               // Windows command injection
+  /\|\s*(ls|cat|whoami|id|curl|wget)\b/i, // pipe injection
+  /\$\{.*\}/,                       // template injection
+];
+
+/**
+ * Middleware that scans request body, query, and params for known attack patterns.
+ * Logs warnings and blocks obviously malicious requests.
+ */
+export function suspiciousActivityDetector(req: Request, res: Response, next: NextFunction) {
+  const stringsToCheck: string[] = [];
+
+  // Collect all string values from body, query, params
+  const collectStrings = (obj: unknown, depth = 0) => {
+    if (depth > 5) return; // prevent deep recursion
+    if (typeof obj === "string") {
+      stringsToCheck.push(obj);
+    } else if (Array.isArray(obj)) {
+      obj.forEach(item => collectStrings(item, depth + 1));
+    } else if (obj && typeof obj === "object") {
+      Object.values(obj).forEach(val => collectStrings(val, depth + 1));
+    }
+  };
+
+  collectStrings(req.body);
+  collectStrings(req.query);
+  collectStrings(req.params);
+
+  for (const str of stringsToCheck) {
+    for (const pattern of ATTACK_PATTERNS) {
+      if (pattern.test(str)) {
+        const ip = req.ip || req.socket.remoteAddress || "unknown";
+        logger.warn(
+          { ip, path: req.path, method: req.method, pattern: pattern.source, value: str.slice(0, 200) },
+          "🚨 Suspicious activity detected — possible attack attempt"
+        );
+        res.status(400).json({ error: "Request blocked: invalid input detected." });
+        return;
+      }
+    }
+  }
+
+  next();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Input Sanitizer — strip dangerous characters from string inputs
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Strips null bytes and other dangerous control characters from all
+ * string values in the request body. Null bytes can bypass security
+ * filters in many languages and databases.
+ */
+export function sanitizeInputs(req: Request, _res: Response, next: NextFunction) {
+  const sanitize = (obj: unknown, depth = 0): unknown => {
+    if (depth > 10) return obj;
+    if (typeof obj === "string") {
+      // Remove null bytes and other dangerous control chars (except \n, \r, \t)
+      return obj.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(item => sanitize(item, depth + 1));
+    }
+    if (obj && typeof obj === "object") {
+      const result: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(obj)) {
+        result[key] = sanitize(val, depth + 1);
+      }
+      return result;
+    }
+    return obj;
+  };
+
+  if (req.body && typeof req.body === "object") {
+    req.body = sanitize(req.body);
+  }
+
+  next();
 }

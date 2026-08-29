@@ -42,9 +42,7 @@ export default function ClientPrompts() {
     if (!company) return;
     updateCompanyMutation.mutate(
       {
-        data: {
-          systemPrompt: data.systemPrompt,
-        },
+        systemPrompt: data.systemPrompt || null,
       },
       {
         onSuccess: () => {

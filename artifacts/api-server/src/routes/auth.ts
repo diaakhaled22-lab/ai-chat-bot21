@@ -6,7 +6,7 @@ import { eq, and, gt } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { sendPasswordResetEmail, getEmailConfig, isEmailConfigured } from "../lib/email";
-import { authLimiter, sensitiveLimiter, isAccountLocked, recordFailedLogin, resetLoginAttempts, validatePassword } from "../lib/security";
+import { authLimiter, sensitiveLimiter, isAccountLocked, recordFailedLogin, resetLoginAttempts, validatePassword, regenerateSession } from "../lib/security";
 
 declare module "express-session" {
   interface SessionData {
@@ -54,6 +54,10 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     }
 
     resetLoginAttempts(username);
+
+    // Regenerate session ID to prevent session fixation attacks
+    await regenerateSession(req);
+
     req.session.userId = user.id;
     req.session.role = "admin";
     req.session.name = user.name;
@@ -100,6 +104,10 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     }
 
     resetLoginAttempts(username);
+
+    // Regenerate session ID to prevent session fixation attacks
+    await regenerateSession(req);
+
     req.session.userId = user.id;
     req.session.role = "client";
     req.session.name = user.name;
