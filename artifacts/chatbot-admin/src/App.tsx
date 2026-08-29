@@ -24,7 +24,8 @@ import AdminBroadcast from "@/pages/admin/AdminBroadcast";
 import AdminAITester from "@/pages/admin/AdminAITester";
 import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
 
-import ClientCompany from "@/pages/client/ClientCompany";
+import ClientCompany from "./pages/client/ClientCompany";
+import ClientPrompts from "./pages/client/ClientPrompts";
 import ClientKnowledge from "@/pages/client/ClientKnowledge";
 import ClientChatLogs from "@/pages/client/ClientChatLogs";
 import ClientSettings from "@/pages/client/ClientSettings";
@@ -137,9 +138,12 @@ function Router() {
       </Route>
 
       {/* Client Routes */}
-      <Route path="/client/company">
-        {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}
-      </Route>
+              <Route path="/client/company">
+          {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}
+        </Route>
+        <Route path="/client/prompts">
+          {() => <ProtectedRoute component={ClientPrompts} allowedRole="client" />}
+        </Route>
       <Route path="/client/knowledge">
         {() => <ProtectedRoute component={ClientKnowledge} allowedRole="client" />}
       </Route>

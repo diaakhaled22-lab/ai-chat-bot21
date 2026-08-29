@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useListAllChatLogs, useDeleteChatLog, getListAllChatLogsQueryKey, useGetAdminChatLogRetention, useUpdateAdminChatLogRetention, getGetAdminChatLogRetentionQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 const RETENTION_OPTIONS = [1, 2, 3, 5, 7, 14, 30, 60, 90, 180, 365];
 
 export default function AdminChatLogs() {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
@@ -86,7 +88,7 @@ export default function AdminChatLogs() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Chat Logs</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("admin_logs_title")}</h1>
           <p className="text-muted-foreground mt-2">View interactions across all deployed chatbots.</p>
         </div>
         

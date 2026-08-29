@@ -445,8 +445,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/settings",           label: t("nav_settings"),           icon: Settings },
   ];
 
-  const clientLinks: NavLink[] = [
-    { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
+      const clientLinks: NavLink[] = [
+      { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
+      { href: "/client/prompts",          label: t("nav_prompts") || "Prompts", icon: PenTool },
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
     { href: "/client/webhook-history",  label: t("nav_webhook_history"), icon: Zap },
@@ -470,7 +471,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mr-3 shrink-0">
             <Bot className="w-6 h-6 text-primary" />
           </div>
-          <span className="font-bold text-xl tracking-tight whitespace-nowrap">Mission Control</span>
+          <span className="font-bold text-xl tracking-tight whitespace-nowrap">{t("nav_mission_control")}</span>
         </div>
 
         {/* User info */}

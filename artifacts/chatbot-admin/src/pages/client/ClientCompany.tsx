@@ -1441,6 +1441,21 @@ export default function ClientCompany() {
                     {company.googleSheetsEnabled ? "✓ Enabled" : "Disabled"}
                   </div>
                 </div>
+                <Link href="/client/knowledge" className="block h-full">
+                  <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 h-full ${
+                    (knowledgeFiles?.length ?? 0) > 0 ? "border-primary/40 bg-primary/5"
+                    : "border-border/40 bg-background"
+                  }`}>
+                    <div className="text-base">📁</div>
+                    <div className="font-medium">Uploaded Files</div>
+                    <div className={`text-[10px] ${
+                      (knowledgeFiles?.length ?? 0) > 0 ? "text-primary"
+                      : "text-muted-foreground"
+                    }`}>
+                      {(knowledgeFiles?.length ?? 0) > 0 ? `✓ ${(knowledgeFiles?.length ?? 0)} files` : "None"}
+                    </div>
+                  </div>
+                </Link>
                 <Link href="/client/wordpress" className="block h-full">
                   <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 h-full ${
                     wpIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"

@@ -322,6 +322,7 @@ function TicketCard({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function AdminTickets() {
+  const { t } = useLanguage();
   const [filter,       setFilter]       = useState<Filter>("all");
   const [search,       setSearch]       = useState("");
   const [resolvingId,  setResolvingId]  = useState<number | null>(null);
@@ -410,7 +411,7 @@ export default function AdminTickets() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Customer Problems</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("admin_tickets_title")}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Review and resolve issues submitted by clients.
           </p>

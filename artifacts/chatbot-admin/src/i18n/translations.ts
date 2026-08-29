@@ -9,6 +9,7 @@ const translations = {
     nav_chat_logs: "Chat Logs",
     nav_customer_problems: "Customer Problems",
     nav_settings: "Settings",
+    nav_prompts: "Prompts",
     nav_company: "Company Profile",
     nav_channels: "Channels",
     nav_wordpress: "WordPress Integration",
@@ -78,6 +79,20 @@ const translations = {
     label_current_password: "Current Password",
     label_new_password: "New Password",
     label_new_password_optional: "New Password (optional)",
+    btn_view_details: "View Details",
+    btn_set_quota: "Set Token Quota",
+    btn_test_ai: "Test AI Connection",
+    btn_edit_prompts: "Edit System & Security Prompts",
+    btn_sub_settings: "Subscription Settings",
+    btn_reg_telegram: "Register Telegram Webhook",
+    btn_sub_settings: "إعدادات الاشتراك",
+    btn_reg_telegram: "تسجيل ويب هوك تليجرام",
+    btn_delete_company: "Delete Company",
+    btn_view_details: "عرض التفاصيل",
+    btn_set_quota: "تعيين حصة الرموز",
+    btn_test_ai: "اختبار اتصال الذكاء الاصطناعي",
+    btn_edit_prompts: "تعديل توجيهات النظام والأمان",
+    btn_delete_company: "حذف الشركة",
     btn_save_password: "Save Password",
 
     // ── Client Settings Page ────────────────────────────────────────────────
@@ -221,6 +236,116 @@ const translations = {
     chat_logs_bot: "AI Assistant",
 
     // ── Admin Company Retention Policy ──────────────────────────────────────
+
+
+    // Admin Dashboard
+    admin_dash_title: "Dashboard Overview",
+    admin_dash_desc: "Platform statistics and metrics.",
+    admin_dash_stat_companies: "Total Companies",
+    admin_dash_stat_active: "Active Companies",
+    
+    // Admin Clients
+    admin_clients_title: "Clients",
+    admin_clients_desc: "Manage client accounts and their access to the portal.",
+    
+    // Admin Chat Logs
+    admin_logs_title: "Chat Logs",
+    admin_logs_desc: "View across all companies",
+    
+    // Admin Tickets
+    admin_tickets_title: "Customer Problems",
+    admin_tickets_desc: "Monitor and manage AI escalations from all channels.",
+    
+    // Admin Broadcast
+    admin_broadcast_title: "Broadcast",
+    admin_broadcast_desc: "Send bulk messages",
+    
+    // Admin Security
+    admin_security_title: "Security Settings",
+    admin_security_desc: "Manage platform security, API keys, and sensitive configuration.",
+
+
+    // Admin Dashboard
+    admin_dash_title: "نظرة عامة (الداشبورد)",
+    admin_dash_desc: "إحصائيات ومقاييس المنصة.",
+    admin_dash_stat_companies: "إجمالي الشركات",
+    admin_dash_stat_active: "الشركات النشطة",
+    
+    // Admin Clients
+    admin_clients_title: "العملاء",
+    admin_clients_desc: "إدارة حسابات العملاء وصلاحيات الدخول الخاصة بهم.",
+    
+    // Admin Chat Logs
+    admin_logs_title: "سجلات المحادثات",
+    admin_logs_desc: "عرض سجلات المحادثات لجميع الشركات.",
+    
+    // Admin Tickets
+    admin_tickets_title: "مشاكل العملاء (التذاكر)",
+    admin_tickets_desc: "مراقبة وإدارة التذاكر المحولة من الذكاء الاصطناعي.",
+    
+    // Admin Broadcast
+    admin_broadcast_title: "البث المباشر (Broadcast)",
+    admin_broadcast_desc: "إرسال رسائل جماعية للعملاء.",
+    
+    // Admin Security
+    admin_security_title: "إعدادات الأمان",
+    admin_security_desc: "إدارة أمان المنصة ومفاتيح API الخاصة بك.",
+
+    // Admin Companies
+    admin_companies_title: "Companies",
+    admin_companies_desc: "Monitor subscriptions, channels, and AI agent health across all client companies.",
+    admin_comp_stat_total: "Total Companies",
+    admin_comp_stat_active: "Active",
+    admin_comp_stat_inactive: "Inactive",
+    admin_comp_stat_expiring: "Expiring Soon",
+    admin_comp_stat_within_7d: "Within 7 days",
+    admin_comp_search: "Search by company or client name...",
+    admin_comp_tab_all: "All",
+    admin_comp_tab_active: "Active",
+    admin_comp_tab_inactive: "Inactive",
+    admin_comp_tab_expiring: "Expiring Soon",
+    admin_comp_th_myid: "MY ID",
+    admin_comp_th_company: "COMPANY",
+    admin_comp_th_company_name: "COMPANY NAME",
+    admin_comp_th_client: "CLIENT",
+    admin_comp_th_status: "STATUS",
+    admin_comp_th_start_date: "START DATE",
+    admin_comp_th_end_date: "END DATE",
+    admin_comp_th_channels: "CHANNELS",
+    admin_comp_th_quota: "QUOTA",
+    admin_comp_th_autodelete: "AUTO-DELETE",
+    admin_comp_th_actions: "ACTIONS",
+    admin_comp_no_companies: "No companies found",
+    admin_comp_no_companies_desc: "Try a different search term",
+    admin_comp_unlimited: "Unlimited",
+
+    // Admin Companies
+    admin_companies_title: "الشركات",
+    admin_companies_desc: "مراقبة الاشتراكات، وقنوات الاتصال، وحالة المساعد الذكي لجميع شركات العملاء.",
+    admin_comp_stat_total: "إجمالي الشركات",
+    admin_comp_stat_active: "نشط",
+    admin_comp_stat_inactive: "غير نشط",
+    admin_comp_stat_expiring: "ينتهي قريباً",
+    admin_comp_stat_within_7d: "خلال 7 أيام",
+    admin_comp_search: "ابحث باسم الشركة أو العميل...",
+    admin_comp_tab_all: "الكل",
+    admin_comp_tab_active: "نشط",
+    admin_comp_tab_inactive: "غير نشط",
+    admin_comp_tab_expiring: "ينتهي قريباً",
+    admin_comp_th_myid: "المُعرّف الخاص",
+    admin_comp_th_company: "الشركة",
+    admin_comp_th_company_name: "اسم الشركة",
+    admin_comp_th_client: "العميل",
+    admin_comp_th_status: "الحالة",
+    admin_comp_th_start_date: "تاريخ البدء",
+    admin_comp_th_end_date: "تاريخ الانتهاء",
+    admin_comp_th_channels: "القنوات",
+    admin_comp_th_quota: "الرموز",
+    admin_comp_th_autodelete: "الحذف التلقائي",
+    admin_comp_th_actions: "الإجراءات",
+    admin_comp_no_companies: "لا توجد شركات",
+    admin_comp_no_companies_desc: "حاول استخدام كلمات بحث مختلفة",
+    admin_comp_unlimited: "غير محدود",
     admin_companies_retention_menu: "Auto-Delete Policy",
     admin_companies_retention_dialog_title: "Auto-Delete Retention Policy",
     admin_companies_retention_dialog_desc: "Configure automatic chat log deletion for this company. Logs older than the chosen period are permanently deleted.",
@@ -286,6 +411,7 @@ const translations = {
     nav_chat_logs: "سجلات المحادثة",
     nav_customer_problems: "مشاكل العملاء",
     nav_settings: "الإعدادات",
+    nav_prompts: "التوجيهات (Prompts)",
     nav_company: "ملف الشركة والذكاء الاصطناعي",
     nav_channels: "قنوات التواصل",
     nav_wordpress: "تكامل ووردبريس",
