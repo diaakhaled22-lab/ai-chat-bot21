@@ -25,6 +25,7 @@ import AdminAITester from "@/pages/admin/AdminAITester";
 import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
 
 import ClientCompany from "@/pages/client/ClientCompany";
+import ClientKnowledge from "@/pages/client/ClientKnowledge";
 import ClientChatLogs from "@/pages/client/ClientChatLogs";
 import ClientSettings from "@/pages/client/ClientSettings";
 import ClientUsage from "@/pages/client/ClientUsage";
@@ -139,6 +140,9 @@ function Router() {
       {/* Client Routes */}
       <Route path="/client/company">
         {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}
+      </Route>
+      <Route path="/client/knowledge">
+        {() => <ProtectedRoute component={ClientKnowledge} allowedRole="client" />}
       </Route>
       <Route path="/client/wordpress">
         {() => <ProtectedRoute component={ClientWordPress} allowedRole="client" />}

@@ -26,6 +26,7 @@ import {
   Zap,
   Webhook,
   ShieldCheck,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -446,6 +447,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const clientLinks: NavLink[] = [
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
+    { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
     { href: "/client/wordpress",        label: t("nav_wordpress"),       icon: Globe },
     { href: "/client/webhook-history",  label: t("nav_webhook_history"), icon: Zap },
