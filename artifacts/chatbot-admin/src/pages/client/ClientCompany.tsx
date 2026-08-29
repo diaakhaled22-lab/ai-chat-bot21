@@ -13,9 +13,8 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
-import { Badge }
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
