@@ -1,5 +1,5 @@
 import { useForm, Controller } from "react-hook-form";
-import { useLanguage } from "@/hooks/useLanguage";
+import { useLanguage } from "@/hooks/use-language";
 import { useGetClientCompany, useUpdateClientCompany, customFetch } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";

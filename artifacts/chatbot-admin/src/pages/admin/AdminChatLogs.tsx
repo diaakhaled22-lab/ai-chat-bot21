@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useListAllChatLogs, useDeleteChatLog, getListAllChatLogsQueryKey, useGetAdminChatLogRetention, useUpdateAdminChatLogRetention, getGetAdminChatLogRetentionQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock } from "lucide-react";
-import { useLanguage } from "@/hooks/useLanguage";
+import { useLanguage } from "@/hooks/use-language";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
