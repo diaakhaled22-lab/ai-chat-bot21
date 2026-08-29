@@ -102,6 +102,7 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
         );
 
         let sysContent = company.systemPrompt ?? "";
+    if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
         sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
         sysContent += `\n\n${getLanguageInstruction(customerMessage)}`;
         sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;

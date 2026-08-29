@@ -45,6 +45,7 @@ type Company = {
   activationEnd?: string | null;
   generalInfo?: string | null;
   systemPrompt?: string | null;
+  securityPrompt?: string | null;
   googleSheetsEnabled?: boolean;
   aiAgentApiKey?: string | null;
   telegramBotApiKey?: string | null;
@@ -1276,13 +1277,21 @@ export default function AdminCompanies() {
               )}
 
               {/* General Info + System Prompt */}
-              {(viewCompany.generalInfo || viewCompany.systemPrompt) && (
+              {(viewCompany.generalInfo || viewCompany.systemPrompt || viewCompany.securityPrompt) && (
                 <div className="space-y-3">
                   {viewCompany.generalInfo && (
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">General Info</p>
                       <div className="bg-muted/30 border border-border p-3 rounded-xl text-sm whitespace-pre-wrap leading-relaxed">
                         {viewCompany.generalInfo}
+                      </div>
+                    </div>
+                  )}
+                  {viewCompany.securityPrompt && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Security Prompt</p>
+                      <div className="bg-muted/30 border border-border p-3 rounded-xl text-sm font-mono whitespace-pre-wrap max-h-36 overflow-y-auto leading-relaxed">
+                        {viewCompany.securityPrompt}
                       </div>
                     </div>
                   )}

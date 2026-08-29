@@ -120,6 +120,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Company name is required"),
   generalInfo: z.string().optional(),
   systemPrompt: z.string().optional(),
+    securityPrompt: z.string().optional(),
   googleSheetsEnabled: z.boolean().default(false),
   googleSheetsLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   googleSheetsName: z.string().optional().or(z.literal("")),
@@ -434,6 +435,7 @@ export default function ClientCompany() {
       name: "",
       generalInfo: "",
       systemPrompt: "",
+        securityPrompt: "",
       googleSheetsEnabled: false,
       googleSheetsLink: "",
       googleSheetsName: "",
@@ -453,6 +455,7 @@ export default function ClientCompany() {
         name: company.name || "",
         generalInfo: company.generalInfo || "",
         systemPrompt: company.systemPrompt || "",
+          securityPrompt: company.securityPrompt || "",
         googleSheetsEnabled: company.googleSheetsEnabled || false,
         googleSheetsLink: company.googleSheetsLink || "",
         googleSheetsName: company.googleSheetsName || "",
@@ -820,6 +823,27 @@ export default function ClientCompany() {
                     </FormControl>
                     <FormDescription>
                       {t("company_system_prompt_desc")}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="securityPrompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("company_security_prompt")}</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        value={field.value ?? ""}
+                        className="bg-background font-mono text-sm min-h-[120px]" 
+                        placeholder={t("company_security_prompt_placeholder")}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t("company_security_prompt_desc")}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

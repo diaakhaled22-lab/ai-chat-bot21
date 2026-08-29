@@ -33,6 +33,8 @@ export interface Company {
   activationEnd?: string | null;
   /** @nullable */
   systemPrompt?: string | null;
+  /** @nullable */
+  securityPrompt?: string | null;
   googleSheetsEnabled?: boolean;
   /** @nullable */
   googleSheetsLink?: string | null;

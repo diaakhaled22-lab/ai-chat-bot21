@@ -797,6 +797,8 @@ components:
           description: ISO 8601 timestamp for subscription end.
         systemPrompt:
           type: ["string", "null"]
+        securityPrompt:
+          type: ["string", "null"]
         googleSheetsEnabled:
           type: boolean
         googleSheetsLink:
@@ -875,6 +877,8 @@ components:
         generalInfo:
           type: ["string", "null"]
         systemPrompt:
+          type: ["string", "null"]
+        securityPrompt:
           type: ["string", "null"]
         googleSheetsEnabled:
           type: boolean
@@ -1170,7 +1174,10 @@ components:
           type: string
         systemPrompt:
           type: ["string", "null"]
-          description: The system prompt configured by the client — use this as the AI system message.
+          description: The system prompt configured by the client.
+        securityPrompt:
+          type: ["string", "null"]
+          description: The security instructions prompt configured by the client.
         conversationHistory:
           type: array
           description: Prior turns in this session (oldest first, excluding the current message). Feed into your AI call for multi-turn context.

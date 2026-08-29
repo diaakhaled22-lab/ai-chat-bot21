@@ -20,6 +20,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   if (!company.aiAgentApiKey) throw new Error("No AI API key configured");
 
   let sysContent = company.systemPrompt ?? "";
+    if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
   sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;

@@ -106,6 +106,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     }
 
     let sysContent = company.systemPrompt ?? "";
+    if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
     sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
     sysContent += `\n\n${getLanguageInstruction(message.trim())}`;
     sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;

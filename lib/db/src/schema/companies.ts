@@ -13,6 +13,7 @@ export const companiesTable = pgTable("companies", {
   activationStart: timestamp("activation_start", { withTimezone: true }),
   activationEnd: timestamp("activation_end", { withTimezone: true }),
   systemPrompt: text("system_prompt"),
+  securityPrompt: text("security_prompt"),
   googleSheetsEnabled: boolean("google_sheets_enabled").notNull().default(false),
   googleSheetsLink: text("google_sheets_link"),
   googleSheetsName: text("google_sheets_name"),

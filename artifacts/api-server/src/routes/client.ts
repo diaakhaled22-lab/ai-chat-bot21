@@ -56,6 +56,7 @@ router.get("/client/company", async (req, res) => {
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
+        securityPrompt: company.securityPrompt,
       googleSheetsEnabled: company.googleSheetsEnabled,
       googleSheetsLink: company.googleSheetsLink,
       googleSheetsName: company.googleSheetsName,
@@ -242,6 +243,7 @@ router.post("/client/company", async (req, res) => {
         generalInfo: data.generalInfo ?? null,
         isActive: false,
         systemPrompt: data.systemPrompt ?? null,
+          securityPrompt: data.securityPrompt ?? null,
         googleSheetsEnabled: data.googleSheetsEnabled ?? false,
         googleSheetsLink: data.googleSheetsLink ?? null,
         googleSheetsName: data.googleSheetsName ?? null,
@@ -283,6 +285,7 @@ router.post("/client/company", async (req, res) => {
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
+        securityPrompt: company.securityPrompt,
       googleSheetsEnabled: company.googleSheetsEnabled,
       googleSheetsLink: company.googleSheetsLink,
       googleSheetsName: company.googleSheetsName,
@@ -327,6 +330,7 @@ router.put("/client/company", async (req, res) => {
     if (data.name !== undefined) updates.name = data.name;
     if (data.generalInfo !== undefined) updates.generalInfo = data.generalInfo;
     if (data.systemPrompt !== undefined) updates.systemPrompt = data.systemPrompt;
+      if (data.securityPrompt !== undefined) updates.securityPrompt = data.securityPrompt;
     if (data.googleSheetsEnabled !== undefined) updates.googleSheetsEnabled = data.googleSheetsEnabled;
     if (data.googleSheetsLink !== undefined) updates.googleSheetsLink = data.googleSheetsLink;
     if (data.googleSheetsName !== undefined) updates.googleSheetsName = data.googleSheetsName;
@@ -393,6 +397,7 @@ router.put("/client/company", async (req, res) => {
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
+        securityPrompt: company.securityPrompt,
       googleSheetsEnabled: company.googleSheetsEnabled,
       googleSheetsLink: company.googleSheetsLink,
       googleSheetsName: company.googleSheetsName,
@@ -1066,6 +1071,7 @@ router.post("/client/chatbot-trial", async (req, res) => {
         name: companiesTable.name,
         generalInfo: companiesTable.generalInfo,
         systemPrompt: companiesTable.systemPrompt,
+          securityPrompt: companiesTable.securityPrompt,
         isActive: companiesTable.isActive,
       })
       .from(companiesTable)

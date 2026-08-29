@@ -15,10 +15,15 @@ export interface WebhookMessageResult {
   sessionId?: string | null;
   createdAt: string;
   /**
-     * The system prompt configured by the client — use this as the AI system message.
+     * The system prompt configured by the client.
      * @nullable
      */
   systemPrompt?: string | null;
+  /**
+     * The security instructions prompt configured by the client.
+     * @nullable
+     */
+  securityPrompt?: string | null;
   /** Prior turns in this session (oldest first, excluding the current message). Feed into your AI call for multi-turn context. */
   conversationHistory?: ConversationTurn[];
 }
