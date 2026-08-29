@@ -1,18 +1,16 @@
 import { useState } from "react";
-import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useUpdateClientChatLogRetention, getGetClientChatLogRetentionQueryKey } from "@workspace/api-client-react";
+import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock } from "lucide-react";
+import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, ShieldCheck } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
-
-const RETENTION_OPTIONS = [1, 2, 3, 5, 7, 14, 30, 60, 90, 180, 365];
 
 export default function ClientChatLogs() {
   const { t, lang } = useLanguage();
@@ -20,7 +18,6 @@ export default function ClientChatLogs() {
   const [channelFilter, setChannelFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [pendingRetention, setPendingRetention] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -31,11 +28,8 @@ export default function ClientChatLogs() {
   });
   const deleteChatLog = useDeleteClientChatLog();
   const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
-  const updateRetention = useUpdateClientChatLogRetention();
 
-  const currentRetention = pendingRetention ?? retentionData?.retentionDays ?? 7;
-  const isCompanyOverride = (retentionData as any)?.isCompanyOverride ?? false;
-  const activeOptions = Array.from(new Set([...RETENTION_OPTIONS, currentRetention])).sort((a, b) => a - b);
+  const currentRetention = retentionData?.retentionDays ?? 7;
 
   const handleDelete = (id: number) => {
     if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this chat log entry? This cannot be undone.")) return;
@@ -46,20 +40,6 @@ export default function ClientChatLogs() {
       },
       onError: (error: any) => {
         toast({ title: lang === "ar" ? "فشل الحذف" : "Failed to delete chat log", description: error.message, variant: "destructive" });
-      },
-    });
-  };
-
-  const handleSaveRetention = () => {
-    if (pendingRetention === null) return;
-    updateRetention.mutate({ data: { retentionDays: pendingRetention } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetClientChatLogRetentionQueryKey() });
-        setPendingRetention(null);
-        toast({ title: t("btn_saved"), description: lang === "ar" ? `سيتم حذف المحادثات تلقائياً بعد ${pendingRetention} أيام.` : `Chat logs will be deleted after ${pendingRetention} day${pendingRetention === 1 ? "" : "s"}.` });
-      },
-      onError: (error: any) => {
-        toast({ title: lang === "ar" ? "فشل الحفظ" : "Failed to save retention policy", description: error.message, variant: "destructive" });
       },
     });
   };
@@ -99,55 +79,40 @@ export default function ClientChatLogs() {
         </Button>
       </div>
 
-      {/* Retention Policy */}
+      {/* Retention Policy Banner (Read-only for client, managed by admin) */}
       <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <CardTitle className="text-base">{t("chat_logs_retention_title")}</CardTitle>
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-amber-500" />
             </div>
-            {isCompanyOverride && (
-              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">
-                {t("chat_logs_retention_admin_managed")}
-              </Badge>
-            )}
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold">{t("chat_logs_retention_title")}</p>
+                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">
+                  {t("chat_logs_retention_admin_managed")}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {retentionLoading ? (
+                  <Skeleton className="h-3 w-48 mt-1" />
+                ) : lang === "ar" ? (
+                  `يتم حذف سجلات المحادثات تلقائياً بعد مرور ${currentRetention} ${currentRetention === 1 ? "يوم" : currentRetention === 2 ? "يومين" : "أيام"} وفقاً للسياسة المحددة من إدارة المنصة.`
+                ) : (
+                  `Chat logs are automatically deleted after ${currentRetention} day${currentRetention === 1 ? "" : "s"} as set by your administrator.`
+                )}
+              </p>
+            </div>
           </div>
-          <CardDescription>
-            {t("chat_logs_retention_desc")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-3">
-            {retentionLoading ? (
-              <Skeleton className="h-9 w-[160px]" />
-            ) : (
-              <Select
-                value={String(currentRetention)}
-                onValueChange={(val) => setPendingRetention(Number(val))}
-              >
-                <SelectTrigger className="w-[160px] bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeOptions.map((d) => (
-                    <SelectItem key={d} value={String(d)}>
-                      {d} {lang === "ar" ? "أيام" : d === 1 ? "day" : "days"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button
-              onClick={handleSaveRetention}
-              disabled={pendingRetention === null || updateRetention.isPending}
-              size="sm"
-            >
-              {updateRetention.isPending ? t("btn_saving") : t("btn_save")}
-            </Button>
-            {pendingRetention !== null && (
-              <span className="text-xs text-muted-foreground">{lang === "ar" ? "تغييرات غير محفوظة" : "Unsaved changes"}</span>
-            )}
+          <div className="shrink-0 self-start sm:self-auto bg-muted/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-bold tabular-nums">
+              {retentionLoading ? (
+                <Skeleton className="h-4 w-12" />
+              ) : (
+                `${currentRetention} ${lang === "ar" ? "أيام" : currentRetention === 1 ? "day" : "days"}`
+              )}
+            </span>
           </div>
         </CardContent>
       </Card>

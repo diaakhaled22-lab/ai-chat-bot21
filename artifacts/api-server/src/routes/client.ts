@@ -862,32 +862,9 @@ router.get("/client/chat-log-retention", async (req, res) => {
   }
 });
 
-// PUT /client/chat-log-retention
+// PUT /client/chat-log-retention — restricted to admin only
 router.put("/client/chat-log-retention", async (req, res) => {
-  try {
-    const days = Number((req.body as Record<string, unknown>).retentionDays);
-    if (!Number.isInteger(days) || days < 1 || days > 365) {
-      res.status(400).json({ error: "retentionDays must be an integer between 1 and 365" });
-      return;
-    }
-    const [company] = await db
-      .select({ id: companiesTable.id })
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
-    if (!company) {
-      res.status(404).json({ error: "No company found" });
-      return;
-    }
-    await db
-      .update(companiesTable)
-      .set({ chatLogRetentionDays: days })
-      .where(eq(companiesTable.id, company.id));
-    res.json({ ok: true, retentionDays: days });
-  } catch (err) {
-    logger.error({ err }, "Update client chat log retention error");
-    res.status(500).json({ error: "Internal server error" });
-  }
+  res.status(403).json({ error: "Data retention policy can only be configured by a platform administrator." });
 });
 
 // PUT /client/settings
