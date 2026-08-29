@@ -384,6 +384,7 @@ function WhatsAppSetupCard({ company }: { company: { isActive: boolean; whatsapp
 export default function ClientCompany() {
   const { t, lang } = useLanguage();
   const { data: company, isLoading } = useGetClientCompany();
+  const { data: knowledgeFiles } = useListClientKnowledgeFiles();
   type AiStatus = { status: "ok" | "no_key" | "invalid_key" | "quota_exceeded" | "error" | "no_company"; provider?: string; model?: string; detail?: string };
   const { data: aiStatus, isLoading: aiStatusLoading, refetch: refetchAiStatus } = useQuery<AiStatus>({
     queryKey: ["client-ai-status"],
