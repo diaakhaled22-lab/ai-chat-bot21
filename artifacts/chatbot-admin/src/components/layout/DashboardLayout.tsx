@@ -434,16 +434,16 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   };
 
   const adminLinks: NavLink[] = [
-    { href: "/admin/dashboard",          label: t("nav_dashboard"),          icon: LayoutDashboard },
-    { href: "/admin/clients",            label: t("nav_clients"),            icon: Users },
-    { href: "/admin/companies",          label: t("nav_companies"),          icon: Building2 },
-    { href: "/admin/chat-logs",          label: t("nav_chat_logs"),          icon: MessageSquare, badge: true },
-    { href: "/admin/tickets",            label: t("nav_customer_problems"),  icon: LifeBuoy, ticketBadge: true },
-    { href: "/admin/broadcast",          label: t("nav_broadcast"),          icon: Megaphone },
-    { href: "/admin/webhook-messenger",  label: t("nav_webhook_messenger"),  icon: Webhook },
-    { href: "/admin/ai-tester",          label: t("nav_ai_tester"),          icon: Sparkles },
-    { href: "/admin/security",           label: t("nav_security"),           icon: ShieldCheck },
-    { href: "/admin/settings",           label: t("nav_settings"),           icon: Settings },
+    { href: "/admin/dashboard",          label: "Dashboard",          icon: LayoutDashboard },
+    { href: "/admin/clients",            label: "Clients",            icon: Users },
+    { href: "/admin/companies",          label: "Companies",          icon: Building2 },
+    { href: "/admin/chat-logs",          label: "Chat Logs",          icon: MessageSquare, badge: true },
+    { href: "/admin/tickets",            label: "Customer Problems",  icon: LifeBuoy, ticketBadge: true },
+    { href: "/admin/broadcast",          label: "Broadcast",          icon: Megaphone },
+    { href: "/admin/webhook-messenger",  label: "Webhook Channels",  icon: Webhook },
+    { href: "/admin/ai-tester",          label: "AI Tester",          icon: Sparkles },
+    { href: "/admin/security",           label: "Security Settings",           icon: ShieldCheck },
+    { href: "/admin/settings",           label: "Settings",           icon: Settings },
   ];
 
       const clientLinks: NavLink[] = [
@@ -472,13 +472,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mr-3 shrink-0">
             <Bot className="w-6 h-6 text-primary" />
           </div>
-          <span className="font-bold text-xl tracking-tight whitespace-nowrap">{t("nav_mission_control")}</span>
+          <span className="font-bold text-xl tracking-tight whitespace-nowrap">Mission Control</span>
         </div>
 
         {/* User info */}
         <div className="px-4 pt-4 pb-2 shrink-0">
           <div className="px-2 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {role === "admin" ? t("nav_admin_portal") : t("nav_client_portal")}
+            {role === "admin" ? "Admin Portal" : t("nav_client_portal")}
           </div>
           <div className="flex items-center px-2 py-2">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold mr-3 shrink-0">

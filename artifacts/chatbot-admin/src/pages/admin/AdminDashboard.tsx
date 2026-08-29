@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useGetAdminStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Users, CheckCircle2, XCircle, Activity, Coins, Zap, TrendingUp, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Download, Bot, Ticket, Clock, Sparkles } from "lucide-react";
-import { useLanguage } from "@/hooks/use-language";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
@@ -142,7 +141,6 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 }
 
 export default function AdminDashboard() {
-  const { t } = useLanguage();
   const { data: stats, isLoading } = useGetAdminStats();
   const [activeRange, setActiveRange] = useState<RangePreset>("30d");
   const [sortKey, setSortKey]   = useState<SortKey>("costUsd");
@@ -228,15 +226,15 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t("admin_dash_title")}</h1>
-        <p className="text-muted-foreground mt-2">{t("admin_dash_desc")}</p>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+        <p className="text-muted-foreground mt-2">Platform statistics and metrics.</p>
       </div>
 
       {/* Platform stat cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">{t("admin_dash_stat_companies")}</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
             <Building2 className="w-4 h-4 text-primary" />
           </CardHeader>
           <CardContent>
@@ -248,7 +246,7 @@ export default function AdminDashboard() {
 
         <Card className="bg-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">{t("admin_dash_stat_active")}</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Companies</CardTitle>
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           </CardHeader>
           <CardContent>

@@ -509,9 +509,9 @@ export default function AdminCompanies() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("admin_companies_title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {t("admin_companies_desc")}
+            Monitor subscriptions, channels, and AI agent health across all client companies.
           </p>
         </div>
       </div>
@@ -519,26 +519,26 @@ export default function AdminCompanies() {
       {/* ── Summary stats ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label={t("admin_comp_stat_total")}
+          label="Total Companies"
           value={isLoading ? "—" : stats.total}
           icon={<Building2 className="w-5 h-5 text-primary" />}
           accent="bg-primary/10"
         />
         <StatCard
-          label={t("admin_comp_stat_active")}
+          label="Active"
           value={isLoading ? "—" : stats.active}
           sub={stats.total > 0 ? `${Math.round((stats.active / stats.total) * 100)}% of total` : undefined}
           icon={<ShieldCheck className="w-5 h-5 text-emerald-500" />}
           accent="bg-emerald-500/10"
         />
         <StatCard
-          label={t("admin_comp_stat_inactive")}
+          label="Inactive"
           value={isLoading ? "—" : stats.inactive}
           icon={<XCircle className="w-5 h-5 text-muted-foreground" />}
           accent="bg-muted"
         />
         <StatCard
-          label={t("admin_comp_stat_expiring")}
+          label="Expiring Soon"
           value={isLoading ? "—" : stats.expiring}
           sub="Within 7 days"
           icon={<Timer className="w-5 h-5 text-amber-500" />}
@@ -624,8 +624,8 @@ export default function AdminCompanies() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
             <Building2 className="w-10 h-10 opacity-15" />
-            <p className="text-sm font-medium">{t("admin_comp_no_companies")}</p>
-            {search && <p className="text-xs">{t("admin_comp_no_companies_desc")}</p>}
+            <p className="text-sm font-medium">No companies found</p>
+            {search && <p className="text-xs">Try a different search term</p>}
           </div>
         ) : (
           <div className="divide-y divide-border min-w-[1160px]">
@@ -729,7 +729,7 @@ export default function AdminCompanies() {
                         {formatQuota(company.monthlyTokenQuota)}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground/50">{t("admin_comp_unlimited")}</span>
+                      <span className="text-xs text-muted-foreground/50">Unlimited</span>
                     )}
                   </div>
 
@@ -799,14 +799,14 @@ export default function AdminCompanies() {
                         {company.aiAgentApiKey && (
                           <DropdownMenuItem onClick={() => { setAiTestTarget(company); setAiTestResult(null); runAiTest(company); }}>
                             <FlaskConical className="w-4 h-4 mr-2 text-violet-400" />
-                            <span className="text-violet-400">{t('btn_test_ai')}</span>
+                            <span className="text-violet-400">Test AI Connection</span>
                           </DropdownMenuItem>
                         )}
 
                         {company.telegramBotApiKey && (
                           <DropdownMenuItem onClick={() => { setTgWebhookTarget(company); setTgStatus(null); }}>
                             <Zap className="w-4 h-4 mr-2 text-sky-400" />
-                            <span className="text-sky-400">{t('btn_reg_telegram')}</span>
+                            <span className="text-sky-400">Register Telegram Webhook</span>
                           </DropdownMenuItem>
                         )}
 
@@ -1254,7 +1254,7 @@ export default function AdminCompanies() {
                     <p className="text-sm font-semibold">
                       {viewCompany.monthlyTokenQuota
                         ? <span className="text-blue-400">{formatQuota(viewCompany.monthlyTokenQuota)} tokens / month</span>
-                        : <span className="text-muted-foreground">{t("admin_comp_unlimited")}</span>}
+                        : <span className="text-muted-foreground">Unlimited</span>}
                     </p>
                   </div>
                 </div>

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { ShieldCheck, KeyRound, RotateCcw, Eye, EyeOff, Copy, Check, AlertTriangle, Webhook, RefreshCw } from "lucide-react";
-import { useLanguage } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -187,7 +186,6 @@ function WebhookTokenCard({
 }
 
 export default function AdminSecurity() {
-  const { t } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -234,7 +232,7 @@ export default function AdminSecurity() {
           <ShieldCheck className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("admin_security_title")}</h1>
+          <h1 className="text-xl font-bold">Security Settings</h1>
           <p className="text-sm text-muted-foreground">Manage signing secrets and security credentials.</p>
         </div>
       </div>

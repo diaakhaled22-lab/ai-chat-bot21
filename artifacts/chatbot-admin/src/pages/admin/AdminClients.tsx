@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { useListClients, useCreateClient, useDeleteClient, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, MoreVertical, Search } from "lucide-react";
-import { useLanguage } from "@/hooks/use-language";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,7 +23,6 @@ const formSchema = z.object({
 });
 
 export default function AdminClients() {
-  const { t } = useLanguage();
   const { data: clients, isLoading } = useListClients();
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -76,7 +74,7 @@ export default function AdminClients() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("admin_clients_title")}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
           <p className="text-muted-foreground mt-2">Manage platform access for your clients.</p>
         </div>
         

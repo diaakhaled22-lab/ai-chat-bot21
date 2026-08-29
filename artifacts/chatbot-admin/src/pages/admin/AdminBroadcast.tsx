@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Megaphone, Users, CheckCircle2, Building2, Send, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
-import { useLanguage } from "@/hooks/use-language";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +28,6 @@ const TARGET_DESCRIPTIONS: Record<Target, string> = {
 };
 
 export default function AdminBroadcast() {
-  const { t } = useLanguage();
   const { toast } = useToast();
 
   const [title, setTitle] = useState("");
@@ -105,7 +103,7 @@ export default function AdminBroadcast() {
   return (
     <div className="max-w-3xl space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("admin_broadcast_title")}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Broadcast</h1>
         <p className="text-muted-foreground mt-2">
           Send a system message to your clients. It will appear in their notification bell instantly.
         </p>
