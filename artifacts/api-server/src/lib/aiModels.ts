@@ -85,7 +85,7 @@ async function getProviderKeys(): Promise<Record<AiProviderId, string>> {
   const rows = await db
     .select()
     .from(adminConfigTable)
-    .catch(() => []);
+    .catch(() => [] as any[]);
   const config = new Map(
     rows
       .filter((row) => row.key.startsWith("ai_test_key_"))
@@ -97,13 +97,13 @@ async function getProviderKeys(): Promise<Record<AiProviderId, string>> {
     .select()
     .from(adminConfigTable)
     .where(eq(adminConfigTable.key, "support_ai_api_key"))
-    .catch(() => []);
+    .catch(() => [] as any[]);
   const supportKey = supportRows[0]?.value ?? "";
   const supportProviderRows = await db
     .select()
     .from(adminConfigTable)
     .where(eq(adminConfigTable.key, "support_ai_provider"))
-    .catch(() => []);
+    .catch(() => [] as any[]);
   const supportProvider = supportProviderRows[0]?.value as AiProviderId | undefined;
 
   return {
