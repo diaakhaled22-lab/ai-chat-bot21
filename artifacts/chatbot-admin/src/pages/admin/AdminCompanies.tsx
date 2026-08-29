@@ -14,7 +14,7 @@ import {
   Gauge, AlertTriangle, Zap, FlaskConical, Loader2, CheckCircle, Bot,
   MessageSquare, Globe, Send, Phone, Sheet, Activity,
   TrendingUp, Users, ShieldCheck, Timer, X, ChevronRight,
-  Power, RefreshCw, Sparkles,
+  Power, RefreshCw, Sparkles, RotateCcw,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription,
@@ -50,6 +51,7 @@ type Company = {
   whatsappApiKey?: string | null;
   websiteChatbotKey?: string | null;
   monthlyTokenQuota?: number | null;
+  chatLogRetentionDays?: number | null;
   createdAt: string;
 };
 
@@ -117,11 +119,24 @@ const QUOTA_PRESETS = [
   { label: "10M", value: 10_000_000 },
 ];
 
+const RETENTION_PRESETS = [
+  { label: "1 Day", value: 1 },
+  { label: "3 Days", value: 3 },
+  { label: "7 Days", value: 7 },
+  { label: "14 Days", value: 14 },
+  { label: "30 Days", value: 30 },
+  { label: "60 Days", value: 60 },
+  { label: "90 Days", value: 90 },
+  { label: "180 Days", value: 180 },
+  { label: "365 Days", value: 365 },
+];
+
 const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  activated:   { label: "Activated",       icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: "text-emerald-500" },
-  deactivated: { label: "Deactivated",     icon: <XCircle className="w-3.5 h-3.5" />,      color: "text-amber-500"  },
-  expired:     { label: "Auto-expired",    icon: <Clock className="w-3.5 h-3.5" />,         color: "text-red-500"    },
-  dates_set:   { label: "Window updated",  icon: <CalendarClock className="w-3.5 h-3.5" />, color: "text-blue-500"   },
+  activated:            { label: "Activated",             icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: "text-emerald-500" },
+  deactivated:          { label: "Deactivated",           icon: <XCircle className="w-3.5 h-3.5" />,      color: "text-amber-500"  },
+  expired:              { label: "Auto-expired",          icon: <Clock className="w-3.5 h-3.5" />,         color: "text-red-500"    },
+  dates_set:            { label: "Window updated",        icon: <CalendarClock className="w-3.5 h-3.5" />, color: "text-blue-500"   },
+  retention_policy_set: { label: "Auto-Delete Policy",    icon: <Clock className="w-3.5 h-3.5" />,         color: "text-amber-500"  },
 };
 
 // ── ActivityLog ────────────────────────────────────────────────────────────────
@@ -278,6 +293,7 @@ function StatCard({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AdminCompanies() {
+  const { t, lang } = useLanguage();
   const { data: companies, isLoading } = useListCompanies();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -286,6 +302,8 @@ export default function AdminCompanies() {
   const [activationForm, setActivationForm] = useState({ isActive: false, start: "", end: "" });
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
   const [quotaInput, setQuotaInput] = useState("");
+  const [retentionTarget, setRetentionTarget] = useState<Company | null>(null);
+  const [retentionInput, setRetentionInput] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const [tgRegistering, setTgRegistering] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
@@ -393,6 +411,36 @@ export default function AdminCompanies() {
       return;
     }
     setQuotaMutation.mutate({ id: quotaTarget.id, quota });
+  };
+
+  const setRetentionMutation = useMutation({
+    mutationFn: ({ id, retentionDays }: { id: number; retentionDays: number | null }) =>
+      customFetch(`/api/admin/companies/${id}/retention`, {
+        method: "PUT",
+        body: JSON.stringify({ retentionDays }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      setRetentionTarget(null);
+      toast({ title: t("admin_companies_retention_saved") });
+    },
+    onError: (err: any) => toast({ title: "Failed to save retention policy", description: err.message, variant: "destructive" }),
+  });
+
+  const openRetentionDialog = (company: Company) => {
+    setRetentionTarget(company);
+    setRetentionInput(company.chatLogRetentionDays ? String(company.chatLogRetentionDays) : "");
+  };
+
+  const handleSaveRetention = () => {
+    if (!retentionTarget) return;
+    const val = retentionInput.trim();
+    const days = val === "" ? null : parseInt(val.replace(/[^0-9]/g, ""), 10);
+    if (val !== "" && (isNaN(days!) || days! < 1 || days! > 365)) {
+      toast({ title: "Please enter a valid number of days between 1 and 365, or leave blank for default", variant: "destructive" });
+      return;
+    }
+    setRetentionMutation.mutate({ id: retentionTarget.id, retentionDays: days });
   };
 
   const openActivationDialog = (company: Company) => {
@@ -539,8 +587,8 @@ export default function AdminCompanies() {
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
         {/* Table header */}
-        <div className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1060px]">
-          {["My ID", "Company", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", ""].map((h, i, arr) => (
+        <div className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_110px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1160px]">
+          {["My ID", "Company", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", "Auto-Delete", ""].map((h, i, arr) => (
             <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${i === 2 ? "px-2 text-center" : "px-2"} ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
               {h}
             </div>
@@ -549,9 +597,9 @@ export default function AdminCompanies() {
 
         {/* Rows */}
         {isLoading ? (
-          <div className="divide-y divide-border min-w-[1060px]">
+          <div className="divide-y divide-border min-w-[1160px]">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-4 items-center">
+              <div key={i} className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_110px_44px] gap-0 px-4 py-4 items-center">
                 <div className="px-2"><Skeleton className="h-4 w-10" /></div>
                 <div className="flex items-center px-2">
                   <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
@@ -563,6 +611,7 @@ export default function AdminCompanies() {
                 <div className="px-2"><Skeleton className="h-3 w-20" /></div>
                 <div className="px-2"><Skeleton className="h-4 w-20" /></div>
                 <div className="px-2"><Skeleton className="h-4 w-14" /></div>
+                <div className="px-2"><Skeleton className="h-4 w-16" /></div>
                 <div className="sticky right-0 bg-card px-2" />
               </div>
             ))}
@@ -574,7 +623,7 @@ export default function AdminCompanies() {
             {search && <p className="text-xs">Try a different search term</p>}
           </div>
         ) : (
-          <div className="divide-y divide-border min-w-[1060px]">
+          <div className="divide-y divide-border min-w-[1160px]">
             {filtered.map((company) => {
               const daysLeft = getDaysRemaining(company.activationEnd);
               const isExpired = daysLeft !== null && daysLeft < 0;
@@ -583,7 +632,7 @@ export default function AdminCompanies() {
               return (
                 <div
                   key={company.id}
-                  className="group grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_44px] gap-0 px-4 py-3.5 items-center hover:bg-muted/20 transition-colors"
+                  className="group grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_110px_44px] gap-0 px-4 py-3.5 items-center hover:bg-muted/20 transition-colors"
                 >
                   {/* My ID */}
                   <div className="px-2">
@@ -679,6 +728,20 @@ export default function AdminCompanies() {
                     )}
                   </div>
 
+                  {/* Auto-Delete Policy */}
+                  <div className="px-2">
+                    <button
+                      onClick={() => openRetentionDialog(company)}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted/70 border border-border px-2 py-1 rounded-md transition-colors"
+                      title="Configure auto-delete policy"
+                    >
+                      <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span className="font-medium truncate">
+                        {company.chatLogRetentionDays ? `${company.chatLogRetentionDays}d` : "Default (7d)"}
+                      </span>
+                    </button>
+                  </div>
+
                   {/* Actions */}
                   <div className="sticky right-0 bg-card group-hover:bg-muted/20 transition-colors px-1 flex justify-end">
                     <DropdownMenu>
@@ -690,7 +753,7 @@ export default function AdminCompanies() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                           {company.name}
                         </DropdownMenuLabel>
@@ -710,6 +773,11 @@ export default function AdminCompanies() {
                         <DropdownMenuItem onClick={() => openQuotaDialog(company)}>
                           <Gauge className="w-4 h-4 mr-2" />
                           Set Token Quota
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem onClick={() => openRetentionDialog(company)}>
+                          <Clock className="w-4 h-4 mr-2 text-amber-500" />
+                          {t("admin_companies_retention_menu")}
                         </DropdownMenuItem>
 
                         {company.aiAgentApiKey && (
@@ -864,6 +932,82 @@ export default function AdminCompanies() {
             <Button variant="outline" onClick={() => setQuotaTarget(null)}>Cancel</Button>
             <Button onClick={handleSaveQuota} disabled={setQuotaMutation.isPending}>
               {setQuotaMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Saving…</> : "Save Quota"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Auto-Delete Retention Policy Dialog ── */}
+      <Dialog open={!!retentionTarget} onOpenChange={(open) => !open && setRetentionTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-500" />
+              {t("admin_companies_retention_dialog_title")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("admin_companies_retention_dialog_desc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="retention-input">{t("admin_companies_retention_days_label")}</Label>
+              <div className="relative">
+                <Input
+                  id="retention-input"
+                  placeholder={t("admin_companies_retention_days_placeholder")}
+                  value={retentionInput}
+                  onChange={(e) => setRetentionInput(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="bg-background font-mono pr-12"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  {t("admin_companies_retention_custom")}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">{t("admin_companies_retention_presets")}</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {RETENTION_PRESETS.map((p) => (
+                  <Button
+                    key={p.value}
+                    type="button"
+                    size="sm"
+                    variant={retentionInput === String(p.value) ? "default" : "outline"}
+                    onClick={() => setRetentionInput(String(p.value))}
+                    className="text-xs"
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground text-xs w-full mt-1"
+                onClick={() => setRetentionInput("")}
+              >
+                <RotateCcw className="w-3 h-3 mr-1" /> {t("admin_companies_retention_reset")}
+              </Button>
+            </div>
+
+            {retentionTarget && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2.5 rounded-lg">
+                <Clock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                <span>
+                  {retentionTarget.chatLogRetentionDays
+                    ? `${t("admin_companies_retention_badge_custom")}: ${retentionTarget.chatLogRetentionDays} ${t("admin_companies_retention_custom")}`
+                    : `${t("admin_companies_retention_badge_default")}: 7 ${t("admin_companies_retention_custom")}`}
+                </span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRetentionTarget(null)}>{t("btn_cancel")}</Button>
+            <Button onClick={handleSaveRetention} disabled={setRetentionMutation.isPending}>
+              {setRetentionMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />{t("btn_saving")}</> : t("btn_save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1041,10 +1185,33 @@ export default function AdminCompanies() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => { setViewCompany(null); openQuotaDialog(viewCompany); }}
+                  onClick={() => { const target = viewCompany; setViewCompany(null); openQuotaDialog(target); }}
                   className="text-xs gap-1"
                 >
                   <Gauge className="w-3 h-3" /> Adjust
+                </Button>
+              </div>
+
+              {/* Auto-Delete Retention Policy */}
+              <div className="bg-muted/30 rounded-xl p-4 border border-border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-500" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">{t("admin_companies_retention_menu")}</p>
+                    <p className="text-sm font-semibold">
+                      {viewCompany.chatLogRetentionDays
+                        ? <span className="text-amber-500">{viewCompany.chatLogRetentionDays} {t("admin_companies_retention_custom")}</span>
+                        : <span className="text-muted-foreground">{t("admin_companies_retention_badge_default")} (7 {t("admin_companies_retention_custom")})</span>}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { const target = viewCompany; setViewCompany(null); openRetentionDialog(target); }}
+                  className="text-xs gap-1"
+                >
+                  <Clock className="w-3 h-3 text-amber-500" /> Adjust
                 </Button>
               </div>
 

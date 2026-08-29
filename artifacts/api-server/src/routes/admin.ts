@@ -314,6 +314,7 @@ router.get("/admin/companies", async (req, res) => {
         aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
         aiAgentUrl: company.aiAgentUrl,
         monthlyTokenQuota: company.monthlyTokenQuota ?? null,
+        chatLogRetentionDays: company.chatLogRetentionDays ?? null,
         telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
         telegramBotUsername: company.telegramBotUsername,
         whatsappApiToken: maskApiKey(company.whatsappApiToken),
@@ -371,6 +372,8 @@ router.get("/admin/companies/:id", async (req, res) => {
       serviceAccountKey: maskApiKey(company.serviceAccountKey),
       aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
       aiAgentUrl: company.aiAgentUrl,
+      monthlyTokenQuota: company.monthlyTokenQuota ?? null,
+      chatLogRetentionDays: company.chatLogRetentionDays ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
       whatsappApiToken: maskApiKey(company.whatsappApiToken),
@@ -574,6 +577,50 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
   }
 });
 
+// PUT /admin/companies/:id/retention
+router.put("/admin/companies/:id/retention", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+    const { retentionDays } = req.body as { retentionDays: number | null | undefined };
+    const days = retentionDays === null || retentionDays === undefined || retentionDays === 0 ? null : Number(retentionDays);
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > 365)) {
+      res.status(400).json({ error: "retentionDays must be an integer between 1 and 365, or null for default" });
+      return;
+    }
+    const [updated] = await db
+      .update(companiesTable)
+      .set({ chatLogRetentionDays: days })
+      .where(eq(companiesTable.id, id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const [adminUser] = await db
+      .select({ username: usersTable.username })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId!));
+    const performedBy = adminUser?.username ?? "admin";
+
+    await db.insert(companyActivityLogsTable).values({
+      companyId: id,
+      action: "retention_policy_set",
+      performedBy,
+      note: days ? `Set auto-delete retention policy to ${days} days` : "Reset auto-delete retention policy to global default",
+    });
+
+    res.json({ ok: true, retentionDays: updated.chatLogRetentionDays ?? null });
+  } catch (err) {
+    logger.error({ err }, "Set company retention error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/admin/companies/:id/logs", async (req, res) => {
   try {
     const params = GetCompanyParams.safeParse({ id: Number(req.params.id) });
@@ -690,8 +737,8 @@ router.get("/admin/chat-log-retention", async (req, res) => {
 router.put("/admin/chat-log-retention", async (req, res) => {
   try {
     const days = Number((req.body as Record<string, unknown>).retentionDays);
-    if (!Number.isInteger(days) || days < 1 || days > 7) {
-      res.status(400).json({ error: "retentionDays must be an integer between 1 and 7" });
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      res.status(400).json({ error: "retentionDays must be an integer between 1 and 365" });
       return;
     }
     await db

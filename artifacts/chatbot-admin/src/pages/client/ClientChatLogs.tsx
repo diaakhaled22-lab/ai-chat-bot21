@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
-const RETENTION_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+const RETENTION_OPTIONS = [1, 2, 3, 5, 7, 14, 30, 60, 90, 180, 365];
 
 export default function ClientChatLogs() {
   const { t, lang } = useLanguage();
@@ -34,6 +34,8 @@ export default function ClientChatLogs() {
   const updateRetention = useUpdateClientChatLogRetention();
 
   const currentRetention = pendingRetention ?? retentionData?.retentionDays ?? 7;
+  const isCompanyOverride = (retentionData as any)?.isCompanyOverride ?? false;
+  const activeOptions = Array.from(new Set([...RETENTION_OPTIONS, currentRetention])).sort((a, b) => a - b);
 
   const handleDelete = (id: number) => {
     if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this chat log entry? This cannot be undone.")) return;
@@ -100,9 +102,16 @@ export default function ClientChatLogs() {
       {/* Retention Policy */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-base">{t("chat_logs_retention_title")}</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-base">{t("chat_logs_retention_title")}</CardTitle>
+            </div>
+            {isCompanyOverride && (
+              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">
+                {t("chat_logs_retention_admin_managed")}
+              </Badge>
+            )}
           </div>
           <CardDescription>
             {t("chat_logs_retention_desc")}
@@ -121,7 +130,7 @@ export default function ClientChatLogs() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {RETENTION_OPTIONS.map((d) => (
+                  {activeOptions.map((d) => (
                     <SelectItem key={d} value={String(d)}>
                       {d} {lang === "ar" ? "أيام" : d === 1 ? "day" : "days"}
                     </SelectItem>

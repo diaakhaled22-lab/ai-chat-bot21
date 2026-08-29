@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-const RETENTION_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
+const RETENTION_OPTIONS = [1, 2, 3, 5, 7, 14, 30, 60, 90, 180, 365];
 
 export default function AdminChatLogs() {
   const [search, setSearch] = useState("");

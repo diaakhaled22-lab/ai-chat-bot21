@@ -845,6 +845,7 @@ router.get("/client/chat-log-retention", async (req, res) => {
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
 
+    const isCompanyOverride = company?.chatLogRetentionDays !== null && company?.chatLogRetentionDays !== undefined;
     let retentionDays = company?.chatLogRetentionDays ?? null;
     if (retentionDays === null) {
       const [adminRow] = await db
@@ -854,7 +855,7 @@ router.get("/client/chat-log-retention", async (req, res) => {
         .limit(1);
       retentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 7;
     }
-    res.json({ retentionDays });
+    res.json({ retentionDays, isCompanyOverride });
   } catch (err) {
     logger.error({ err }, "Get client chat log retention error");
     res.status(500).json({ error: "Internal server error" });
@@ -865,8 +866,8 @@ router.get("/client/chat-log-retention", async (req, res) => {
 router.put("/client/chat-log-retention", async (req, res) => {
   try {
     const days = Number((req.body as Record<string, unknown>).retentionDays);
-    if (!Number.isInteger(days) || days < 1 || days > 7) {
-      res.status(400).json({ error: "retentionDays must be an integer between 1 and 7" });
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      res.status(400).json({ error: "retentionDays must be an integer between 1 and 365" });
       return;
     }
     const [company] = await db
@@ -882,7 +883,7 @@ router.put("/client/chat-log-retention", async (req, res) => {
       .update(companiesTable)
       .set({ chatLogRetentionDays: days })
       .where(eq(companiesTable.id, company.id));
-    res.json({ ok: true });
+    res.json({ ok: true, retentionDays: days });
   } catch (err) {
     logger.error({ err }, "Update client chat log retention error");
     res.status(500).json({ error: "Internal server error" });

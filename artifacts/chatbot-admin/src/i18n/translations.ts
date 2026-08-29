@@ -212,9 +212,24 @@ const translations = {
     chat_logs_retention_title: "Data Retention Policy",
     chat_logs_retention_desc: "Chat logs older than the selected retention period will be automatically deleted.",
     chat_logs_retention_days: "days",
+    chat_logs_retention_admin_managed: "Configured by Administrator",
     chat_logs_empty: "No chat logs found matching your filters.",
     chat_logs_customer: "Customer",
     chat_logs_bot: "AI Assistant",
+
+    // ── Admin Company Retention Policy ──────────────────────────────────────
+    admin_companies_retention_menu: "Auto-Delete Policy",
+    admin_companies_retention_dialog_title: "Auto-Delete Retention Policy",
+    admin_companies_retention_dialog_desc: "Configure automatic chat log deletion for this company. Logs older than the chosen period are permanently deleted.",
+    admin_companies_retention_days_label: "Retention Period (in Days)",
+    admin_companies_retention_days_placeholder: "e.g. 30",
+    admin_companies_retention_presets: "Quick Presets",
+    admin_companies_retention_global_hint: "Global system default:",
+    admin_companies_retention_reset: "Reset to Global System Default",
+    admin_companies_retention_custom: "days",
+    admin_companies_retention_badge_custom: "Auto-deletes after",
+    admin_companies_retention_badge_default: "System Default",
+    admin_companies_retention_saved: "Auto-delete policy updated successfully.",
 
     // ── Client Support / Tickets Page ───────────────────────────────────────
     support_title: "Support & Problem Reports",
@@ -460,9 +475,24 @@ const translations = {
     chat_logs_retention_title: "سياسة الاحتفاظ بالبيانات",
     chat_logs_retention_desc: "سيتم حذف سجلات المحادثة الأقدم من الفترة المحددة تلقائياً لخصوصية البيانات.",
     chat_logs_retention_days: "أيام",
+    chat_logs_retention_admin_managed: "مُدارة بواسطة مسؤول المنصة",
     chat_logs_empty: "لا توجد سجلات محادثة تطابق خيارات البحث.",
     chat_logs_customer: "العميل",
     chat_logs_bot: "المساعد الذكي",
+
+    // ── Admin Company Retention Policy ──────────────────────────────────────
+    admin_companies_retention_menu: "سياسة الحذف التلقائي للمحادثات",
+    admin_companies_retention_dialog_title: "سياسة الحذف التلقائي للمحادثات",
+    admin_companies_retention_dialog_desc: "تحديد مدة الاحتفاظ بالمحادثات لهذه الشركة، حيث سيتم حذف سجلات المحادثات الأقدم من هذه المدة تلقائياً وبشكل دوري.",
+    admin_companies_retention_days_label: "مدة الاحتفاظ (بالأيام)",
+    admin_companies_retention_days_placeholder: "مثال: 30",
+    admin_companies_retention_presets: "اختيارات سريعة",
+    admin_companies_retention_global_hint: "الإعداد الافتراضي للنظام:",
+    admin_companies_retention_reset: "استعادة الإعداد الافتراضي للنظام",
+    admin_companies_retention_custom: "أيام",
+    admin_companies_retention_badge_custom: "حذف تلقائي بعد",
+    admin_companies_retention_badge_default: "افتراضي النظام",
+    admin_companies_retention_saved: "تم تحديث سياسة الحذف التلقائي بنجاح.",
 
     // ── Client Support / Tickets Page ───────────────────────────────────────
     support_title: "الدعم الفني وتذاكر المشاكل",
