@@ -14,6 +14,7 @@ import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models
 
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
 import { Badge }
+import { Label } from "@/components/ui/label";
 from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -831,26 +832,19 @@ export default function ClientCompany() {
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="securityPrompt"
-                render={() => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-muted-foreground">{t("company_security_prompt")} <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1">Admin Only</Badge></FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        disabled
-                        value={company.securityPrompt ?? ""}
-                        className="bg-muted/50 font-mono text-sm min-h-[120px] resize-none cursor-not-allowed opacity-80" 
-                        placeholder="Security rules are managed by the administrator."
-                      />
-                    </FormControl>
-                    <FormDescription className="opacity-80">
-                      {t("company_security_prompt_desc")}
-                    </FormDescription>
-                  </FormItem>
-                )}
-              />
+              
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-muted-foreground">{t("company_security_prompt")} <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1">Admin Only</Badge></Label>
+                <Textarea 
+                  disabled
+                  value={company?.securityPrompt ?? ""}
+                  className="bg-muted/50 font-mono text-sm min-h-[120px] resize-none cursor-not-allowed opacity-80" 
+                  placeholder="Security rules are managed by the administrator."
+                />
+                <p className="text-[0.8rem] text-muted-foreground opacity-80">
+                  {t("company_security_prompt_desc")}
+                </p>
+              </div>
             </CardContent>
           </Card>
 
