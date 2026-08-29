@@ -1415,7 +1415,6 @@ export default function ClientCompany() {
                     {company.websiteDataUrl ? "✓ Configured" : "Not set"}
                   </div>
                 </div>
-                <KnowledgeFilesSummaryTile />
                 <div className={`rounded-lg border p-2.5 space-y-1 ${company.googleSheetsEnabled ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">📊</div>
                   <div className="font-medium">Google Sheets</div>
