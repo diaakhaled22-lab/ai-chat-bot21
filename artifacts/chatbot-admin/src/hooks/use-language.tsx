@@ -7,7 +7,13 @@ interface LanguageContextValue {
   t: (key: TranslationKey) => string;
 }
 
-const LanguageContext = createContext<LanguageContextValue | null>(null);
+const defaultContext: LanguageContextValue = {
+  lang: "en",
+  setLang: () => {},
+  t: (key: TranslationKey): string => (translations.en[key] ?? key) as string,
+};
+
+const LanguageContext = createContext<LanguageContextValue>(defaultContext);
 
 function applyLang(lang: Lang) {
   document.documentElement.lang = lang;
@@ -33,7 +39,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem("mc-lang", next); } catch {}
   };
 
-  const t = (key: TranslationKey): string => translations[lang][key] as string;
+  const t = (key: TranslationKey): string => (translations[lang]?.[key] ?? translations.en[key] ?? key) as string;
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t }}>
@@ -43,7 +49,5 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useLanguage() {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error("useLanguage must be used inside LanguageProvider");
-  return ctx;
+  return useContext(LanguageContext);
 }
