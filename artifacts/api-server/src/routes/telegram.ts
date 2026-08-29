@@ -92,7 +92,7 @@ router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
   res.sendStatus(200);
 
   try {
-    const { token } = req.params;
+    const token = Array.isArray(req.params.token) ? req.params.token[0] : String(req.params.token || "");
     const update = req.body;
 
     const message = update.message || update.edited_message;
