@@ -34,7 +34,6 @@ import ClientAIChat from "@/pages/client/ClientAIChat";
 import ClientUniversalChat from "@/pages/client/ClientUniversalChat";
 import ClientWebhookHistory from "@/pages/client/ClientWebhookHistory";
 import ClientWidgetPreview from "@/pages/client/ClientWidgetPreview";
-import ClientWordPress from "@/pages/client/ClientWordPress";
 import ClientChannels from "@/pages/client/ClientChannels";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -143,9 +142,6 @@ function Router() {
       </Route>
       <Route path="/client/knowledge">
         {() => <ProtectedRoute component={ClientKnowledge} allowedRole="client" />}
-      </Route>
-      <Route path="/client/wordpress">
-        {() => <ProtectedRoute component={ClientWordPress} allowedRole="client" />}
       </Route>
       <Route path="/client/channels">
         {() => <ProtectedRoute component={ClientChannels} allowedRole="client" />}

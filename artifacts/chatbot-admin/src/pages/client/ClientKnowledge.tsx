@@ -349,12 +349,6 @@ function WordPressInlineCard() {
             <Globe className="w-5 h-5 text-blue-500" />
             {t("data_source_wordpress")}
           </CardTitle>
-          <Link href="/client/wordpress">
-            <Button variant="ghost" size="sm" className="text-xs text-primary gap-1">
-              {lang === "ar" ? "الإعدادات المتقدمة" : "Advanced Settings"}
-              <ExternalLink className="w-3 h-3" />
-            </Button>
-          </Link>
         </div>
         <CardDescription>{t("data_source_wordpress_desc")}</CardDescription>
       </CardHeader>
