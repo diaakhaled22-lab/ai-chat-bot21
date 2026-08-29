@@ -811,40 +811,7 @@ export default function ClientCompany() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="systemPrompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("company_system_prompt")}</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        className="bg-background font-mono text-sm min-h-[160px]" 
-                        placeholder={t("company_system_prompt_placeholder")}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {t("company_system_prompt_desc")}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               
-              
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">{t("company_security_prompt")} <Badge variant="secondary" className="text-[10px] font-normal h-4 px-1">Admin Only</Badge></Label>
-                <Textarea 
-                  disabled
-                  value={company?.securityPrompt ?? ""}
-                  className="bg-muted/50 font-mono text-sm min-h-[120px] resize-none cursor-not-allowed opacity-80" 
-                  placeholder="Security rules are managed by the administrator."
-                />
-                <p className="text-[0.8rem] text-muted-foreground opacity-80">
-                  {t("company_security_prompt_desc")}
-                </p>
-              </div>
             </CardContent>
           </Card>
 
