@@ -594,7 +594,7 @@ export default function AdminCompanies() {
         {/* Table header */}
         <div className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_110px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1160px]">
           {["My ID", "Company", "Company Name", "Client", "Status", "Start Date", "End Date", "Channels", "Quota", "Auto-Delete", ""].map((h, i, arr) => (
-            <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${i === 2 ? "px-2 text-center relative -left-[15px]" : "px-2"} ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
+            <div key={i} className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${i === 2 ? "px-2 text-center relative -left-[20px]" : "px-2"} ${i === arr.length - 1 ? "sticky right-0 bg-muted/30" : ""}`}>
               {h}
             </div>
           ))}
@@ -652,7 +652,7 @@ export default function AdminCompanies() {
                   </div>
 
                   {/* Company Name */}
-                  <div className="px-2 min-w-0 flex justify-center relative -left-[15px]">
+                  <div className="px-2 min-w-0 flex justify-center relative -left-[20px]">
                       <span className="text-sm truncate">{company.name}</span>
                   </div>
 
