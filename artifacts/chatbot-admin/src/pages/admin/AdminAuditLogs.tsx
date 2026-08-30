@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, ShieldAlert } from "lucide-react";
-import { api } from "@/lib/api";
+import { api } from "../../lib/api";
 
 export default function AdminAuditLogs() {
   const { data: logs, isLoading, error } = useQuery({
@@ -55,7 +55,7 @@ export default function AdminAuditLogs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logs.map((log) => (
+                  {logs.map((log: any) => (
                     <TableRow key={log.id}>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {log.createdAt ? format(new Date(log.createdAt), "MMM d, yyyy HH:mm") : "-"}
