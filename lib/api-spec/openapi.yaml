@@ -393,6 +393,22 @@ paths:
         "200":
           description: Updated
 
+  /admin/audit-logs:
+    get:
+      summary: Get admin audit logs
+      tags:
+        - admin
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminActivityLog"
+        "401":
+          description: Unauthorized
   /admin/settings:
     get:
       operationId: getAdminSettings
@@ -676,6 +692,26 @@ paths:
 
 components:
   schemas:
+  AdminActivityLog:
+    type: object
+    properties:
+      id:
+        type: integer
+      adminId:
+        type: integer
+      adminUsername:
+        type: string
+      action:
+        type: string
+      details:
+        type: string
+        nullable: true
+      ipAddress:
+        type: string
+        nullable: true
+      createdAt:
+        type: string
+        format: date-time
     HealthStatus:
       type: object
       properties:

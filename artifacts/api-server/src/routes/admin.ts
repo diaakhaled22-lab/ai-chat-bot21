@@ -275,7 +275,9 @@ router.delete("/admin/clients/:id", async (req, res) => {
       return;
     }
     await db.delete(usersTable).where(and(eq(usersTable.id, params.data.id), eq(usersTable.role, "client")));
-    res.json({ ok: true });
+    logAdminActivity(req.session.userId!, "update_client", `Updated client ID ${id}`, req.ip);
+      logAdminActivity(req.session.userId!, "update_support_settings", "Updated Support AI settings", req.ip);
+      res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Delete client error");
     res.status(500).json({ error: "Internal server error" });
@@ -1257,7 +1259,8 @@ router.post("/admin/broadcast", async (req, res) => {
       }
     }
 
-    logger.info({ count: companies.length, target: validTarget }, "Broadcast sent");
+    logAdminActivity(req.session.userId!, "send_broadcast", `Sent broadcast to ${validTarget} (${companies.length} companies)`, req.ip);
+      logger.info({ count: companies.length, target: validTarget }, "Broadcast sent");
     res.json({ sent: companies.length });
   } catch (err) {
     logger.error({ err }, "Admin broadcast error");
@@ -1635,6 +1638,23 @@ router.post("/admin/messenger-webhook/generate", async (req, res) => {
     res.json({ verifyToken: token });
   } catch (err) {
     logger.error({ err }, "Generate messenger verify token error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// GET /admin/audit-logs
+router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
+  try {
+    const logs = await db
+      .select()
+      .from(adminActivityLogsTable)
+      .orderBy(desc(adminActivityLogsTable.createdAt))
+      .limit(100);
+
+    res.json(logs);
+  } catch (err) {
+    logger.error({ err }, "Get audit logs error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
