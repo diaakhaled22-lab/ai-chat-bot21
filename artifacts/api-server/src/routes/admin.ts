@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import {
