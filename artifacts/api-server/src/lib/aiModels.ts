@@ -30,12 +30,13 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "gemini-3.5-flash-lite",
   ].map((id) => ({ id, label: id, free: id.includes("flash") && !id.includes("preview") })),
   openrouter: [
+    "google/gemini-2.0-flash-exp:free", "google/gemini-2.0-pro-exp-02-05:free",
+    "google/gemini-1.5-flash", "google/gemini-1.5-pro",
     "google/gemma-4-31b-it:free", "openai/gpt-oss-20b:free",
     "nvidia/nemotron-3-super-120b-a12b:free", "nvidia/nemotron-nano-9b-v2:free",
     "deepseek/deepseek-v4-flash", "deepseek/deepseek-r1", "deepseek/deepseek-v3",
     "anthropic/claude-3.5-sonnet", "openai/gpt-4o", "openai/gpt-4o-mini",
-    "google/gemini-pro-1.5", "mistralai/mistral-large",
-    "meta-llama/llama-3.3-70b-instruct",
+    "mistralai/mistral-large", "meta-llama/llama-3.3-70b-instruct",
   ].map((id) => ({ id, label: id, free: id.endsWith(":free") })),
 };
 
