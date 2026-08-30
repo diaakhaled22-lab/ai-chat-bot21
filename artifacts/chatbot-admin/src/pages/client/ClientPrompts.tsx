@@ -41,9 +41,7 @@ export default function ClientPrompts() {
   const onSubmit = (data: PromptsForm) => {
     if (!company) return;
     updateCompanyMutation.mutate(
-      {
-        systemPrompt: data.systemPrompt || null,
-      },
+      { data: { name: company.name, systemPrompt: data.systemPrompt || null } as any },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: ["getClientCompany"] });

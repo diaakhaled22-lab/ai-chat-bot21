@@ -25,7 +25,7 @@ import {
   Sparkles,
   Zap,
   Webhook,
-  ShieldCheck,
+  ShieldCheck, ShieldAlert,
   Database,
   type LucideIcon,
 } from "lucide-react";

@@ -3,13 +3,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, ShieldAlert } from "lucide-react";
-import { api } from "@/lib/api";
+import { customFetch } from "@workspace/api-client-react";
 
 export default function AdminAuditLogs() {
   const { data: logs, isLoading, error } = useQuery({
     queryKey: ["admin-audit-logs"],
     queryFn: async () => {
-      const { data } = await api.getAdminAuditLogs();
+      const data = await customFetch("/api/admin/audit-logs");
       return data;
     },
   });
