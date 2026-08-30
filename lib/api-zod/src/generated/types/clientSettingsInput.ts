@@ -12,4 +12,5 @@ export interface ClientSettingsInput {
   newPassword?: string | null;
   /** @nullable */
   newUsername?: string | null;
+  notificationEmail?: string | null;
 }

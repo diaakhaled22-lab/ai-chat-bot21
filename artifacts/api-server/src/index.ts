@@ -140,6 +140,17 @@ async function sendRenewalReminders() {
       ];
 
       await db.insert(notificationsTable).values(toInsert);
+      
+      if (company.notificationEmail) {
+        sendClientNotification(
+          company.notificationEmail, 
+          "Subscription expiring soon", 
+          `Your subscription expires on ${endDate}. Please contact your administrator to renew.`
+        ).catch(e => {
+          logger.error({ err: e, email: company.notificationEmail }, "Failed to send renewal reminder email");
+        });
+      }
+      
       logger.info({ companyId: company.id, companyName: company.name }, "Sent renewal reminder notifications");
     }
   } catch (err) {

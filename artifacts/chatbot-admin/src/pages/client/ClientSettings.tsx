@@ -1,4 +1,5 @@
 import { useUpdateClientSettings, useGetMe } from "@workspace/api-client-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,6 +17,7 @@ const formSchema = z.object({
   newUsername: z.string().min(3, "Username must be at least 3 characters").optional().or(z.literal("")),
   currentPassword: z.string().min(1, "Current password is required to save changes"),
   newPassword: z.string().min(6, "New password must be at least 6 characters").optional().or(z.literal("")),
+  notificationEmail: z.string().email("Invalid email").optional().or(z.literal("")),
 });
 
 export default function ClientSettings() {
@@ -30,6 +32,7 @@ export default function ClientSettings() {
       newUsername: "",
       currentPassword: "",
       newPassword: "",
+      notificationEmail: (me as any)?.notificationEmail || "",
     },
   });
 
@@ -37,11 +40,12 @@ export default function ClientSettings() {
     const data: any = { currentPassword: values.currentPassword };
     if (values.newUsername?.trim()) data.newUsername = values.newUsername.trim();
     if (values.newPassword) data.newPassword = values.newPassword;
+    if (values.notificationEmail !== undefined) data.notificationEmail = values.notificationEmail;
 
     updateSettings.mutate({ data }, {
       onSuccess: () => {
         toast({ title: "Settings updated successfully" });
-        form.reset({ newUsername: "", currentPassword: "", newPassword: "" });
+        form.reset({ newUsername: "", currentPassword: "", newPassword: "", notificationEmail: values.notificationEmail || "" });
       },
       onError: (error: any) => {
         toast({ title: "Update failed", description: error.message, variant: "destructive" });
@@ -129,6 +133,23 @@ export default function ClientSettings() {
                   </FormItem>
                 )}
               />
+
+              
+                <FormField
+                  control={form.control}
+                  name="notificationEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5" /> {lang === "ar" ? "?????? ?????????? ????????? (Gmail)" : "Notification Email (Gmail)"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder={lang === "ar" ? "???? ???? Gmail ????? ?????????" : "Enter Gmail to receive notifications"} {...field} className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
               <div className="border-t border-border pt-4 space-y-4">
                 <FormField

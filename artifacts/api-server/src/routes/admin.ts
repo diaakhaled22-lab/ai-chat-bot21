@@ -1223,7 +1223,9 @@ router.post("/admin/broadcast", async (req, res) => {
       clientId: companiesTable.clientId,
       name: companiesTable.name,
       isActive: companiesTable.isActive,
-    }).from(companiesTable);
+      notificationEmail: usersTable.notificationEmail,
+    }).from(companiesTable)
+    .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id));
 
     if (validTarget === "active") companies = companies.filter((c) => c.isActive);
     else if (validTarget === "inactive") companies = companies.filter((c) => !c.isActive);
@@ -1244,6 +1246,16 @@ router.post("/admin/broadcast", async (req, res) => {
         isRead: false,
       }))
     );
+
+    // Send emails
+    for (const c of companies) {
+      if (c.notificationEmail) {
+        // We shouldn't block the request, fire and forget
+        sendClientNotification(c.notificationEmail, title.trim(), message.trim()).catch(e => {
+          logger.error({ err: e, email: c.notificationEmail }, "Failed to send client notification email");
+        });
+      }
+    }
 
     logger.info({ count: companies.length, target: validTarget }, "Broadcast sent");
     res.json({ sent: companies.length });
