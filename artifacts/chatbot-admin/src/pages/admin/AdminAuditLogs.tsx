@@ -9,7 +9,7 @@ export default function AdminAuditLogs() {
   const { data: logs, isLoading, error } = useQuery({
     queryKey: ["admin-audit-logs"],
     queryFn: async () => {
-      const data = await customFetch("/api/admin/audit-logs");
+      const data = (await customFetch("/api/admin/audit-logs")) as any[];
       return data;
     },
   });
