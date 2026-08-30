@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, ShieldAlert } from "lucide-react";
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 
 export default function AdminAuditLogs() {
   const { data: logs, isLoading, error } = useQuery({
