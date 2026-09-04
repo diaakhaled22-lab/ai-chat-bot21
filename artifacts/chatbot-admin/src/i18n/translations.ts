@@ -85,14 +85,7 @@ const translations = {
     btn_edit_prompts: "Edit System & Security Prompts",
     btn_sub_settings: "Subscription Settings",
     btn_reg_telegram: "Register Telegram Webhook",
-    btn_sub_settings: "إعدادات الاشتراك",
-    btn_reg_telegram: "تسجيل ويب هوك تليجرام",
     btn_delete_company: "Delete Company",
-    btn_view_details: "عرض التفاصيل",
-    btn_set_quota: "تعيين حصة الرموز",
-    btn_test_ai: "اختبار اتصال الذكاء الاصطناعي",
-    btn_edit_prompts: "تعديل توجيهات النظام والأمان",
-    btn_delete_company: "حذف الشركة",
     btn_save_password: "Save Password",
 
     // ── Client Settings Page ────────────────────────────────────────────────
@@ -266,30 +259,16 @@ const translations = {
 
 
     // Admin Dashboard
-    admin_dash_title: "نظرة عامة (الداشبورد)",
-    admin_dash_desc: "إحصائيات ومقاييس المنصة.",
-    admin_dash_stat_companies: "إجمالي الشركات",
-    admin_dash_stat_active: "الشركات النشطة",
     
     // Admin Clients
-    admin_clients_title: "العملاء",
-    admin_clients_desc: "إدارة حسابات العملاء وصلاحيات الدخول الخاصة بهم.",
     
     // Admin Chat Logs
-    admin_logs_title: "سجلات المحادثات",
-    admin_logs_desc: "عرض سجلات المحادثات لجميع الشركات.",
     
     // Admin Tickets
-    admin_tickets_title: "مشاكل العملاء (التذاكر)",
-    admin_tickets_desc: "مراقبة وإدارة التذاكر المحولة من الذكاء الاصطناعي.",
     
     // Admin Broadcast
-    admin_broadcast_title: "البث المباشر (Broadcast)",
-    admin_broadcast_desc: "إرسال رسائل جماعية للعملاء.",
     
     // Admin Security
-    admin_security_title: "إعدادات الأمان",
-    admin_security_desc: "إدارة أمان المنصة ومفاتيح API الخاصة بك.",
 
     // Admin Companies
     admin_companies_title: "Companies",
@@ -320,32 +299,6 @@ const translations = {
     admin_comp_unlimited: "Unlimited",
 
     // Admin Companies
-    admin_companies_title: "الشركات",
-    admin_companies_desc: "مراقبة الاشتراكات، وقنوات الاتصال، وحالة المساعد الذكي لجميع شركات العملاء.",
-    admin_comp_stat_total: "إجمالي الشركات",
-    admin_comp_stat_active: "نشط",
-    admin_comp_stat_inactive: "غير نشط",
-    admin_comp_stat_expiring: "ينتهي قريباً",
-    admin_comp_stat_within_7d: "خلال 7 أيام",
-    admin_comp_search: "ابحث باسم الشركة أو العميل...",
-    admin_comp_tab_all: "الكل",
-    admin_comp_tab_active: "نشط",
-    admin_comp_tab_inactive: "غير نشط",
-    admin_comp_tab_expiring: "ينتهي قريباً",
-    admin_comp_th_myid: "المُعرّف الخاص",
-    admin_comp_th_company: "الشركة",
-    admin_comp_th_company_name: "اسم الشركة",
-    admin_comp_th_client: "العميل",
-    admin_comp_th_status: "الحالة",
-    admin_comp_th_start_date: "تاريخ البدء",
-    admin_comp_th_end_date: "تاريخ الانتهاء",
-    admin_comp_th_channels: "القنوات",
-    admin_comp_th_quota: "الرموز",
-    admin_comp_th_autodelete: "الحذف التلقائي",
-    admin_comp_th_actions: "الإجراءات",
-    admin_comp_no_companies: "لا توجد شركات",
-    admin_comp_no_companies_desc: "حاول استخدام كلمات بحث مختلفة",
-    admin_comp_unlimited: "غير محدود",
     admin_companies_retention_menu: "Auto-Delete Policy",
     admin_companies_retention_dialog_title: "Auto-Delete Retention Policy",
     admin_companies_retention_dialog_desc: "Configure automatic chat log deletion for this company. Logs older than the chosen period are permanently deleted.",
@@ -402,6 +355,7 @@ const translations = {
     data_source_files_desc: "Upload PDF, Excel, CSV, or JSON documents for instant AI knowledge.",
     data_source_wordpress: "WordPress",
     data_source_wordpress_desc: "Connect via WordPress REST API to sync posts, pages, and products.",
+    btn_view_details: "View Details",
   },
   ar: {
     // ── Navigation ──────────────────────────────────────────────────────────
@@ -679,10 +633,10 @@ const translations = {
     data_source_files: "الملفات وقاعدة المعرفة",
     data_source_files_desc: "رفع مستندات PDF أو Excel أو CSV أو JSON لتغذية قاعدة بيانات البوت فوراً.",
     data_source_wordpress: "ووردبريس WordPress",
-    data_source_wordpress_desc: "الربط عبر واجهة ووردبريس البرمجية لمزامنة المقالات والصفحات والمنتجات.",
+    data_source_wordpress_desc: "اتصل عبر واجهة برمجة تطبيقات WordPress REST لمزامنة المقالات، الصفحات، والمنتجات.",
+    btn_view_details: "عرض التفاصيل",
   },
 } as const;
 
 export type TranslationKey = keyof typeof translations.en;
 export { translations };
-
