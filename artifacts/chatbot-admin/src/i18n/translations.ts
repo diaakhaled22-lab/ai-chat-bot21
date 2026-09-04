@@ -85,7 +85,14 @@ const translations = {
     btn_edit_prompts: "Edit System & Security Prompts",
     btn_sub_settings: "Subscription Settings",
     btn_reg_telegram: "Register Telegram Webhook",
+    btn_sub_settings: "إعدادات الاشتراك",
+    btn_reg_telegram: "تسجيل ويب هوك تليجرام",
     btn_delete_company: "Delete Company",
+    btn_view_details: "عرض التفاصيل",
+    btn_set_quota: "تعيين حصة الرموز",
+    btn_test_ai: "اختبار اتصال الذكاء الاصطناعي",
+    btn_edit_prompts: "تعديل توجيهات النظام والأمان",
+    btn_delete_company: "حذف الشركة",
     btn_save_password: "Save Password",
 
     // ── Client Settings Page ────────────────────────────────────────────────
@@ -259,16 +266,30 @@ const translations = {
 
 
     // Admin Dashboard
+    admin_dash_title: "نظرة عامة (الداشبورد)",
+    admin_dash_desc: "إحصائيات ومقاييس المنصة.",
+    admin_dash_stat_companies: "إجمالي الشركات",
+    admin_dash_stat_active: "الشركات النشطة",
     
     // Admin Clients
+    admin_clients_title: "العملاء",
+    admin_clients_desc: "إدارة حسابات العملاء وصلاحيات الدخول الخاصة بهم.",
     
     // Admin Chat Logs
+    admin_logs_title: "سجلات المحادثات",
+    admin_logs_desc: "عرض سجلات المحادثات لجميع الشركات.",
     
     // Admin Tickets
+    admin_tickets_title: "مشاكل العملاء (التذاكر)",
+    admin_tickets_desc: "مراقبة وإدارة التذاكر المحولة من الذكاء الاصطناعي.",
     
     // Admin Broadcast
+    admin_broadcast_title: "البث المباشر (Broadcast)",
+    admin_broadcast_desc: "إرسال رسائل جماعية للعملاء.",
     
     // Admin Security
+    admin_security_title: "إعدادات الأمان",
+    admin_security_desc: "إدارة أمان المنصة ومفاتيح API الخاصة بك.",
 
     // Admin Companies
     admin_companies_title: "Companies",
@@ -299,201 +320,32 @@ const translations = {
     admin_comp_unlimited: "Unlimited",
 
     // Admin Companies
-    admin_companies_retention_menu: "Auto-Delete Policy",
-    admin_companies_retention_dialog_title: "Auto-Delete Retention Policy",
-    admin_companies_retention_dialog_desc: "Configure automatic chat log deletion for this company. Logs older than the chosen period are permanently deleted.",
-    admin_companies_retention_days_label: "Retention Period (in Days)",
-    admin_companies_retention_days_placeholder: "e.g. 30",
-    admin_companies_retention_presets: "Quick Presets",
-    admin_companies_retention_global_hint: "Global system default:",
-    admin_companies_retention_reset: "Reset to Global System Default",
-    admin_companies_retention_custom: "days",
-    admin_companies_retention_badge_custom: "Auto-deletes after",
-    admin_companies_retention_badge_default: "System Default",
-    admin_companies_retention_saved: "Auto-delete policy updated successfully.",
-
-    // ── Client Support / Tickets Page ───────────────────────────────────────
-    support_title: "Support & Problem Reports",
-    support_desc: "Need help? Submit a ticket to the platform administrator.",
-    support_new_ticket: "New Problem Ticket",
-    support_ticket_title: "Problem Title",
-    support_ticket_title_placeholder: "Briefly describe the issue...",
-    support_ticket_desc: "Detailed Description",
-    support_ticket_desc_placeholder: "Provide steps to reproduce or more details...",
-    support_submit_ticket: "Submit Ticket",
-    support_no_tickets: "No tickets submitted yet.",
-    support_your_problem: "Your Problem Report",
-    support_ai_solution: "AI Generated Solution from Admin",
-    support_admin_pending: "Admin will review and respond shortly.",
-    support_resolved: "Resolved",
-    support_pending: "Pending",
-
-    // ── Client Usage & Tokens Page ──────────────────────────────────────────
-    usage_title: "Token Usage & Cost",
-    usage_desc: "Monitor your token consumption and estimated AI API usage costs.",
-    usage_stat_messages: "Total Messages",
-    usage_stat_input_tokens: "Input Tokens",
-    usage_stat_output_tokens: "Output Tokens",
-    usage_stat_cost: "Estimated Cost",
-    usage_period_today: "Today",
-    usage_period_week: "This Week",
-    usage_period_month: "This Month",
-    usage_period_last_month: "Last Month",
-    usage_period_all: "All Time",
-    usage_quota_title: "Monthly Token Quota",
-    usage_quota_used: "used this month",
-    usage_channel_breakdown: "Usage by Channel",
-    usage_tokens_chart: "Token Distribution",
-
-    // ── Get Data & Knowledge Sources ─────────────────────────────────────────
-    get_data_title: "Knowledge & Data Sources",
-    get_data_button: "Get Data",
-    get_data_desc: "Connect, upload, and sync external data sources to feed your AI chatbot.",
-    data_source_website: "Website URL",
-company_google_sheets_desc: "Connect a Google Sheet to record customer leads and conversation data automatically.",
-    company_gs_enable: "Enable Google Sheets Integration",
-    company_gs_link: "Google Spreadsheet Link",
-    company_gs_tab: "Sheet Tab Name (Optional)",
-    company_gs_json_key: "Service Account JSON Key",
-    company_website_sync: "Website Content Sync (Scraping)",
-    company_website_sync_desc: "Automatically scrape and sync information from your public website.",
-    company_website_url: "Website URL to scrape",
-    company_website_url_desc: "Enter your public website URL for the AI to crawl and learn from.",
-    company_website_autosync: "Auto-sync website content periodically",
-    company_website_autosync_desc: "Automatically re-crawl and refresh cached website knowledge daily.",
-
-    // ── Client WordPress Page ───────────────────────────────────────────────
-    wp_title: "WordPress Integration",
-    wp_desc: "Connect your WordPress site to automatically sync your posts, pages, and products into the AI knowledge base.",
-    wp_api_url: "WordPress REST API URL",
-    wp_api_url_placeholder: "https://example.com/wp-json/",
-    wp_username: "WordPress Username (Optional)",
-    wp_app_password: "Application Password (Optional)",
-    wp_app_password_desc: "Generated in WordPress Users > Profile > Application Passwords.",
-    wp_autosync: "Enable daily auto-sync",
-    wp_sync_stats: "Synced Content Summary",
-    wp_total_items: "Total items synced",
-    wp_last_synced: "Last synced",
-    wp_disconnect: "Remove WordPress Integration",
-
-    // ── Client Webhook History Page ─────────────────────────────────────────
-    webhook_title: "Webhook Integration",
-    webhook_desc: "Connect custom backends or bots directly to the AI Chat API endpoint.",
-    webhook_endpoint_label: "Public Webhook Endpoint",
-    webhook_phase1_title: "Phase 1: Fetch AI Context (Before Generating Reply)",
-    webhook_phase1_desc: "Send customerMessage only. The API returns the system prompt and conversation history without saving anything.",
-    webhook_phase2_title: "Phase 2: Save Complete Turn (After Generating Reply)",
-    webhook_phase2_desc: "Send customerMessage and botResponse together to log the conversation permanently.",
-
-    // ── Client Widget Preview Page ──────────────────────────────────────────
-    widget_preview_title: "Live Widget Preview",
-    widget_preview_desc: "Test your website chat widget in real-time before embedding it on your site.",
-    widget_preview_snippet_title: "Embed Code Snippet",
-    widget_preview_snippet_desc: "Paste this single script tag right before the closing </body> tag on your website:",
-    widget_preview_reset: "Reset conversation",
-    widget_preview_inactive: "Your company is currently inactive. Please contact support or your admin.",
-    widget_preview_no_ai: "AI is not configured yet. Please configure your AI key in Company Profile.",
-
-    // ── Client Universal AI Chat Page ───────────────────────────────────────
-    universal_chat_title: "AI Chat Sandbox",
-    universal_chat_desc: "Test and interact with multiple AI models in real-time.",
-    universal_chat_select_model: "Select Provider & Model",
-    universal_chat_placeholder: "Type a message to test the AI...",
-    universal_chat_clear: "Clear Chat History",
-    universal_chat_free_badge: "Free Tier",
-    universal_chat_paid_badge: "Standard",
-
-    // ── Client Chat Logs Page ───────────────────────────────────────────────
-    chat_logs_title: "Chat Logs",
-    chat_logs_desc: "View and filter all conversations handled by your AI chatbot across all channels.",
-    chat_logs_search: "Search messages or responses...",
-    chat_logs_filter_channel: "All Channels",
-    chat_logs_channel_all: "All Channels",
-    chat_logs_channel_website: "Website",
-    chat_logs_channel_telegram: "Telegram",
-    chat_logs_channel_whatsapp: "WhatsApp",
-    chat_logs_channel_messenger: "Messenger",
-    chat_logs_date_from: "From Date",
-    chat_logs_date_to: "To Date",
-    chat_logs_retention_title: "Data Retention Policy",
-    chat_logs_retention_desc: "Chat logs older than the selected retention period will be automatically deleted.",
-    chat_logs_retention_days: "days",
-    chat_logs_retention_admin_managed: "Configured by Administrator",
-    chat_logs_empty: "No chat logs found matching your filters.",
-    chat_logs_customer: "Customer",
-    chat_logs_bot: "AI Assistant",
-
-    // ── Admin Company Retention Policy ──────────────────────────────────────
-
-
-    // Admin Dashboard
-    admin_dash_title: "Dashboard Overview",
-    admin_dash_desc: "Platform statistics and metrics.",
-    admin_dash_stat_companies: "Total Companies",
-    admin_dash_stat_active: "Active Companies",
-    
-    // Admin Clients
-    admin_clients_title: "Clients",
-    admin_clients_desc: "Manage client accounts and their access to the portal.",
-    
-    // Admin Chat Logs
-    admin_logs_title: "Chat Logs",
-    admin_logs_desc: "View across all companies",
-    
-    // Admin Tickets
-    admin_tickets_title: "Customer Problems",
-    admin_tickets_desc: "Monitor and manage AI escalations from all channels.",
-    
-    // Admin Broadcast
-    admin_broadcast_title: "Broadcast",
-    admin_broadcast_desc: "Send bulk messages",
-    
-    // Admin Security
-    admin_security_title: "Security Settings",
-    admin_security_desc: "Manage platform security, API keys, and sensitive configuration.",
-
-
-    // Admin Dashboard
-    
-    // Admin Clients
-    
-    // Admin Chat Logs
-    
-    // Admin Tickets
-    
-    // Admin Broadcast
-    
-    // Admin Security
-
-    // Admin Companies
-    admin_companies_title: "Companies",
-    admin_companies_desc: "Monitor subscriptions, channels, and AI agent health across all client companies.",
-    admin_comp_stat_total: "Total Companies",
-    admin_comp_stat_active: "Active",
-    admin_comp_stat_inactive: "Inactive",
-    admin_comp_stat_expiring: "Expiring Soon",
-    admin_comp_stat_within_7d: "Within 7 days",
-    admin_comp_search: "Search by company or client name...",
-    admin_comp_tab_all: "All",
-    admin_comp_tab_active: "Active",
-    admin_comp_tab_inactive: "Inactive",
-    admin_comp_tab_expiring: "Expiring Soon",
-    admin_comp_th_myid: "MY ID",
-    admin_comp_th_company: "COMPANY",
-    admin_comp_th_company_name: "COMPANY NAME",
-    admin_comp_th_client: "CLIENT",
-    admin_comp_th_status: "STATUS",
-    admin_comp_th_start_date: "START DATE",
-    admin_comp_th_end_date: "END DATE",
-    admin_comp_th_channels: "CHANNELS",
-    admin_comp_th_quota: "QUOTA",
-    admin_comp_th_autodelete: "AUTO-DELETE",
-    admin_comp_th_actions: "ACTIONS",
-    admin_comp_no_companies: "No companies found",
-    admin_comp_no_companies_desc: "Try a different search term",
-    admin_comp_unlimited: "Unlimited",
-
-    // Admin Companies
+    admin_companies_title: "الشركات",
+    admin_companies_desc: "مراقبة الاشتراكات، وقنوات الاتصال، وحالة المساعد الذكي لجميع شركات العملاء.",
+    admin_comp_stat_total: "إجمالي الشركات",
+    admin_comp_stat_active: "نشط",
+    admin_comp_stat_inactive: "غير نشط",
+    admin_comp_stat_expiring: "ينتهي قريباً",
+    admin_comp_stat_within_7d: "خلال 7 أيام",
+    admin_comp_search: "ابحث باسم الشركة أو العميل...",
+    admin_comp_tab_all: "الكل",
+    admin_comp_tab_active: "نشط",
+    admin_comp_tab_inactive: "غير نشط",
+    admin_comp_tab_expiring: "ينتهي قريباً",
+    admin_comp_th_myid: "المُعرّف الخاص",
+    admin_comp_th_company: "الشركة",
+    admin_comp_th_company_name: "اسم الشركة",
+    admin_comp_th_client: "العميل",
+    admin_comp_th_status: "الحالة",
+    admin_comp_th_start_date: "تاريخ البدء",
+    admin_comp_th_end_date: "تاريخ الانتهاء",
+    admin_comp_th_channels: "القنوات",
+    admin_comp_th_quota: "الرموز",
+    admin_comp_th_autodelete: "الحذف التلقائي",
+    admin_comp_th_actions: "الإجراءات",
+    admin_comp_no_companies: "لا توجد شركات",
+    admin_comp_no_companies_desc: "حاول استخدام كلمات بحث مختلفة",
+    admin_comp_unlimited: "غير محدود",
     admin_companies_retention_menu: "Auto-Delete Policy",
     admin_companies_retention_dialog_title: "Auto-Delete Retention Policy",
     admin_companies_retention_dialog_desc: "Configure automatic chat log deletion for this company. Logs older than the chosen period are permanently deleted.",
@@ -552,52 +404,6 @@ company_google_sheets_desc: "Connect a Google Sheet to record customer leads and
     data_source_wordpress_desc: "Connect via WordPress REST API to sync posts, pages, and products.",
   },
   ar: {
-    btn_set_quota: "Missing Translation",
-    btn_test_ai: "Missing Translation",
-    btn_edit_prompts: "Missing Translation",
-    btn_sub_settings: "Missing Translation",
-    btn_reg_telegram: "Missing Translation",
-    btn_delete_company: "Missing Translation",
-    admin_dash_title: "Missing Translation",
-    admin_dash_desc: "Missing Translation",
-    admin_dash_stat_companies: "Missing Translation",
-    admin_dash_stat_active: "Missing Translation",
-    admin_clients_title: "Missing Translation",
-    admin_clients_desc: "Missing Translation",
-    admin_logs_title: "Missing Translation",
-    admin_logs_desc: "Missing Translation",
-    admin_tickets_title: "Missing Translation",
-    admin_tickets_desc: "Missing Translation",
-    admin_broadcast_title: "Missing Translation",
-    admin_broadcast_desc: "Missing Translation",
-    admin_security_title: "Missing Translation",
-    admin_security_desc: "Missing Translation",
-    admin_companies_title: "Missing Translation",
-    admin_companies_desc: "Missing Translation",
-    admin_comp_stat_total: "Missing Translation",
-    admin_comp_stat_active: "Missing Translation",
-    admin_comp_stat_inactive: "Missing Translation",
-    admin_comp_stat_expiring: "Missing Translation",
-    admin_comp_stat_within_7d: "Missing Translation",
-    admin_comp_search: "Missing Translation",
-    admin_comp_tab_all: "Missing Translation",
-    admin_comp_tab_active: "Missing Translation",
-    admin_comp_tab_inactive: "Missing Translation",
-    admin_comp_tab_expiring: "Missing Translation",
-    admin_comp_th_myid: "Missing Translation",
-    admin_comp_th_company: "Missing Translation",
-    admin_comp_th_company_name: "Missing Translation",
-    admin_comp_th_client: "Missing Translation",
-    admin_comp_th_status: "Missing Translation",
-    admin_comp_th_start_date: "Missing Translation",
-    admin_comp_th_end_date: "Missing Translation",
-    admin_comp_th_channels: "Missing Translation",
-    admin_comp_th_quota: "Missing Translation",
-    admin_comp_th_autodelete: "Missing Translation",
-    admin_comp_th_actions: "Missing Translation",
-    admin_comp_no_companies: "Missing Translation",
-    admin_comp_no_companies_desc: "Missing Translation",
-    admin_comp_unlimited: "Missing Translation",
     // ── Navigation ──────────────────────────────────────────────────────────
     nav_dashboard: "لوحة التحكم",
     nav_clients: "العملاء",
@@ -873,10 +679,10 @@ company_google_sheets_desc: "Connect a Google Sheet to record customer leads and
     data_source_files: "الملفات وقاعدة المعرفة",
     data_source_files_desc: "رفع مستندات PDF أو Excel أو CSV أو JSON لتغذية قاعدة بيانات البوت فوراً.",
     data_source_wordpress: "ووردبريس WordPress",
-    data_source_wordpress_desc: "اتصل عبر واجهة برمجة تطبيقات WordPress REST لمزامنة المقالات، الصفحات، والمنتجات.",
-    btn_view_details: "عرض التفاصيل",
+    data_source_wordpress_desc: "الربط عبر واجهة ووردبريس البرمجية لمزامنة المقالات والصفحات والمنتجات.",
   },
 } as const;
 
 export type TranslationKey = keyof typeof translations.en;
 export { translations };
+
