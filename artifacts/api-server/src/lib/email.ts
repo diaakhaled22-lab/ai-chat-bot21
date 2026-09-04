@@ -165,5 +165,13 @@ export async function sendClientNotification(clientEmail: string, title: string,
     </div>
   `;
 
-  await sendEmail(clientEmail, `[Notification] ${title}`, html);
+  const cfg = await getEmailConfig();
+  if (!isEmailConfigured(cfg)) return;
+  const transporter = buildTransporter(cfg);
+  await transporter.sendMail({
+    from: `"Mission Control" <${cfg.smtpUser}>`,
+    to: clientEmail,
+    subject: `[Notification] ${title}`,
+    html
+  });
 }

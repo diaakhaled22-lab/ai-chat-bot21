@@ -276,9 +276,7 @@ router.delete("/admin/clients/:id", async (req, res) => {
       return;
     }
     await db.delete(usersTable).where(and(eq(usersTable.id, params.data.id), eq(usersTable.role, "client")));
-    logAdminActivity(req.session.userId!, "update_client", `Updated client ID ${id}`, req.ip);
-      logAdminActivity(req.session.userId!, "update_support_settings", "Updated Support AI settings", req.ip);
-      res.json({ ok: true });
+    res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Delete client error");
     res.status(500).json({ error: "Internal server error" });
@@ -1267,8 +1265,7 @@ router.post("/admin/broadcast", async (req, res) => {
       }
     }
 
-    logAdminActivity(req.session.userId!, "send_broadcast", `Sent broadcast to ${validTarget} (${companies.length} companies)`, req.ip);
-      logger.info({ count: companies.length, target: validTarget }, "Broadcast sent");
+    logger.info({ count: companies.length, target: validTarget }, "Broadcast sent");
     res.json({ sent: companies.length });
   } catch (err) {
     logger.error({ err }, "Admin broadcast error");
