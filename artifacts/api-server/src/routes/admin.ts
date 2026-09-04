@@ -20,6 +20,7 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
+import { sendClientNotification } from "../lib/email";
 
 const router = Router();
 // Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
@@ -1206,10 +1207,11 @@ router.put("/admin/settings", async (req, res) => {
 // POST /admin/broadcast
 router.post("/admin/broadcast", async (req, res) => {
   try {
-    const { title, message, target } = req.body as {
+    const { title, message, target, companyId } = req.body as {
       title?: string;
       message?: string;
-      target?: "all" | "active" | "inactive";
+      target?: "all" | "active" | "inactive" | "specific";
+      companyId?: number;
     };
 
     if (!title?.trim() || !message?.trim()) {
@@ -1217,7 +1219,12 @@ router.post("/admin/broadcast", async (req, res) => {
       return;
     }
 
-    const validTarget = ["all", "active", "inactive"].includes(target ?? "") ? target! : "all";
+    const validTarget = ["all", "active", "inactive", "specific"].includes(target ?? "") ? target! : "all";
+
+    if (validTarget === "specific" && !companyId) {
+      res.status(400).json({ error: "Company ID is required for specific target" });
+      return;
+    }
 
     // Get companies matching the target
     let companies = await db.select({
@@ -1231,6 +1238,7 @@ router.post("/admin/broadcast", async (req, res) => {
 
     if (validTarget === "active") companies = companies.filter((c) => c.isActive);
     else if (validTarget === "inactive") companies = companies.filter((c) => !c.isActive);
+    else if (validTarget === "specific") companies = companies.filter((c) => c.id === companyId);
 
     if (companies.length === 0) {
       res.json({ sent: 0, message: "No matching companies found." });
@@ -1272,6 +1280,8 @@ router.post("/admin/broadcast", async (req, res) => {
 router.get("/admin/broadcast/preview", async (req, res) => {
   try {
     const target = (req.query.target as string) ?? "all";
+    const companyId = req.query.companyId ? parseInt(req.query.companyId as string, 10) : undefined;
+
     let companies = await db.select({
       id: companiesTable.id,
       name: companiesTable.name,
@@ -1280,6 +1290,7 @@ router.get("/admin/broadcast/preview", async (req, res) => {
 
     if (target === "active") companies = companies.filter((c) => c.isActive);
     else if (target === "inactive") companies = companies.filter((c) => !c.isActive);
+    else if (target === "specific" && companyId) companies = companies.filter((c) => c.id === companyId);
 
     res.json({ count: companies.length, companies: companies.slice(0, 10) });
   } catch (err) {

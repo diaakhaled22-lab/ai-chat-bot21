@@ -878,7 +878,7 @@ router.put("/client/settings", async (req, res) => {
       res.status(400).json({ error: "Invalid input" });
       return;
     }
-    const { currentPassword, newPassword, newUsername } = parsed.data;
+    const { currentPassword, newPassword, newUsername, notificationEmail } = parsed.data as any;
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!));
     if (!user) {
@@ -912,6 +912,14 @@ router.put("/client/settings", async (req, res) => {
       changes.push("password changed");
     }
 
+    // ✅ Save notification email if provided
+    if (notificationEmail !== undefined) {
+      updates.notificationEmail = notificationEmail === "" ? null : notificationEmail;
+      if (notificationEmail && notificationEmail !== user.notificationEmail) {
+        changes.push(`notification email set to "${notificationEmail}"`);
+      }
+    }
+
     if (Object.keys(updates).length > 0) {
       await db.update(usersTable).set(updates).where(eq(usersTable.id, req.session.userId!));
 
@@ -924,7 +932,7 @@ router.put("/client/settings", async (req, res) => {
             db.insert(notificationsTable).values({
               userId: admin.id,
               type: "client_credentials_changed",
-              title: "Client Credentials Updated",
+              title: "Client Settings Updated",
               message: `Client "${user.name}" (${user.username}) has ${changesSummary}.`,
               isRead: false,
             })

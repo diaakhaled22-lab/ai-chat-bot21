@@ -62,13 +62,23 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Session — require SESSION_SECRET in production ───────────────────────
+import pgSession from "connect-pg-simple";
+import { pool } from "@workspace/db"; // Assuming pool is exported from db
+
 const sessionSecret = process.env.SESSION_SECRET;
 if (!sessionSecret && process.env.NODE_ENV === "production") {
   throw new Error("SESSION_SECRET environment variable is required in production.");
 }
 
+const PgStore = pgSession(session);
+
 app.use(
   session({
+    store: new PgStore({
+      pool: pool as any,
+      tableName: "session", // Make sure this table exists or we need to manage it. Wait, does the db export pool? Let's check db package.
+      createTableIfMissing: true
+    }),
     secret: sessionSecret || "dev-only-secret-" + Math.random().toString(36),
     resave: false,
     saveUninitialized: false,

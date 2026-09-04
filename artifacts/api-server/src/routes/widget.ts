@@ -138,7 +138,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
           { role: "user" as const, content: message.trim() },
         ],
       });
-      aiReply = (response.content[0] as { type: string; text: string })?.text ?? "";
+      aiReply = (response.content?.[0] as { type: string; text: string })?.text ?? "";
 
     } else if (provider === "google") {
       const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
@@ -163,7 +163,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       }
       msgs.push({ role: "user", content: message.trim() });
       const completion = await openrouter.chat.completions.create({ model, messages: msgs });
-      aiReply = completion.choices[0]?.message?.content ?? "";
+      aiReply = completion.choices?.[0]?.message?.content ?? "";
 
     } else {
       const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
@@ -174,7 +174,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       }
       msgs.push({ role: "user", content: message.trim() });
       const completion = await openai.chat.completions.create({ model, messages: msgs });
-      aiReply = completion.choices[0]?.message?.content ?? "";
+      aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
 
     aiReply = enforceResponseLanguage(aiReply, message.trim());

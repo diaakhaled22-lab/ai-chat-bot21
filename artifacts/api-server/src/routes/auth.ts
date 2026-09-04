@@ -223,16 +223,40 @@ router.post("/auth/logout", (req, res) => {
   });
 });
 
-router.get("/auth/me", (req, res) => {
+router.get("/auth/me", async (req, res) => {
   if (!req.session.userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
-  res.json({
-    role: req.session.role,
-    name: req.session.name,
-    id: req.session.userId,
-  });
+  try {
+    const [user] = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        username: usersTable.username,
+        role: usersTable.role,
+        notificationEmail: usersTable.notificationEmail,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    res.json({
+      role: user.role,
+      name: user.name,
+      username: user.username,
+      id: user.id,
+      notificationEmail: user.notificationEmail ?? "",
+    });
+  } catch (err) {
+    logger.error({ err }, "Get me error");
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;

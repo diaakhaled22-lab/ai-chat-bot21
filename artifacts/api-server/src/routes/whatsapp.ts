@@ -46,7 +46,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
         { role: "user" as const, content: userMessage },
       ],
     });
-    return (resp.content[0] as { type: string; text: string })?.text ?? "";
+    return (resp.content?.[0] as { type: string; text: string })?.text ?? "";
 
   } else if (provider === "google") {
     const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
@@ -67,7 +67,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     const completion = await openrouter.chat.completions.create({ model, messages: msgs });
-    return completion.choices[0]?.message?.content ?? "";
+    return completion.choices?.[0]?.message?.content ?? "";
 
   } else {
     const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
@@ -76,7 +76,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     const completion = await openai.chat.completions.create({ model, messages: msgs });
-    return completion.choices[0]?.message?.content ?? "";
+    return completion.choices?.[0]?.message?.content ?? "";
   }
 }
 
