@@ -791,14 +791,14 @@ export default function ClientChannels() {
                 connected
                   ? `border-${color}-500/40 bg-${color}-500/5`
                   : notConnected
-                    ? "border-amber-500/30 bg-transparent"
+                    ? "border-border/40 bg-transparent"
                     : "border-border/40 bg-background"
               }`}
             >
               <div className="flex justify-center"><ChannelIcon channel={channel} size={20} /></div>
               <div className="font-medium">{label}</div>
               <div className={`text-[10px] ${
-                connected ? `text-${color}-500` : notConnected ? "text-amber-600" : "text-muted-foreground"
+                connected ? `text-${color}-500` : "text-muted-foreground"
               }`}>
                 {connected
                   ? (lang === "ar" ? "متصل" : "Connected")
