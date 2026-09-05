@@ -352,6 +352,55 @@ router.get("/admin/companies", async (req, res) => {
   }
 });
 
+// GET /admin/companies/:id/data-sources
+router.get("/admin/companies/:id/data-sources", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+
+    // Knowledge files stats
+    const { companyKnowledgeFilesTable, companyWordPressIntegrationsTable } = await import("@workspace/db");
+    
+    const [fileStats] = await db
+      .select({
+        count: count(),
+        totalSize: sql<number>`COALESCE(SUM(${companyKnowledgeFilesTable.fileSize}), 0)`,
+      })
+      .from(companyKnowledgeFilesTable)
+      .where(eq(companyKnowledgeFilesTable.companyId, id));
+
+    const [wordpress] = await db
+      .select({
+        apiUrl: companyWordPressIntegrationsTable.apiUrl,
+        status: companyWordPressIntegrationsTable.status,
+        lastSynced: companyWordPressIntegrationsTable.lastSynced,
+        totalItems: companyWordPressIntegrationsTable.totalItems,
+      })
+      .from(companyWordPressIntegrationsTable)
+      .where(eq(companyWordPressIntegrationsTable.companyId, id))
+      .limit(1);
+
+    res.json({
+      knowledgeFiles: {
+        count: Number(fileStats?.count ?? 0),
+        totalSize: Number(fileStats?.totalSize ?? 0),
+      },
+      wordpress: wordpress ? {
+        apiUrl: wordpress.apiUrl,
+        status: wordpress.status,
+        lastSynced: wordpress.lastSynced?.toISOString() ?? null,
+        totalItems: wordpress.totalItems,
+      } : null,
+    });
+  } catch (err) {
+    logger.error({ err }, "Get company data sources error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /admin/companies/:id
 router.get("/admin/companies/:id", async (req, res) => {
   try {

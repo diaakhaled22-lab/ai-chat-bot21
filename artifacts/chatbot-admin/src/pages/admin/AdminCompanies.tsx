@@ -7,7 +7,7 @@ import {
   getListCompaniesQueryKey,
   customFetch,
 } from "@workspace/api-client-react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import {
   Search, MoreVertical, Trash2, Eye, Building2,
   CalendarClock, CheckCircle2, XCircle, Clock, Settings2,
@@ -49,10 +49,14 @@ type Company = {
   systemPrompt?: string | null;
   securityPrompt?: string | null;
   googleSheetsEnabled?: boolean;
+  googleSheetsLink?: string | null;
   aiAgentApiKey?: string | null;
   telegramBotApiKey?: string | null;
   whatsappApiKey?: string | null;
   websiteChatbotKey?: string | null;
+  websiteDataUrl?: string | null;
+  websiteAutoSync?: boolean;
+  websiteLastSynced?: string | null;
   monthlyTokenQuota?: number | null;
   chatLogRetentionDays?: number | null;
   createdAt: string;
@@ -141,6 +145,118 @@ const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color:
   dates_set:            { label: "Window updated",        icon: <CalendarClock className="w-3.5 h-3.5" />, color: "text-blue-500"   },
   retention_policy_set: { label: "Auto-Delete Policy",    icon: <Clock className="w-3.5 h-3.5" />,         color: "text-amber-500"  },
 };
+
+// ── Knowledge Data Sources ──────────────────────────────────────────────────
+function KnowledgeDataSources({ company }: { company: Company }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["company-data-sources", company.id],
+    queryFn: async () => {
+      const res = await customFetch(`/api/admin/companies/${company.id}/data-sources`);
+      return res as {
+        knowledgeFiles: { count: number; totalSize: number };
+        wordpress: { apiUrl: string; status: string; lastSynced: string | null; totalItems: number } | null;
+      };
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Uploaded Files */}
+      <div className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+            <Sheet className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Uploaded Files</p>
+            <p className="text-xs text-muted-foreground">PDFs, CSVs, and Excel sheets</p>
+          </div>
+        </div>
+        <div className="text-right">
+          {isLoading ? (
+            <Skeleton className="w-16 h-5" />
+          ) : (
+            <p className="text-sm font-medium">{data?.knowledgeFiles.count ?? 0} files</p>
+          )}
+        </div>
+      </div>
+
+      {/* Website Sync */}
+      <div className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+            <Globe className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Website Sync</p>
+            <p className="text-xs text-muted-foreground">
+              {company.websiteDataUrl ? company.websiteDataUrl : "Not configured"}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          {company.websiteDataUrl ? (
+            company.websiteAutoSync ? (
+              <Badge variant="outline" className="text-emerald-500 bg-emerald-500/10 border-emerald-500/20">Auto-sync ON</Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">Manual</Badge>
+            )
+          ) : (
+            <Badge variant="outline" className="text-muted-foreground">Disabled</Badge>
+          )}
+        </div>
+      </div>
+
+      {/* WordPress */}
+      <div className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+            <Globe className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">WordPress Integration</p>
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? "Loading..." : data?.wordpress?.apiUrl ?? "Not configured"}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          {isLoading ? (
+            <Skeleton className="w-16 h-5" />
+          ) : data?.wordpress ? (
+            <Badge variant="outline" className="text-indigo-500 bg-indigo-500/10 border-indigo-500/20">
+              {data.wordpress.totalItems} items
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-muted-foreground">Disabled</Badge>
+          )}
+        </div>
+      </div>
+      
+      {/* Google Sheets */}
+      <div className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
+            <Sheet className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Google Sheets</p>
+            <p className="text-xs text-muted-foreground">
+              {company.googleSheetsEnabled ? "Enabled" : "Not configured"}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          {company.googleSheetsEnabled ? (
+            <Badge variant="outline" className="text-green-500 bg-green-500/10 border-green-500/20">Active</Badge>
+          ) : (
+            <Badge variant="outline" className="text-muted-foreground">Disabled</Badge>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── ActivityLog ────────────────────────────────────────────────────────────────
 function ActivityLog({ companyId }: { companyId: number }) {
@@ -1380,6 +1496,12 @@ export default function AdminCompanies() {
                   )}
                 </div>
               )}
+
+              {/* Knowledge & Data Sources */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Knowledge & Data Sources</p>
+                <KnowledgeDataSources company={viewCompany} />
+              </div>
 
               {/* Activity log */}
               <div>
