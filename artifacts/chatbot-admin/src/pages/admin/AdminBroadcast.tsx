@@ -9,22 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-type Target = "all" | "active" | "inactive";
+type Target = "all" | "active" | "inactive" | "specific";
 
 type PreviewCompany = { id: number; name: string; isActive: boolean };
 type PreviewData = { count: number; companies: PreviewCompany[] };
 type SendResult = { sent: number; message?: string };
+type AdminCompany = { id: number; name: string; isActive: boolean };
 
 const TARGET_LABELS: Record<Target, string> = {
   all: "All clients",
   active: "Active clients only",
   inactive: "Inactive clients only",
+  specific: "One specific company",
 };
 
 const TARGET_DESCRIPTIONS: Record<Target, string> = {
   all: "Every registered client will receive this message regardless of subscription status.",
   active: "Only clients with an active subscription will receive this message.",
   inactive: "Only clients whose subscriptions are inactive or expired will receive this message.",
+  specific: "Send this message to the client connected to one selected company.",
 };
 
 export default function AdminBroadcast() {
@@ -33,6 +36,9 @@ export default function AdminBroadcast() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [target, setTarget] = useState<Target>("all");
+  const [companyId, setCompanyId] = useState<number | undefined>();
+  const [companies, setCompanies] = useState<AdminCompany[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
 
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -40,13 +46,44 @@ export default function AdminBroadcast() {
   const [result, setResult] = useState<SendResult | null>(null);
 
   useEffect(() => {
-    fetchPreview(target);
-  }, [target]);
+    let cancelled = false;
+    fetch("/api/admin/companies")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to load companies");
+        return (await res.json()) as AdminCompany[];
+      })
+      .then((data) => {
+        if (!cancelled) setCompanies(data);
+      })
+      .catch(() => {
+        if (!cancelled) setCompanies([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCompaniesLoading(false);
+      });
 
-  const fetchPreview = async (t: Target) => {
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    fetchPreview(target, companyId);
+  }, [target, companyId]);
+
+  const fetchPreview = async (t: Target, selectedCompanyId?: number) => {
+    if (t === "specific" && !selectedCompanyId) {
+      setPreview(null);
+      setPreviewLoading(false);
+      return;
+    }
+
     setPreviewLoading(true);
     try {
-      const res = await fetch(`/api/admin/broadcast/preview?target=${t}`);
+      const companyQuery = t === "specific" && selectedCompanyId
+        ? `&companyId=${selectedCompanyId}`
+        : "";
+      const res = await fetch(`/api/admin/broadcast/preview?target=${t}${companyQuery}`);
       const data: PreviewData = await res.json();
       setPreview(data);
     } catch {
@@ -61,6 +98,10 @@ export default function AdminBroadcast() {
       toast({ title: "Title and message are required", variant: "destructive" });
       return;
     }
+    if (target === "specific" && !companyId) {
+      toast({ title: "Please select a company", variant: "destructive" });
+      return;
+    }
     if (!preview || preview.count === 0) {
       toast({ title: "No recipients match the selected target", variant: "destructive" });
       return;
@@ -72,7 +113,12 @@ export default function AdminBroadcast() {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), message: message.trim(), target }),
+        body: JSON.stringify({
+          title: title.trim(),
+          message: message.trim(),
+          target,
+          ...(target === "specific" ? { companyId } : {}),
+        }),
       });
       const data: SendResult = await res.json();
       if (res.ok) {
@@ -97,6 +143,7 @@ export default function AdminBroadcast() {
     setTitle("");
     setMessage("");
     setTarget("all");
+    setCompanyId(undefined);
     setResult(null);
   };
 
@@ -189,6 +236,31 @@ export default function AdminBroadcast() {
               </Select>
               <p className="text-xs text-muted-foreground">{TARGET_DESCRIPTIONS[target]}</p>
             </div>
+
+            {target === "specific" && (
+              <div className="space-y-1.5">
+                <Label>Company</Label>
+                <Select
+                  value={companyId ? String(companyId) : undefined}
+                  onValueChange={(value) => setCompanyId(Number(value))}
+                  disabled={companiesLoading}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder={companiesLoading ? "Loading companies…" : "Select a company"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={String(company.id)}>
+                        {company.name}{company.isActive ? " (Active)" : " (Inactive)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!companiesLoading && companies.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No companies are available to receive this message.</p>
+                )}
+              </div>
+            )}
 
             {/* Live preview */}
             <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
