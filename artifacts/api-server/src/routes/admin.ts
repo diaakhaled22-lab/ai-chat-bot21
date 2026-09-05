@@ -1302,10 +1302,7 @@ router.get("/admin/broadcast/preview", async (req, res) => {
 
     if (target === "active") companies = companies.filter((c) => c.isActive);
     else if (target === "inactive") companies = companies.filter((c) => !c.isActive);
-    else if (target === "specific") {
-      if (companyId) companies = companies.filter((c) => c.id === companyId);
-      else companies = [];
-    }
+    else if (target === "specific" && companyId) companies = companies.filter((c) => c.id === companyId);
 
     res.json({ count: companies.length, companies: companies.slice(0, 10) });
   } catch (err) {
@@ -1681,22 +1678,6 @@ router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
     res.json(logs);
   } catch (err) {
     logger.error({ err }, "Get audit logs error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// DELETE /admin/audit-logs/:id
-router.delete("/admin/audit-logs/:id", requireAdmin, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid ID" });
-      return;
-    }
-    await db.delete(adminActivityLogsTable).where(eq(adminActivityLogsTable.id, id));
-    res.json({ ok: true });
-  } catch (err) {
-    logger.error({ err }, "Delete audit log error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

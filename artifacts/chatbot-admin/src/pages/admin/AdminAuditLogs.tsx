@@ -1,40 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2, ShieldAlert, Trash2 } from "lucide-react";
+import { Loader2, ShieldAlert } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 
 export default function AdminAuditLogs() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   const { data: logs, isLoading, error } = useQuery({
     queryKey: ["admin-audit-logs"],
     queryFn: async () => {
       const data = (await customFetch("/api/admin/audit-logs")) as any[];
       return data;
     },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admin/audit-logs/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Error ${res.status}: ${text}`);
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-audit-logs"] });
-      toast({ title: "Audit log deleted successfully" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Failed to delete audit log", description: error.message, variant: "destructive" });
-    }
   });
 
   return (
@@ -75,7 +52,6 @@ export default function AdminAuditLogs() {
                     <TableHead>Action</TableHead>
                     <TableHead>Details</TableHead>
                     <TableHead>IP Address</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -95,17 +71,6 @@ export default function AdminAuditLogs() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs font-mono">
                         {log.ipAddress || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => deleteMutation.mutate(log.id)}
-                          disabled={deleteMutation.isPending}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

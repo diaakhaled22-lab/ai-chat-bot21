@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-type Target = "all" | "active" | "inactive" | "specific";
+type Target = "all" | "active" | "inactive";
 
 type PreviewCompany = { id: number; name: string; isActive: boolean };
 type PreviewData = { count: number; companies: PreviewCompany[] };
@@ -19,14 +19,12 @@ const TARGET_LABELS: Record<Target, string> = {
   all: "All clients",
   active: "Active clients only",
   inactive: "Inactive clients only",
-  specific: "Specific company",
 };
 
 const TARGET_DESCRIPTIONS: Record<Target, string> = {
   all: "Every registered client will receive this message regardless of subscription status.",
   active: "Only clients with an active subscription will receive this message.",
   inactive: "Only clients whose subscriptions are inactive or expired will receive this message.",
-  specific: "Send this message to a single specific company.",
 };
 
 export default function AdminBroadcast() {
@@ -35,38 +33,20 @@ export default function AdminBroadcast() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [target, setTarget] = useState<Target>("all");
-  const [companyId, setCompanyId] = useState<string>("");
 
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
-  
-  const [allCompanies, setAllCompanies] = useState<{id: number, name: string}[]>([]);
 
   useEffect(() => {
-    fetch("/api/admin/companies")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setAllCompanies(data.map(c => ({ id: c.id, name: c.name })));
-        }
-      })
-      .catch(() => {});
-  }, []);
+    fetchPreview(target);
+  }, [target]);
 
-  useEffect(() => {
-    fetchPreview(target, companyId);
-  }, [target, companyId]);
-
-  const fetchPreview = async (t: Target, cId: string) => {
+  const fetchPreview = async (t: Target) => {
     setPreviewLoading(true);
     try {
-      let url = `/api/admin/broadcast/preview?target=${t}`;
-      if (t === "specific" && cId) {
-        url += `&companyId=${cId}`;
-      }
-      const res = await fetch(url);
+      const res = await fetch(`/api/admin/broadcast/preview?target=${t}`);
       const data: PreviewData = await res.json();
       setPreview(data);
     } catch {
@@ -92,12 +72,7 @@ export default function AdminBroadcast() {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          title: title.trim(), 
-          message: message.trim(), 
-          target,
-          ...(target === "specific" && companyId ? { companyId: parseInt(companyId, 10) } : {})
-        }),
+        body: JSON.stringify({ title: title.trim(), message: message.trim(), target }),
       });
       const data: SendResult = await res.json();
       if (res.ok) {
@@ -122,7 +97,6 @@ export default function AdminBroadcast() {
     setTitle("");
     setMessage("");
     setTarget("all");
-    setCompanyId("");
     setResult(null);
   };
 
@@ -203,10 +177,7 @@ export default function AdminBroadcast() {
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label>Target audience</Label>
-              <Select value={target} onValueChange={(v) => {
-                setTarget(v as Target);
-                if (v !== "specific") setCompanyId("");
-              }}>
+              <Select value={target} onValueChange={(v) => setTarget(v as Target)}>
                 <SelectTrigger className="bg-background">
                   <SelectValue />
                 </SelectTrigger>
@@ -218,22 +189,6 @@ export default function AdminBroadcast() {
               </Select>
               <p className="text-xs text-muted-foreground">{TARGET_DESCRIPTIONS[target]}</p>
             </div>
-
-            {target === "specific" && (
-              <div className="space-y-1.5 mt-4">
-                <Label>Select Company</Label>
-                <Select value={companyId} onValueChange={setCompanyId}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Select a company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allCompanies.map((c) => (
-                      <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             {/* Live preview */}
             <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
