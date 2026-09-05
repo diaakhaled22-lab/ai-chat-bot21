@@ -1287,7 +1287,10 @@ router.get("/admin/broadcast/preview", async (req, res) => {
 
     if (target === "active") companies = companies.filter((c) => c.isActive);
     else if (target === "inactive") companies = companies.filter((c) => !c.isActive);
-    else if (target === "specific" && companyId) companies = companies.filter((c) => c.id === companyId);
+    else if (target === "specific") {
+      if (companyId) companies = companies.filter((c) => c.id === companyId);
+      else companies = [];
+    }
 
     res.json({ count: companies.length, companies: companies.slice(0, 10) });
   } catch (err) {
