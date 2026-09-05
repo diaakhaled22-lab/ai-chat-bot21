@@ -21,6 +21,7 @@ import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
+import { logAdminActivity } from "../lib/audit";
 
 const router = Router();
 // Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
@@ -211,11 +212,25 @@ router.post("/admin/clients", async (req, res) => {
       return;
     }
 
+    const adminId = req.session.userId;
+    if (!adminId) {
+      res.status(401).json({ error: "Admin access required" });
+      return;
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const [user] = await db
       .insert(usersTable)
       .values({ name, username, passwordHash, role: "client" })
       .returning();
+
+    await logAdminActivity(
+      adminId,
+      "Client Created",
+      `Created client "${user.name}" (${user.username})`,
+      req.ip || null,
+    );
+
     res.status(201).json({
       id: user.id,
       name: user.name,
