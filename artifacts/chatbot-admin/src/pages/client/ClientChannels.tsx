@@ -45,14 +45,37 @@ const FAB_POSITION_LIMITS = { minX: 4, maxX: 96, minY: 6, maxY: 94 };
 const FAB_PREVIEW_EDGE_PX = 25;
 const FAB_PREVIEW_BUTTON_SIZE_PX = 56;
 
+type ChannelStatus = "connected" | "not-configured" | "not-connected";
+
+function getChannelStatus(enabled: boolean, configured: boolean): ChannelStatus {
+  if (enabled && configured) return "connected";
+  if (enabled && !configured) return "not-configured";
+  if (!enabled && configured) return "not-connected";
+  return "not-configured";
+}
+
 /* ── small status badge ─────────────────────────────────────── */
-function ChannelBadge({ active }: { active: boolean }) {
+function ChannelBadge({ enabled, configured }: { enabled: boolean; configured: boolean }) {
   const { lang } = useLanguage();
-  return active ? (
+  const status = getChannelStatus(enabled, configured);
+
+  if (status === "connected") {
+    return (
     <Badge className="ml-auto mr-2 gap-1 bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20 text-[10px] py-0.5">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> {lang === "ar" ? "متصل" : "Connected"}
     </Badge>
-  ) : (
+    );
+  }
+
+  if (status === "not-connected") {
+    return (
+      <Badge variant="outline" className="ml-auto mr-2 gap-1 text-amber-600 border-amber-500/30 text-[10px] py-0.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> {lang === "ar" ? "غير متصل" : "Not connected"}
+      </Badge>
+    );
+  }
+
+  return (
     <Badge variant="outline" className="ml-auto mr-2 text-[10px] py-0.5 text-muted-foreground">
       {lang === "ar" ? "غير مُهيأ" : "Not configured"}
     </Badge>
@@ -152,6 +175,10 @@ export default function ClientChannels() {
   const fabEnabled = form.watch("fabEnabled");
   const fabPositionX = form.watch("fabPositionX") ?? DEFAULT_FAB_POSITION.x;
   const fabPositionY = form.watch("fabPositionY") ?? DEFAULT_FAB_POSITION.y;
+  const telegramConfigured = !!form.watch("telegramBotApiKey");
+  const whatsappConfigured = !!form.watch("whatsappApiToken");
+  const messengerConfigured = !!form.watch("messengerApiKey");
+  const widgetConfigured = !!form.watch("websiteChatbotKey");
 
   useEffect(() => {
     if (!fabEnabled) return;
@@ -274,7 +301,7 @@ export default function ClientChannels() {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <ChannelIcon channel="telegram" size={22} />
                   <span className="font-semibold">{lang === "ar" ? "بوت تليجرام" : "Telegram"}</span>
-                  <ChannelBadge active={!!company?.telegramBotApiKey} />
+                  <ChannelBadge enabled={telegramOn} configured={telegramConfigured} />
                   {/* master switch — stopPropagation so accordion doesn't toggle */}
                   <div
                     className="shrink-0"
@@ -381,7 +408,7 @@ export default function ClientChannels() {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <ChannelIcon channel="whatsapp" size={22} />
                   <span className="font-semibold">{lang === "ar" ? "واتساب للأعمال" : "WhatsApp"}</span>
-                  <ChannelBadge active={!!company?.whatsappApiToken} />
+                  <ChannelBadge enabled={whatsappOn} configured={whatsappConfigured} />
                   <div
                     className="shrink-0"
                     onClick={(e) => e.stopPropagation()}
@@ -474,7 +501,7 @@ export default function ClientChannels() {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <ChannelIcon channel="messenger" size={22} />
                   <span className="font-semibold">{lang === "ar" ? "فيسبوك ماسنجر" : "Messenger"}</span>
-                  <ChannelBadge active={!!company?.messengerApiKey} />
+                  <ChannelBadge enabled={messengerOn} configured={messengerConfigured} />
                   <div
                     className="shrink-0"
                     onClick={(e) => e.stopPropagation()}
@@ -543,7 +570,7 @@ export default function ClientChannels() {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <ChannelIcon channel="widget" size={22} />
                   <span className="font-semibold">{t("channels_website_title")}</span>
-                  <ChannelBadge active={!!company?.websiteChatbotKey} />
+                  <ChannelBadge enabled={widgetOn} configured={widgetConfigured} />
                   <div
                     className="shrink-0"
                     onClick={(e) => e.stopPropagation()}
@@ -739,26 +766,40 @@ export default function ClientChannels() {
         </p>
         <div className="grid grid-cols-4 gap-3 text-center text-xs">
           {[
-            { channel: "telegram" as const, label: lang === "ar" ? "تليجرام" : "Telegram",  active: !!company?.telegramBotApiKey,  color: "sky" },
-            { channel: "whatsapp" as const, label: lang === "ar" ? "واتساب" : "WhatsApp",  active: !!company?.whatsappApiToken,   color: "green" },
-            { channel: "messenger" as const, label: lang === "ar" ? "ماسنجر" : "Messenger", active: !!company?.messengerApiKey,    color: "blue" },
-            { channel: "widget" as const,    label: lang === "ar" ? "الويدجت" : "Widget",    active: !!company?.websiteChatbotKey,  color: "violet" },
-          ].map(({ channel, label, active, color }) => (
+            { channel: "telegram" as const, label: lang === "ar" ? "تليجرام" : "Telegram",  enabled: telegramOn,  configured: telegramConfigured,  color: "sky" },
+            { channel: "whatsapp" as const, label: lang === "ar" ? "واتساب" : "WhatsApp",  enabled: whatsappOn,   configured: whatsappConfigured,   color: "green" },
+            { channel: "messenger" as const, label: lang === "ar" ? "ماسنجر" : "Messenger", enabled: messengerOn,  configured: messengerConfigured,  color: "blue" },
+            { channel: "widget" as const,    label: lang === "ar" ? "الويدجت" : "Widget",    enabled: widgetOn,    configured: widgetConfigured,    color: "violet" },
+          ].map(({ channel, label, enabled, configured, color }) => {
+            const status = getChannelStatus(enabled, configured);
+            const connected = status === "connected";
+            const notConnected = status === "not-connected";
+
+            return (
             <div
               key={label}
               className={`rounded-lg border p-2.5 space-y-1 transition-colors ${
-                active
+                connected
                   ? `border-${color}-500/40 bg-${color}-500/5`
-                  : "border-border/40 bg-background"
+                  : notConnected
+                    ? "border-amber-500/30 bg-amber-500/5"
+                    : "border-border/40 bg-background"
               }`}
             >
               <div className="flex justify-center"><ChannelIcon channel={channel} size={20} /></div>
               <div className="font-medium">{label}</div>
-              <div className={`text-[10px] ${active ? `text-${color}-500` : "text-muted-foreground"}`}>
-                {active ? (lang === "ar" ? "✓ نشط" : "✓ Active") : (lang === "ar" ? "غير محدد" : "Not set")}
+              <div className={`text-[10px] ${
+                connected ? `text-${color}-500` : notConnected ? "text-amber-600" : "text-muted-foreground"
+              }`}>
+                {connected
+                  ? (lang === "ar" ? "متصل" : "Connected")
+                  : notConnected
+                    ? (lang === "ar" ? "غير متصل" : "Not connected")
+                    : (lang === "ar" ? "غير مُهيأ" : "Not configured")}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
