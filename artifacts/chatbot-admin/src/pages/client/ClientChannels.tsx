@@ -791,7 +791,7 @@ export default function ClientChannels() {
                 connected
                   ? `border-${color}-500/40 bg-${color}-500/5`
                   : notConnected
-                    ? "border-amber-500/30 bg-amber-500/5"
+                    ? "border-amber-500/30 bg-transparent"
                     : "border-border/40 bg-background"
               }`}
             >
