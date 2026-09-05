@@ -562,6 +562,24 @@ export default function ClientCompany() {
 
   const isSaving = createCompany.isPending || updateCompany.isPending;
 
+  const telegramConnected = Boolean(company?.telegramBotApiKey) && (company?.telegramEnabled ?? true);
+  const whatsappConnected = Boolean(company?.whatsappApiToken) && (company?.whatsappEnabled ?? true);
+  const messengerConnected = Boolean(company?.messengerApiKey) && (company?.messengerEnabled ?? true);
+  const widgetConnected = Boolean(company?.websiteChatbotKey) && (company?.widgetEnabled ?? true);
+  const hasConnectedChannel = telegramConnected || whatsappConnected || messengerConnected || widgetConnected;
+
+  const shareTelegramLink = telegramConnected && company?.telegramBotUsername
+    ? `https://t.me/${company.telegramBotUsername}`
+    : null;
+  const shareWhatsappLink = whatsappConnected && company?.whatsappNumber
+    ? `https://wa.me/${company.whatsappNumber.replace(/\D/g, "")}`
+    : null;
+  const shareMessengerLink = messengerConnected && company?.messengerPageId
+    ? `https://m.me/${company.messengerPageId}`
+    : null;
+  const shareWebsite = widgetConnected && Boolean(company?.websiteChatbotKey);
+  const hasShareableChannel = Boolean(shareTelegramLink || shareWhatsappLink || shareMessengerLink || shareWebsite);
+
   const handleTestConnection = async () => {
     setTestResult(null);
     const googleSheetsLink = form.getValues("googleSheetsLink");
@@ -1370,7 +1388,7 @@ export default function ClientCompany() {
         <WhatsAppSetupCard company={company} />
       )}
 
-      {company && (
+      {company && hasConnectedChannel && (
         <Card className="bg-card border-border/50 border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1474,32 +1492,32 @@ export default function ClientCompany() {
               {/* Channels */}
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Channels</p>
               <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.telegramBotApiKey ? "border-sky-500/40 bg-sky-500/5" : "border-border/40 bg-background"}`}>
+                <div className={`rounded-lg border p-2.5 space-y-1 ${telegramConnected ? "border-sky-500/40 bg-sky-500/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">✈️</div>
                   <div className="font-medium">Telegram</div>
-                  <div className={`text-[10px] ${company.telegramBotApiKey ? "text-sky-500" : "text-muted-foreground"}`}>
-                    {company.telegramBotApiKey ? "✓ Active" : "Not set"}
+                  <div className={`text-[10px] ${telegramConnected ? "text-sky-500" : "text-muted-foreground"}`}>
+                    {telegramConnected ? "✓ Active" : "Not set"}
                   </div>
                 </div>
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.whatsappApiToken ? "border-green-500/40 bg-green-500/5" : "border-border/40 bg-background"}`}>
+                <div className={`rounded-lg border p-2.5 space-y-1 ${whatsappConnected ? "border-green-500/40 bg-green-500/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">💬</div>
                   <div className="font-medium">WhatsApp</div>
-                  <div className={`text-[10px] ${company.whatsappApiToken ? "text-green-500" : "text-muted-foreground"}`}>
-                    {company.whatsappApiToken ? "✓ Active" : "Not set"}
+                  <div className={`text-[10px] ${whatsappConnected ? "text-green-500" : "text-muted-foreground"}`}>
+                    {whatsappConnected ? "✓ Active" : "Not set"}
                   </div>
                 </div>
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.messengerApiKey ? "border-blue-500/40 bg-blue-500/5" : "border-border/40 bg-background"}`}>
+                <div className={`rounded-lg border p-2.5 space-y-1 ${messengerConnected ? "border-blue-500/40 bg-blue-500/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">📨</div>
                   <div className="font-medium">Messenger</div>
-                  <div className={`text-[10px] ${company.messengerApiKey ? "text-blue-500" : "text-muted-foreground"}`}>
-                    {company.messengerApiKey ? "✓ Active" : "Not set"}
+                  <div className={`text-[10px] ${messengerConnected ? "text-blue-500" : "text-muted-foreground"}`}>
+                    {messengerConnected ? "✓ Active" : "Not set"}
                   </div>
                 </div>
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.websiteChatbotKey ? "border-violet-500/40 bg-violet-500/5" : "border-border/40 bg-background"}`}>
+                <div className={`rounded-lg border p-2.5 space-y-1 ${widgetConnected ? "border-violet-500/40 bg-violet-500/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">🌐</div>
                   <div className="font-medium">Website Widget</div>
-                  <div className={`text-[10px] ${company.websiteChatbotKey ? "text-violet-500" : "text-muted-foreground"}`}>
-                    {company.websiteChatbotKey ? "✓ Ready to embed" : "No key set"}
+                  <div className={`text-[10px] ${widgetConnected ? "text-violet-500" : "text-muted-foreground"}`}>
+                    {widgetConnected ? "✓ Ready to embed" : "No key set"}
                   </div>
                 </div>
               </div>
@@ -1555,11 +1573,11 @@ export default function ClientCompany() {
         </Card>
       )}
 
-      {company && (company.telegramBotUsername || company.whatsappNumber || company.messengerPageId || company.websiteChatbotKey) && (() => {
-        const telegramLink = company.telegramBotUsername ? `https://t.me/${company.telegramBotUsername}` : null;
-        const whatsappLink = company.whatsappNumber ? `https://wa.me/${company.whatsappNumber.replace(/\D/g, "")}` : null;
-        const messengerLink = company.messengerPageId ? `https://m.me/${company.messengerPageId}` : null;
-        const hasWebsite = !!company.websiteChatbotKey;
+      {company && hasShareableChannel && (() => {
+        const telegramLink = shareTelegramLink;
+        const whatsappLink = shareWhatsappLink;
+        const messengerLink = shareMessengerLink;
+        const hasWebsite = shareWebsite;
         const fabPositionX = Math.min(96, Math.max(4, company.fabPositionX ?? 96));
         const fabPositionY = Math.min(94, Math.max(6, company.fabPositionY ?? 92));
         const fabVerticalClass = fabPositionY < 38 ? "cfab-down" : "";
@@ -1777,11 +1795,11 @@ ${fabRows.join('\n')}
     </div>
 
     {/* ── Real fixed FAB overlay — visible on the page when enabled ── */}
-    {company?.fabEnabled && (() => {
-      const telegramLink  = company.telegramBotUsername ? `https://t.me/${company.telegramBotUsername}` : null;
-      const whatsappLink  = company.whatsappNumber      ? `https://wa.me/${company.whatsappNumber.replace(/\D/g, "")}` : null;
-      const messengerLink = company.messengerPageId     ? `https://m.me/${company.messengerPageId}` : null;
-      const hasWebsite    = !!company.websiteChatbotKey;
+    {company?.fabEnabled && hasShareableChannel && (() => {
+      const telegramLink  = shareTelegramLink;
+      const whatsappLink  = shareWhatsappLink;
+      const messengerLink = shareMessengerLink;
+      const hasWebsite    = shareWebsite;
 
       const channels = [
         telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink  },
