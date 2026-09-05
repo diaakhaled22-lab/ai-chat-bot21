@@ -1682,4 +1682,21 @@ router.get("/admin/audit-logs", requireAdmin, async (req, res) => {
   }
 });
 
+// DELETE /admin/audit-logs/:id
+router.delete("/admin/audit-logs/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+
+    await db.delete(adminActivityLogsTable).where(eq(adminActivityLogsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Delete audit log error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
