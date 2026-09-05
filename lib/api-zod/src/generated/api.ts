@@ -489,6 +489,16 @@ export const GetAdminAuditLogsResponse = zod.array(GetAdminAuditLogsResponseItem
 
 
 /**
+ * @summary Delete an admin audit log entry
+ */
+export const DeleteAdminAuditLogParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteAdminAuditLogResponse = zod.unknown()
+
+
+/**
  * @summary Get admin settings
  */
 export const GetAdminSettingsResponse = zod.object({

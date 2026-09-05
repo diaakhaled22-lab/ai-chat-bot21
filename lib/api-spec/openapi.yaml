@@ -409,6 +409,27 @@ paths:
                   $ref: "#/components/schemas/AdminActivityLog"
         "401":
           description: Unauthorized
+  /admin/audit-logs/{id}:
+    delete:
+      operationId: deleteAdminAuditLog
+      tags:
+        - admin
+      summary: Delete an admin audit log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Audit log deleted
+        "400":
+          description: Invalid ID
+        "404":
+          description: Audit log not found
+        "401":
+          description: Unauthorized
   /admin/settings:
     get:
       operationId: getAdminSettings

@@ -1629,6 +1629,76 @@ export function useGetAdminAuditLogs<TData = Awaited<ReturnType<typeof getAdminA
 
 
 
+export const getDeleteAdminAuditLogUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/audit-logs/${id}`
+}
+
+/**
+ * @summary Delete an admin audit log entry
+ */
+export const deleteAdminAuditLog = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminAuditLogUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAdminAuditLogMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAuditLog>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAuditLog>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminAuditLog'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminAuditLog>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminAuditLog(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminAuditLogMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminAuditLog>>>
+
+    export type DeleteAdminAuditLogMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete an admin audit log entry
+ */
+export const useDeleteAdminAuditLog = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAuditLog>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminAuditLog>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminAuditLogMutationOptions(options));
+    }
+
 export const getGetAdminSettingsUrl = () => {
 
 

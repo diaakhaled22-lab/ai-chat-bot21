@@ -1691,7 +1691,16 @@ router.delete("/admin/audit-logs/:id", requireAdmin, async (req, res) => {
       return;
     }
 
-    await db.delete(adminActivityLogsTable).where(eq(adminActivityLogsTable.id, id));
+    const deleted = await db
+      .delete(adminActivityLogsTable)
+      .where(eq(adminActivityLogsTable.id, id))
+      .returning({ id: adminActivityLogsTable.id });
+
+    if (deleted.length === 0) {
+      res.status(404).json({ error: "Audit log not found" });
+      return;
+    }
+
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Delete audit log error");

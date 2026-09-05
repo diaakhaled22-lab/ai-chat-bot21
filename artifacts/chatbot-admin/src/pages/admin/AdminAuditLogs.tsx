@@ -1,15 +1,27 @@
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Loader2, ShieldAlert, Trash2 } from "lucide-react";
-import { customFetch } from "@workspace/api-client-react";
+import { deleteAdminAuditLog, customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminAuditLogs() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [deleteId, setDeleteId] = React.useState<number | null>(null);
 
   const { data: logs, isLoading, error } = useQuery({
     queryKey: ["admin-audit-logs"],
@@ -21,9 +33,10 @@ export default function AdminAuditLogs() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await customFetch(`/api/admin/audit-logs/${id}`, { method: "DELETE" });
+      await deleteAdminAuditLog(id);
     },
     onSuccess: () => {
+      setDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ["admin-audit-logs"] });
       toast({ title: "Audit log deleted successfully" });
     },
@@ -33,11 +46,11 @@ export default function AdminAuditLogs() {
   });
 
   const handleDelete = (id: number) => {
-    if (!window.confirm("Delete this audit log entry? This only removes the log row.")) return;
-    deleteMutation.mutate(id);
+    setDeleteId(id);
   };
 
   return (
+    <>
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Admin Audit Logs</h1>
@@ -118,5 +131,33 @@ export default function AdminAuditLogs() {
         </CardContent>
       </Card>
     </div>
+    <AlertDialog
+      open={deleteId !== null}
+      onOpenChange={(open) => {
+        if (!open && !deleteMutation.isPending) setDeleteId(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete audit log entry?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently removes only this audit log row. The original action and related company data will not be changed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={deleteMutation.isPending || deleteId === null}
+            onClick={() => {
+              if (deleteId !== null) deleteMutation.mutate(deleteId);
+            }}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
