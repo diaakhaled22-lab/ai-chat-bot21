@@ -21,14 +21,19 @@ export default function AdminAuditLogs() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await customFetch(`/api/admin/audit-logs/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/audit-logs/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Error ${res.status}: ${text}`);
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-audit-logs"] });
       toast({ title: "Audit log deleted successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to delete audit log", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete audit log", description: error.message, variant: "destructive" });
     }
   });
 
