@@ -27,8 +27,8 @@ export default function AdminAuditLogs() {
       queryClient.invalidateQueries({ queryKey: ["admin-audit-logs"] });
       toast({ title: "Audit log deleted successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to delete audit log", variant: "destructive" });
+    onError: (err: any) => {
+      toast({ title: "Failed to delete audit log", description: err?.message || String(err), variant: "destructive" });
     },
   });
 
