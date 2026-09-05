@@ -68,13 +68,17 @@ router.get("/client/company", async (req, res) => {
       aiModel: company.aiModel,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
+      telegramEnabled: company.telegramEnabled,
       whatsappApiToken: maskApiKey(company.whatsappApiToken),
       whatsappPhoneNumberId: company.whatsappPhoneNumberId,
       whatsappBusinessAccountId: company.whatsappBusinessAccountId,
       whatsappNumber: company.whatsappNumber,
+      whatsappEnabled: company.whatsappEnabled,
       messengerApiKey: maskApiKey(company.messengerApiKey),
       messengerPageId: company.messengerPageId,
+      messengerEnabled: company.messengerEnabled,
       websiteChatbotKey: company.websiteChatbotKey,
+      widgetEnabled: company.widgetEnabled,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,
@@ -325,6 +329,27 @@ router.put("/client/company", async (req, res) => {
     }
 
     const data = parsed.data;
+    const [existingCompany] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!existingCompany) {
+      res.status(404).json({ error: "No company found" });
+      return;
+    }
+
+    const preserveMaskedSecret = (
+      nextValue: string | null | undefined,
+      existingValue: string | null | undefined,
+    ) => {
+      if (nextValue !== undefined && existingValue && nextValue === maskApiKey(existingValue)) {
+        return existingValue;
+      }
+      return nextValue;
+    };
+
     const updates: Record<string, unknown> = {};
     if (data.name !== undefined) updates.name = data.name;
     if (data.generalInfo !== undefined) updates.generalInfo = data.generalInfo;
@@ -338,14 +363,24 @@ router.put("/client/company", async (req, res) => {
     if (data.aiAgentUrl !== undefined) updates.aiAgentUrl = data.aiAgentUrl;
     if (data.aiProvider !== undefined) updates.aiProvider = data.aiProvider;
     if (data.aiModel !== undefined) updates.aiModel = data.aiModel;
-    if (data.telegramBotApiKey !== undefined) updates.telegramBotApiKey = data.telegramBotApiKey;
-    if (data.whatsappApiToken !== undefined) updates.whatsappApiToken = data.whatsappApiToken;
+    if (data.telegramBotApiKey !== undefined) {
+      updates.telegramBotApiKey = preserveMaskedSecret(data.telegramBotApiKey, existingCompany.telegramBotApiKey);
+    }
+    if (data.telegramEnabled !== undefined) updates.telegramEnabled = data.telegramEnabled;
+    if (data.whatsappApiToken !== undefined) {
+      updates.whatsappApiToken = preserveMaskedSecret(data.whatsappApiToken, existingCompany.whatsappApiToken);
+    }
     if (data.whatsappPhoneNumberId !== undefined) updates.whatsappPhoneNumberId = data.whatsappPhoneNumberId;
     if (data.whatsappBusinessAccountId !== undefined) updates.whatsappBusinessAccountId = data.whatsappBusinessAccountId;
     if (data.whatsappNumber !== undefined) updates.whatsappNumber = data.whatsappNumber;
-    if (data.messengerApiKey !== undefined) updates.messengerApiKey = data.messengerApiKey;
+    if (data.whatsappEnabled !== undefined) updates.whatsappEnabled = data.whatsappEnabled;
+    if (data.messengerApiKey !== undefined) {
+      updates.messengerApiKey = preserveMaskedSecret(data.messengerApiKey, existingCompany.messengerApiKey);
+    }
     if (data.messengerPageId !== undefined) updates.messengerPageId = data.messengerPageId;
+    if (data.messengerEnabled !== undefined) updates.messengerEnabled = data.messengerEnabled;
     if (data.websiteChatbotKey !== undefined) updates.websiteChatbotKey = data.websiteChatbotKey;
+    if (data.widgetEnabled !== undefined) updates.widgetEnabled = data.widgetEnabled;
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
     if (data.websiteAutoSync !== undefined) updates.websiteAutoSync = data.websiteAutoSync;
     if (data.fabEnabled !== undefined) updates.fabEnabled = data.fabEnabled;
@@ -407,13 +442,17 @@ router.put("/client/company", async (req, res) => {
       aiModel: company.aiModel,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
+      telegramEnabled: company.telegramEnabled,
       whatsappApiToken: maskApiKey(company.whatsappApiToken),
       whatsappPhoneNumberId: company.whatsappPhoneNumberId,
       whatsappBusinessAccountId: company.whatsappBusinessAccountId,
       whatsappNumber: company.whatsappNumber,
+      whatsappEnabled: company.whatsappEnabled,
       messengerApiKey: maskApiKey(company.messengerApiKey),
       messengerPageId: company.messengerPageId,
+      messengerEnabled: company.messengerEnabled,
       websiteChatbotKey: company.websiteChatbotKey,
+      widgetEnabled: company.widgetEnabled,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,

@@ -692,26 +692,26 @@ paths:
 
 components:
   schemas:
-  AdminActivityLog:
-    type: object
-    properties:
-      id:
-        type: integer
-      adminId:
-        type: integer
-      adminUsername:
-        type: string
-      action:
-        type: string
-      details:
-        type: string
-        nullable: true
-      ipAddress:
-        type: string
-        nullable: true
-      createdAt:
-        type: string
-        format: date-time
+    AdminActivityLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        adminId:
+          type: integer
+        adminUsername:
+          type: string
+        action:
+          type: string
+        details:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
     HealthStatus:
       type: object
       properties:
@@ -861,6 +861,9 @@ components:
         telegramBotUsername:
           type: ["string", "null"]
           description: Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me/<username> share link.
+        telegramEnabled:
+          type: ["boolean", "null"]
+          description: Whether the Telegram channel is enabled for this company.
         whatsappApiToken:
           type: ["string", "null"]
         whatsappPhoneNumberId:
@@ -870,13 +873,22 @@ components:
         whatsappNumber:
           type: ["string", "null"]
           description: Public WhatsApp phone number (international format) used to build the wa.me/<number> share link. Distinct from whatsappApiToken, which is the backend credential.
+        whatsappEnabled:
+          type: ["boolean", "null"]
+          description: Whether the WhatsApp channel is enabled for this company.
         messengerApiKey:
           type: ["string", "null"]
         messengerPageId:
           type: ["string", "null"]
           description: Auto-fetched from Meta's Graph API when the Page Access Token is saved. Used to build the public m.me/<pageId> share link.
+        messengerEnabled:
+          type: ["boolean", "null"]
+          description: Whether the Messenger channel is enabled for this company.
         websiteChatbotKey:
           type: ["string", "null"]
+        widgetEnabled:
+          type: ["boolean", "null"]
+          description: Whether the website widget channel is enabled for this company.
         websiteDataUrl:
           type: ["string", "null"]
         websiteAutoSync:
@@ -937,6 +949,8 @@ components:
           type: ["string", "null"]
         telegramBotApiKey:
           type: ["string", "null"]
+        telegramEnabled:
+          type: ["boolean", "null"]
         whatsappApiToken:
           type: ["string", "null"]
         whatsappPhoneNumberId:
@@ -945,12 +959,18 @@ components:
           type: ["string", "null"]
         whatsappNumber:
           type: ["string", "null"]
+        whatsappEnabled:
+          type: ["boolean", "null"]
         messengerApiKey:
           type: ["string", "null"]
         messengerPageId:
           type: ["string", "null"]
+        messengerEnabled:
+          type: ["boolean", "null"]
         websiteChatbotKey:
           type: ["string", "null"]
+        widgetEnabled:
+          type: ["boolean", "null"]
         websiteDataUrl:
           type: ["string", "null"]
         websiteAutoSync:

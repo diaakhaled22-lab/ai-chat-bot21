@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminActivityLog,
   AdminSettingsInput,
   AdminSettingsResult,
   AdminStats,
@@ -1550,6 +1551,83 @@ export const useUpdateAdminChatLogRetention = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateAdminChatLogRetentionMutationOptions(options));
     }
+
+export const getGetAdminAuditLogsUrl = () => {
+
+
+
+
+  return `/api/admin/audit-logs`
+}
+
+/**
+ * @summary Get admin audit logs
+ */
+export const getAdminAuditLogs = async ( options?: RequestInit): Promise<AdminActivityLog[]> => {
+
+  return customFetch<AdminActivityLog[]>(getGetAdminAuditLogsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminAuditLogsQueryKey = () => {
+    return [
+    `/api/admin/audit-logs`
+    ] as const;
+    }
+
+
+export const getGetAdminAuditLogsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminAuditLogs>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminAuditLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminAuditLogsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminAuditLogs>>> = ({ signal }) => getAdminAuditLogs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminAuditLogs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminAuditLogsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminAuditLogs>>>
+export type GetAdminAuditLogsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get admin audit logs
+ */
+
+export function useGetAdminAuditLogs<TData = Awaited<ReturnType<typeof getAdminAuditLogs>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminAuditLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminAuditLogsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminSettingsUrl = () => {
 

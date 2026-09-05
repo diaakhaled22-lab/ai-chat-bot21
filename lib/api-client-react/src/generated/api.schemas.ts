@@ -5,6 +5,16 @@
  * Chatbot Admin Platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface AdminActivityLog {
+  id?: number;
+  adminId?: number;
+  adminUsername?: string;
+  action?: string;
+  details?: string | null;
+  ipAddress?: string | null;
+  createdAt?: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -141,6 +151,11 @@ export interface Company {
      * @nullable
      */
   telegramBotUsername?: string | null;
+  /**
+     * Whether the Telegram channel is enabled for this company.
+     * @nullable
+     */
+  telegramEnabled?: boolean | null;
   /** @nullable */
   whatsappApiToken?: string | null;
   /** @nullable */
@@ -152,6 +167,11 @@ export interface Company {
      * @nullable
      */
   whatsappNumber?: string | null;
+  /**
+     * Whether the WhatsApp channel is enabled for this company.
+     * @nullable
+     */
+  whatsappEnabled?: boolean | null;
   /** @nullable */
   messengerApiKey?: string | null;
   /**
@@ -159,8 +179,18 @@ export interface Company {
      * @nullable
      */
   messengerPageId?: string | null;
+  /**
+     * Whether the Messenger channel is enabled for this company.
+     * @nullable
+     */
+  messengerEnabled?: boolean | null;
   /** @nullable */
   websiteChatbotKey?: string | null;
+  /**
+     * Whether the website widget channel is enabled for this company.
+     * @nullable
+     */
+  widgetEnabled?: boolean | null;
   /** @nullable */
   websiteDataUrl?: string | null;
   /** Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts. */
@@ -232,6 +262,8 @@ export interface CompanyInput {
   /** @nullable */
   telegramBotApiKey?: string | null;
   /** @nullable */
+  telegramEnabled?: boolean | null;
+  /** @nullable */
   whatsappApiToken?: string | null;
   /** @nullable */
   whatsappPhoneNumberId?: string | null;
@@ -240,11 +272,17 @@ export interface CompanyInput {
   /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */
+  whatsappEnabled?: boolean | null;
+  /** @nullable */
   messengerApiKey?: string | null;
   /** @nullable */
   messengerPageId?: string | null;
   /** @nullable */
+  messengerEnabled?: boolean | null;
+  /** @nullable */
   websiteChatbotKey?: string | null;
+  /** @nullable */
+  widgetEnabled?: boolean | null;
   /** @nullable */
   websiteDataUrl?: string | null;
   websiteAutoSync?: boolean;

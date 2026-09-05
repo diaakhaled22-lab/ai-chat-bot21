@@ -38,6 +38,8 @@ export interface CompanyInput {
   /** @nullable */
   telegramBotApiKey?: string | null;
   /** @nullable */
+  telegramEnabled?: boolean | null;
+  /** @nullable */
   whatsappApiToken?: string | null;
   /** @nullable */
   whatsappPhoneNumberId?: string | null;
@@ -46,11 +48,17 @@ export interface CompanyInput {
   /** @nullable */
   whatsappNumber?: string | null;
   /** @nullable */
+  whatsappEnabled?: boolean | null;
+  /** @nullable */
   messengerApiKey?: string | null;
   /** @nullable */
   messengerPageId?: string | null;
   /** @nullable */
+  messengerEnabled?: boolean | null;
+  /** @nullable */
   websiteChatbotKey?: string | null;
+  /** @nullable */
+  widgetEnabled?: boolean | null;
   /** @nullable */
   websiteDataUrl?: string | null;
   websiteAutoSync?: boolean;

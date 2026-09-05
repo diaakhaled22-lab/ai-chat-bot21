@@ -59,6 +59,11 @@ export interface Company {
      * @nullable
      */
   telegramBotUsername?: string | null;
+  /**
+     * Whether the Telegram channel is enabled for this company.
+     * @nullable
+     */
+  telegramEnabled?: boolean | null;
   /** @nullable */
   whatsappApiToken?: string | null;
   /** @nullable */
@@ -70,6 +75,11 @@ export interface Company {
      * @nullable
      */
   whatsappNumber?: string | null;
+  /**
+     * Whether the WhatsApp channel is enabled for this company.
+     * @nullable
+     */
+  whatsappEnabled?: boolean | null;
   /** @nullable */
   messengerApiKey?: string | null;
   /**
@@ -77,8 +87,18 @@ export interface Company {
      * @nullable
      */
   messengerPageId?: string | null;
+  /**
+     * Whether the Messenger channel is enabled for this company.
+     * @nullable
+     */
+  messengerEnabled?: boolean | null;
   /** @nullable */
   websiteChatbotKey?: string | null;
+  /**
+     * Whether the website widget channel is enabled for this company.
+     * @nullable
+     */
+  widgetEnabled?: boolean | null;
   /** @nullable */
   websiteDataUrl?: string | null;
   /** Whether to periodically scrape and cache the websiteDataUrl for use in AI prompts. */

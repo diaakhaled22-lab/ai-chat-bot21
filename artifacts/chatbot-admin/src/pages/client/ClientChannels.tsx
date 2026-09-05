@@ -90,7 +90,7 @@ export default function ClientChannels() {
   const { toast } = useToast();
   const initialized = useRef(false);
 
-  /* ── master switches (UI-only, control field visibility) ─── */
+  /* ── master switches (persisted with the company settings) ─── */
   const [telegramOn,  setTelegramOn]  = useState(false);
   const [whatsappOn,  setWhatsappOn]  = useState(false);
   const [messengerOn, setMessengerOn] = useState(false);
@@ -135,11 +135,12 @@ export default function ClientChannels() {
         fabPositionX:              company.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
         fabPositionY:              company.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
       });
-      /* auto-enable switch if channel already has credentials */
-      if (company.telegramBotApiKey)  setTelegramOn(true);
-      if (company.whatsappApiToken)   setWhatsappOn(true);
-      if (company.messengerApiKey)    setMessengerOn(true);
-      if (company.websiteChatbotKey)  setWidgetOn(true);
+      /* Existing companies predate persisted switch state, so fall back to
+         enabled when credentials already exist. New saved values are exact. */
+      setTelegramOn(company.telegramEnabled ?? Boolean(company.telegramBotApiKey));
+      setWhatsappOn(company.whatsappEnabled ?? Boolean(company.whatsappApiToken));
+      setMessengerOn(company.messengerEnabled ?? Boolean(company.messengerApiKey));
+      setWidgetOn(company.widgetEnabled ?? Boolean(company.websiteChatbotKey));
       initialized.current = true;
     }
   }, [company, form]);
@@ -150,19 +151,27 @@ export default function ClientChannels() {
     const data = {
       name:                      company?.name ?? "",
       telegramBotApiKey:         values.telegramBotApiKey         || null,
+      telegramEnabled:           telegramOn,
       whatsappApiToken:          values.whatsappApiToken          || null,
       whatsappPhoneNumberId:     values.whatsappPhoneNumberId     || null,
       whatsappBusinessAccountId: values.whatsappBusinessAccountId || null,
       whatsappNumber:            values.whatsappNumber            || null,
+      whatsappEnabled:           whatsappOn,
       messengerApiKey:           values.messengerApiKey           || null,
       messengerPageId:           values.messengerPageId           || null,
+      messengerEnabled:          messengerOn,
       websiteChatbotKey:         values.websiteChatbotKey         || null,
+      widgetEnabled:             widgetOn,
       fabEnabled:                values.fabEnabled                ?? false,
       fabPositionX:              values.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
       fabPositionY:              values.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
     };
     updateCompany.mutate({ data }, {
       onSuccess: () => {
+        setTelegramOn(telegramOn);
+        setWhatsappOn(whatsappOn);
+        setMessengerOn(messengerOn);
+        setWidgetOn(widgetOn);
         queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
         toast({ title: "Channels saved successfully" });
       },
