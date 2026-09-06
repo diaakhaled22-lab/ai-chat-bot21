@@ -29,7 +29,7 @@
   var recognizer = null;
   var isRecording = false;
   var VOICE_LANG_KEY = "chatwidget_voice_lang_" + widgetKey;
-  var voiceLang = localStorage.getItem(VOICE_LANG_KEY) || "en"; // "en" or "ar"
+  var voiceLang = localStorage.getItem(VOICE_LANG_KEY) || null;
   var SPEAK_KEY = "chatwidget_autospeak_" + widgetKey;
   var autoSpeak = localStorage.getItem(SPEAK_KEY) === "1";
   var FAB_POSITION_KEY = "chatwidget_fab_position_" + widgetKey;
@@ -406,7 +406,7 @@
       return;
     }
     recognizer = new SpeechRecognitionCtor();
-    recognizer.lang = voiceLang === "ar" ? "ar-SA" : "en-US";
+    recognizer.lang = voiceLang === "ar" ? "ar-SA" : (voiceLang === "en" ? "en-US" : navigator.language || "en-US");
     recognizer.interimResults = false;
     recognizer.maxAlternatives = 1;
 
