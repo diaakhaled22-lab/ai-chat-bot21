@@ -166,6 +166,14 @@ router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
   }
 });
 
+function getAppBaseUrl(req: import("express").Request): string {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "localhost";
+  return `${proto}://${host}`;
+}
+
 router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, res) => {
   try {
     const companies = await db.select().from(companiesTable);
