@@ -135,12 +135,15 @@ export default function ClientChannels() {
         fabPositionX:              company.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
         fabPositionY:              company.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
       });
-      /* Existing companies predate persisted switch state, so fall back to
-         enabled when credentials already exist. New saved values are exact. */
-      setTelegramOn(company.telegramEnabled ?? Boolean(company.telegramBotApiKey));
-      setWhatsappOn(company.whatsappEnabled ?? Boolean(company.whatsappApiToken));
-      setMessengerOn(company.messengerEnabled ?? Boolean(company.messengerApiKey));
-      setWidgetOn(company.widgetEnabled ?? Boolean(company.websiteChatbotKey));
+      /*
+       * The switch state is independent from whether credentials exist.
+       * A saved false must stay false after leaving and reopening this page.
+       * Null is treated as disabled for older records that predate these flags.
+       */
+      setTelegramOn(company.telegramEnabled ?? false);
+      setWhatsappOn(company.whatsappEnabled ?? false);
+      setMessengerOn(company.messengerEnabled ?? false);
+      setWidgetOn(company.widgetEnabled ?? false);
       initialized.current = true;
     }
   }, [company, form]);
