@@ -358,8 +358,12 @@ router.put("/client/company", async (req, res) => {
     if (data.googleSheetsLink !== undefined) updates.googleSheetsLink = data.googleSheetsLink;
     if (data.googleSheetsName !== undefined) updates.googleSheetsName = data.googleSheetsName;
     if (data.googleSheetsPage !== undefined) updates.googleSheetsPage = data.googleSheetsPage;
-    if (data.serviceAccountKey !== undefined) updates.serviceAccountKey = data.serviceAccountKey;
-    if (data.aiAgentApiKey !== undefined) updates.aiAgentApiKey = data.aiAgentApiKey;
+    if (data.serviceAccountKey !== undefined) {
+      updates.serviceAccountKey = preserveMaskedSecret(data.serviceAccountKey, existingCompany.serviceAccountKey);
+    }
+    if (data.aiAgentApiKey !== undefined) {
+      updates.aiAgentApiKey = preserveMaskedSecret(data.aiAgentApiKey, existingCompany.aiAgentApiKey);
+    }
     if (data.aiAgentUrl !== undefined) updates.aiAgentUrl = data.aiAgentUrl;
     if (data.aiProvider !== undefined) updates.aiProvider = data.aiProvider;
     if (data.aiModel !== undefined) updates.aiModel = data.aiModel;
