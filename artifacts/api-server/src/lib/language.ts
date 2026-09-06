@@ -8,7 +8,9 @@ export function detectResponseLanguage(message: string): ResponseLanguage {
   const arabicCount = message.match(ARABIC_SCRIPT)?.length ?? 0;
   const latinCount = message.match(LATIN_LETTER)?.length ?? 0;
 
-  return arabicCount > 0 && arabicCount >= latinCount ? "Arabic" : "English";
+  // If there are no Latin letters, or Arabic letters equal/outnumber Latin, default to Arabic.
+  // This ensures that numbers-only messages (01121405023) don't suddenly switch the bot to English.
+  return (arabicCount >= latinCount && latinCount === 0) || arabicCount > latinCount ? "Arabic" : "English";
 }
 
 export function getLanguageInstruction(latestUserMessage: string, explicitLang?: "ar" | "en"): string {
