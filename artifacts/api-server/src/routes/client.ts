@@ -1144,9 +1144,6 @@ router.post("/client/chatbot-trial", async (req, res) => {
     if (company.generalInfo?.trim()) {
       parts.push(`\n\nCompany info:\n${company.generalInfo.trim()}`);
     }
-    if (company.securityPrompt?.trim()) {
-      parts.push(`\n\nSecurity Instructions:\n${company.securityPrompt.trim()}`);
-    }
     parts.push("\n\nNote: This is a preview/trial session.");
     parts.push(`\n\n${getLanguageInstruction(latestUserMessage)}`);
     const systemContent = parts.join("");

@@ -498,6 +498,17 @@ const ATTACK_PATTERNS = [
  * Logs warnings and blocks obviously malicious requests.
  */
 export function suspiciousActivityDetector(req: Request, res: Response, next: NextFunction) {
+  // Skip check for endpoints that intentionally accept URLs with path segments
+  const urlAcceptingPaths = [
+    "/client/wordpress",
+    "/client/wordpress/test",
+    "/client/company/sync-website",
+    "/client/company",
+  ];
+  if (urlAcceptingPaths.some((p) => req.path.startsWith(p))) {
+    return next();
+  }
+
   const stringsToCheck: string[] = [];
 
   // Collect all string values from body, query, params
@@ -518,6 +529,8 @@ export function suspiciousActivityDetector(req: Request, res: Response, next: Ne
 
   for (const str of stringsToCheck) {
     for (const pattern of ATTACK_PATTERNS) {
+      // Reset lastIndex for patterns with /g flag to avoid false negatives
+      if (pattern.global) pattern.lastIndex = 0;
       if (pattern.test(str)) {
         const ip = req.ip || req.socket.remoteAddress || "unknown";
         logger.warn(

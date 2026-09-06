@@ -284,10 +284,11 @@ function WordPressInlineCard() {
     try {
       const res = await customFetch<{ ok: boolean; error?: string; siteName?: string }>("/api/client/wordpress/test", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiUrl, username: username || undefined, appPassword: appPassword || undefined }),
       });
       if (res.ok) {
-        toast({ title: lang === "ar" ? "الاتصال ناجح" : "Connection successful", description: res.siteName ? `${res.siteName}` : "WordPress API is reachable" });
+        toast({ title: lang === "ar" ? "الاتصال ناجح ✓" : "Connection successful ✓", description: res.siteName ? `Site: ${res.siteName}` : "WordPress API is reachable" });
       } else {
         toast({ title: lang === "ar" ? "فشل الاتصال" : "Connection failed", description: res.error, variant: "destructive" });
       }
@@ -307,6 +308,7 @@ function WordPressInlineCard() {
     try {
       const saved = await customFetch<any>("/api/client/wordpress", {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiUrl,
           username: username || undefined,
@@ -316,7 +318,12 @@ function WordPressInlineCard() {
       });
       setWpData(saved);
       setAppPassword("");
-      toast({ title: lang === "ar" ? "تم حفظ إعدادات ووردبريس" : "WordPress settings saved" });
+      toast({
+        title: lang === "ar" ? "تم حفظ إعدادات ووردبريس ✓" : "WordPress settings saved ✓",
+        description: lang === "ar" ? "جاري المزامنة في الخلفية..." : "Background sync started...",
+      });
+      // Poll for sync completion after a short delay
+      setTimeout(() => loadWp(), 4000);
     } catch (e: any) {
       toast({ title: lang === "ar" ? "فشل الحفظ" : "Save failed", description: e.message, variant: "destructive" });
     } finally {

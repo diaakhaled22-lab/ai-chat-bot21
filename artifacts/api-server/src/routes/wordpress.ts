@@ -84,7 +84,7 @@ router.post("/client/wordpress/test", async (req, res) => {
   }
 });
 
-// PUT /client/wordpress — create or update integration, then sync immediately
+// PUT /client/wordpress — create or update integration, then kick off background sync
 router.put("/client/wordpress", async (req, res) => {
   try {
     const companyId = await getCompanyId(req.session.userId!);
@@ -106,13 +106,6 @@ router.put("/client/wordpress", async (req, res) => {
     }
 
     const normalisedUrl = normaliseApiUrl(apiUrl);
-
-    // First validate the connection
-    const validation = await validateWordPressUrl(normalisedUrl, { username, appPassword });
-    if (!validation.ok) {
-      res.status(422).json({ error: validation.error });
-      return;
-    }
 
     // Check for existing row
     const [existing] = await db
@@ -151,7 +144,7 @@ router.put("/client/wordpress", async (req, res) => {
         .returning();
     }
 
-    // Kick off a background sync immediately
+    // Kick off a background sync (non-blocking — status will update to "connected" or "error")
     void syncCompanyWordPress(companyId);
 
     res.json(serializeIntegration(row));
