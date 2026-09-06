@@ -501,6 +501,14 @@ export default function ClientKnowledge() {
 
   const websiteUrl = form.watch("websiteDataUrl");
 
+  // Fetch WordPress status to show green dot indicator in sidebar
+  const { data: wpStatus } = useQuery({
+    queryKey: ["wp-status"],
+    queryFn: () => customFetch<{ status?: string } | null>("/api/client/wordpress"),
+    refetchInterval: 10_000, // re-check every 10s in case background sync finishes
+  });
+  const isWordPressConnected = wpStatus?.status === "connected";
+
   if (companyLoading) {
     return (
       <div className="space-y-4">
@@ -593,9 +601,14 @@ export default function ClientKnowledge() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_wordpress")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {lang === "ar" ? "المقالات والمنتجات" : "REST API Sync"}
+                {isWordPressConnected
+                  ? (lang === "ar" ? "متصل" : "Connected")
+                  : (lang === "ar" ? "المقالات والمنتجات" : "REST API Sync")}
               </p>
             </div>
+            {isWordPressConnected && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+            )}
           </button>
         </div>
 
