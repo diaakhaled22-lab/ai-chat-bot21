@@ -473,12 +473,11 @@ export default function AdminCompanies() {
     if (!company.telegramBotApiKey) return;
     setTgRegistering(true);
     setTgStatus(null);
-    const webhookUrl = `${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`;
     try {
-      const res = await fetch(`/api/telegram/register-webhook/${company.telegramBotApiKey}`, {
+      const res = await fetch(`/api/telegram/register-webhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ webhookUrl }),
+        body: JSON.stringify({ companyId: company.id }),
       });
       const data = await res.json();
       setTgStatus(res.ok

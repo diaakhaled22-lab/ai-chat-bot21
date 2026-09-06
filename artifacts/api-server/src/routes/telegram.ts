@@ -176,8 +176,15 @@ function getAppBaseUrl(req: import("express").Request): string {
 
 router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, res) => {
   try {
+    const { companyId } = req.body;
     const companies = await db.select().from(companiesTable);
-    const company = companies.find(c => c.clientId === req.session.userId);
+    
+    const company = companies.find(c => 
+      req.session.role === "admin" 
+        ? c.id === companyId 
+        : c.clientId === req.session.userId
+    );
+
     if (!company || !company.telegramBotApiKey) {
       res.status(404).json({ error: "No company found or missing Telegram Bot API Key" });
       return;
