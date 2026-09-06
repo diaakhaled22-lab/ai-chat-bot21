@@ -51,12 +51,14 @@ router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => 
 router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
-    const { message, sessionId } = req.body;
+    const { message, sessionId, lang } = req.body;
 
     if (!message || typeof message !== "string" || !message.trim()) {
       res.status(400).json({ error: "message is required" });
       return;
     }
+
+    const explicitLang = lang === "ar" || lang === "en" ? lang : undefined;
 
     const companies = await db.select().from(companiesTable);
     const company = companies.find((c) => c.websiteChatbotKey === key);
@@ -72,6 +74,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
           message,
           "هذه الخدمة غير نشطة حاليًا.",
           "This chatbot is currently inactive.",
+          explicitLang
         ),
       });
       return;
@@ -83,6 +86,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
           message,
           "لم يتم إعداد الذكاء الاصطناعي لهذه الخدمة بعد.",
           "AI is not configured for this chatbot yet.",
+          explicitLang
         ),
       });
       return;
@@ -108,7 +112,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     let sysContent = company.systemPrompt ?? "";
     if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
     sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
-    sysContent += `\n\n${getLanguageInstruction(message.trim())}`;
+    sysContent += `\n\n${getLanguageInstruction(message.trim(), explicitLang)}`;
     sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
     if (company.generalInfo) {
       sysContent += `\n\nCompany Info:\n${company.generalInfo}`;
@@ -177,7 +181,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
 
-    aiReply = enforceResponseLanguage(aiReply, message.trim());
+    aiReply = enforceResponseLanguage(aiReply, message.trim(), explicitLang);
 
     if (sessionId && typeof sessionId === "string") {
       await db.insert(chatLogsTable).values({

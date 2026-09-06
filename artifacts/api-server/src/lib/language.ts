@@ -11,12 +11,16 @@ export function detectResponseLanguage(message: string): ResponseLanguage {
   return arabicCount > 0 && arabicCount >= latinCount ? "Arabic" : "English";
 }
 
-export function getLanguageInstruction(latestUserMessage: string): string {
-  const language = detectResponseLanguage(latestUserMessage);
+export function getLanguageInstruction(latestUserMessage: string, explicitLang?: "ar" | "en"): string {
+  const language = explicitLang 
+    ? (explicitLang === "ar" ? "Arabic" : "English") 
+    : detectResponseLanguage(latestUserMessage);
 
   return [
     "ABSOLUTE RESPONSE LANGUAGE RULE:",
-    `The server detected the latest customer message language as ${language}.`,
+    explicitLang 
+      ? `The user has explicitly requested responses in ${language}.` 
+      : `The server detected the latest customer message language as ${language}.`,
     `Reply entirely in ${language}. Do not mix ${language} with another natural language in the same response.`,
     "Always use the language of the latest customer message, not the language of earlier turns, system instructions, or reference content.",
     "Never use Hebrew, Hebrew words, or Hebrew-script characters under any circumstance.",
@@ -45,20 +49,22 @@ export function removeHebrewScript(text: string, language: ResponseLanguage): st
   const arabicOnly = withPlaceholders
     .replace(LATIN_LETTER, "")
     .replace(/[ \t]{2,}/g, " ")
-    .replace(/\s+([،؛؟,.!])/g, "$1")
+    .replace(/\s+([،؛؟.!])/g, "$1")
     .trim();
 
   return arabicOnly.replace(/\u0000(\d+)\u0000/g, (_, index: string) => protectedTokens[Number(index)]);
 }
 
-export function enforceResponseLanguage(text: string, latestUserMessage: string): string {
-  const language = detectResponseLanguage(latestUserMessage);
+export function enforceResponseLanguage(text: string, latestUserMessage: string, explicitLang?: "ar" | "en"): string {
+  const language = explicitLang 
+    ? (explicitLang === "ar" ? "Arabic" : "English") 
+    : detectResponseLanguage(latestUserMessage);
   const cleaned = removeHebrewScript(text, language);
 
   if (cleaned) return cleaned;
 
   return language === "Arabic"
-    ? "عذرًا، لم أتمكن من إعداد رد الآن. يرجى المحاولة مرة أخرى."
+    ? "عذراً، لم أتمكن من صياغة رد الآن. يرجى المحاولة مرة أخرى."
     : "Sorry, I could not prepare a response right now. Please try again.";
 }
 
@@ -66,6 +72,10 @@ export function localizedChannelMessage(
   latestUserMessage: string,
   arabic: string,
   english: string,
+  explicitLang?: "ar" | "en"
 ): string {
-  return detectResponseLanguage(latestUserMessage) === "Arabic" ? arabic : english;
+  const language = explicitLang 
+    ? (explicitLang === "ar" ? "Arabic" : "English") 
+    : detectResponseLanguage(latestUserMessage);
+  return language === "Arabic" ? arabic : english;
 }

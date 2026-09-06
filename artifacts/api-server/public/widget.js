@@ -361,7 +361,7 @@
     fetch(apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, sessionId: sessionId }),
+      body: JSON.stringify({ message: text, sessionId: sessionId, lang: voiceLang }),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
