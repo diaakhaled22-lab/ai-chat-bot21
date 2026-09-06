@@ -375,7 +375,11 @@ function WordPressInlineCard() {
                 placeholder="https://yoursite.com/wp-json/"
                 className="bg-background font-mono text-sm"
               />
-              <p className="text-[11px] text-muted-foreground">{lang === "ar" ? "مثال: https://myblog.com/wp-json/" : "Example: https://myblog.com/wp-json/"}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "أدخل رابط الموقع الأساسي فقط مثال: https://myblog.com/wp-json/ — الروابط الكاملة مثل /wp/v2/posts تُقبل أيضاً."
+                  : "Enter your site base URL, e.g. https://myblog.com/wp-json/ — full paths like /wp/v2/posts are also accepted."}
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

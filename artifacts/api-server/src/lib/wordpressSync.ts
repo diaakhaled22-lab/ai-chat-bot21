@@ -31,7 +31,15 @@ function buildHeaders(creds: WpCredentials): Record<string, string> {
 /** Normalise the base URL: strip trailing slash, ensure /wp-json is present */
 export function normaliseApiUrl(raw: string): string {
   let url = raw.trim().replace(/\/+$/, "");
-  if (!url.includes("/wp-json")) url += "/wp-json";
+
+  // If the user pasted a full path like /wp-json/wp/v2/posts, strip back to /wp-json
+  const wpJsonIdx = url.indexOf("/wp-json");
+  if (wpJsonIdx !== -1) {
+    url = url.slice(0, wpJsonIdx + "/wp-json".length);
+  } else {
+    url += "/wp-json";
+  }
+
   return url;
 }
 
