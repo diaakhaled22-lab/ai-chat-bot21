@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import {
@@ -361,12 +361,9 @@ router.get("/admin/companies/:id/data-sources", async (req, res) => {
       return;
     }
 
-    // Knowledge files stats
-    const { companyKnowledgeFilesTable, companyWordPressIntegrationsTable } = await import("@workspace/db");
-    
     const [fileStats] = await db
       .select({
-        count: count(),
+        count: count(companyKnowledgeFilesTable.id),
         totalSize: sql<number>`COALESCE(SUM(${companyKnowledgeFilesTable.fileSize}), 0)`,
       })
       .from(companyKnowledgeFilesTable)
