@@ -614,16 +614,14 @@ export default function ClientCompany() {
     if (!company?.telegramBotApiKey) return;
     setTgRegistering(true);
     setTgStatus(null);
-    const webhookUrl = `${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`;
     try {
-      const res = await fetch(`/api/telegram/register-webhook/${company.telegramBotApiKey}`, {
+      const res = await fetch(`/api/telegram/register-webhook`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ webhookUrl }),
       });
       const data = await res.json();
       if (res.ok) {
-        setTgStatus({ ok: true, message: lang === "ar" ? "✅ تم تسجيل الويب هوك بنجاح! سيستقبل البوت الرسائل الآن." : "✅ Webhook registered! Telegram will now send messages to your chatbot." });
+        setTgStatus({ ok: true, message: lang === "ar" ? "✅ تم تسجيل الويبهوك بنجاح! سيستقبل الروبوت الرسائل الآن." : "✅ Webhook registered! Telegram will now send messages to your chatbot." });
       } else {
         setTgStatus({ ok: false, message: `❌ ${data.error}` });
       }

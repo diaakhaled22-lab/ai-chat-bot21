@@ -166,28 +166,17 @@ router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
   }
 });
 
-router.post("/telegram/register-webhook/:token", requireAuth, apiLimiter, async (req, res) => {
+router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, res) => {
   try {
-    const { token } = req.params;
-    const { webhookUrl } = req.body;
-
-    if (!webhookUrl) {
-      res.status(400).json({ error: "webhookUrl is required" });
-      return;
-    }
-
     const companies = await db.select().from(companiesTable);
-    const company = companies.find(c => c.telegramBotApiKey === token);
-    if (!company) {
-      res.status(404).json({ error: "No company found with this token" });
+    const company = companies.find(c => c.clientId === req.session.userId);
+    if (!company || !company.telegramBotApiKey) {
+      res.status(404).json({ error: "No company found or missing Telegram Bot API Key" });
       return;
     }
 
-    // Verify ownership
-    if (req.session.role !== "admin" && company.clientId !== req.session.userId) {
-      res.status(403).json({ error: "Forbidden: You do not own this chatbot bot" });
-      return;
-    }
+    const token = company.telegramBotApiKey;
+    const webhookUrl = getAppBaseUrl(req) + "/api/telegram/webhook/" + token;
 
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",
