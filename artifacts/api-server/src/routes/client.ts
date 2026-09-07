@@ -202,16 +202,48 @@ async function fetchAndStoreTelegramUsername(companyId: number, token: string): 
   }
 }
 
+type MetaGraphError = {
+  message?: string;
+  type?: string;
+  code?: number;
+  error_subcode?: number;
+};
+
+function getMessengerMetaError(error: MetaGraphError | undefined): {
+  code?: number;
+  message: string;
+  requiresPageAccess: boolean;
+} {
+  const rawMessage = error?.message ?? "Meta rejected the Messenger credentials.";
+  const requiresPageAccess =
+    error?.code === 100 ||
+    rawMessage.includes("pages_read_engagement") ||
+    rawMessage.includes("Page Public Content Access") ||
+    rawMessage.includes("Page Public Metadata Access");
+
+  if (requiresPageAccess) {
+    return {
+      code: error?.code,
+      requiresPageAccess: true,
+      message:
+        "Meta rejected this credential. Use a Page Access Token (not an App Token or User Access Token), make sure the token belongs to the selected Facebook Page, and enable pages_messaging plus pages_read_engagement or Page Public Metadata Access in Meta.",
+    };
+  }
+
+  return { code: error?.code, requiresPageAccess: false, message: rawMessage };
+}
+
 // Fetches the Facebook Page ID via the Graph API so we can build a shareable
-// m.me/<pageId> link without asking the client to type it in.
+// m.me/<pageId> link when the client has not entered it manually.
 async function fetchAndStoreMessengerPageId(companyId: number, pageAccessToken: string): Promise<void> {
   try {
     const res = await fetch(`https://graph.facebook.com/v19.0/me?fields=id&access_token=${encodeURIComponent(pageAccessToken)}`);
-    const data = await res.json() as { id?: string; error?: { message?: string } };
+    const data = await res.json() as { id?: string; error?: MetaGraphError };
     if (data.id) {
       await db.update(companiesTable).set({ messengerPageId: data.id }).where(eq(companiesTable.id, companyId));
     } else {
-      logger.warn({ companyId, error: data.error }, "Graph API /me did not return a page id");
+      const metaError = getMessengerMetaError(data.error);
+      logger.warn({ companyId, error: data.error, requiresPageAccess: metaError.requiresPageAccess }, "Graph API /me did not return a page id");
     }
   } catch (err) {
     logger.warn({ err, companyId }, "Failed to fetch Messenger page id");
@@ -262,6 +294,7 @@ router.post("/client/company", async (req, res) => {
         whatsappBusinessAccountId: data.whatsappBusinessAccountId ?? null,
         whatsappNumber: data.whatsappNumber ?? null,
         messengerApiKey: data.messengerApiKey ?? null,
+        messengerPageId: data.messengerPageId ?? null,
         websiteChatbotKey: data.websiteChatbotKey ?? null,
         websiteDataUrl: data.websiteDataUrl ?? null,
         websiteAutoSync: data.websiteAutoSync ?? false,
@@ -272,7 +305,7 @@ router.post("/client/company", async (req, res) => {
       autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req));
       fetchAndStoreTelegramUsername(company.id, company.telegramBotApiKey);
     }
-    if (company.messengerApiKey) {
+    if (company.messengerApiKey && !company.messengerPageId) {
       fetchAndStoreMessengerPageId(company.id, company.messengerApiKey);
     }
     if (company.websiteAutoSync && company.websiteDataUrl) {
@@ -406,7 +439,10 @@ router.put("/client/company", async (req, res) => {
       autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req));
       fetchAndStoreTelegramUsername(company.id, company.telegramBotApiKey);
     }
-    if (company.messengerApiKey && data.messengerApiKey !== undefined) {
+    const savedMessengerToken = preserveMaskedSecret(data.messengerApiKey, existingCompany.messengerApiKey);
+    const messengerTokenChanged =
+      data.messengerApiKey !== undefined && savedMessengerToken !== existingCompany.messengerApiKey;
+    if (company.messengerApiKey && messengerTokenChanged && !company.messengerPageId) {
       fetchAndStoreMessengerPageId(company.id, company.messengerApiKey);
     }
     if (
@@ -1319,9 +1355,17 @@ router.post("/client/test-messenger", async (req, res) => {
 
     const url = `https://graph.facebook.com/me?access_token=${encodeURIComponent(company.messengerApiKey)}&fields=id,name`;
     const metaRes = await fetch(url);
-    const data = await metaRes.json() as any;
+    const data = await metaRes.json() as { id?: string; name?: string; error?: MetaGraphError };
 
-    if (data.error) return res.json({ ok: false, error: data.error.message ?? "Invalid token." });
+    if (data.error) {
+      const metaError = getMessengerMetaError(data.error);
+      return res.json({
+        ok: false,
+        code: metaError.code,
+        requiresPageAccess: metaError.requiresPageAccess,
+        error: metaError.message,
+      });
+    }
     return res.json({ ok: true, name: data.name ?? null, id: data.id ?? null });
   } catch (err) {
     logger.error({ err }, "Test messenger connection error");

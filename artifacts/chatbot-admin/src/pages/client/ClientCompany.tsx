@@ -152,6 +152,7 @@ function usePlatformWebhooks() {
 
 function MessengerSetupCard({ company }: { company: { isActive: boolean; messengerApiKey?: string | null; messengerPageId?: string | null } }) {
   const { toast } = useToast();
+  const { lang } = useLanguage();
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const { data: platformConfig, isLoading: platformLoading } = usePlatformWebhooks();
@@ -168,9 +169,22 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
     setTesting(true);
     setTestResult(null);
     try {
-      const data = await customFetch<{ ok: boolean; name?: string; error?: string }>("/api/client/test-messenger", { method: "POST" });
+      const data = await customFetch<{
+        ok: boolean;
+        name?: string;
+        error?: string;
+        code?: number;
+        requiresPageAccess?: boolean;
+      }>("/api/client/test-messenger", { method: "POST" });
       if (data.ok) {
         setTestResult({ ok: true, message: `✅ Connected${data.name ? ` — Page: ${data.name}` : ""}` });
+      } else if (data.requiresPageAccess) {
+        setTestResult({
+          ok: false,
+          message: lang === "ar"
+            ? "❌ رفضت Meta بيانات الاعتماد. استخدم Page Access Token وليس App/User Token، وتأكد من تفعيل pages_messaging و pages_read_engagement أو Page Public Metadata Access من لوحة Meta. يمكنك إدخال Page ID يدويًا أدناه."
+            : "❌ Meta rejected this credential. Use a Page Access Token, not an App/User Token, and enable pages_messaging plus pages_read_engagement or Page Public Metadata Access in Meta. You can enter the Page ID manually below.",
+        });
       } else {
         setTestResult({ ok: false, message: `❌ ${data.error ?? "Connection failed"}` });
       }
@@ -188,7 +202,7 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
           <ChannelIcon channel="messenger" size={20} /> Messenger Setup
         </CardTitle>
         <CardDescription>
-          Your Page Access Token is saved. In the Meta App Dashboard, add this URL as your webhook and use the Verify Token below.
+          Use a Page Access Token from Meta (not an App or User token). Add this URL as your webhook and use the Verify Token below.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -247,6 +261,17 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
               {testResult.message}
             </div>
           )}
+        </div>
+
+        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground">
+            {lang === "ar" ? "متطلبات Meta:" : "Meta requirements:"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {lang === "ar"
+              ? "استخدم Page Access Token للصفحة الصحيحة، وفعّل pages_messaging وpages_read_engagement أو Page Public Metadata Access. إذا كان التطبيق في وضع التطوير، يجب أن يكون حسابك Admin/Developer/Tester في تطبيق Meta."
+              : "Use a Page Access Token for the correct Page, and enable pages_messaging plus pages_read_engagement or Page Public Metadata Access. In development mode, your account must be an Admin, Developer, or Tester of the Meta app."}
+          </p>
         </div>
 
         <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
