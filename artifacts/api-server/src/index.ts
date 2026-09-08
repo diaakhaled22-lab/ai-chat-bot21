@@ -13,17 +13,17 @@ const port = Number(rawPort) || 8080;
 
 async function ensureAdminExists() {
   try {
-    const [existing] = await db
+    const [existingAdmin] = await db
       .select({ id: usersTable.id })
       .from(usersTable)
-      .where(eq(usersTable.role, "admin"))
+      .where(eq(usersTable.username, "admin"))
       .limit(1);
 
-    if (existing) return;
+    if (existingAdmin) return;
 
-    // Use env var or generate a secure random password — never hardcode
-    const { randomBytes } = await import("crypto");
-    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || randomBytes(16).toString("hex");
+    // Keep the documented development credentials usable after a fresh reset.
+    // Production deployments should always provide DEFAULT_ADMIN_PASSWORD.
+    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
     const passwordHash = await bcrypt.hash(defaultPassword, 12);
     await db.insert(usersTable).values({
       name: "Admin",
@@ -33,7 +33,7 @@ async function ensureAdminExists() {
     });
     logger.warn(
       { username: "admin" },
-      `No admin user found — created default admin. ${process.env.DEFAULT_ADMIN_PASSWORD ? "Using password from DEFAULT_ADMIN_PASSWORD env var." : `Generated password: ${defaultPassword} — CHANGE THIS IMMEDIATELY.`}`,
+      `No admin user found — created default admin. ${process.env.DEFAULT_ADMIN_PASSWORD ? "Using password from DEFAULT_ADMIN_PASSWORD env var." : "Using the documented default password — CHANGE THIS IMMEDIATELY."}`,
     );
   } catch (err) {
     logger.error({ err }, "Failed to ensure admin user exists");
@@ -216,14 +216,19 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog sync failed"));
 
-// Ensure at least one admin account exists on every startup (guards against DB resets)
-ensureAdminExists();
+// Ensure the default admin is ready before accepting requests. This guards
+// against fresh database resets and avoids a login race during startup.
+async function startServer() {
+  await ensureAdminExists();
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
 
-  logger.info({ port }, "Server listening");
-});
+    logger.info({ port }, "Server listening");
+  });
+}
+
+void startServer();

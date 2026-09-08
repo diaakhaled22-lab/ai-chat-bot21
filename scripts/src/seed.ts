@@ -195,14 +195,17 @@ async function seed() {
     console.log("✅ Tables verified.");
 
     // Seed default admin user
-    const adminPasswordHash = await bcrypt.hash("admin123", 10);
+    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
+    const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
     await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (username) DO NOTHING`,
       ["System Admin", "admin", adminPasswordHash, "admin"]
     );
-    console.log("✅ Default Admin user ready (username: admin / password: admin123)");
+    console.log(
+      `✅ Default Admin user ready (username: admin / password: ${process.env.DEFAULT_ADMIN_PASSWORD ? "configured via DEFAULT_ADMIN_PASSWORD" : "admin123"})`,
+    );
 
     // Seed default demo client user
     const clientPasswordHash = await bcrypt.hash("client123", 10);
