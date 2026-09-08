@@ -1414,11 +1414,10 @@ export default function AdminCompanies() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Active Integrations</p>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {[
-                    { label: "Website",   active: !!viewCompany.websiteChatbotKey,    icon: <Globe className="w-4 h-4" />,      color: "text-blue-400 bg-blue-500/10 border-blue-500/20"     },
-                    { label: "Telegram",  active: !!viewCompany.telegramBotApiKey,    icon: <Send className="w-4 h-4" />,       color: "text-sky-400 bg-sky-500/10 border-sky-500/20"        },
-                    { label: "WhatsApp",  active: !!viewCompany.whatsappApiKey,       icon: <Phone className="w-4 h-4" />,      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-                    { label: "Sheets",    active: !!viewCompany.googleSheetsEnabled,  icon: <Sheet className="w-4 h-4" />,      color: "text-green-400 bg-green-500/10 border-green-500/20"  },
-                    { label: "AI Agent",  active: !!viewCompany.aiAgentApiKey,        icon: <Sparkles className="w-4 h-4" />,   color: "text-violet-400 bg-violet-500/10 border-violet-500/20"},
+                    { label: "Website",   active: !!viewCompany.widgetEnabled,    icon: <Globe className="w-4 h-4" />,          color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
+                    { label: "Telegram",  active: !!viewCompany.telegramEnabled,  icon: <Send className="w-4 h-4" />,           color: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
+                    { label: "WhatsApp",  active: !!viewCompany.whatsappEnabled,  icon: <Phone className="w-4 h-4" />,          color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+                    { label: "Messenger", active: !!viewCompany.messengerEnabled, icon: <MessageSquare className="w-4 h-4" />, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
                   ].map((ch) => (
                     <div
                       key={ch.label}
