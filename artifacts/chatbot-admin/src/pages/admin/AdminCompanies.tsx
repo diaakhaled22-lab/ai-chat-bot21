@@ -322,6 +322,8 @@ function ChannelBadges({ company }: { company: Company }) {
     { key: "telegram", active: !!company.telegramEnabled,  icon: <Send className="w-3 h-3" />,   label: "Telegram" },
     { key: "whatsapp", active: !!company.whatsappEnabled,  icon: <Phone className="w-3 h-3" />,   label: "WhatsApp" },
     { key: "messenger",active: !!company.messengerEnabled, icon: <MessageSquare className="w-3 h-3" />, label: "Messenger" },
+    { key: "sheets",   active: !!company.googleSheetsEnabled, icon: <Sheet className="w-3 h-3" />, label: "Sheets" },
+    { key: "ai",       active: !!company.aiAgentApiKey,      icon: <Sparkles className="w-3 h-3" />, label: "AI Agent" },
   ];
   const active = channels.filter((c) => c.active);
   if (active.length === 0) return <span className="text-xs text-muted-foreground/50">—</span>;
@@ -1418,6 +1420,8 @@ export default function AdminCompanies() {
                     { label: "Telegram",  active: !!viewCompany.telegramEnabled,  icon: <Send className="w-4 h-4" />,           color: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
                     { label: "WhatsApp",  active: !!viewCompany.whatsappEnabled,  icon: <Phone className="w-4 h-4" />,          color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
                     { label: "Messenger", active: !!viewCompany.messengerEnabled, icon: <MessageSquare className="w-4 h-4" />, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+                    { label: "Sheets",    active: !!viewCompany.googleSheetsEnabled, icon: <Sheet className="w-4 h-4" />,       color: "text-green-400 bg-green-500/10 border-green-500/20" },
+                    { label: "AI Agent",  active: !!viewCompany.aiAgentApiKey,     icon: <Sparkles className="w-4 h-4" />,      color: "text-violet-400 bg-violet-500/10 border-violet-500/20" },
                   ].map((ch) => (
                     <div
                       key={ch.label}
