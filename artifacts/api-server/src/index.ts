@@ -6,39 +6,10 @@ import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { refreshAiModels } from "./lib/aiModels";
-import bcrypt from "bcryptjs";
+import { ensureAdminExists } from "./lib/adminBootstrap";
 
 const rawPort = process.env["PORT"] || "8080";
 const port = Number(rawPort) || 8080;
-
-async function ensureAdminExists() {
-  try {
-    const [existingAdmin] = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(eq(usersTable.username, "admin"))
-      .limit(1);
-
-    if (existingAdmin) return;
-
-    // Keep the documented development credentials usable after a fresh reset.
-    // Production deployments should always provide DEFAULT_ADMIN_PASSWORD.
-    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
-    const passwordHash = await bcrypt.hash(defaultPassword, 12);
-    await db.insert(usersTable).values({
-      name: "Admin",
-      username: "admin",
-      passwordHash,
-      role: "admin",
-    });
-    logger.warn(
-      { username: "admin" },
-      `No admin user found — created default admin. ${process.env.DEFAULT_ADMIN_PASSWORD ? "Using password from DEFAULT_ADMIN_PASSWORD env var." : "Using the documented default password — CHANGE THIS IMMEDIATELY."}`,
-    );
-  } catch (err) {
-    logger.error({ err }, "Failed to ensure admin user exists");
-  }
-}
 
 async function expireCompanies() {
   try {
