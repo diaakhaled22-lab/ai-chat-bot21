@@ -52,8 +52,12 @@ type Company = {
   googleSheetsLink?: string | null;
   aiAgentApiKey?: string | null;
   telegramBotApiKey?: string | null;
+  telegramEnabled?: boolean | null;
   whatsappApiKey?: string | null;
+  whatsappEnabled?: boolean | null;
+  messengerEnabled?: boolean | null;
   websiteChatbotKey?: string | null;
+  widgetEnabled?: boolean | null;
   websiteDataUrl?: string | null;
   websiteAutoSync?: boolean;
   websiteLastSynced?: string | null;
@@ -314,11 +318,10 @@ function ActivityLog({ companyId }: { companyId: number }) {
 // ── Channel badges ─────────────────────────────────────────────────────────────
 function ChannelBadges({ company }: { company: Company }) {
   const channels = [
-    { key: "web",      active: !!company.websiteChatbotKey,  icon: <Globe className="w-3 h-3" />,        label: "Website"  },
-    { key: "telegram", active: !!company.telegramBotApiKey,  icon: <Send className="w-3 h-3" />,         label: "Telegram" },
-    { key: "whatsapp", active: !!company.whatsappApiKey,     icon: <Phone className="w-3 h-3" />,        label: "WhatsApp" },
-    { key: "sheets",   active: !!company.googleSheetsEnabled,icon: <Sheet className="w-3 h-3" />,        label: "Sheets"   },
-    { key: "ai",       active: !!company.aiAgentApiKey,      icon: <Sparkles className="w-3 h-3" />,     label: "AI Agent" },
+    { key: "web",      active: !!company.widgetEnabled,    icon: <Globe className="w-3 h-3" />,  label: "Website"  },
+    { key: "telegram", active: !!company.telegramEnabled,  icon: <Send className="w-3 h-3" />,   label: "Telegram" },
+    { key: "whatsapp", active: !!company.whatsappEnabled,  icon: <Phone className="w-3 h-3" />,   label: "WhatsApp" },
+    { key: "messenger",active: !!company.messengerEnabled, icon: <MessageSquare className="w-3 h-3" />, label: "Messenger" },
   ];
   const active = channels.filter((c) => c.active);
   if (active.length === 0) return <span className="text-xs text-muted-foreground/50">—</span>;
