@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionAnomalyDetector } from "./lib/security";
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,7 +66,12 @@ app.use(express.urlencoded({ extended: true }));
 import pgSession from "connect-pg-simple";
 import { pool } from "@workspace/db"; // Assuming pool is exported from db
 
-const sessionSecret = process.env.SESSION_SECRET || "dev-only-secret-" + Math.random().toString(36);
+const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
+if (!process.env.SESSION_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    logger.warn('SECURITY: SESSION_SECRET env var is not set. Using a random secret — sessions will not survive restarts.');
+  }
+}
 
 const PgStore = pgSession(session);
 
@@ -76,7 +82,7 @@ app.use(
       tableName: "session", // Make sure this table exists or we need to manage it. Wait, does the db export pool? Let's check db package.
       createTableIfMissing: true
     }),
-    secret: sessionSecret || "dev-only-secret-" + Math.random().toString(36),
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {

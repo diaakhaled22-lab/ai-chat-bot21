@@ -54,14 +54,16 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
       : undefined;
 
     // Match company by channel key
-    const companies = await db.select().from(companiesTable);
-    const company = companies.find((c) => {
-      if (channel === "telegram") return c.telegramBotApiKey === apiKey;
-      if (channel === "whatsapp") return c.whatsappApiToken === apiKey;
-      if (channel === "messenger") return c.messengerApiKey === apiKey;
-      if (channel === "website")  return c.websiteChatbotKey === apiKey;
-      return false;
-    });
+    const channelKeyColumn = {
+      telegram: companiesTable.telegramBotApiKey,
+      whatsapp: companiesTable.whatsappApiToken,
+      messenger: companiesTable.messengerApiKey,
+      website: companiesTable.websiteChatbotKey,
+    }[channel];
+
+    const [company] = channelKeyColumn
+      ? await db.select().from(companiesTable).where(eq(channelKeyColumn, apiKey)).limit(1)
+      : [];
 
     if (!company) {
       res.status(401).json({ error: "Invalid API key for this channel" });

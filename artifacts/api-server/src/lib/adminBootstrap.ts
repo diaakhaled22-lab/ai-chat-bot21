@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -15,7 +16,11 @@ export async function ensureAdminExists(database: typeof db = db): Promise<void>
 
     // Keep the documented development credentials usable after a fresh reset.
     // Production deployments should always provide DEFAULT_ADMIN_PASSWORD.
-    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
+    if (!process.env.DEFAULT_ADMIN_PASSWORD && process.env.NODE_ENV === 'production') {
+      logger.error('SECURITY: DEFAULT_ADMIN_PASSWORD env var is required in production. Refusing to create admin with weak default.');
+      return;
+    }
+    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
     const passwordHash = await bcrypt.hash(defaultPassword, 12);
     await database.insert(usersTable).values({
       name: "Admin",

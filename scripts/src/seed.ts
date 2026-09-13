@@ -4,6 +4,7 @@
  * Safe to run multiple times without duplicating data or breaking constraints.
  * Run: pnpm --filter @workspace/scripts run seed
  */
+import crypto from 'crypto';
 import { Client } from "pg";
 import bcrypt from "bcryptjs";
 
@@ -195,8 +196,8 @@ async function seed() {
     console.log("✅ Tables verified.");
 
     // Seed default admin user
-    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
-    const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+    const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
     await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
@@ -208,7 +209,8 @@ async function seed() {
     );
 
     // Seed default demo client user
-    const clientPasswordHash = await bcrypt.hash("client123", 10);
+    const defaultClientPassword = process.env.DEFAULT_CLIENT_PASSWORD || crypto.randomBytes(16).toString('hex');
+    const clientPasswordHash = await bcrypt.hash(defaultClientPassword, 12);
     const clientRes = await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
@@ -230,7 +232,7 @@ async function seed() {
          WHERE NOT EXISTS (SELECT 1 FROM companies WHERE client_id = $1);`,
         [clientId]
       );
-      console.log("✅ Default Client user & company ready (username: client / password: client123)");
+      console.log(`✅ Default Client user & company ready (username: client / password: ${process.env.DEFAULT_CLIENT_PASSWORD ? "configured via DEFAULT_CLIENT_PASSWORD" : defaultClientPassword})`);
     }
 
     // Seed initial admin config

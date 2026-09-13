@@ -13,6 +13,11 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/pr
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { requireAuth } from "../middlewares/requireAuth";
 import { webhookLimiter, apiLimiter } from "../lib/security";
+import crypto from 'crypto';
+
+function telegramWebhookSecret(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 32);
+}
 
 const router = Router();
 
@@ -89,11 +94,11 @@ async function sendTelegramMessage(botToken: string, chatId: number, text: strin
   });
 }
 
-router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
+router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
   res.sendStatus(200);
 
   try {
-    const token = Array.isArray(req.params.token) ? req.params.token[0] : String(req.params.token || "");
+    const secret = Array.isArray(req.params.secret) ? req.params.secret[0] : String(req.params.secret || "");
     const update = req.body;
 
     const message = update.message || update.edited_message;
@@ -104,15 +109,15 @@ router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
     const sessionId = `tg_${chatId}`;
 
     const companies = await db.select().from(companiesTable);
-    const company = companies.find(c => c.telegramBotApiKey === token);
+    const company = companies.find(c => c.telegramBotApiKey && telegramWebhookSecret(c.telegramBotApiKey) === secret);
 
     if (!company) {
-      logger.warn({ token: token.slice(0, 8) }, "Telegram webhook: no company matched");
+      logger.warn({ secret: secret.slice(0, 8) }, "Telegram webhook: no company matched");
       return;
     }
 
     if (!company.isActive) {
-      await sendTelegramMessage(token, chatId, localizedChannelMessage(
+      await sendTelegramMessage(company.telegramBotApiKey!, chatId, localizedChannelMessage(
         userText,
         "⚠️ هذه الخدمة غير نشطة حاليًا. يرجى التواصل مع الدعم.",
         "⚠️ This chatbot is currently inactive. Please contact support.",
@@ -121,7 +126,7 @@ router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
     }
 
     if (!company.aiAgentApiKey) {
-      await sendTelegramMessage(token, chatId, localizedChannelMessage(
+      await sendTelegramMessage(company.telegramBotApiKey!, chatId, localizedChannelMessage(
         userText,
         "⚠️ لم يتم إعداد الذكاء الاصطناعي بعد.",
         "⚠️ AI is not configured yet.",
@@ -152,7 +157,7 @@ router.post("/telegram/webhook/:token", webhookLimiter, async (req, res) => {
       botResponse: aiReply,
     });
 
-    await sendTelegramMessage(token, chatId, aiReply);
+    await sendTelegramMessage(company.telegramBotApiKey!, chatId, aiReply);
 
     void syncConversationToSheet(company, [
       ...history,
@@ -191,7 +196,7 @@ router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, r
     }
 
     const token = company.telegramBotApiKey;
-    const webhookUrl = getAppBaseUrl(req) + "/api/telegram/webhook/" + token;
+    const webhookUrl = getAppBaseUrl(req) + "/api/telegram/webhook/" + telegramWebhookSecret(token);
 
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",

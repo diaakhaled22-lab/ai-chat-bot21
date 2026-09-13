@@ -18,6 +18,11 @@ import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification } from "../lib/email";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
+import crypto from 'crypto';
+
+function telegramWebhookSecret(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 32);
+}
 
 const router = Router();
 // Only enforce client auth on /client/* paths — other paths pass through unguarded
@@ -168,7 +173,7 @@ async function autoRegisterWhatsAppWebhook(
 }
 
 async function autoRegisterTelegramWebhook(token: string, baseUrl: string): Promise<void> {
-  const webhookUrl = `${baseUrl}/api/telegram/webhook/${token}`;
+  const webhookUrl = `${baseUrl}/api/telegram/webhook/${telegramWebhookSecret(token)}`;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",

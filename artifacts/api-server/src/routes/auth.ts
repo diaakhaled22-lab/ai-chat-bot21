@@ -250,7 +250,7 @@ router.post("/auth/reset-password", sensitiveLimiter, async (req, res) => {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
 
     await db
       .update(usersTable)

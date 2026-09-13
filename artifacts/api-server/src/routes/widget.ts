@@ -28,8 +28,7 @@ router.options("/widget/:key/chat", WIDGET_CORS, (_req, res) => { res.sendStatus
 router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
-    const companies = await db.select().from(companiesTable);
-    const company = companies.find((c) => c.websiteChatbotKey === key);
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.websiteChatbotKey, key)).limit(1);
 
     if (!company) {
       res.status(404).json({ error: "Widget not found" });
@@ -60,8 +59,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     const explicitLang = lang === "ar" || lang === "en" ? lang : undefined;
 
-    const companies = await db.select().from(companiesTable);
-    const company = companies.find((c) => c.websiteChatbotKey === key);
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.websiteChatbotKey, key)).limit(1);
 
     if (!company) {
       res.status(404).json({ error: "Widget not found" });

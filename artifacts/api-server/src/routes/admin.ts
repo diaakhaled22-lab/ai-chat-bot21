@@ -19,7 +19,7 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
-import { getAttackMonitoringSnapshot, maskApiKey } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey, validatePassword } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
 import { logAdminActivity } from "../lib/audit";
 
@@ -207,6 +207,12 @@ router.post("/admin/clients", async (req, res) => {
     }
     const { name, username, password } = parsed.data;
 
+    const pwError = validatePassword(password);
+    if (pwError) {
+      res.status(400).json({ error: pwError });
+      return;
+    }
+
     const [existing] = await db
       .select({ id: usersTable.id })
       .from(usersTable)
@@ -259,10 +265,19 @@ router.put("/admin/clients/:id", async (req, res) => {
       return;
     }
     const { name, username, password } = body.data;
+
+    if (password) {
+      const pwError = validatePassword(password);
+      if (pwError) {
+        res.status(400).json({ error: pwError });
+        return;
+      }
+    }
+
     const updates: Record<string, unknown> = {};
     if (name) updates.name = name;
     if (username) updates.username = username;
-    if (password) updates.passwordHash = await bcrypt.hash(password, 10);
+    if (password) updates.passwordHash = await bcrypt.hash(password, 12);
 
     const [user] = await db
       .update(usersTable)
