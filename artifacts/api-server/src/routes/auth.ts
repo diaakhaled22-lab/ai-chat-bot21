@@ -67,7 +67,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
           });
         }
       }
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
 
@@ -80,7 +80,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
           windowMinutes: 5,
         });
       }
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
 
@@ -138,7 +138,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
           });
         }
       }
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
 
@@ -151,7 +151,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
           windowMinutes: 5,
         });
       }
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
 

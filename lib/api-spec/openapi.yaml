@@ -65,7 +65,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResult"
         "401":
-          description: Invalid credentials
+          description: Invalid login credentials
 
   /auth/client/login:
     post:
@@ -86,7 +86,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResult"
         "401":
-          description: Invalid credentials
+          description: Invalid login credentials
 
   /auth/logout:
     post:

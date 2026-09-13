@@ -46,7 +46,7 @@ export default function ClientLogin() {
       onError: (error: any) => {
         toast({
           title: "Login failed",
-          description: error.message || "Invalid credentials",
+          description: error.message || "Invalid login credentials",
           variant: "destructive",
         });
       }
