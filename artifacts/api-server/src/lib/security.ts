@@ -229,6 +229,12 @@ export interface AttackSpikeAlert {
   message: string | null;
 }
 
+export interface FailedLoginResult {
+  accountLocked: boolean;
+  spikeDetected: boolean;
+  recentFailedAttempts: number;
+}
+
 export interface AttackMonitoringSnapshot {
   logs: AttackLogEntry[];
   blockedIps: Array<{ ip: string; blockedAt: string }>;
@@ -357,7 +363,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
 /**
  * Records a failed login attempt. Returns true if the account is now locked.
  */
-export function recordFailedLogin(username: string, ip: string): boolean {
+export function recordFailedLogin(username: string, ip: string): FailedLoginResult {
   const entry = getOrCreateLoginAttempt(username);
   const now = Date.now();
   entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
@@ -370,10 +376,10 @@ export function recordFailedLogin(username: string, ip: string): boolean {
   const recentFailedAttempts = attackLogs.filter(
     (log) => log.event === "failed_attempt" && now - new Date(log.time).getTime() <= FAILURE_WINDOW_MS,
   ).length;
-  if (
+  const spikeDetected =
     recentFailedAttempts >= SPIKE_ALERT_THRESHOLD
-    && (lastSpikeAlertAt === 0 || now - lastSpikeAlertAt >= FAILURE_WINDOW_MS)
-  ) {
+    && (lastSpikeAlertAt === 0 || now - lastSpikeAlertAt >= FAILURE_WINDOW_MS);
+  if (spikeDetected) {
     lastSpikeAlertAt = now;
     logger.warn(
       { recentFailedAttempts, windowMinutes: FAILURE_WINDOW_MS / 60000, threshold: SPIKE_ALERT_THRESHOLD },
@@ -381,14 +387,19 @@ export function recordFailedLogin(username: string, ip: string): boolean {
     );
   }
 
-  if (attempts >= MAX_LOGIN_ATTEMPTS) {
+  const accountLocked = attempts >= MAX_LOGIN_ATTEMPTS;
+
+  if (accountLocked) {
     entry.lockedUntil = now + LOCKOUT_DURATION_MS;
     appendAttackLog(ip, username, attempts, "account_locked", now);
     logger.warn({ username: username.toLowerCase(), ip, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
-    return true;
   }
 
-  return false;
+  return {
+    accountLocked,
+    spikeDetected,
+    recentFailedAttempts,
+  };
 }
 
 function getAttackAnalytics(now = Date.now()): AttackMonitoringSnapshot["analytics"] {

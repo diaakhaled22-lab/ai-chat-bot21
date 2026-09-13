@@ -1,7 +1,8 @@
 import nodemailer from "nodemailer";
-import { db, adminConfigTable } from "@workspace/db";
+import { db, adminConfigTable, notificationsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { escapeHtml } from "./security";
+import { eq } from "drizzle-orm";
 
 const EMAIL_KEYS = [
   "notif_recipient_email",
@@ -174,4 +175,61 @@ export async function sendClientNotification(clientEmail: string, title: string,
     subject: `[Notification] ${title}`,
     html
   });
+}
+
+export async function sendAttackSpikeNotification(input: {
+  recentFailedAttempts: number;
+  windowMinutes: number;
+}) {
+  const title = "Security alert: failed-login spike";
+  const message = `${input.recentFailedAttempts} failed login attempts were detected within ${input.windowMinutes} minutes. Review the Attack Monitoring page immediately.`;
+
+  try {
+    const admins = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+
+    if (admins.length > 0) {
+      await db.insert(notificationsTable).values(
+        admins.map((admin) => ({
+          userId: admin.id,
+          type: "security_alert",
+          title,
+          message,
+          companyId: null,
+          isRead: false,
+        })),
+      );
+    }
+    logger.info({ adminCount: admins.length }, "Security alert added to admin notifications");
+  } catch (err) {
+    logger.error({ err }, "Failed to add security alert to admin notifications");
+  }
+
+  try {
+    const cfg = await getEmailConfig();
+    if (!isEmailConfigured(cfg)) {
+      logger.warn("Security alert recorded in notifications, but email is not configured");
+      return;
+    }
+
+    const transporter = buildTransporter(cfg);
+    await transporter.sendMail({
+      from: `"Mission Control" <${cfg.smtpUser}>`,
+      to: cfg.recipientEmail,
+      subject: `[Security Alert] ${input.recentFailedAttempts} failed login attempts`,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
+          <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
+          <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
+          <p style="margin:0;color:#450a0a;font-size:13px;">Open Mission Control → Attack Monitoring to review IP addresses, targeted accounts, and automatic blocks.</p>
+        </div>
+      `,
+    });
+
+    logger.info({ recentFailedAttempts: input.recentFailedAttempts }, "Security alert email sent");
+  } catch (err) {
+    logger.error({ err }, "Failed to send security alert email");
+  }
 }

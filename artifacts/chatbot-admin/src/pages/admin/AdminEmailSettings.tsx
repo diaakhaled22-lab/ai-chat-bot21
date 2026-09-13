@@ -87,7 +87,7 @@ export default function AdminEmailSettings() {
           Email Notifications
         </CardTitle>
         <CardDescription>
-          Receive an email whenever a customer submits a new problem.
+          Receive emails for customer problems and security alerts.
           {data?.configured && (
             <span className="ml-2 inline-flex items-center gap-1 text-emerald-400 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5" />Active

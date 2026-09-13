@@ -5,7 +5,7 @@ import { db, usersTable, passwordResetTokensTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
-import { sendPasswordResetEmail, getEmailConfig, isEmailConfigured } from "../lib/email";
+import { sendAttackSpikeNotification, sendPasswordResetEmail, getEmailConfig, isEmailConfigured } from "../lib/email";
 import {
   authLimiter,
   sensitiveLimiter,
@@ -58,14 +58,28 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       .limit(1);
 
     if (!user || user.role !== "admin") {
-      if (username) recordFailedLogin(username, ip);
+      if (username) {
+        const result = recordFailedLogin(username, ip);
+        if (result.spikeDetected) {
+          void sendAttackSpikeNotification({
+            recentFailedAttempts: result.recentFailedAttempts,
+            windowMinutes: 5,
+          });
+        }
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      recordFailedLogin(username, ip);
+      const result = recordFailedLogin(username, ip);
+      if (result.spikeDetected) {
+        void sendAttackSpikeNotification({
+          recentFailedAttempts: result.recentFailedAttempts,
+          windowMinutes: 5,
+        });
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
@@ -115,14 +129,28 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       .limit(1);
 
     if (!user || user.role !== "client") {
-      if (username) recordFailedLogin(username, ip);
+      if (username) {
+        const result = recordFailedLogin(username, ip);
+        if (result.spikeDetected) {
+          void sendAttackSpikeNotification({
+            recentFailedAttempts: result.recentFailedAttempts,
+            windowMinutes: 5,
+          });
+        }
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      recordFailedLogin(username, ip);
+      const result = recordFailedLogin(username, ip);
+      if (result.spikeDetected) {
+        void sendAttackSpikeNotification({
+          recentFailedAttempts: result.recentFailedAttempts,
+          windowMinutes: 5,
+        });
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }

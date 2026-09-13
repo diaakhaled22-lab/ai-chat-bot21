@@ -26,6 +26,7 @@ import {
   Zap,
   Webhook,
   ShieldCheck, ShieldAlert,
+  AlertTriangle,
   Database,
   type LucideIcon,
 } from "lucide-react";
@@ -88,15 +89,16 @@ function NotificationBell() {
   });
   const openTicketCount: number = (stats as any)?.openTicketCount ?? 0;
 
-  const { data: reminders = [], refetch: refetchReminders } = useQuery<AppNotification[]>({
+  const { data: notifications = [] } = useQuery<AppNotification[]>({
     queryKey: ["admin-notifications"],
     queryFn: () => customFetch("/api/admin/notifications"),
-    refetchInterval: 60_000,
-    select: (data: AppNotification[]) => data.filter((n) => n.type === "renewal_reminder"),
+    refetchInterval: 10_000,
   });
 
-  const unreadReminders = reminders.filter((n) => !n.isRead).length;
-  const totalBadge = openTicketCount + unreadReminders;
+  const reminders = notifications.filter((n) => n.type === "renewal_reminder");
+  const securityAlerts = notifications.filter((n) => n.type === "security_alert");
+  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
+  const totalBadge = openTicketCount + unreadNotifications;
 
   const prevTotalRef = useRef<number | null>(null);
   const [pulse, setPulse] = useState(false);
@@ -117,12 +119,12 @@ function NotificationBell() {
   });
 
   useEffect(() => {
-    if (open && unreadReminders > 0) {
+    if (open && unreadNotifications > 0) {
       customFetch("/api/admin/notifications/mark-read", { method: "PATCH" }).then(() => {
         queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
       });
     }
-  }, [open]);
+  }, [open, unreadNotifications, queryClient]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -176,6 +178,32 @@ function NotificationBell() {
             </div>
           )}
 
+          {/* Security alerts section */}
+          {securityAlerts.length > 0 && (
+            <div>
+              <div className="px-4 py-1.5 bg-red-500/10">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-red-300">
+                  Security Alerts
+                </span>
+              </div>
+              {securityAlerts.slice(0, 5).map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => { setOpen(false); setLocation("/admin/attack-monitoring"); }}
+                  className={`w-full text-left px-4 py-3 hover:bg-red-500/10 transition-colors flex items-start gap-3 ${!n.isRead ? "bg-red-500/5" : ""}`}
+                >
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight">{n.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
+                  </div>
+                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 mt-1.5" />}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Open tickets section */}
           <div>
             <div className="px-4 py-1.5 bg-muted/30">
@@ -215,7 +243,7 @@ function NotificationBell() {
             )}
           </div>
 
-          {reminders.length === 0 && tickets.length === 0 && !ticketsFetching && (
+          {reminders.length === 0 && securityAlerts.length === 0 && tickets.length === 0 && !ticketsFetching && (
             <div className="flex flex-col items-center justify-center h-24 gap-2 text-muted-foreground">
               <CheckCircle2 className="w-7 h-7 opacity-20" />
               <p className="text-xs">{t("notif_no_notifications")}</p>
