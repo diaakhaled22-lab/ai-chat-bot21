@@ -443,6 +443,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/webhook-messenger",  label: "Webhook Channels",  icon: Webhook },
     { href: "/admin/ai-tester",          label: "AI Tester",          icon: Sparkles },
     { href: "/admin/audit-logs",         label: "Audit Logs",         icon: ShieldAlert },
+    { href: "/admin/attack-monitoring",  label: "Attack Monitoring",  icon: ShieldAlert },
     { href: "/admin/security",           label: "Security Settings",           icon: ShieldCheck },
     { href: "/admin/settings",           label: "Settings",           icon: Settings },
   ];

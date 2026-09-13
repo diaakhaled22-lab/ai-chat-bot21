@@ -6,7 +6,17 @@ import { eq, and, gt } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { sendPasswordResetEmail, getEmailConfig, isEmailConfigured } from "../lib/email";
-import { authLimiter, sensitiveLimiter, isAccountLocked, recordFailedLogin, resetLoginAttempts, validatePassword, regenerateSession } from "../lib/security";
+import {
+  authLimiter,
+  sensitiveLimiter,
+  isAccountLocked,
+  isIpBlocked,
+  recordBlockedLoginAttempt,
+  recordFailedLogin,
+  resetLoginAttempts,
+  validatePassword,
+  regenerateSession,
+} from "../lib/security";
 
 declare module "express-session" {
   interface SessionData {
@@ -26,10 +36,17 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
     const { username, password } = parsed.data;
+    const ip = req.ip || "unknown";
+
+    if (isIpBlocked(ip)) {
+      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
+      return;
+    }
 
     // Check account lockout
     const lockSeconds = isAccountLocked(username);
     if (lockSeconds > 0) {
+      recordBlockedLoginAttempt(username, ip);
       res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
@@ -41,14 +58,14 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       .limit(1);
 
     if (!user || user.role !== "admin") {
-      if (username) recordFailedLogin(username, req.ip || "unknown");
+      if (username) recordFailedLogin(username, ip);
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      recordFailedLogin(username, req.ip || "unknown");
+      recordFailedLogin(username, ip);
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
@@ -77,9 +94,16 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       return;
     }
     const { username, password } = parsed.data;
+    const ip = req.ip || "unknown";
+
+    if (isIpBlocked(ip)) {
+      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
+      return;
+    }
 
     const lockSeconds = isAccountLocked(username);
     if (lockSeconds > 0) {
+      recordBlockedLoginAttempt(username, ip);
       res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
@@ -91,14 +115,14 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       .limit(1);
 
     if (!user || user.role !== "client") {
-      if (username) recordFailedLogin(username, req.ip || "unknown");
+      if (username) recordFailedLogin(username, ip);
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      recordFailedLogin(username, req.ip || "unknown");
+      recordFailedLogin(username, ip);
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }

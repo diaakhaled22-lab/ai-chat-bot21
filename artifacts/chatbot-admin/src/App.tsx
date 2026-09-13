@@ -20,6 +20,7 @@ import AdminChatLogs from "@/pages/admin/AdminChatLogs";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminSecurity from "@/pages/admin/AdminSecurity";
 import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
+import AdminAttackMonitoring from "@/pages/admin/AdminAttackMonitoring";
 import AdminTickets from "@/pages/admin/AdminTickets";
 import AdminBroadcast from "@/pages/admin/AdminBroadcast";
 import AdminAITester from "@/pages/admin/AdminAITester";
@@ -127,6 +128,9 @@ function Router() {
       </Route>
       <Route path="/admin/audit-logs">
         {() => <ProtectedRoute component={AdminAuditLogs} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/attack-monitoring">
+        {() => <ProtectedRoute component={AdminAttackMonitoring} allowedRole="admin" />}
       </Route>
       <Route path="/admin/settings">
         {() => <ProtectedRoute component={AdminSettings} allowedRole="admin" />}

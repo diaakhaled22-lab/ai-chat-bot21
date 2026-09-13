@@ -200,20 +200,88 @@ export function maskCompanySecrets(company: Record<string, unknown>): Record<str
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface LoginAttempt {
-  count: number;
+  failureTimes: number[];
   lockedUntil: number | null;
+  postLockoutFailures: number;
+}
+
+export type AttackLogEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked";
+
+export interface AttackLogEntry {
+  id: number;
+  ip: string;
+  time: string;
+  username: string;
+  failedAttempts: number;
+  event: AttackLogEvent;
+}
+
+export interface AttackMonitoringSnapshot {
+  logs: AttackLogEntry[];
+  blockedIps: Array<{ ip: string; blockedAt: string }>;
+  policy: {
+    maxFailedAttempts: number;
+    failureWindowMinutes: number;
+    accountLockoutMinutes: number;
+    additionalAttemptsBeforeIpBlock: number;
+  };
 }
 
 const loginAttempts = new Map<string, LoginAttempt>();
+const blockedIps = new Map<string, number>();
+const attackLogs: AttackLogEntry[] = [];
+let nextAttackLogId = 1;
 
 const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const FAILURE_WINDOW_MS = 5 * 60 * 1000;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+const MAX_ATTACK_LOG_ENTRIES = 500;
 
-// Clean up old entries every 30 minutes
+function normalizeIp(ip: string): string {
+  return ip.trim() || "unknown";
+}
+
+function appendAttackLog(
+  ip: string,
+  username: string,
+  failedAttempts: number,
+  event: AttackLogEvent,
+  timestamp = Date.now(),
+): void {
+  attackLogs.push({
+    id: nextAttackLogId++,
+    ip: normalizeIp(ip),
+    time: new Date(timestamp).toISOString(),
+    username: username.trim() || "(unknown)",
+    failedAttempts,
+    event,
+  });
+
+  if (attackLogs.length > MAX_ATTACK_LOG_ENTRIES) {
+    attackLogs.splice(0, attackLogs.length - MAX_ATTACK_LOG_ENTRIES);
+  }
+}
+
+function getOrCreateLoginAttempt(username: string): LoginAttempt {
+  const key = username.toLowerCase();
+  let entry = loginAttempts.get(key);
+  if (!entry) {
+    entry = { failureTimes: [], lockedUntil: null, postLockoutFailures: 0 };
+    loginAttempts.set(key, entry);
+  }
+  return entry;
+}
+
+// Clean up old failure windows and expired account lockouts every 30 minutes.
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of loginAttempts) {
+    entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
     if (entry.lockedUntil && now > entry.lockedUntil) {
+      entry.lockedUntil = null;
+      entry.failureTimes = [];
+    }
+    if (!entry.lockedUntil && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
       loginAttempts.delete(key);
     }
   }
@@ -231,26 +299,78 @@ export function isAccountLocked(username: string): number {
 }
 
 /**
- * Records a failed login attempt. Returns true if the account is now locked.
+ * Checks whether the source IP has been blocked after repeated attempts during
+ * an account lockout.
  */
-export function recordFailedLogin(username: string, ip: string): boolean {
-  const key = username.toLowerCase();
-  let entry = loginAttempts.get(key);
-  if (!entry) {
-    entry = { count: 0, lockedUntil: null };
-    loginAttempts.set(key, entry);
-  }
+export function isIpBlocked(ip: string): boolean {
+  return blockedIps.has(normalizeIp(ip));
+}
 
-  entry.count++;
-  logger.warn({ username: key, ip, attempts: entry.count }, "Failed login attempt");
+/**
+ * Records an attempted login while the account is already locked. Five such
+ * attempts trigger a source-IP block.
+ */
+export function recordBlockedLoginAttempt(username: string, ip: string): boolean {
+  const entry = getOrCreateLoginAttempt(username);
+  entry.postLockoutFailures++;
+  const attempts = MAX_LOGIN_ATTEMPTS + entry.postLockoutFailures;
+  appendAttackLog(ip, username, attempts, "blocked_attempt");
 
-  if (entry.count >= MAX_LOGIN_ATTEMPTS) {
-    entry.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-    logger.warn({ username: key, ip, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
+  if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
+    const normalizedIp = normalizeIp(ip);
+    if (!blockedIps.has(normalizedIp)) {
+      blockedIps.set(normalizedIp, Date.now());
+      appendAttackLog(ip, username, attempts, "ip_blocked");
+      logger.warn(
+        { username: username.toLowerCase(), ip: normalizedIp, attempts },
+        "IP blocked after suspicious activity during account lockout",
+      );
+    }
     return true;
   }
 
   return false;
+}
+
+/**
+ * Records a failed login attempt. Returns true if the account is now locked.
+ */
+export function recordFailedLogin(username: string, ip: string): boolean {
+  const entry = getOrCreateLoginAttempt(username);
+  const now = Date.now();
+  entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
+  entry.failureTimes.push(now);
+
+  const attempts = entry.failureTimes.length;
+  appendAttackLog(ip, username, attempts, "failed_attempt", now);
+  logger.warn({ username: username.toLowerCase(), ip, attempts }, "Failed login attempt");
+
+  if (attempts >= MAX_LOGIN_ATTEMPTS) {
+    entry.lockedUntil = now + LOCKOUT_DURATION_MS;
+    appendAttackLog(ip, username, attempts, "account_locked", now);
+    logger.warn({ username: username.toLowerCase(), ip, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns the newest attack-monitoring entries and the currently blocked IPs.
+ */
+export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
+  return {
+    logs: [...attackLogs].reverse(),
+    blockedIps: [...blockedIps.entries()]
+      .map(([ip, blockedAt]) => ({ ip, blockedAt: new Date(blockedAt).toISOString() }))
+      .sort((a, b) => b.blockedAt.localeCompare(a.blockedAt)),
+    policy: {
+      maxFailedAttempts: MAX_LOGIN_ATTEMPTS,
+      failureWindowMinutes: FAILURE_WINDOW_MS / 60000,
+      accountLockoutMinutes: LOCKOUT_DURATION_MS / 60000,
+      additionalAttemptsBeforeIpBlock: MAX_LOGIN_ATTEMPTS,
+    },
+  };
 }
 
 /**

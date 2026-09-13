@@ -19,7 +19,7 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
-import { maskApiKey } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
 import { logAdminActivity } from "../lib/audit";
 
@@ -69,6 +69,11 @@ router.get("/admin/stats", async (req, res) => {
     logger.error({ err }, "Get admin stats error");
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// GET /admin/attack-monitoring
+router.get("/admin/attack-monitoring", async (_req, res) => {
+  res.json(getAttackMonitoringSnapshot());
 });
 
 // GET /admin/usage-cost
