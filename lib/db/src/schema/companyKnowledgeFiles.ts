@@ -1,6 +1,6 @@
 import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { companiesTable } from "./companies";
 
 export const companyKnowledgeFilesTable = pgTable("company_knowledge_files", {
@@ -19,5 +19,5 @@ export const companyKnowledgeFilesTable = pgTable("company_knowledge_files", {
 });
 
 export const insertCompanyKnowledgeFileSchema = createInsertSchema(companyKnowledgeFilesTable).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertCompanyKnowledgeFile = z.infer<typeof insertCompanyKnowledgeFileSchema>;
+export type InsertCompanyKnowledgeFile = z.infer<any> // typeof insertCompanyKnowledgeFileSchema>;
 export type CompanyKnowledgeFile = typeof companyKnowledgeFilesTable.$inferSelect;

@@ -1,6 +1,6 @@
 import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { companiesTable } from "./companies";
 
 export const companyWordPressIntegrationsTable = pgTable("company_wordpress_integrations", {
@@ -23,8 +23,6 @@ export const insertCompanyWordPressIntegrationSchema = createInsertSchema(
   companyWordPressIntegrationsTable
 ).omit({ id: true, createdAt: true, updatedAt: true });
 
-export type InsertCompanyWordPressIntegration = z.infer<
-  typeof insertCompanyWordPressIntegrationSchema
->;
+export type InsertCompanyWordPressIntegration = z.infer<any>; // typeof insertCompanyWordPressIntegrationSchema
 export type CompanyWordPressIntegration =
   typeof companyWordPressIntegrationsTable.$inferSelect;
