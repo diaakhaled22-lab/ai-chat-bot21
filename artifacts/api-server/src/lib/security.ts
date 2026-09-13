@@ -216,9 +216,29 @@ export interface AttackLogEntry {
   event: AttackLogEvent;
 }
 
+export interface AttackMetric {
+  value: string;
+  count: number;
+}
+
+export interface AttackSpikeAlert {
+  active: boolean;
+  threshold: number;
+  recentFailedAttempts: number;
+  windowMinutes: number;
+  message: string | null;
+}
+
 export interface AttackMonitoringSnapshot {
   logs: AttackLogEntry[];
   blockedIps: Array<{ ip: string; blockedAt: string }>;
+  analytics: {
+    totalFailedAttempts: number;
+    recentFailedAttempts: number;
+    activeIps: AttackMetric[];
+    targetedAccounts: AttackMetric[];
+    spikeAlert: AttackSpikeAlert;
+  };
   policy: {
     maxFailedAttempts: number;
     failureWindowMinutes: number;
@@ -236,6 +256,8 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const FAILURE_WINDOW_MS = 5 * 60 * 1000;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const MAX_ATTACK_LOG_ENTRIES = 500;
+const SPIKE_ALERT_THRESHOLD = 10;
+let lastSpikeAlertAt = 0;
 
 function normalizeIp(ip: string): string {
   return ip.trim() || "unknown";
@@ -345,6 +367,20 @@ export function recordFailedLogin(username: string, ip: string): boolean {
   appendAttackLog(ip, username, attempts, "failed_attempt", now);
   logger.warn({ username: username.toLowerCase(), ip, attempts }, "Failed login attempt");
 
+  const recentFailedAttempts = attackLogs.filter(
+    (log) => log.event === "failed_attempt" && now - new Date(log.time).getTime() <= FAILURE_WINDOW_MS,
+  ).length;
+  if (
+    recentFailedAttempts >= SPIKE_ALERT_THRESHOLD
+    && (lastSpikeAlertAt === 0 || now - lastSpikeAlertAt >= FAILURE_WINDOW_MS)
+  ) {
+    lastSpikeAlertAt = now;
+    logger.warn(
+      { recentFailedAttempts, windowMinutes: FAILURE_WINDOW_MS / 60000, threshold: SPIKE_ALERT_THRESHOLD },
+      "Sudden failed-login spike detected",
+    );
+  }
+
   if (attempts >= MAX_LOGIN_ATTEMPTS) {
     entry.lockedUntil = now + LOCKOUT_DURATION_MS;
     appendAttackLog(ip, username, attempts, "account_locked", now);
@@ -355,12 +391,47 @@ export function recordFailedLogin(username: string, ip: string): boolean {
   return false;
 }
 
+function getAttackAnalytics(now = Date.now()): AttackMonitoringSnapshot["analytics"] {
+  const failedLogs = attackLogs.filter((log) => log.event === "failed_attempt");
+  const recentStart = now - FAILURE_WINDOW_MS;
+  const recentLogs = failedLogs.filter((log) => new Date(log.time).getTime() >= recentStart);
+
+  const countBy = (values: string[]): AttackMetric[] => {
+    const counts = new Map<string, number>();
+    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+    return [...counts.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+      .slice(0, 5);
+  };
+
+  const recentFailedAttempts = recentLogs.length;
+  const spikeAlertActive = recentFailedAttempts >= SPIKE_ALERT_THRESHOLD;
+
+  return {
+    totalFailedAttempts: failedLogs.length,
+    recentFailedAttempts,
+    activeIps: countBy(recentLogs.map((log) => log.ip)),
+    targetedAccounts: countBy(recentLogs.map((log) => log.username)),
+    spikeAlert: {
+      active: spikeAlertActive,
+      threshold: SPIKE_ALERT_THRESHOLD,
+      recentFailedAttempts,
+      windowMinutes: FAILURE_WINDOW_MS / 60000,
+      message: spikeAlertActive
+        ? `${recentFailedAttempts} failed login attempts were recorded within the last ${FAILURE_WINDOW_MS / 60000} minutes.`
+        : null,
+    },
+  };
+}
+
 /**
  * Returns the newest attack-monitoring entries and the currently blocked IPs.
  */
 export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
   return {
     logs: [...attackLogs].reverse(),
+    analytics: getAttackAnalytics(),
     blockedIps: [...blockedIps.entries()]
       .map(([ip, blockedAt]) => ({ ip, blockedAt: new Date(blockedAt).toISOString() }))
       .sort((a, b) => b.blockedAt.localeCompare(a.blockedAt)),
