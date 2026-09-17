@@ -108,8 +108,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     const userText: string = message.text;
     const sessionId = `tg_${chatId}`;
 
-    const companies = await db.select().from(companiesTable);
-    const company = companies.find(c => c.telegramBotApiKey && telegramWebhookSecret(c.telegramBotApiKey) === secret);
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
 
     if (!company) {
       logger.warn({ secret: secret.slice(0, 8) }, "Telegram webhook: no company matched");
@@ -182,13 +181,9 @@ function getAppBaseUrl(req: import("express").Request): string {
 router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, res) => {
   try {
     const { companyId } = req.body;
-    const companies = await db.select().from(companiesTable);
-    
-    const company = companies.find(c => 
-      req.session.role === "admin" 
-        ? c.id === companyId 
-        : c.clientId === req.session.userId
-    );
+    const [company] = req.session.role === "admin"
+      ? await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1)
+      : await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId!)).limit(1);
 
     if (!company || !company.telegramBotApiKey) {
       res.status(404).json({ error: "No company found or missing Telegram Bot API Key" });
@@ -197,6 +192,7 @@ router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, r
 
     const token = company.telegramBotApiKey;
     const webhookUrl = getAppBaseUrl(req) + "/api/telegram/webhook/" + telegramWebhookSecret(token);
+    await db.update(companiesTable).set({ telegramWebhookSecretHash: telegramWebhookSecret(token) }).where(eq(companiesTable.id, company.id));
 
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",
@@ -217,24 +213,27 @@ router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, r
   }
 });
 
-router.get("/telegram/webhook-info/:token", requireAuth, apiLimiter, async (req, res) => {
+router.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (req, res) => {
   try {
-    const { token } = req.params;
+    const companyId = Number(req.params.companyId);
+    if (!companyId) {
+      res.status(400).json({ error: "Invalid company ID" });
+      return;
+    }
 
-    const companies = await db.select().from(companiesTable);
-    const company = companies.find(c => c.telegramBotApiKey === token);
-    if (!company) {
-      res.status(404).json({ error: "No company found with this token" });
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+    if (!company || !company.telegramBotApiKey) {
+      res.status(404).json({ error: "No company found or missing Telegram Bot API Key" });
       return;
     }
 
     // Verify ownership
     if (req.session.role !== "admin" && company.clientId !== req.session.userId) {
-      res.status(403).json({ error: "Forbidden: You do not own this chatbot bot" });
+      res.status(403).json({ error: "Forbidden: You do not own this chatbot" });
       return;
     }
 
-    const tgRes = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const tgRes = await fetch(`https://api.telegram.org/bot${company.telegramBotApiKey}/getWebhookInfo`);
     const tgData = await tgRes.json() as { ok: boolean; result?: { url: string; pending_update_count: number; last_error_message?: string } };
 
     res.json(tgData);

@@ -16,11 +16,31 @@ import { chatLimiter } from "../lib/security";
 const router = Router();
 
 const WIDGET_CORS = (_req: any, res: any, next: any) => {
+  // Origin validation is done per-request in the route handlers after loading the company.
+  // Here we set permissive headers; the route handler will block disallowed origins.
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   next();
 };
+
+/**
+ * Check if the request origin is allowed by the company's widgetAllowedDomains.
+ * If widgetAllowedDomains is null/empty, all origins are allowed (backwards compatible).
+ * Returns true if allowed, false if blocked.
+ */
+function isOriginAllowed(origin: string | undefined, widgetAllowedDomains: string | null): boolean {
+  if (!widgetAllowedDomains || !widgetAllowedDomains.trim()) return true; // No restriction
+  if (!origin) return true; // Allow requests with no origin (curl, mobile, etc.)
+  const allowed = widgetAllowedDomains.split(",").map(d => d.trim().toLowerCase()).filter(Boolean);
+  if (allowed.length === 0) return true;
+  try {
+    const originHost = new URL(origin).hostname.toLowerCase();
+    return allowed.some(domain => originHost === domain || originHost.endsWith("." + domain));
+  } catch {
+    return false;
+  }
+}
 
 router.options("/widget/:key/config", WIDGET_CORS, (_req, res) => { res.sendStatus(204); });
 router.options("/widget/:key/chat", WIDGET_CORS, (_req, res) => { res.sendStatus(204); });
@@ -32,6 +52,11 @@ router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => 
 
     if (!company) {
       res.status(404).json({ error: "Widget not found" });
+      return;
+    }
+
+    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+      res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
     }
 
@@ -63,6 +88,11 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     if (!company) {
       res.status(404).json({ error: "Widget not found" });
+      return;
+    }
+
+    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+      res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
     }
 

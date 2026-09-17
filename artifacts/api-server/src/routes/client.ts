@@ -294,6 +294,7 @@ router.post("/client/company", async (req, res) => {
         aiProvider: (data.aiProvider as "openai" | "anthropic" | "google" | "openrouter" | null) ?? null,
         aiModel: data.aiModel ?? null,
         telegramBotApiKey: data.telegramBotApiKey ?? null,
+        telegramWebhookSecretHash: data.telegramBotApiKey ? telegramWebhookSecret(data.telegramBotApiKey) : null,
         whatsappApiToken: data.whatsappApiToken ?? null,
         whatsappPhoneNumberId: data.whatsappPhoneNumberId ?? null,
         whatsappBusinessAccountId: data.whatsappBusinessAccountId ?? null,
@@ -407,6 +408,11 @@ router.put("/client/company", async (req, res) => {
     if (data.aiModel !== undefined) updates.aiModel = data.aiModel;
     if (data.telegramBotApiKey !== undefined) {
       updates.telegramBotApiKey = preserveMaskedSecret(data.telegramBotApiKey, existingCompany.telegramBotApiKey);
+    }
+    // Also update the webhook secret hash for direct DB lookup
+    const resolvedTgKey = updates.telegramBotApiKey as string | null | undefined;
+    if (resolvedTgKey !== undefined) {
+      updates.telegramWebhookSecretHash = resolvedTgKey ? telegramWebhookSecret(resolvedTgKey) : null;
     }
     if (data.telegramEnabled !== undefined) updates.telegramEnabled = data.telegramEnabled;
     if (data.whatsappApiToken !== undefined) {
