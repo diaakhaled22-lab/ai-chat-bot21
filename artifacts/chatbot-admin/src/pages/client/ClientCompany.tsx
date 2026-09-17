@@ -4,6 +4,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown } from "lucide-react";
+
+/** Compute the same SHA-256 based webhook secret as the backend (first 32 hex chars). */
+async function telegramWebhookSecret(token: string): Promise<string> {
+  const encoded = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
 import {
   useGetClientCompany, useCreateClientCompany, useUpdateClientCompany, useTestClientGoogleSheetConnection,
   useListClientKnowledgeFiles, useCreateClientKnowledgeFile, useDeleteClientKnowledgeFile,
@@ -451,6 +459,7 @@ export default function ClientCompany() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [tgRegistering, setTgRegistering] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [tgWebhookHash, setTgWebhookHash] = useState<string>("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const testGoogleSheet = useTestClientGoogleSheetConnection();
   const testingConnection = testGoogleSheet.isPending;
@@ -498,6 +507,13 @@ export default function ClientCompany() {
       initialized.current = true;
     }
   }, [company, form]);
+
+  // Compute the hashed webhook secret for display (never show the raw token)
+  useEffect(() => {
+    if (company?.telegramBotApiKey) {
+      telegramWebhookSecret(company.telegramBotApiKey).then(setTgWebhookHash);
+    }
+  }, [company?.telegramBotApiKey]);
 
   useEffect(() => {
     if (!company?.fabEnabled) return;
@@ -1350,13 +1366,13 @@ export default function ClientCompany() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your Telegram Webhook URL</p>
               <div className="relative group">
                 <pre className="bg-muted/40 border border-border rounded-lg px-4 py-2.5 font-mono text-xs overflow-x-auto">
-                  {`${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`}
+                  {`${window.location.origin}/api/telegram/webhook/${tgWebhookHash || "…"}`}
                 </pre>
                 <Button
                   type="button" variant="ghost" size="sm"
                   className="absolute top-1.5 right-1.5 h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`);
+                    navigator.clipboard.writeText(`${window.location.origin}/api/telegram/webhook/${tgWebhookHash}`);
                     toast({ title: "Copied!", description: "Webhook URL copied to clipboard." });
                   }}
                 >
