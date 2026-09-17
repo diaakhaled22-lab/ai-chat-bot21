@@ -229,7 +229,7 @@ router.post("/admin/clients", async (req, res) => {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const [user] = await db
       .insert(usersTable)
       .values({ name, username, passwordHash, role: "client" })
