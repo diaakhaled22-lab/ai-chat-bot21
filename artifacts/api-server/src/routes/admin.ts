@@ -489,6 +489,19 @@ router.patch("/admin/companies/:id", async (req, res) => {
     const id = Number(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
     const { myId, securityPrompt, systemPrompt } = req.body as { myId?: string | null; securityPrompt?: string | null; systemPrompt?: string | null; };
+    // Basic length validation
+    if (myId && typeof myId === 'string' && myId.length > 255) {
+      res.status(400).json({ error: "myId is too long (max 255 characters)" });
+      return;
+    }
+    if (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.length > 50000) {
+      res.status(400).json({ error: "systemPrompt is too long (max 50000 characters)" });
+      return;
+    }
+    if (securityPrompt && typeof securityPrompt === 'string' && securityPrompt.length > 50000) {
+      res.status(400).json({ error: "securityPrompt is too long (max 50000 characters)" });
+      return;
+    }
     const [row] = await db
       .update(companiesTable)
       .set({ myId: myId !== undefined ? myId : undefined, securityPrompt: securityPrompt !== undefined ? securityPrompt : undefined, systemPrompt: systemPrompt !== undefined ? systemPrompt : undefined })
@@ -1262,10 +1275,19 @@ router.put("/admin/settings", async (req, res) => {
       return;
     }
 
-    if (currentPassword) {
+    if (newPassword) {
+      if (!currentPassword) {
+        res.status(400).json({ error: "Current password is required to set a new password" });
+        return;
+      }
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!valid) {
         res.status(400).json({ error: "Current password is incorrect" });
+        return;
+      }
+      const pwError = validatePassword(newPassword);
+      if (pwError) {
+        res.status(400).json({ error: pwError });
         return;
       }
     }
@@ -1273,7 +1295,7 @@ router.put("/admin/settings", async (req, res) => {
     const updates: Record<string, unknown> = {};
     if (name?.trim()) updates.name = name.trim();
     if (username) updates.username = username;
-    if (newPassword) updates.passwordHash = await bcrypt.hash(newPassword, 10);
+    if (newPassword) updates.passwordHash = await bcrypt.hash(newPassword, 12);
 
     if (Object.keys(updates).length > 0) {
       await db.update(usersTable).set(updates).where(eq(usersTable.id, req.session.userId!));

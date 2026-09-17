@@ -779,7 +779,11 @@ router.get("/client/usage", async (req, res) => {
     );
 
     const logs = await db
-      .select()
+      .select({
+        customerMessage: chatLogsTable.customerMessage,
+        botResponse: chatLogsTable.botResponse,
+        channel: chatLogsTable.channel,
+      })
       .from(chatLogsTable)
       .where(whereClause);
 

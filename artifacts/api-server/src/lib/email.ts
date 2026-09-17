@@ -116,7 +116,7 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
           <h2 style="margin:0 0 8px;color:#18181b;">Reset Your Password</h2>
           <p style="color:#71717a;margin:0 0 20px;">You requested a password reset. Click the button below to set a new password. This link expires in 1 hour.</p>
-          <a href="${resetLink}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reset Password</a>
+          <a href="${encodeURI(resetLink)}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reset Password</a>
           <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa;">If you did not request this, you can safely ignore this email.</p>
         </div>
       `,
@@ -155,9 +155,9 @@ export async function sendClientNotification(clientEmail: string, title: string,
         <h2 style="margin: 0;">New Notification</h2>
       </div>
       <div style="padding: 20px;">
-        <p style="font-size: 16px; margin-bottom: 8px;"><strong>${title}</strong></p>
+        <p style="font-size: 16px; margin-bottom: 8px;"><strong>${escapeHtml(title)}</strong></p>
         <p style="font-size: 14px; color: #4b5563; line-height: 1.5; margin-bottom: 20px;">
-          ${messageText.replace(/\n/g, "<br>")}
+          ${escapeHtml(messageText).replace(/\n/g, "<br>")}
         </p>
         <p style="font-size: 14px; margin-bottom: 20px;">
           Please check the Mission Control client portal for more details.
