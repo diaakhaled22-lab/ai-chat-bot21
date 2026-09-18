@@ -201,29 +201,28 @@ async function seed() {
     await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (username) DO NOTHING`,
+       ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
       ["System Admin", "admin", adminPasswordHash, "admin"]
     );
     console.log(
-      `✅ Default Admin user ready (username: admin / password: ${process.env.DEFAULT_ADMIN_PASSWORD ? "configured via DEFAULT_ADMIN_PASSWORD" : "admin123"})`,
+      `✅ Default Admin user ready (username: admin / password: ${process.env.DEFAULT_ADMIN_PASSWORD ? "configured via DEFAULT_ADMIN_PASSWORD" : adminPassword})`,
     );
 
     // Seed default demo client user
     const defaultClientPassword = process.env.DEFAULT_CLIENT_PASSWORD || crypto.randomBytes(16).toString('hex');
     const clientPasswordHash = await bcrypt.hash(defaultClientPassword, 12);
-    const clientRes = await client.query(
+    await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (username) DO NOTHING
-       RETURNING id;`,
-      ["Acme Demo Client", "client", clientPasswordHash, "client"]
+       ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+      ["Demo Client", "client", clientPasswordHash, "client"]
+    );
+    console.log(
+      `✅ Default Client user & company ready (username: client / password: ${process.env.DEFAULT_CLIENT_PASSWORD ? "configured via DEFAULT_CLIENT_PASSWORD" : defaultClientPassword})`,
     );
 
-    let clientId = clientRes.rows[0]?.id;
-    if (!clientId) {
-      const q = await client.query(`SELECT id FROM users WHERE username = 'client' LIMIT 1;`);
-      clientId = q.rows[0]?.id;
-    }
+    const q = await client.query(`SELECT id FROM users WHERE username = 'client' LIMIT 1;`);
+    let clientId = q.rows[0]?.id;
 
     if (clientId) {
       await client.query(
