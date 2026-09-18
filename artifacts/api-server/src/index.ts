@@ -192,7 +192,7 @@ refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog 
 async function startServer() {
   await ensureAdminExists();
 
-  app.listen(port, (err) => {
+  app.listen(port, "0.0.0.0", (err?: Error) => {
     if (err) {
       logger.error({ err }, "Error listening on port");
       process.exit(1);
