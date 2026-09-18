@@ -103,10 +103,12 @@ app.use("/api", express.static(path.join(__dirname, "../public")));
 app.use("/api", router);
 
 // Serve the frontend static files in production
-const frontendDist = path.join(__dirname, "../../chatbot-admin/dist/public");
-app.use(express.static(frontendDist));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(frontendDist, "index.html"));
-});
+if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true") {
+  const frontendDist = path.join(__dirname, "../../chatbot-admin/dist/public");
+  app.use(express.static(frontendDist));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
 
 export default app;
