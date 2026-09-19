@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 import { logger } from "./logger";
+import { db, adminConfigTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Rate Limiting — simple in-memory sliding-window limiter
@@ -258,6 +261,35 @@ const blockedIps = new Map<string, number>();
 const attackLogs: AttackLogEntry[] = [];
 let nextAttackLogId = 1;
 
+export async function loadBlockedIpsFromDb() {
+  try {
+    const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
+    if (row && row.value) {
+      const ips: Record<string, number> = JSON.parse(row.value);
+      for (const [ip, timestamp] of Object.entries(ips)) {
+        blockedIps.set(ip, timestamp);
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to load blocked IPs from DB");
+  }
+}
+
+async function saveBlockedIpsToDb() {
+  try {
+    const ips = Object.fromEntries(blockedIps);
+    const value = JSON.stringify(ips);
+    const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
+    if (existing) {
+      await db.update(adminConfigTable).set({ value }).where(eq(adminConfigTable.key, "blocked_ips"));
+    } else {
+      await db.insert(adminConfigTable).values({ key: "blocked_ips", value });
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to save blocked IPs to DB");
+  }
+}
+
 const MAX_LOGIN_ATTEMPTS = 5;
 const FAILURE_WINDOW_MS = 5 * 60 * 1000;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
@@ -348,6 +380,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
     const normalizedIp = normalizeIp(ip);
     if (!blockedIps.has(normalizedIp)) {
       blockedIps.set(normalizedIp, Date.now());
+      void saveBlockedIpsToDb();
       appendAttackLog(ip, username, attempts, "ip_blocked");
       logger.warn(
         { username: username.toLowerCase(), ip: normalizedIp, attempts },
@@ -466,6 +499,7 @@ export function manualBlockIp(ip: string): void {
   const normalizedIp = normalizeIp(ip);
   if (!blockedIps.has(normalizedIp)) {
     blockedIps.set(normalizedIp, Date.now());
+    void saveBlockedIpsToDb();
     appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked");
     logger.info({ ip: normalizedIp }, "IP manually blocked by admin");
   }
@@ -475,6 +509,7 @@ export function manualUnblockIp(ip: string): void {
   const normalizedIp = normalizeIp(ip);
   if (blockedIps.has(normalizedIp)) {
     blockedIps.delete(normalizedIp);
+    void saveBlockedIpsToDb();
     appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked");
     logger.info({ ip: normalizedIp }, "IP manually unblocked by admin");
   }
