@@ -168,23 +168,10 @@ export default function AdminLogin() {
                             <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input 
                               type="text" 
-                              inputMode="numeric" 
-                              pattern="[0-9]*"
-                              autoComplete="one-time-code"
-                              placeholder="000000" 
-                              className="pl-9 bg-background/50 text-center tracking-[0.5em] font-mono text-lg" 
+                              placeholder="Enter 6-digit code" 
+                              className="pl-9 bg-background/50 text-center text-lg font-bold tracking-widest" 
                               maxLength={6} 
                               {...field} 
-                              onChange={(e) => {
-                                let val = e.target.value;
-                                // Convert Arabic numerals
-                                val = val.replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString());
-                                // Convert Eastern Arabic (Persian/Urdu) numerals
-                                val = val.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
-                                // Strip everything else that isn't a standard digit
-                                val = val.replace(/\D/g, "");
-                                field.onChange(val);
-                              }}
                             />
                           </div>
                         </FormControl>
