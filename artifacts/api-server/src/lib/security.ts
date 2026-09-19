@@ -291,6 +291,51 @@ async function saveBlockedIpsToDb() {
   }
 }
 
+const totpSecrets = new Map<number, string>();
+
+export async function loadTotpSecretsFromDb() {
+  try {
+    const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "totp_secrets"));
+    if (row && row.value) {
+      const secrets: Record<string, string> = JSON.parse(row.value);
+      for (const [userIdStr, secret] of Object.entries(secrets)) {
+        totpSecrets.set(Number(userIdStr), secret);
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to load TOTP secrets from DB");
+  }
+}
+
+async function saveTotpSecretsToDb() {
+  try {
+    const secrets = Object.fromEntries(totpSecrets);
+    const value = JSON.stringify(secrets);
+    const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "totp_secrets"));
+    if (existing) {
+      await db.update(adminConfigTable).set({ value }).where(eq(adminConfigTable.key, "totp_secrets"));
+    } else {
+      await db.insert(adminConfigTable).values({ key: "totp_secrets", value });
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to save TOTP secrets to DB");
+  }
+}
+
+export function getTotpSecret(userId: number): string | undefined {
+  return totpSecrets.get(userId);
+}
+
+export function setTotpSecret(userId: number, secret: string): void {
+  totpSecrets.set(userId, secret);
+  void saveTotpSecretsToDb();
+}
+
+export function removeTotpSecret(userId: number): void {
+  totpSecrets.delete(userId);
+  void saveTotpSecretsToDb();
+}
+
 const MAX_LOGIN_ATTEMPTS = 5;
 const FAILURE_WINDOW_MS = 5 * 60 * 1000;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;

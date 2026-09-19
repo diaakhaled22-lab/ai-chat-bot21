@@ -19,9 +19,11 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
-import { getAttackMonitoringSnapshot, maskApiKey, validatePassword, manualBlockIp, manualUnblockIp } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
 import { logAdminActivity } from "../lib/audit";
+import { authenticator } from "otplib";
+import QRCode from "qrcode";
 
 const router = Router();
 // Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
@@ -1668,6 +1670,88 @@ router.get("/admin/whatsapp-webhook", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Get whatsapp webhook config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /admin/security/2fa
+router.get("/admin/security/2fa", async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const isEnabled = !!getTotpSecret(userId);
+    res.json({ isEnabled });
+  } catch (err) {
+    logger.error({ err }, "Get 2FA status error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/security/2fa/generate
+router.post("/admin/security/2fa/generate", async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    if (getTotpSecret(userId)) {
+      res.status(400).json({ error: "2FA is already enabled" });
+      return;
+    }
+    const secret = authenticator.generateSecret();
+    const otpauthUrl = authenticator.keyuri(req.session.name || "Admin", "Mission Control", secret);
+    const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+    
+    res.json({ secret, qrCodeDataUrl });
+  } catch (err) {
+    logger.error({ err }, "Generate 2FA error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/security/2fa/enable
+router.post("/admin/security/2fa/enable", async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const { secret, code } = req.body;
+    if (!secret || !code) {
+      res.status(400).json({ error: "Secret and code are required" });
+      return;
+    }
+    const isValid = authenticator.verify({ token: code, secret });
+    if (!isValid) {
+      res.status(400).json({ error: "Invalid verification code" });
+      return;
+    }
+    setTotpSecret(userId, secret);
+    await logAdminActivity(userId, "2FA Enabled", "Two-factor authentication was enabled", req.ip || null);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "Enable 2FA error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/security/2fa/disable
+router.post("/admin/security/2fa/disable", async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const { password } = req.body;
+    if (!password) {
+      res.status(400).json({ error: "Password is required" });
+      return;
+    }
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "Invalid password" });
+      return;
+    }
+    removeTotpSecret(userId);
+    await logAdminActivity(userId, "2FA Disabled", "Two-factor authentication was disabled", req.ip || null);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "Disable 2FA error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

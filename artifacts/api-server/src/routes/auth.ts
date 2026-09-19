@@ -16,7 +16,9 @@ import {
   resetLoginAttempts,
   validatePassword,
   regenerateSession,
+  getTotpSecret,
 } from "../lib/security";
+import { authenticator } from "otplib";
 
 declare module "express-session" {
   interface SessionData {
@@ -25,6 +27,8 @@ declare module "express-session" {
     name: string;
   }
 }
+
+export const temp2faTokens = new Map<string, { userId: number; name: string; expiresAt: number }>();
 
 const router = Router();
 
@@ -86,6 +90,15 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
 
     resetLoginAttempts(username);
 
+    const totpSecret = getTotpSecret(user.id);
+    if (totpSecret) {
+      // Create a temporary token
+      const tempToken = crypto.randomBytes(32).toString("hex");
+      temp2faTokens.set(tempToken, { userId: user.id, name: user.name, expiresAt: Date.now() + 5 * 60 * 1000 });
+      res.json({ requires2FA: true, tempToken });
+      return;
+    }
+
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);
 
@@ -96,6 +109,52 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     res.json({ role: "admin", name: user.name, id: user.id });
   } catch (err) {
     logger.error({ err }, "Admin login error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
+  try {
+    const { tempToken, code } = req.body;
+    if (!tempToken || typeof tempToken !== "string" || !code || typeof code !== "string") {
+      res.status(400).json({ error: "Missing token or code" });
+      return;
+    }
+
+    const tokenData = temp2faTokens.get(tempToken);
+    if (!tokenData) {
+      res.status(401).json({ error: "Session expired or invalid" });
+      return;
+    }
+
+    if (Date.now() > tokenData.expiresAt) {
+      temp2faTokens.delete(tempToken);
+      res.status(401).json({ error: "Session expired" });
+      return;
+    }
+
+    const secret = getTotpSecret(tokenData.userId);
+    if (!secret) {
+      res.status(400).json({ error: "2FA is not enabled for this user" });
+      return;
+    }
+
+    const isValid = authenticator.verify({ token: code, secret });
+    if (!isValid) {
+      res.status(401).json({ error: "Invalid verification code" });
+      return;
+    }
+
+    temp2faTokens.delete(tempToken);
+
+    await regenerateSession(req);
+    req.session.userId = tokenData.userId;
+    req.session.role = "admin";
+    req.session.name = tokenData.name;
+
+    res.json({ role: "admin", name: tokenData.name, id: tokenData.userId });
+  } catch (err) {
+    logger.error({ err }, "Admin 2FA verify error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

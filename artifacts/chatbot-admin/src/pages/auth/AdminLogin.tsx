@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useLocation, Link } from "wouter";
-import { useAdminLogin, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useAdminLogin, useAdminLoginVerify2fa, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bot, Lock, User } from "lucide-react";
+import { Bot, Lock, User, KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,11 +19,18 @@ const formSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const form2faSchema = z.object({
+  code: z.string().length(6, "Code must be exactly 6 digits").regex(/^\d+$/, "Code must contain only numbers"),
+});
+
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const login = useAdminLogin();
+  const verify2fa = useAdminLoginVerify2fa();
+
+  const [tempToken, setTempToken] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -32,9 +40,25 @@ export default function AdminLogin() {
     },
   });
 
+  const form2fa = useForm<z.infer<typeof form2faSchema>>({
+    resolver: zodResolver(form2faSchema),
+    defaultValues: {
+      code: "",
+    },
+  });
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     login.mutate({ data: values }, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        if (data.requires2FA) {
+          setTempToken(data.tempToken!);
+          toast({
+            title: "2FA Required",
+            description: "Please enter your authenticator code.",
+          });
+          return;
+        }
+        
         queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         toast({
           title: "Welcome back",
@@ -46,6 +70,26 @@ export default function AdminLogin() {
         toast({
           title: "Login failed",
           description: error.message || "Invalid login credentials",
+          variant: "destructive",
+        });
+      }
+    });
+  }
+
+  function on2faSubmit(values: z.infer<typeof form2faSchema>) {
+    verify2fa.mutate({ data: { tempToken: tempToken!, code: values.code } }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        toast({
+          title: "Welcome back",
+          description: "Successfully logged in as administrator.",
+        });
+        setLocation("/admin/dashboard");
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Verification failed",
+          description: error.message || "Invalid verification code",
           variant: "destructive",
         });
       }
@@ -68,56 +112,88 @@ export default function AdminLogin() {
 
         <Card className="border-border/50 shadow-2xl bg-card/80 backdrop-blur-xl">
           <CardHeader>
-            <CardTitle>Admin Login</CardTitle>
-            <CardDescription>Authenticate to access the admin portal.</CardDescription>
+            <CardTitle>{tempToken ? "Two-Factor Authentication" : "Admin Login"}</CardTitle>
+            <CardDescription>{tempToken ? "Enter the 6-digit code from your authenticator app." : "Authenticate to access the admin portal."}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="username"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="Username" className="pl-9 bg-background/50" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <PasswordInput placeholder="Password" className="pl-9 bg-background/50" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={login.isPending}>
-                  {login.isPending ? "Authenticating..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
+            {!tempToken ? (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="relative">
+                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Username" className="pl-9 bg-background/50" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <PasswordInput placeholder="Password" className="pl-9 bg-background/50" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={login.isPending}>
+                    {login.isPending ? "Authenticating..." : "Sign In"}
+                  </Button>
+                </form>
+              </Form>
+            ) : (
+              <Form {...form2fa}>
+                <form onSubmit={form2fa.handleSubmit(on2faSubmit)} className="space-y-4">
+                  <FormField
+                    control={form2fa.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="relative">
+                            <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="000000" className="pl-9 bg-background/50 text-center tracking-[0.5em] font-mono text-lg" maxLength={6} {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="w-full" onClick={() => setTempToken(null)} disabled={verify2fa.isPending}>
+                      Back
+                    </Button>
+                    <Button type="submit" className="w-full" disabled={verify2fa.isPending}>
+                      {verify2fa.isPending ? "Verifying..." : "Verify Code"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
 
-            <div className="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4 space-y-2">
-              <div>
-                <Link href="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
+            {!tempToken && (
+              <div className="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4 space-y-2">
+                <div>
+                  <Link href="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
+                </div>
+                <div>
+                  Client user? <Link href="/client-login" className="text-primary hover:underline">Client Login</Link>
+                </div>
               </div>
-              <div>
-                Client user? <Link href="/client-login" className="text-primary hover:underline">Client Login</Link>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

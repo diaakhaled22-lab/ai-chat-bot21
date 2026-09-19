@@ -7,7 +7,7 @@ import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { refreshAiModels } from "./lib/aiModels";
 import { ensureAdminExists } from "./lib/adminBootstrap";
-import { loadBlockedIpsFromDb } from "./lib/security";
+import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
 
 const rawPort = process.env["PORT"] || "8080";
 const port = Number(rawPort) || 8080;
@@ -193,6 +193,7 @@ refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog 
 async function startServer() {
   await ensureAdminExists();
   await loadBlockedIpsFromDb();
+  await loadTotpSecretsFromDb();
 
   app.listen(port, "0.0.0.0", (err?: Error) => {
     if (err) {

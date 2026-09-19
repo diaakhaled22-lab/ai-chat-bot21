@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { ShieldCheck, KeyRound, RotateCcw, Eye, EyeOff, Copy, Check, AlertTriangle, Webhook, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -185,6 +186,130 @@ function WebhookTokenCard({
   );
 }
 
+function TwoFactorAuthCard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generated, setGenerated] = useState<{ secret: string; qrCodeDataUrl: string } | null>(null);
+
+  const { data: status, isLoading: statusLoading } = useQuery<{ isEnabled: boolean }>({
+    queryKey: ['admin-2fa-status'],
+    queryFn: () => customFetch('/api/admin/security/2fa'),
+  });
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await customFetch('/api/admin/security/2fa/generate', { method: 'POST' });
+      setGenerated(res);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleEnable = async () => {
+    if (!generated || !code) return;
+    try {
+      await customFetch('/api/admin/security/2fa/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: generated.secret, code }),
+      });
+      toast({ title: '2FA Enabled', description: 'Two-factor authentication is now active.' });
+      setGenerated(null);
+      setCode('');
+      queryClient.invalidateQueries({ queryKey: ['admin-2fa-status'] });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDisable = async () => {
+    if (!password) return;
+    try {
+      await customFetch('/api/admin/security/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      toast({ title: '2FA Disabled', description: 'Two-factor authentication has been disabled.' });
+      setPassword('');
+      queryClient.invalidateQueries({ queryKey: ['admin-2fa-status'] });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  return (
+    <Card className="bg-card">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+            <CardTitle className="text-base">Two-Factor Authentication (2FA)</CardTitle>
+          </div>
+          {!statusLoading && status?.isEnabled && (
+            <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 text-xs">
+              Enabled
+            </Badge>
+          )}
+        </div>
+        <CardDescription>Add an extra layer of security to your admin account.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {statusLoading ? (
+          <div className="h-11 rounded-md bg-muted animate-pulse" />
+        ) : status?.isEnabled ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Two-factor authentication is currently enabled. To disable it, enter your password.</p>
+            <div className="flex items-center gap-3 max-w-sm">
+              <Input type="password" placeholder="Current Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Button variant="destructive" onClick={handleDisable} disabled={!password}>Disable 2FA</Button>
+            </div>
+          </div>
+        ) : generated ? (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="bg-white p-2 rounded-xl">
+                <img src={generated.qrCodeDataUrl} alt="QR Code" className="w-48 h-48" />
+              </div>
+              <div className="space-y-4 flex-1">
+                <div>
+                  <p className="font-medium text-sm mb-1">1. Scan the QR Code</p>
+                  <p className="text-sm text-muted-foreground">Use Google Authenticator, Authy, or your preferred 2FA app to scan the QR code.</p>
+                </div>
+                <div>
+                  <p className="font-medium text-sm mb-1">2. Or enter the secret manually</p>
+                  <code className="px-2 py-1 bg-muted rounded-md text-xs font-mono select-all">{generated.secret}</code>
+                </div>
+                <div className="pt-2">
+                  <p className="font-medium text-sm mb-2">3. Verify Code</p>
+                  <div className="flex items-center gap-3 max-w-sm">
+                    <Input placeholder="000000" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} className="font-mono tracking-widest text-center" />
+                    <Button onClick={handleEnable} disabled={code.length !== 6}>Verify & Enable</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Button variant="ghost" onClick={() => setGenerated(null)}>Cancel</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Two-factor authentication is not enabled. We highly recommend enabling it to secure your account.</p>
+            <Button onClick={handleGenerate} disabled={isGenerating}>
+              {isGenerating ? "Generating..." : "Enable 2FA"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminSecurity() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -233,9 +358,11 @@ export default function AdminSecurity() {
         </div>
         <div>
           <h1 className="text-xl font-bold">Security Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage signing secrets and security credentials.</p>
+          <p className="text-sm text-muted-foreground">Manage signing secrets, 2FA, and security credentials.</p>
         </div>
       </div>
+
+      <TwoFactorAuthCard />
 
       {/* JWT Secret Card */}
       <Card className="bg-card">
