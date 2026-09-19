@@ -68,12 +68,10 @@ export const encryptedText = customType<{ data: string; driverData: string }>({
   dataType() {
     return 'text'; // Maps to PostgreSQL 'text' column
   },
-  toDriver(value: string | null): string | null {
-    if (value === null) return null;
-    return encrypt(value);
+  toDriver(value: string): string {
+    return encrypt(value) ?? "";
   },
-  fromDriver(value: string | null): string | null {
-    if (value === null) return null;
-    return decrypt(value);
+  fromDriver(value: string): string {
+    return decrypt(value) ?? "";
   },
 });
