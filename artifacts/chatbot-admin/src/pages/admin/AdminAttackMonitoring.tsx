@@ -314,6 +314,7 @@ export default function AdminAttackMonitoring() {
                     <TableHead>Username</TableHead>
                     <TableHead>Failed attempts</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -321,32 +322,7 @@ export default function AdminAttackMonitoring() {
                     const isBlocked = data?.blockedIps.some((b) => b.ip === log.ip);
                     return (
                       <TableRow key={log.id}>
-                        <TableCell className="whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs">{log.ip}</span>
-                            {isBlocked ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-5 text-[10px] px-2 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
-                                onClick={() => unblockIpMutation.mutate(log.ip)}
-                                disabled={unblockIpMutation.isPending}
-                              >
-                                Unblock
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-5 text-[10px] px-2"
-                                onClick={() => blockIpMutation.mutate(log.ip)}
-                                disabled={blockIpMutation.isPending}
-                              >
-                                Block
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                        <TableCell className="font-mono text-xs whitespace-nowrap">{log.ip}</TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(log.time)}</TableCell>
                         <TableCell className="font-medium">{log.username}</TableCell>
                         <TableCell className="tabular-nums">{log.failedAttempts}</TableCell>
@@ -354,6 +330,29 @@ export default function AdminAttackMonitoring() {
                           <Badge variant="outline" className={eventStyle(log.event)}>
                             {eventLabels[log.event] || log.event}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {isBlocked ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 text-[11px] px-3 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
+                              onClick={() => unblockIpMutation.mutate(log.ip)}
+                              disabled={unblockIpMutation.isPending}
+                            >
+                              Unblock
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-6 text-[11px] px-4"
+                              onClick={() => blockIpMutation.mutate(log.ip)}
+                              disabled={blockIpMutation.isPending}
+                            >
+                              Block
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
