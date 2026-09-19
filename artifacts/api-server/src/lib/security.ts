@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { logger } from "./logger";
 import { db, adminConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { sendSecurityEventEmail } from "./email";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Rate Limiting — simple in-memory sliding-window limiter
@@ -381,6 +382,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
     if (!blockedIps.has(normalizedIp)) {
       blockedIps.set(normalizedIp, Date.now());
       void saveBlockedIpsToDb();
+      void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
       appendAttackLog(ip, username, attempts, "ip_blocked");
       logger.warn(
         { username: username.toLowerCase(), ip: normalizedIp, attempts },
@@ -423,6 +425,11 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
   const accountLocked = attempts >= MAX_LOGIN_ATTEMPTS;
 
   if (accountLocked) {
+    // Only send the email on the EXACT attempt that triggers the lock (so we don't spam it)
+    if (attempts === MAX_LOGIN_ATTEMPTS) {
+      void sendSecurityEventEmail("account_locked", ip, username, attempts);
+    }
+    
     entry.lockedUntil = now + LOCKOUT_DURATION_MS;
     appendAttackLog(ip, username, attempts, "account_locked", now);
     logger.warn({ username: username.toLowerCase(), ip, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");

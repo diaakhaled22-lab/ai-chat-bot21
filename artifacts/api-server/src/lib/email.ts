@@ -233,3 +233,56 @@ export async function sendAttackSpikeNotification(input: {
     logger.error({ err }, "Failed to send security alert email");
   }
 }
+export async function sendSecurityEventEmail(event: 'account_locked' | 'ip_blocked', ip: string, username: string, attempts: number) {
+  const title = event === 'account_locked' 
+    ? `Account Locked: ${username}` 
+    : `IP Blocked: ${ip}`;
+    
+  const message = event === 'account_locked'
+    ? `The account "${username}" was locked after ${attempts} failed login attempts from IP: ${ip}.`
+    : `The IP address ${ip} was automatically blocked after ${attempts} suspicious login attempts targeting "${username}".`;
+
+  try {
+    const admins = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+
+    if (admins.length > 0) {
+      await db.insert(notificationsTable).values(
+        admins.map((admin) => ({
+          userId: admin.id,
+          type: "security_alert",
+          title,
+          message,
+          companyId: null,
+          isRead: false,
+        })),
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to add specific security alert to admin notifications");
+  }
+
+  try {
+    const cfg = await getEmailConfig();
+    if (!isEmailConfigured(cfg)) return;
+
+    const transporter = buildTransporter(cfg);
+    await transporter.sendMail({
+      from: `"Mission Control" <${cfg.smtpUser}>`,
+      to: cfg.recipientEmail,
+      subject: `[Security Alert] ${title}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
+          <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
+          <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
+          <p style="margin:0;color:#450a0a;font-size:13px;">Open Mission Control → Attack Monitoring to review and manage this incident.</p>
+        </div>
+      `,
+    });
+    logger.info({ event, ip }, "Security event email sent to admin");
+  } catch (err) {
+    logger.error({ err }, "Failed to send security event email");
+  }
+}
