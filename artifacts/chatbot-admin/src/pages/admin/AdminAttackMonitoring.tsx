@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Ban, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Activity, AlertTriangle, Ban, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 type AttackEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked";
 
@@ -60,10 +62,45 @@ function eventStyle(event: AttackEvent): string {
 }
 
 export default function AdminAttackMonitoring() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data, isLoading, error } = useQuery<AttackMonitoringSnapshot>({
     queryKey: ["admin-attack-monitoring"],
     queryFn: () => customFetch("/api/admin/attack-monitoring"),
     refetchInterval: 10_000,
+  });
+
+  const blockIpMutation = useMutation({
+    mutationFn: (ip: string) =>
+      customFetch("/api/admin/attack-monitoring/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip }),
+      }),
+    onSuccess: () => {
+      toast({ title: "IP Blocked successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to block IP", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const unblockIpMutation = useMutation({
+    mutationFn: (ip: string) =>
+      customFetch("/api/admin/attack-monitoring/unblock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip }),
+      }),
+    onSuccess: () => {
+      toast({ title: "IP Unblocked successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to unblock IP", description: err.message, variant: "destructive" });
+    },
   });
 
   const policy = data?.policy ?? {
@@ -163,12 +200,30 @@ export default function AdminAttackMonitoring() {
               <p className="text-sm text-muted-foreground">No recent failed attempts.</p>
             ) : (
               <div className="space-y-2">
-                {analytics.activeIps.map((item) => (
-                  <div key={item.value} className="flex items-center justify-between gap-4 text-sm">
-                    <span className="font-mono truncate">{item.value}</span>
-                    <Badge variant="outline" className="tabular-nums shrink-0">{item.count}</Badge>
-                  </div>
-                ))}
+                {analytics.activeIps.map((item) => {
+                  const isBlocked = data?.blockedIps.some(b => b.ip === item.value);
+                  return (
+                    <div key={item.value} className="flex items-center justify-between gap-4 text-sm">
+                      <span className="font-mono truncate">{item.value}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="tabular-nums shrink-0">{item.count} fails</Badge>
+                        {isBlocked ? (
+                          <Badge variant="destructive" className="h-6 text-[10px]">Blocked</Badge>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-6 text-xs px-2"
+                            onClick={() => blockIpMutation.mutate(item.value)}
+                            disabled={blockIpMutation.isPending}
+                          >
+                            Block IP
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -206,9 +261,19 @@ export default function AdminAttackMonitoring() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {data.blockedIps.map((blocked) => (
-              <Badge key={blocked.ip} variant="outline" className="font-mono text-red-300 border-red-500/30">
-                {blocked.ip}
-              </Badge>
+              <div key={blocked.ip} className="flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full pl-3 pr-1 py-1">
+                <span className="font-mono text-xs text-red-300">{blocked.ip}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-5 h-5 rounded-full hover:bg-red-500/20 text-red-400 hover:text-red-300 ml-1"
+                  onClick={() => unblockIpMutation.mutate(blocked.ip)}
+                  disabled={unblockIpMutation.isPending}
+                  title="Unblock IP"
+                >
+                  &times;
+                </Button>
+              </div>
             ))}
           </CardContent>
         </Card>

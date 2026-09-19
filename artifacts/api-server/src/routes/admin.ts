@@ -19,7 +19,7 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
-import { getAttackMonitoringSnapshot, maskApiKey, validatePassword } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey, validatePassword, manualBlockIp, manualUnblockIp } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
 import { logAdminActivity } from "../lib/audit";
 
@@ -74,6 +74,30 @@ router.get("/admin/stats", async (req, res) => {
 // GET /admin/attack-monitoring
 router.get("/admin/attack-monitoring", async (_req, res) => {
   res.json(getAttackMonitoringSnapshot());
+});
+
+// POST /admin/attack-monitoring/block
+router.post("/admin/attack-monitoring/block", async (req, res) => {
+  const { ip } = req.body as { ip?: string };
+  if (!ip || typeof ip !== "string") {
+    res.status(400).json({ error: "Valid IP is required" });
+    return;
+  }
+  manualBlockIp(ip);
+  await logAdminActivity(req.session.userId!, "IP Blocked", `Manually blocked IP: ${ip}`, req.ip || null);
+  res.json({ ok: true });
+});
+
+// POST /admin/attack-monitoring/unblock
+router.post("/admin/attack-monitoring/unblock", async (req, res) => {
+  const { ip } = req.body as { ip?: string };
+  if (!ip || typeof ip !== "string") {
+    res.status(400).json({ error: "Valid IP is required" });
+    return;
+  }
+  manualUnblockIp(ip);
+  await logAdminActivity(req.session.userId!, "IP Unblocked", `Manually unblocked IP: ${ip}`, req.ip || null);
+  res.json({ ok: true });
 });
 
 // GET /admin/usage-cost

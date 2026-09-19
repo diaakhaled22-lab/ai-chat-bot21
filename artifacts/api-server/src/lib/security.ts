@@ -205,7 +205,7 @@ interface LoginAttempt {
   postLockoutFailures: number;
 }
 
-export type AttackLogEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked";
+export type AttackLogEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked" | "manual_ip_blocked" | "ip_unblocked";
 
 export interface AttackLogEntry {
   id: number;
@@ -460,6 +460,24 @@ export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
  */
 export function resetLoginAttempts(username: string): void {
   loginAttempts.delete(username.toLowerCase());
+}
+
+export function manualBlockIp(ip: string): void {
+  const normalizedIp = normalizeIp(ip);
+  if (!blockedIps.has(normalizedIp)) {
+    blockedIps.set(normalizedIp, Date.now());
+    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked");
+    logger.info({ ip: normalizedIp }, "IP manually blocked by admin");
+  }
+}
+
+export function manualUnblockIp(ip: string): void {
+  const normalizedIp = normalizeIp(ip);
+  if (blockedIps.has(normalizedIp)) {
+    blockedIps.delete(normalizedIp);
+    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked");
+    logger.info({ ip: normalizedIp }, "IP manually unblocked by admin");
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
