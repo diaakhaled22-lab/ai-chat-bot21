@@ -7,6 +7,13 @@
  */
 
 export * from './adminActivityLog';
+export * from './adminDisable2fa200';
+export * from './adminDisable2faBody';
+export * from './adminEnable2fa200';
+export * from './adminEnable2faBody';
+export * from './adminGenerate2fa200';
+export * from './adminGet2faStatus200';
+export * from './adminLoginVerify2faBody';
 export * from './adminSettingsInput';
 export * from './adminSettingsResult';
 export * from './adminStats';

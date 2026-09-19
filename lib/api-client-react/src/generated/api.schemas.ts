@@ -37,6 +37,8 @@ export interface AuthResult {
   name: string;
   /** @nullable */
   id?: number | null;
+  requires2FA?: boolean;
+  tempToken?: string;
 }
 
 export type SessionUserRole = typeof SessionUserRole[keyof typeof SessionUserRole];
@@ -582,5 +584,36 @@ fromDate?: string | null;
  * @nullable
  */
 toDate?: string | null;
+};
+
+export type AdminLoginVerify2faBody = {
+  tempToken: string;
+  code: string;
+};
+
+export type AdminGet2faStatus200 = {
+  isEnabled?: boolean;
+};
+
+export type AdminGenerate2fa200 = {
+  secret?: string;
+  qrCodeDataUrl?: string;
+};
+
+export type AdminEnable2faBody = {
+  secret: string;
+  code: string;
+};
+
+export type AdminEnable2fa200 = {
+  success?: boolean;
+};
+
+export type AdminDisable2faBody = {
+  password: string;
+};
+
+export type AdminDisable2fa200 = {
+  success?: boolean;
 };
 

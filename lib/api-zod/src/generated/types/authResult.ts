@@ -12,4 +12,6 @@ export interface AuthResult {
   name: string;
   /** @nullable */
   id?: number | null;
+  requires2FA?: boolean;
+  tempToken?: string;
 }

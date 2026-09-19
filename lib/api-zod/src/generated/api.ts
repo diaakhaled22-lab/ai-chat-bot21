@@ -27,7 +27,9 @@ export const AdminLoginBody = zod.object({
 export const AdminLoginResponse = zod.object({
   "role": zod.enum(['admin', 'client']),
   "name": zod.string(),
-  "id": zod.number().nullish()
+  "id": zod.number().nullish(),
+  "requires2FA": zod.boolean().optional(),
+  "tempToken": zod.string().optional()
 })
 
 
@@ -42,7 +44,9 @@ export const ClientLoginBody = zod.object({
 export const ClientLoginResponse = zod.object({
   "role": zod.enum(['admin', 'client']),
   "name": zod.string(),
-  "id": zod.number().nullish()
+  "id": zod.number().nullish(),
+  "requires2FA": zod.boolean().optional(),
+  "tempToken": zod.string().optional()
 })
 
 
@@ -952,6 +956,65 @@ export const IngestChatMessageResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string()
 })).optional().describe('Prior turns in this session (oldest first, excluding the current message). Feed into your AI call for multi-turn context.')
+})
+
+
+/**
+ * @summary Admin 2FA verification
+ */
+export const AdminLoginVerify2faBody = zod.object({
+  "tempToken": zod.string(),
+  "code": zod.string()
+})
+
+export const AdminLoginVerify2faResponse = zod.object({
+  "role": zod.enum(['admin', 'client']),
+  "name": zod.string(),
+  "id": zod.number().nullish(),
+  "requires2FA": zod.boolean().optional(),
+  "tempToken": zod.string().optional()
+})
+
+
+/**
+ * @summary Check if 2FA is enabled
+ */
+export const AdminGet2faStatusResponse = zod.object({
+  "isEnabled": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Generate a new 2FA secret
+ */
+export const AdminGenerate2faResponse = zod.object({
+  "secret": zod.string().optional(),
+  "qrCodeDataUrl": zod.string().optional()
+})
+
+
+/**
+ * @summary Enable 2FA by verifying the generated code
+ */
+export const AdminEnable2faBody = zod.object({
+  "secret": zod.string(),
+  "code": zod.string()
+})
+
+export const AdminEnable2faResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Disable 2FA
+ */
+export const AdminDisable2faBody = zod.object({
+  "password": zod.string()
+})
+
+export const AdminDisable2faResponse = zod.object({
+  "success": zod.boolean().optional()
 })
 
 
