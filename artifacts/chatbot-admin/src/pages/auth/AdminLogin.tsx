@@ -162,22 +162,24 @@ export default function AdminLogin() {
                     control={form2fa.control}
                     name="code"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col items-center justify-center">
+                      <FormItem className="flex flex-col items-center">
                         <FormControl>
-                          <Input 
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="Enter 6-digit code" 
-                            className="text-center text-2xl tracking-[0.5em] font-mono py-6"
-                            maxLength={6} 
-                            {...field} 
-                          />
+                          <InputOTP maxLength={6} {...field}>
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex gap-2">
                     <Button type="button" variant="outline" className="w-full" onClick={() => setTempToken(null)} disabled={verify2fa.isPending}>
                       Back
                     </Button>

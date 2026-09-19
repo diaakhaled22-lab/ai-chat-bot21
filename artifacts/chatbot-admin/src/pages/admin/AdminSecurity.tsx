@@ -4,7 +4,6 @@ import { customFetch } from "@workspace/api-client-react";
 import { ShieldCheck, KeyRound, RotateCcw, Eye, EyeOff, Copy, Check, AlertTriangle, Webhook, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -287,23 +286,13 @@ function TwoFactorAuthCard() {
                   <p className="font-medium text-sm mb-1">2. Or enter the secret manually</p>
                   <code className="px-2 py-1 bg-muted rounded-md text-xs font-mono select-all">{generated.secret}</code>
                 </div>
-                  <div className="pt-2">
-                    <p className="font-medium text-sm mb-2">3. Verify Code</p>
-                    <div className="flex flex-col gap-4 max-w-sm">
-                      <Input 
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="000000" 
-                        value={code} 
-                        onChange={(e) => setCode(e.target.value)} 
-                        maxLength={6} 
-                        className="text-center text-2xl tracking-[0.5em] font-mono py-6" 
-                      />
-                      <Button onClick={handleEnable} disabled={code.length !== 6 || enable2fa.isPending} className="w-full">
-                        {enable2fa.isPending ? "Verifying..." : "Verify & Enable"}
-                      </Button>
-                    </div>
+                <div className="pt-2">
+                  <p className="font-medium text-sm mb-2">3. Verify Code</p>
+                  <div className="flex items-center gap-3 max-w-sm">
+                    <Input placeholder="000000" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} className="font-mono tracking-widest text-center" />
+                    <Button onClick={handleEnable} disabled={code.length !== 6}>Verify & Enable</Button>
                   </div>
+                </div>
               </div>
             </div>
             <Button variant="ghost" onClick={() => setGenerated(null)}>Cancel</Button>
