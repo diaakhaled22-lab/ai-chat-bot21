@@ -162,18 +162,26 @@ export default function AdminLogin() {
                     control={form2fa.control}
                     name="code"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col items-center">
+                      <FormItem>
                         <FormControl>
-                          <InputOTP maxLength={6} {...field}>
-                            <InputOTPGroup>
-                              <InputOTPSlot index={0} />
-                              <InputOTPSlot index={1} />
-                              <InputOTPSlot index={2} />
-                              <InputOTPSlot index={3} />
-                              <InputOTPSlot index={4} />
-                              <InputOTPSlot index={5} />
-                            </InputOTPGroup>
-                          </InputOTP>
+                          <div className="relative">
+                            <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              type="text" 
+                              inputMode="numeric" 
+                              pattern="[0-9]*"
+                              autoComplete="one-time-code"
+                              placeholder="000000" 
+                              className="pl-9 bg-background/50 text-center tracking-[0.5em] font-mono text-lg" 
+                              maxLength={6} 
+                              {...field} 
+                              onChange={(e) => {
+                                // Allow only digits
+                                const val = e.target.value.replace(/\D/g, "");
+                                field.onChange(val);
+                              }}
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
