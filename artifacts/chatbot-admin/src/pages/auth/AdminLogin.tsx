@@ -9,6 +9,7 @@ import { Bot, Lock, User, KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -161,18 +162,24 @@ export default function AdminLogin() {
                     control={form2fa.control}
                     name="code"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col items-center justify-center">
                         <FormControl>
-                          <div className="relative">
-                            <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="000000" className="pl-9 bg-background/50 text-center tracking-[0.5em] font-mono text-lg" maxLength={6} {...field} />
-                          </div>
+                          <InputOTP maxLength={6} {...field}>
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-2">
                     <Button type="button" variant="outline" className="w-full" onClick={() => setTempToken(null)} disabled={verify2fa.isPending}>
                       Back
                     </Button>
