@@ -164,16 +164,14 @@ export default function AdminLogin() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col items-center justify-center">
                         <FormControl>
-                          <InputOTP maxLength={6} {...field}>
-                            <InputOTPGroup>
-                              <InputOTPSlot index={0} />
-                              <InputOTPSlot index={1} />
-                              <InputOTPSlot index={2} />
-                              <InputOTPSlot index={3} />
-                              <InputOTPSlot index={4} />
-                              <InputOTPSlot index={5} />
-                            </InputOTPGroup>
-                          </InputOTP>
+                          <Input 
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Enter 6-digit code" 
+                            className="text-center text-2xl tracking-[0.5em] font-mono py-6"
+                            maxLength={6} 
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

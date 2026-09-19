@@ -290,17 +290,16 @@ function TwoFactorAuthCard() {
                   <div className="pt-2">
                     <p className="font-medium text-sm mb-2">3. Verify Code</p>
                     <div className="flex flex-col gap-4 max-w-sm">
-                      <InputOTP maxLength={6} value={code} onChange={setCode}>
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
-                      <Button onClick={handleEnable} disabled={code.length !== 6 || enable2fa.isPending} className="w-fit">
+                      <Input 
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000000" 
+                        value={code} 
+                        onChange={(e) => setCode(e.target.value)} 
+                        maxLength={6} 
+                        className="text-center text-2xl tracking-[0.5em] font-mono py-6" 
+                      />
+                      <Button onClick={handleEnable} disabled={code.length !== 6 || enable2fa.isPending} className="w-full">
                         {enable2fa.isPending ? "Verifying..." : "Verify & Enable"}
                       </Button>
                     </div>
