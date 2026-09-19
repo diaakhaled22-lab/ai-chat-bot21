@@ -2,6 +2,7 @@ import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { usersTable } from "./users";
+import { encryptedText } from "../encryption";
 
 export const companiesTable = pgTable("companies", {
   id: serial("id").primaryKey(),
@@ -18,25 +19,25 @@ export const companiesTable = pgTable("companies", {
   googleSheetsLink: text("google_sheets_link"),
   googleSheetsName: text("google_sheets_name"),
   googleSheetsPage: text("google_sheets_page"),
-  serviceAccountKey: text("service_account_key"),
-  aiAgentApiKey: text("ai_agent_api_key"),
+  serviceAccountKey: encryptedText("service_account_key"),
+  aiAgentApiKey: encryptedText("ai_agent_api_key"),
   aiAgentUrl: text("ai_agent_url"),
   aiProvider: text("ai_provider", { enum: ["openai", "anthropic", "google", "openrouter"] }),
   aiModel: text("ai_model"),
   monthlyTokenQuota: integer("monthly_token_quota"),
-  telegramBotApiKey: text("telegram_bot_api_key"),
+  telegramBotApiKey: encryptedText("telegram_bot_api_key"),
   telegramBotUsername: text("telegram_bot_username"),
   telegramWebhookSecretHash: text("telegram_webhook_secret_hash"),
   telegramEnabled: boolean("telegram_enabled"),
-  whatsappApiToken: text("whatsapp_api_token"),
+  whatsappApiToken: encryptedText("whatsapp_api_token"),
   whatsappPhoneNumberId: text("whatsapp_phone_number_id"),
   whatsappBusinessAccountId: text("whatsapp_business_account_id"),
   whatsappNumber: text("whatsapp_number"),
   whatsappEnabled: boolean("whatsapp_enabled"),
-  messengerApiKey: text("messenger_api_key"),
+  messengerApiKey: encryptedText("messenger_api_key"),
   messengerPageId: text("messenger_page_id"),
   messengerEnabled: boolean("messenger_enabled"),
-  websiteChatbotKey: text("website_chatbot_key"),
+  websiteChatbotKey: encryptedText("website_chatbot_key"),
   widgetAllowedDomains: text("widget_allowed_domains"),
   widgetEnabled: boolean("widget_enabled"),
   websiteDataUrl: text("website_data_url"),
