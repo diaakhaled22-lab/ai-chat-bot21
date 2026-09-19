@@ -20,10 +20,6 @@ const formSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-const form2faSchema = z.object({
-  code: z.string().length(6, "Code must be exactly 6 digits").regex(/^\d+$/, "Code must contain only numbers"),
-});
-
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -38,13 +34,6 @@ export default function AdminLogin() {
     defaultValues: {
       username: "",
       password: "",
-    },
-  });
-
-  const form2fa = useForm<z.infer<typeof form2faSchema>>({
-    resolver: zodResolver(form2faSchema),
-    defaultValues: {
-      code: "",
     },
   });
 
@@ -71,26 +60,6 @@ export default function AdminLogin() {
         toast({
           title: "Login failed",
           description: error.message || "Invalid login credentials",
-          variant: "destructive",
-        });
-      }
-    });
-  }
-
-  function on2faSubmit(values: z.infer<typeof form2faSchema>) {
-    verify2fa.mutate({ data: { tempToken: tempToken!, code: values.code } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        toast({
-          title: "Welcome back",
-          description: "Successfully logged in as administrator.",
-        });
-        setLocation("/admin/dashboard");
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Verification failed",
-          description: error.message || "Invalid verification code",
           variant: "destructive",
         });
       }
@@ -156,39 +125,50 @@ export default function AdminLogin() {
                 </form>
               </Form>
             ) : (
-              <Form {...form2fa}>
-                <form onSubmit={form2fa.handleSubmit(on2faSubmit)} className="space-y-4">
-                  <FormField
-                    control={form2fa.control}
-                    name="code"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <div className="relative">
-                            <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              type="text" 
-                              placeholder="Enter 6-digit code" 
-                              className="pl-9 bg-background/50 text-center text-lg font-bold tracking-widest" 
-                              maxLength={6} 
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" className="w-full" onClick={() => setTempToken(null)} disabled={verify2fa.isPending}>
-                      Back
-                    </Button>
-                    <Button type="submit" className="w-full" disabled={verify2fa.isPending}>
-                      {verify2fa.isPending ? "Verifying..." : "Verify Code"}
-                    </Button>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const codeInput = (e.currentTarget.elements.namedItem("code") as HTMLInputElement).value;
+                  const codeStr = codeInput.replace(/\D/g, "");
+                  if (codeStr.length !== 6) {
+                    toast({ title: "Invalid Code", description: "Code must be exactly 6 digits", variant: "destructive" });
+                    return;
+                  }
+                  verify2fa.mutate({ data: { tempToken: tempToken!, code: codeStr } }, {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+                      toast({ title: "Welcome back", description: "Successfully logged in as administrator." });
+                      setLocation("/admin/dashboard");
+                    },
+                    onError: (error: any) => {
+                      toast({ title: "Verification failed", description: error.message || "Invalid verification code", variant: "destructive" });
+                    }
+                  });
+                }} 
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      name="code"
+                      type="text" 
+                      placeholder="Enter 6-digit code" 
+                      className="pl-9 bg-background/50 text-center text-lg font-bold tracking-widest" 
+                      maxLength={6} 
+                    />
                   </div>
-                </form>
-              </Form>
+                  <p className="text-[0.8rem] text-muted-foreground text-center">Type your 6-digit authenticator code</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="w-full" onClick={() => setTempToken(null)} disabled={verify2fa.isPending}>
+                    Back
+                  </Button>
+                  <Button type="submit" className="w-full" disabled={verify2fa.isPending}>
+                    {verify2fa.isPending ? "Verifying..." : "Verify Code"}
+                  </Button>
+                </div>
+              </form>
             )}
 
             {!tempToken && (
