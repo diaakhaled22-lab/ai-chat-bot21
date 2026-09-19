@@ -176,8 +176,13 @@ export default function AdminLogin() {
                               maxLength={6} 
                               {...field} 
                               onChange={(e) => {
-                                // Allow only digits
-                                const val = e.target.value.replace(/\D/g, "");
+                                let val = e.target.value;
+                                // Convert Arabic numerals
+                                val = val.replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString());
+                                // Convert Eastern Arabic (Persian/Urdu) numerals
+                                val = val.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+                                // Strip everything else that isn't a standard digit
+                                val = val.replace(/\D/g, "");
                                 field.onChange(val);
                               }}
                             />
