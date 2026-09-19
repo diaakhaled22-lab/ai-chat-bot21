@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-type AttackEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked";
+type AttackEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked" | "manual_ip_blocked" | "ip_unblocked";
 
 interface AttackLogEntry {
   id: number;
@@ -47,6 +47,8 @@ const eventLabels: Record<AttackEvent, string> = {
   account_locked: "Account locked",
   blocked_attempt: "Blocked attempt",
   ip_blocked: "IP blocked",
+  manual_ip_blocked: "Manually blocked",
+  ip_unblocked: "Unblocked",
 };
 
 function formatTime(value: string): string {
@@ -55,7 +57,8 @@ function formatTime(value: string): string {
 }
 
 function eventStyle(event: AttackEvent): string {
-  if (event === "ip_blocked") return "text-red-400 border-red-500/30 bg-red-500/10";
+  if (event === "ip_blocked" || event === "manual_ip_blocked") return "text-red-400 border-red-500/30 bg-red-500/10";
+  if (event === "ip_unblocked") return "text-green-400 border-green-500/30 bg-green-500/10";
   if (event === "account_locked") return "text-amber-400 border-amber-500/30 bg-amber-500/10";
   if (event === "blocked_attempt") return "text-orange-400 border-orange-500/30 bg-orange-500/10";
   return "text-muted-foreground border-border bg-muted/40";
@@ -314,19 +317,47 @@ export default function AdminAttackMonitoring() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.logs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-mono text-xs whitespace-nowrap">{log.ip}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(log.time)}</TableCell>
-                      <TableCell className="font-medium">{log.username}</TableCell>
-                      <TableCell className="tabular-nums">{log.failedAttempts}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={eventStyle(log.event)}>
-                          {eventLabels[log.event]}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {data.logs.map((log) => {
+                    const isBlocked = data?.blockedIps.some((b) => b.ip === log.ip);
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs">{log.ip}</span>
+                            {isBlocked ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-5 text-[10px] px-2 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
+                                onClick={() => unblockIpMutation.mutate(log.ip)}
+                                disabled={unblockIpMutation.isPending}
+                              >
+                                Unblock
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-5 text-[10px] px-2"
+                                onClick={() => blockIpMutation.mutate(log.ip)}
+                                disabled={blockIpMutation.isPending}
+                              >
+                                Block
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(log.time)}</TableCell>
+                        <TableCell className="font-medium">{log.username}</TableCell>
+                        <TableCell className="tabular-nums">{log.failedAttempts}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={eventStyle(log.event)}>
+                            {eventLabels[log.event] || log.event}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
