@@ -50,11 +50,13 @@ type Company = {
   securityPrompt?: string | null;
   googleSheetsEnabled?: boolean;
   googleSheetsLink?: string | null;
+  serviceAccountKey?: string | null;
   aiAgentApiKey?: string | null;
   telegramBotApiKey?: string | null;
   telegramEnabled?: boolean | null;
-  whatsappApiKey?: string | null;
+  whatsappApiToken?: string | null;
   whatsappEnabled?: boolean | null;
+  messengerApiKey?: string | null;
   messengerEnabled?: boolean | null;
   websiteChatbotKey?: string | null;
   widgetEnabled?: boolean | null;

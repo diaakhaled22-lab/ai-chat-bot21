@@ -203,7 +203,7 @@ function TwoFactorAuthCard() {
     setIsGenerating(true);
     try {
       const res = await customFetch('/api/admin/security/2fa/generate', { method: 'POST' });
-      setGenerated(res);
+      setGenerated(res as { secret: string; qrCodeDataUrl: string });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
