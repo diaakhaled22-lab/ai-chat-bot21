@@ -331,11 +331,11 @@ function ChannelBadges({ company }: { company: Company }) {
   };
 
   const channels = [
-    { key: "web",      active: isChannelConnected("web", !!company.widgetEnabled),    icon: <Globe className="w-3 h-3" />,  label: "Website"  },
-    { key: "telegram", active: isChannelConnected("telegram", !!company.telegramEnabled),  icon: <Send className="w-3 h-3" />,   label: "Telegram" },
-    { key: "whatsapp", active: isChannelConnected("whatsapp", !!company.whatsappEnabled),  icon: <Phone className="w-3 h-3" />,   label: "WhatsApp" },
-    { key: "messenger",active: isChannelConnected("messenger", !!company.messengerEnabled), icon: <MessageSquare className="w-3 h-3" />, label: "Messenger" },
-    { key: "sheets",   active: isChannelConnected("sheets", !!company.googleSheetsEnabled), icon: <Sheet className="w-3 h-3" />, label: "Sheets" },
+    { key: "web",      active: isChannelConnected(company, "web", !!company.widgetEnabled),    icon: <Globe className="w-3 h-3" />,  label: "Website"  },
+    { key: "telegram", active: isChannelConnected(company, "telegram", !!company.telegramEnabled),  icon: <Send className="w-3 h-3" />,   label: "Telegram" },
+    { key: "whatsapp", active: isChannelConnected(company, "whatsapp", !!company.whatsappEnabled),  icon: <Phone className="w-3 h-3" />,   label: "WhatsApp" },
+    { key: "messenger",active: isChannelConnected(company, "messenger", !!company.messengerEnabled), icon: <MessageSquare className="w-3 h-3" />, label: "Messenger" },
+    { key: "sheets",   active: isChannelConnected(company, "sheets", !!company.googleSheetsEnabled), icon: <Sheet className="w-3 h-3" />, label: "Sheets" },
     { key: "ai",       active: !!company.aiAgentApiKey,      icon: <Sparkles className="w-3 h-3" />, label: "AI Agent" },
   ];
   const active = channels.filter((c) => c.active);
