@@ -317,12 +317,25 @@ function ActivityLog({ companyId }: { companyId: number }) {
 
 // ── Channel badges ─────────────────────────────────────────────────────────────
 function ChannelBadges({ company }: { company: Company }) {
+  const isChannelConnected = (key: string, enabled: boolean) => {
+    if (!enabled) return false;
+    switch (key) {
+      case "telegram": return !!company.telegramBotApiKey;
+      case "whatsapp": return !!(company.whatsappApiToken && company.whatsappPhoneNumberId);
+      case "messenger": return !!(company.messengerApiKey && company.messengerPageId);
+      case "sheets": return !!company.googleSheetsLink;
+      case "web": return true; 
+      case "ai": return !!company.aiAgentApiKey;
+      default: return false;
+    }
+  };
+
   const channels = [
-    { key: "web",      active: !!company.widgetEnabled,    icon: <Globe className="w-3 h-3" />,  label: "Website"  },
-    { key: "telegram", active: !!company.telegramEnabled,  icon: <Send className="w-3 h-3" />,   label: "Telegram" },
-    { key: "whatsapp", active: !!company.whatsappEnabled,  icon: <Phone className="w-3 h-3" />,   label: "WhatsApp" },
-    { key: "messenger",active: !!company.messengerEnabled, icon: <MessageSquare className="w-3 h-3" />, label: "Messenger" },
-    { key: "sheets",   active: !!company.googleSheetsEnabled, icon: <Sheet className="w-3 h-3" />, label: "Sheets" },
+    { key: "web",      active: isChannelConnected("web", !!company.widgetEnabled),    icon: <Globe className="w-3 h-3" />,  label: "Website"  },
+    { key: "telegram", active: isChannelConnected("telegram", !!company.telegramEnabled),  icon: <Send className="w-3 h-3" />,   label: "Telegram" },
+    { key: "whatsapp", active: isChannelConnected("whatsapp", !!company.whatsappEnabled),  icon: <Phone className="w-3 h-3" />,   label: "WhatsApp" },
+    { key: "messenger",active: isChannelConnected("messenger", !!company.messengerEnabled), icon: <MessageSquare className="w-3 h-3" />, label: "Messenger" },
+    { key: "sheets",   active: isChannelConnected("sheets", !!company.googleSheetsEnabled), icon: <Sheet className="w-3 h-3" />, label: "Sheets" },
     { key: "ai",       active: !!company.aiAgentApiKey,      icon: <Sparkles className="w-3 h-3" />, label: "AI Agent" },
   ];
   const active = channels.filter((c) => c.active);
