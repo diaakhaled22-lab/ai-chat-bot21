@@ -145,6 +145,44 @@ export default function ClientChatLogs() {
         </div>
       </div>
 
+      {/* Retention Policy Banner (Read-only for client, managed by admin) */}
+      <Card className="bg-card border-border shrink-0">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold">{t("chat_logs_retention_title")}</p>
+                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">
+                  {t("chat_logs_retention_admin_managed")}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {retentionLoading ? (
+                  <Skeleton className="h-3 w-48 mt-1" />
+                ) : lang === "ar" ? (
+                  `يتم حذف سجلات الدردشة تلقائياً بعد ${currentRetention} ${currentRetention === 1 ? "يوم" : currentRetention === 2 ? "يومين" : "أيام"} وفقاً لما حدده مسؤول النظام.`
+                ) : (
+                  `Chat logs are automatically deleted after ${currentRetention} day${currentRetention === 1 ? "" : "s"} as set by your administrator.`
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 self-start sm:self-auto bg-muted/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-bold tabular-nums">
+              {retentionLoading ? (
+                <Skeleton className="h-4 w-12" />
+              ) : (
+                `${currentRetention} ${lang === "ar" ? "أيام" : currentRetention === 1 ? "day" : "days"}`
+              )}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Mini Analytics */}
       <div className="grid grid-cols-3 gap-4 shrink-0">
         <Card className="bg-card">
