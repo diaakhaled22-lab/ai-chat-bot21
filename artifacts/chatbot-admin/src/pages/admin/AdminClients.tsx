@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
-import { useListClients, useCreateClient, useDeleteClient, getListClientsQueryKey } from "@workspace/api-client-react";
+import { useListClients, useCreateClient, useDeleteClient, useUpdateClient, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MoreVertical, Search } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Search, Edit } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,13 +22,23 @@ const formSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+const editFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().optional().refine(val => !val || val.length >= 6, {
+    message: "Password must be at least 6 characters if provided",
+  }),
+});
+
 export default function AdminClients() {
   const { data: clients, isLoading } = useListClients();
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<any>(null);
   
   const createClient = useCreateClient();
   const deleteClient = useDeleteClient();
+  const updateClient = useUpdateClient();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -40,6 +50,42 @@ export default function AdminClients() {
       password: "",
     },
   });
+
+  const editForm = useForm<z.infer<typeof editFormSchema>>({
+    resolver: zodResolver(editFormSchema),
+    defaultValues: {
+      name: "",
+      username: "",
+      password: "",
+    },
+  });
+
+  const onEditClick = (client: any) => {
+    setEditingClient(client);
+    editForm.reset({
+      name: client.name,
+      username: client.username,
+      password: "",
+    });
+  };
+
+  const onSubmitEdit = (values: z.infer<typeof editFormSchema>) => {
+    if (!editingClient) return;
+    const payload = { ...values };
+    if (!payload.password) delete payload.password;
+    
+    updateClient.mutate({ id: editingClient.id, data: payload as any }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+        setEditingClient(null);
+        editForm.reset();
+        toast({ title: "Client updated successfully" });
+      },
+      onError: (error: any) => {
+        toast({ title: "Failed to update client", description: error.message, variant: "destructive" });
+      }
+    });
+  };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     createClient.mutate({ data: values }, {
@@ -122,6 +168,45 @@ export default function AdminClients() {
             </Form>
           </DialogContent>
         </Dialog>
+        
+        <Dialog open={!!editingClient} onOpenChange={(open) => !open && setEditingClient(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Client</DialogTitle>
+              <DialogDescription>Update client details or change their password.</DialogDescription>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
+                <FormField control={editForm.control} name="name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="username" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl><Input placeholder="johndoe" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="password" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password (Optional)</FormLabel>
+                    <FormControl><PasswordInput placeholder="Leave blank to keep current" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <DialogFooter>
+                  <Button type="submit" disabled={updateClient.isPending}>
+                    {updateClient.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center space-x-2 bg-card p-4 rounded-lg border border-border">
@@ -183,6 +268,10 @@ export default function AdminClients() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEditClick(client)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(client.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
