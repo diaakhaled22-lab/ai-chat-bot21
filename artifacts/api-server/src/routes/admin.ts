@@ -814,6 +814,7 @@ router.get("/admin/chat-logs", async (req, res) => {
         companyId: log.companyId,
         companyName: companyName ?? null,
         channel: log.channel,
+        sessionId: log.sessionId,
         customerMessage: log.customerMessage,
         botResponse: log.botResponse,
         createdAt: log.createdAt.toISOString(),
