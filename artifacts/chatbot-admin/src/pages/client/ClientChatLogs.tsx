@@ -164,6 +164,9 @@ export default function ClientChatLogs() {
     return acc;
   }, {} as Record<string, number>) || {};
   const topChannel = Object.entries(channelCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || "None";
+  
+  const unreadSessionsCount = sessions.filter(s => s.messages.some(m => !m.isRead) && !localReadSessions.has(s.id)).length;
+  const readSessionsCount = uniqueSessions - unreadSessionsCount;
 
   return (
     <div className="space-y-6 flex flex-col flex-1 pb-10">
