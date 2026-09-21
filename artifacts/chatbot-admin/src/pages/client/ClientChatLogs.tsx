@@ -37,10 +37,12 @@ export default function ClientChatLogs() {
     if (!logs) return [];
     
     // First, apply text search filter globally if present
-    const filteredLogs = logs.filter(log => 
-      log.customerMessage?.toLowerCase().includes(search.toLowerCase()) ||
-      log.botResponse?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredLogs = logs.filter(log => {
+      const searchLower = search.toLowerCase();
+      const msgMatch = log.customerMessage ? log.customerMessage.toLowerCase().includes(searchLower) : false;
+      const botMatch = log.botResponse ? log.botResponse.toLowerCase().includes(searchLower) : false;
+      return msgMatch || botMatch;
+    });
 
     const map = new Map<string, typeof logs>();
     
