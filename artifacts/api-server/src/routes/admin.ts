@@ -822,6 +822,7 @@ router.get("/admin/chat-logs", async (req, res) => {
         sessionId: log.sessionId,
         customerMessage: log.customerMessage,
         botResponse: log.botResponse,
+        isRead: log.isRead,
         createdAt: log.createdAt.toISOString(),
       }))
     );
