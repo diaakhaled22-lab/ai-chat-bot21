@@ -2,7 +2,7 @@ import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { usersTable } from "./users";
-import { encryptedText } from "../encryption";
+import { encryptedText, searchableText } from "../encryption";
 
 export const companiesTable = pgTable("companies", {
   id: serial("id").primaryKey(),
@@ -37,7 +37,7 @@ export const companiesTable = pgTable("companies", {
   messengerApiKey: encryptedText("messenger_api_key"),
   messengerPageId: text("messenger_page_id"),
   messengerEnabled: boolean("messenger_enabled"),
-  websiteChatbotKey: encryptedText("website_chatbot_key"),
+  websiteChatbotKey: searchableText("website_chatbot_key"),
   widgetAllowedDomains: text("widget_allowed_domains"),
   widgetEnabled: boolean("widget_enabled"),
   websiteDataUrl: text("website_data_url"),

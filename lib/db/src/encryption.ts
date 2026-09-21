@@ -75,3 +75,15 @@ export const encryptedText = customType<{ data: string; driverData: string }>({
     return decrypt(value) ?? "";
   },
 });
+
+export const searchableText = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return 'text';
+  },
+  toDriver(value: string): string {
+    return value;
+  },
+  fromDriver(value: string): string {
+    return decrypt(value) ?? "";
+  },
+});
