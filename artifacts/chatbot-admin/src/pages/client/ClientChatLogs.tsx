@@ -258,10 +258,10 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{lang === "ar" ? "غير مقروءة" : "Unread"}</p>
+              <p className="text-sm text-muted-foreground dark:text-green-400/90">{lang === "ar" ? "غير مقروءة" : "Unread"}</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-500">{unreadSessionsCount}</p>
             </div>
-            <MessageCircle className="w-8 h-8 text-green-500/20" />
+            <MessageCircle className="w-8 h-8 text-green-500/20 dark:text-green-400" />
           </CardContent>
         </Card>
         <Card className="bg-card">
@@ -367,7 +367,7 @@ export default function ClientChatLogs() {
                     <div className="mt-1 relative">
                       {getChannelIcon(session.channel)}
                       {!localReadSessions.has(session.id) && session.messages.some(m => !m.isRead) && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" title={lang === "ar" ? "رسالة جديدة" : "New message"} />
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 dark:bg-green-400 border-2 border-card rounded-full" title={lang === "ar" ? "رسالة جديدة" : "New message"} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0 pr-6">
