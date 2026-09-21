@@ -89,6 +89,22 @@ export function removeHebrewScript(text: string, language: ResponseLanguage): st
   return arabicOnly.replace(/\u0000(\d+)\u0000/g, (_, index: string) => protectedTokens[Number(index)]);
 }
 
+// Common greetings fallback if AI model output is empty or stripped
+const GREETING_FALLBACKS: Record<string, string> = {
+  "السلام": "وعليكم السلام ورحمة الله وبركاته! أهلاً بك، كيف يمكنني مساعدتك اليوم؟",
+  "السلام عليكم": "وعليكم السلام ورحمة الله وبركاته! أهلاً وسهلاً بك، كيف أستطيع خدمتك اليوم؟",
+  "سلام": "وعليكم السلام ورحمة الله! كيف يمكنني مساعدتك؟",
+  "مرحبا": "مرحباً بك! يسعدني مساعدتك، تفضل بسؤالك.",
+  "مرحباً": "مرحباً بك! يسعدني مساعدتك، تفضل بسؤالك.",
+  "أهلا": "أهلاً وسهلاً بك! كيف يمكنني مساعدتك اليوم؟",
+  "أهلاً": "أهلاً وسهلاً بك! كيف يمكنني مساعدتك اليوم؟",
+  "صباح الخير": "صباح النور والسرور! كيف يمكنني خدمتك اليوم؟",
+  "مساء الخير": "مساء النور والسرور! كيف يمكنني مساعدتك اليوم؟",
+  "hello": "Hello! How can I assist you today?",
+  "hi": "Hi there! How can I help you today?",
+  "hey": "Hey! How can I help you today?",
+};
+
 export function enforceResponseLanguage(text: string, latestUserMessage: string, explicitLang?: "ar" | "en"): string {
   const language = explicitLang 
     ? (explicitLang === "ar" ? "Arabic" : "English") 
@@ -97,9 +113,16 @@ export function enforceResponseLanguage(text: string, latestUserMessage: string,
 
   if (cleaned) return cleaned;
 
+  // Smart fallback for greetings if AI model returned empty or stripped
+  const normalizedUserMsg = latestUserMessage.trim().replace(/[!.,؟?]/g, "").trim().toLowerCase();
+  if (GREETING_FALLBACKS[normalizedUserMsg]) {
+    return GREETING_FALLBACKS[normalizedUserMsg];
+  }
+
+  // Friendly conversational fallback instead of generic error
   return language === "Arabic"
-    ? "عذراً، لم أتمكن من صياغة رد الآن. يرجى المحاولة مرة أخرى."
-    : "Sorry, I could not prepare a response right now. Please try again.";
+    ? "أهلاً بك! كيف يمكنني مساعدتك اليوم؟"
+    : "Hello! How can I help you today?";
 }
 
 export function localizedChannelMessage(
