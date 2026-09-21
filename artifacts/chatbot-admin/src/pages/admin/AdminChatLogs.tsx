@@ -46,6 +46,15 @@ import { Badge } from "@/components/ui/badge";
 
 const RETENTION_OPTIONS = [1, 3, 7, 14, 30, 90, 365];
 
+function cleanDisplayMessage(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/提供/g, "تقديم")
+    .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 export default function AdminChatLogs() {
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
@@ -615,7 +624,7 @@ export default function AdminChatLogs() {
                         </div>
                         <div className="flex flex-col gap-1 items-end max-w-[75%]">
                           <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
-                            {log.botResponse}
+                            {cleanDisplayMessage(log.botResponse)}
                           </div>
                           <div className="flex items-center gap-2 mr-2">
                             <span className="text-[10px] text-muted-foreground">

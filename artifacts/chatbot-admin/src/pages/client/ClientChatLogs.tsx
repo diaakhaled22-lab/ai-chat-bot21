@@ -12,6 +12,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
+function cleanDisplayMessage(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/提供/g, "تقديم")
+    .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 export default function ClientChatLogs() {
   const { t, lang } = useLanguage();
   const [search, setSearch] = useState("");
@@ -452,7 +461,7 @@ export default function ClientChatLogs() {
                           </div>
                           <div className="flex flex-col gap-1 items-end max-w-[75%]">
                             <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
-                              {log.botResponse}
+                              {cleanDisplayMessage(log.botResponse)}
                             </div>
                             <div className="flex items-center gap-2 mr-2">
                               <span className="text-[10px] text-muted-foreground">
