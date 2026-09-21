@@ -826,6 +826,25 @@ router.get("/admin/chat-logs", async (req, res) => {
   }
 });
 
+// PATCH /admin/chat-logs/:id/read
+router.patch("/admin/chat-logs/:id/read", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    await db
+      .update(chatLogsTable)
+      .set({ isRead: true })
+      .where(eq(chatLogsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark admin chat log as read error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // DELETE /admin/chat-logs/:id
 router.delete("/admin/chat-logs/:id", async (req, res) => {
   try {
@@ -842,24 +861,6 @@ router.delete("/admin/chat-logs/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Delete chat log error");
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// PATCH /admin/chat-logs/:id/read
-router.patch("/admin/chat-logs/:id/read", async (req, res) => {
-  try {
-    const logId = parseInt(req.params.id, 10);
-    if (isNaN(logId)) {
-      res.status(400).json({ error: "Invalid id" });
-      return;
-    }
-    await db.update(chatLogsTable)
-      .set({ isRead: true })
-      .where(eq(chatLogsTable.id, logId));
-    res.json({ ok: true });
-  } catch (err) {
-    logger.error({ err }, "Mark admin chat log as read error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

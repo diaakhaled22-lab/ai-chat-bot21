@@ -367,23 +367,6 @@ paths:
         "404":
           description: Not found
 
-  /admin/chat-logs/{id}/read:
-    patch:
-      operationId: markAdminChatLogAsRead
-      tags: [admin-chat-logs]
-      summary: Mark a single log entry as read by admin
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Log marked as read
-        "404":
-          description: Not found
-
   /admin/chat-log-retention:
     get:
       operationId: getAdminChatLogRetention

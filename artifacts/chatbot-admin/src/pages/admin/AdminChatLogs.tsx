@@ -55,32 +55,12 @@ export default function AdminChatLogs() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
   );
-  const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
+  const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(
+    new Set(),
+  );
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
-  const markAdminChatLogAsRead = useMarkAdminChatLogAsRead();
-
-  const handleSelectSession = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
-    setLocalReadSessions(prev => new Set(prev).add(sessionId));
-
-    // Also mark as read in database if unread
-    const session = sessions.find(s => s.id === sessionId);
-    if (session && session.messages.some(m => !m.isRead)) {
-      const unreadLogs = session.messages.filter(m => !m.isRead);
-      Promise.all(unreadLogs.map(m => markAdminChatLogAsRead.mutateAsync({ id: m.id })))
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
-        })
-        .catch((err) => {
-          console.error("Failed to mark as read", err);
-          toast({ title: "Failed to mark message as read", description: "Make sure you restarted the API server.", variant: "destructive" });
-          queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
-        });
-    }
-  };
 
   const { data: companies } = useListCompanies();
 
@@ -114,6 +94,48 @@ export default function AdminChatLogs() {
   const [pendingRetention, setPendingRetention] = useState<number | null>(null);
 
   const deleteChatLog = useDeleteChatLog();
+  const markLogAsRead = useMarkAdminChatLogAsRead();
+
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setLocalReadSessions((prev) => new Set(prev).add(sessionId));
+
+    const session = sessions.find((s) => s.id === sessionId);
+    if (session && session.messages.some((m) => !m.isRead)) {
+      // Optimistic UI update for instant feedback
+      queryClient.setQueryData(
+        getListAllChatLogsQueryKey({
+          channel: channelFilter !== "all" ? (channelFilter as any) : undefined,
+          companyId: companyFilter !== "all" ? Number(companyFilter) : undefined,
+          fromDate: fromDate || undefined,
+          toDate: toDate || undefined,
+        }),
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return oldData.map((log: any) =>
+            log.sessionId === sessionId || `msg_${log.id}` === sessionId
+              ? { ...log, isRead: true }
+              : log,
+          );
+        },
+      );
+
+      const unreadLogs = session.messages.filter((m) => !m.isRead);
+      Promise.all(unreadLogs.map((m) => markLogAsRead.mutateAsync({ id: m.id })))
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+        })
+        .catch((err) => {
+          console.error("Failed to mark as read", err);
+          toast({
+            title: "Failed to mark message as read",
+            description: "Make sure you restarted the API server.",
+            variant: "destructive",
+          });
+          queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+        });
+    }
+  };
 
   const hasDateFilter = Boolean(fromDate || toDate);
   const clearDateFilter = () => {
@@ -208,7 +230,7 @@ export default function AdminChatLogs() {
   const activeSessions = sessions.length;
 
   const unreadSessionsCount = sessions.filter((s) =>
-    s.messages.some((m) => !m.isRead) && !localReadSessions.has(s.id),
+    s.messages.some((m) => !m.isRead),
   ).length;
   const readSessionsCount = activeSessions - unreadSessionsCount;
 
@@ -472,9 +494,13 @@ export default function AdminChatLogs() {
                   >
                     <div className="mt-1 relative">
                       {getChannelIcon(session.channel)}
-                      {!localReadSessions.has(session.id) && session.messages.some(m => !m.isRead) && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" title="New message" />
-                      )}
+                      {!localReadSessions.has(session.id) &&
+                        session.messages.some((m) => !m.isRead) && (
+                          <span
+                            className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full"
+                            title="New message"
+                          />
+                        )}
                     </div>
                     <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between mb-1">
