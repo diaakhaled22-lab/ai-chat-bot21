@@ -1,110 +1,240 @@
-import { useState } from "react";
-import { useListAllChatLogs, useDeleteChatLog, getListAllChatLogsQueryKey, useGetAdminChatLogRetention, useUpdateAdminChatLogRetention, getGetAdminChatLogRetentionQueryKey } from "@workspace/api-client-react";
+﻿import { useState, useMemo } from "react";
+import {
+  useListAllChatLogs,
+  useDeleteChatLog,
+  getListAllChatLogsQueryKey,
+  useGetAdminRetention,
+  useUpdateAdminRetention,
+  useListCompanies,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock } from "lucide-react";
-
+import {
+  Search,
+  RefreshCw,
+  MessageCircle,
+  MessageSquare,
+  Globe,
+  CalendarRange,
+  X,
+  Trash2,
+  Clock,
+  User,
+  Bot,
+  Building2,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
-const RETENTION_OPTIONS = [1, 2, 3, 5, 7, 14, 30, 60, 90, 180, 365];
+const RETENTION_OPTIONS = [1, 3, 7, 14, 30, 90, 365];
 
 export default function AdminChatLogs() {
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [pendingRetention, setPendingRetention] = useState<number | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    null,
+  );
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: logs, isLoading, isFetching, refetch } = useListAllChatLogs({
-    channel: channelFilter !== "all" ? channelFilter : undefined,
+
+  const { data: companies } = useListCompanies();
+
+  const {
+    data: logs,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useListAllChatLogs({
+    channel: channelFilter !== "all" ? (channelFilter as any) : undefined,
+    companyId: companyFilter !== "all" ? Number(companyFilter) : undefined,
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
   });
-  const deleteChatLog = useDeleteChatLog();
-  const { data: retentionData, isLoading: retentionLoading } = useGetAdminChatLogRetention();
-  const updateRetention = useUpdateAdminChatLogRetention();
 
-  const currentRetention = pendingRetention ?? retentionData?.retentionDays ?? 7;
-
-  const handleDelete = (id: number) => {
-    if (!confirm("Delete this chat log entry? This cannot be undone.")) return;
-    deleteChatLog.mutate({ id }, {
+  const { data: retentionData, isLoading: retentionLoading } =
+    useGetAdminRetention();
+  const updateRetention = useUpdateAdminRetention({
+    mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
-        toast({ title: "Chat log deleted" });
-      },
-      onError: (error: any) => {
-        toast({ title: "Failed to delete chat log", description: error.message, variant: "destructive" });
-      },
-    });
-  };
-
-  const handleSaveRetention = () => {
-    if (pendingRetention === null) return;
-    updateRetention.mutate({ data: { retentionDays: pendingRetention } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetAdminChatLogRetentionQueryKey() });
+        toast({ title: "Retention policy updated" });
         setPendingRetention(null);
-        toast({ title: "Retention policy saved", description: `Chat logs will be deleted after ${pendingRetention} day${pendingRetention === 1 ? "" : "s"}.` });
+        queryClient.invalidateQueries({ queryKey: ["adminRetention"] });
       },
-      onError: (error: any) => {
-        toast({ title: "Failed to save retention policy", description: error.message, variant: "destructive" });
-      },
-    });
-  };
+    },
+  });
+
+  const currentRetention = retentionData?.days ?? 30;
+  const [pendingRetention, setPendingRetention] = useState<number | null>(null);
+
+  const deleteChatLog = useDeleteChatLog();
 
   const hasDateFilter = Boolean(fromDate || toDate);
-  const clearDateFilter = () => { setFromDate(""); setToDate(""); };
+  const clearDateFilter = () => {
+    setFromDate("");
+    setToDate("");
+  };
 
   const handleRefresh = () => {
     refetch();
   };
 
-  const filteredLogs = logs?.filter(log => 
-    log.companyName?.toLowerCase().includes(search.toLowerCase()) ||
-    log.customerMessage.toLowerCase().includes(search.toLowerCase()) ||
-    log.botResponse?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const getChannelIcon = (channel: string) => {
-    switch (channel) {
-      case "telegram": return <MessageCircle className="w-4 h-4 text-blue-500" />;
-      case "whatsapp": return <MessageSquare className="w-4 h-4 text-green-500" />;
-      case "website": return <Globe className="w-4 h-4 text-purple-500" />;
-      default: return <MessageCircle className="w-4 h-4" />;
+  const handleSaveRetention = () => {
+    if (pendingRetention !== null) {
+      updateRetention.mutate({ data: { days: pendingRetention } });
     }
   };
 
+  const getChannelIcon = (channel: string) => {
+    switch (channel) {
+      case "telegram":
+        return <MessageCircle className="w-4 h-4 text-blue-500" />;
+      case "whatsapp":
+        return <MessageSquare className="w-4 h-4 text-green-500" />;
+      case "messenger":
+        return <MessageCircle className="w-4 h-4 text-indigo-500" />;
+      case "website":
+        return <Globe className="w-4 h-4 text-purple-500" />;
+      default:
+        return <MessageCircle className="w-4 h-4" />;
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+    try {
+      await deleteChatLog.mutateAsync({ id });
+      queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+      toast({ title: "Message deleted successfully" });
+    } catch (err) {
+      toast({ title: "Failed to delete message", variant: "destructive" });
+    }
+  };
+
+  // Filter logs by search term
+  const filteredLogs = useMemo(() => {
+    if (!logs) return [];
+    if (!search) return logs;
+    const s = search.toLowerCase();
+    return logs.filter(
+      (log) =>
+        log.customerMessage?.toLowerCase().includes(s) ||
+        log.botResponse?.toLowerCase().includes(s) ||
+        log.companyName?.toLowerCase().includes(s),
+    );
+  }, [logs, search]);
+
+  // Group into sessions
+  const sessions = useMemo(() => {
+    const map = new Map<string, typeof filteredLogs>();
+    filteredLogs.forEach((log) => {
+      const key = log.sessionId || `msg_${log.id}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(log);
+    });
+
+    return Array.from(map.entries())
+      .map(([sessionId, sessionLogs]) => {
+        sessionLogs.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+        const lastLog = sessionLogs[sessionLogs.length - 1];
+        return {
+          id: sessionId,
+          companyName: lastLog.companyName,
+          channel: lastLog.channel,
+          updatedAt: lastLog.createdAt,
+          lastMessage: lastLog.customerMessage,
+          messages: sessionLogs,
+        };
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+  }, [filteredLogs]);
+
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId);
+
+  // Analytics
+  const totalMessages = filteredLogs.length;
+  const activeSessions = sessions.length;
+
+  const channelCounts = filteredLogs.reduce(
+    (acc, log) => {
+      acc[log.channel] = (acc[log.channel] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const topChannel =
+    Object.entries(channelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "None";
+
+  const companyCounts = filteredLogs.reduce(
+    (acc, log) => {
+      const cName = log.companyName || "Unknown";
+      acc[cName] = (acc[cName] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const topCompany =
+    Object.entries(companyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "None";
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 flex flex-col flex-1 pb-10">
+      <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Chat Logs</h1>
-          <p className="text-muted-foreground mt-2">View interactions across all deployed chatbots.</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Global Chat Logs
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            View interactions across all deployed chatbots.
+          </p>
         </div>
-        
-        <Button onClick={handleRefresh} disabled={isFetching} variant="outline">
-          <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+        <Button
+          onClick={handleRefresh}
+          disabled={isFetching || isLoading}
+          variant="outline"
+          size="sm"
+        >
+          <RefreshCw
+            className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
 
       {/* Retention Policy */}
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border shrink-0">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
             <CardTitle className="text-base">Auto-Delete Policy</CardTitle>
           </div>
           <CardDescription>
-            Chat logs older than the selected number of days will be automatically deleted across all companies.
+            Chat logs older than the selected number of days will be
+            automatically deleted across all companies.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -133,26 +263,88 @@ export default function AdminChatLogs() {
               disabled={pendingRetention === null || updateRetention.isPending}
               size="sm"
             >
-              {updateRetention.isPending ? "Saving…" : "Save"}
+              {updateRetention.isPending ? "Saving..." : "Save"}
             </Button>
             {pendingRetention !== null && (
-              <span className="text-xs text-muted-foreground">Unsaved changes</span>
+              <span className="text-xs text-muted-foreground">
+                Unsaved changes
+              </span>
             )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex gap-4">
-        <div className="flex-1 flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">
+      {/* Mini Analytics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Messages</p>
+              <p className="text-2xl font-bold">{totalMessages}</p>
+            </div>
+            <MessageSquare className="w-8 h-8 text-primary/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Active Sessions</p>
+              <p className="text-2xl font-bold">{activeSessions}</p>
+            </div>
+            <User className="w-8 h-8 text-primary/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Top Channel</p>
+              <p className="text-2xl font-bold capitalize">{topChannel}</p>
+            </div>
+            <Globe className="w-8 h-8 text-primary/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Top Company</p>
+              <p className="text-lg font-bold truncate max-w-[120px]">
+                {topCompany}
+              </p>
+            </div>
+            <Building2 className="w-8 h-8 text-primary/20" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4 shrink-0 flex-wrap">
+        <div className="flex-1 min-w-[200px] flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">
           <Search className="w-5 h-5 ml-2 text-muted-foreground" />
-          <Input 
-            placeholder="Search messages or company..." 
+          <Input
+            placeholder="Search messages or company..."
             className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="w-[200px]">
+
+        <div className="w-[180px]">
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger className="h-full bg-card">
+              <SelectValue placeholder="All Companies" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Companies</SelectItem>
+              {companies?.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-[180px]">
           <Select value={channelFilter} onValueChange={setChannelFilter}>
             <SelectTrigger className="h-full bg-card">
               <SelectValue placeholder="All Channels" />
@@ -161,10 +353,12 @@ export default function AdminChatLogs() {
               <SelectItem value="all">All Channels</SelectItem>
               <SelectItem value="telegram">Telegram</SelectItem>
               <SelectItem value="whatsapp">WhatsApp</SelectItem>
+              <SelectItem value="messenger">Messenger</SelectItem>
               <SelectItem value="website">Website</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
         <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
           <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
@@ -174,7 +368,7 @@ export default function AdminChatLogs() {
             onChange={(e) => setFromDate(e.target.value)}
             className="bg-transparent text-sm text-foreground outline-none w-[120px]"
           />
-          <span className="text-muted-foreground text-xs">→</span>
+          <span className="text-muted-foreground text-xs">to</span>
           <input
             type="date"
             value={toDate}
@@ -186,7 +380,7 @@ export default function AdminChatLogs() {
             <button
               onClick={clearDateFilter}
               className="text-muted-foreground hover:text-foreground shrink-0"
-              title="Clear date filter"
+              title="Clear dates"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -194,75 +388,174 @@ export default function AdminChatLogs() {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="bg-card">
-              <CardContent className="p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-5 w-24" />
-                </div>
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-3/4" />
-              </CardContent>
-            </Card>
-          ))
-        ) : filteredLogs?.length === 0 ? (
-          <div className="text-center py-12 bg-card rounded-lg border border-border">
-            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-foreground">No chat logs found</h3>
-            <p className="text-muted-foreground">Adjust your filters or check back later.</p>
+      {/* Inbox View Layout */}
+      <Card className="flex-1 min-h-[600px] overflow-hidden flex border-border">
+        {/* Left Pane: Sessions List */}
+        <div className="w-1/3 border-r border-border flex flex-col bg-muted/10">
+          <div className="p-3 border-b border-border bg-card font-medium text-sm text-muted-foreground shrink-0">
+            Recent Conversations
           </div>
-        ) : (
-          filteredLogs?.map((log) => (
-            <Card key={log.id} className="bg-card shadow-sm border-border/50">
-              <CardContent className="p-0">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/20">
-                  <div className="flex items-center space-x-3">
-                    <Badge variant="outline" className="flex items-center gap-1.5 bg-background">
-                      {getChannelIcon(log.channel)}
-                      <span className="capitalize">{log.channel}</span>
-                    </Badge>
-                    <span className="text-sm font-medium text-foreground">{log.companyName}</span>
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 border-b border-border">
+                  <Skeleton className="w-full h-10" />
+                </div>
+              ))
+            ) : sessions.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No conversations found
+              </div>
+            ) : (
+              sessions.map((session) => {
+                const isSelected = selectedSession?.id === session.id;
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => setSelectedSessionId(session.id)}
+                    role="button"
+                    className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative group cursor-pointer ${isSelected ? "bg-muted border-l-4 border-l-primary" : ""}`}
+                  >
+                    <div className="mt-1">
+                      {getChannelIcon(session.channel)}
+                    </div>
+                    <div className="flex-1 min-w-0 pr-6">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold truncate capitalize">
+                          {session.companyName}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(session.updatedAt).toLocaleTimeString(
+                              [],
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </span>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm("Delete this entire conversation?"))
+                                return;
+                              try {
+                                await Promise.all(
+                                  session.messages.map((log) =>
+                                    deleteChatLog.mutateAsync({ id: log.id }),
+                                  ),
+                                );
+                                queryClient.invalidateQueries({
+                                  queryKey: getListAllChatLogsQueryKey(),
+                                });
+                                toast({ title: "Conversation deleted" });
+                                if (selectedSessionId === session.id) {
+                                  setSelectedSessionId(null);
+                                }
+                              } catch (err) {
+                                toast({
+                                  title: "Failed to delete some messages",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                            title="Delete conversation"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="text-xs px-1.5 py-0.5 bg-secondary rounded text-secondary-foreground capitalize">
+                          {session.channel}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {session.lastMessage}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </span>
-                    <button
-                      onClick={() => handleDelete(log.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                      title="Delete this message"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Pane: Active Chat View */}
+        <div className="flex-1 flex flex-col bg-card relative">
+          {!selectedSession ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+              <MessageSquare className="w-12 h-12 mb-4 opacity-20" />
+              <p>Select a conversation to view</p>
+            </div>
+          ) : (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b border-border flex items-center justify-between bg-muted/5 shadow-sm z-10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    {getChannelIcon(selectedSession.channel)}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm capitalize">
+                      {selectedSession.companyName} - {selectedSession.channel}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedSession.messages.length} messages
+                    </p>
                   </div>
                 </div>
-                <div className="p-4 space-y-4">
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                      <span className="text-xs font-medium">U</span>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {selectedSession.messages.map((log) => (
+                  <div key={log.id} className="space-y-4">
+                    {/* Customer Bubble */}
+                    <div className="flex items-end gap-2">
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4 text-secondary-foreground/70" />
+                      </div>
+                      <div className="flex flex-col gap-1 max-w-[75%]">
+                        <div className="bg-secondary text-secondary-foreground rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+                          {log.customerMessage}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground ml-2">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm px-4 py-2 text-sm max-w-[80%]">
-                      {log.customerMessage}
-                    </div>
+
+                    {/* Bot Bubble */}
+                    {log.botResponse && (
+                      <div className="flex items-end gap-2 flex-row-reverse">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Bot className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex flex-col gap-1 items-end max-w-[75%]">
+                          <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+                            {log.botResponse}
+                          </div>
+                          <div className="flex items-center gap-2 mr-2">
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </span>
+                            <button
+                              onClick={() => handleDelete(log.id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              title="Delete message pair"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="flex gap-4 flex-row-reverse">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-primary">
-                      <span className="text-xs font-medium">AI</span>
-                    </div>
-                    <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 text-sm max-w-[80%]">
-                      {log.botResponse}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
