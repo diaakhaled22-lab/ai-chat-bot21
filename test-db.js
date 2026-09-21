@@ -1,17 +1,1 @@
-
-import "dotenv/config";
-import { drizzle } from "drizzle-orm/node-postgres";
-import pkg from "pg";
-const { Pool } = pkg;
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle(pool);
-import { sql } from "drizzle-orm";
-
-async function main() {
-  const result = await db.execute(sql`SELECT channel, session_id, customer_message FROM chat_logs ORDER BY created_at DESC LIMIT 5`);
-  console.log(result.rows);
-  process.exit(0);
-}
-main().catch(console.error);
-
+require('dotenv').config(); const { Pool } = require('pg'); const pool = new Pool({ connectionString: process.env.DATABASE_URL }); async function test() { try { const res = await pool.query('SELECT id, is_read FROM chat_logs ORDER BY created_at DESC LIMIT 1'); console.log('Latest log:', res.rows[0]); if (res.rows.length > 0) { const id = res.rows[0].id; await pool.query('UPDATE chat_logs SET is_read = true WHERE id = ', [id]); console.log('Updated log', id); const res2 = await pool.query('SELECT id, is_read FROM chat_logs WHERE id = ', [id]); console.log('After update:', res2.rows[0]); } } catch (e) { console.error('Error:', e.message); } process.exit(0); } test();

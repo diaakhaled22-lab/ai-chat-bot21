@@ -846,6 +846,24 @@ router.delete("/admin/chat-logs/:id", async (req, res) => {
   }
 });
 
+// PATCH /admin/chat-logs/:id/read
+router.patch("/admin/chat-logs/:id/read", async (req, res) => {
+  try {
+    const logId = parseInt(req.params.id, 10);
+    if (isNaN(logId)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    await db.update(chatLogsTable)
+      .set({ isRead: true })
+      .where(eq(chatLogsTable.id, logId));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark admin chat log as read error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /admin/chat-log-retention
 router.get("/admin/chat-log-retention", async (req, res) => {
   try {

@@ -1412,6 +1412,76 @@ export const useDeleteChatLog = <TError = ErrorType<void>,
       return useMutation(getDeleteChatLogMutationOptions(options));
     }
 
+export const getMarkAdminChatLogAsReadUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/chat-logs/${id}/read`
+}
+
+/**
+ * @summary Mark a single log entry as read by admin
+ */
+export const markAdminChatLogAsRead = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getMarkAdminChatLogAsReadUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getMarkAdminChatLogAsReadMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAdminChatLogAsRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markAdminChatLogAsRead>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['markAdminChatLogAsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAdminChatLogAsRead>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markAdminChatLogAsRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkAdminChatLogAsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAdminChatLogAsRead>>>
+
+    export type MarkAdminChatLogAsReadMutationError = ErrorType<void>
+
+    /**
+ * @summary Mark a single log entry as read by admin
+ */
+export const useMarkAdminChatLogAsRead = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAdminChatLogAsRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markAdminChatLogAsRead>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getMarkAdminChatLogAsReadMutationOptions(options));
+    }
+
 export const getGetAdminChatLogRetentionUrl = () => {
 
 

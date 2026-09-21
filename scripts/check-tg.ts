@@ -1,14 +1,13 @@
 
 import "dotenv/config";
 import { db } from "../lib/db/src/index";
-import { chatLogsTable } from "../lib/db/src/schema/chatLogs";
-import { sql } from "drizzle-orm";
+import { companiesTable } from "../lib/db/src/schema/companies";
+import { isNotNull } from "drizzle-orm";
 
 async function main() {
-  const logs = await db.select().from(chatLogsTable).orderBy(sql`${chatLogsTable.createdAt} DESC`).limit(5);
-  console.log("RECENT CHAT LOGS:");
-  console.log(JSON.stringify(logs, null, 2));
+  const [c] = await db.select().from(companiesTable).where(isNotNull(companiesTable.telegramBotApiKey)).limit(1);
+  console.log("Token:", c?.telegramBotApiKey?.substring(0,10) + "...");
   process.exit(0);
 }
-main().catch(console.error);
+main();
 

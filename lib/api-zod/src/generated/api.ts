@@ -453,6 +453,16 @@ export const DeleteChatLogResponse = zod.unknown()
 
 
 /**
+ * @summary Mark a single log entry as read by admin
+ */
+export const MarkAdminChatLogAsReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkAdminChatLogAsReadResponse = zod.unknown()
+
+
+/**
  * @summary Get the platform-wide chat log auto-delete retention setting
  */
 export const getAdminChatLogRetentionResponseRetentionDaysMax = 7;

@@ -7,6 +7,7 @@ import {
   useUpdateAdminChatLogRetention,
   getGetAdminChatLogRetentionQueryKey,
   useListCompanies,
+  useMarkAdminChatLogAsRead,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -56,13 +57,28 @@ export default function AdminChatLogs() {
   );
   const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
 
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  const markAdminChatLogAsRead = useMarkAdminChatLogAsRead();
+
   const handleSelectSession = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setLocalReadSessions(prev => new Set(prev).add(sessionId));
-  };
 
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+    // Also mark as read in database if unread
+    const session = sessions.find(s => s.id === sessionId);
+    if (session && session.messages.some(m => !m.isRead)) {
+      const unreadLogs = session.messages.filter(m => !m.isRead);
+      Promise.all(unreadLogs.map(m => markAdminChatLogAsRead.mutateAsync({ id: m.id })))
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+        })
+        .catch(() => {
+          queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+        });
+    }
+  };
 
   const { data: companies } = useListCompanies();
 

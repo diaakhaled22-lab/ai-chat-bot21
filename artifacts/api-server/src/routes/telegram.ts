@@ -87,31 +87,11 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
 }
 
 async function sendTelegramMessage(botToken: string, chatId: number, text: string) {
-  try {
-    let res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
-    });
-    
-    if (!res.ok) {
-      const data = await res.json() as any;
-      logger.warn({ chatId, error: data.description }, "Telegram Markdown parse error, falling back to plain text");
-      // Fallback: Send without parse_mode if Markdown parsing failed
-      res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text }),
-      });
-      
-      if (!res.ok) {
-         const fallbackData = await res.json() as any;
-         logger.error({ chatId, error: fallbackData.description }, "Telegram fallback message failed");
-      }
-    }
-  } catch (err) {
-    logger.error({ err }, "Error sending Telegram message");
-  }
+  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+  });
 }
 
 router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
