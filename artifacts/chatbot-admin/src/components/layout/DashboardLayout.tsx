@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs } from "@workspace/api-client-react";
+import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -383,32 +383,29 @@ function OpenTicketsBadge() {
   );
 }
 
-function LiveChatBadge() {
-  const { data: stats } = useGetAdminStats({
-    query: { refetchInterval: 10_000, queryKey: getGetAdminStatsQueryKey() },
+function AdminUnreadChatBadge({ isActive }: { isActive?: boolean }) {
+  const { data: logs } = useListAllChatLogs(undefined, {
+    query: {
+      refetchInterval: 10_000,
+    },
   });
 
-  const prevCountRef = useRef<number | null>(null);
-  const [pulse, setPulse] = useState(false);
+  const unreadCount = useMemo(() => {
+    if (!logs || !Array.isArray(logs)) return 0;
+    return logs.filter((log) => !log.isRead).length;
+  }, [logs]);
 
-  useEffect(() => {
-    const current = stats?.totalChatLogs ?? null;
-    if (current !== null && prevCountRef.current !== null && current > prevCountRef.current) {
-      setPulse(true);
-      setTimeout(() => setPulse(false), 1500);
-    }
-    if (current !== null) prevCountRef.current = current;
-  }, [stats?.totalChatLogs]);
-
-  if (!stats) return null;
-  const today = stats.todayChatLogs ?? 0;
+  if (unreadCount === 0) return null;
 
   return (
     <span
-      className={`ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all duration-300 ${today > 0 ? pulse ? "bg-emerald-400 text-black scale-110" : "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}
-      title={`${today} today • ${stats.totalChatLogs} total`}
+      className={`ml-auto inline-flex items-center justify-center min-w-[24px] h-5 px-2 rounded-full text-xs font-bold leading-none transition-colors ${
+        isActive
+          ? "bg-white text-primary shadow-sm"
+          : "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+      }`}
     >
-      {today > 99 ? "99+" : today}
+      {unreadCount > 99 ? "99+" : unreadCount}
     </span>
   );
 }
@@ -568,7 +565,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               >
                 <Icon className={`w-4 h-4 mr-3 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
                 <span className="flex-1">{link.label}</span>
-                {link.badge && role === "admin" && <LiveChatBadge />}
+                {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
                 {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
                 {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} />}
               </Link>
