@@ -240,7 +240,7 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</p>
+              <p className="text-sm text-muted-foreground font-bold">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</p>
               <p className="text-2xl font-bold">{totalMessages}</p>
             </div>
             <MessageSquare className="w-8 h-8 text-primary/20" />
@@ -249,7 +249,7 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{lang === "ar" ? "المحادثات (Sessions)" : "Active Sessions"}</p>
+              <p className="text-sm text-muted-foreground font-bold">{lang === "ar" ? "المحادثات (Sessions)" : "Active Sessions"}</p>
               <p className="text-2xl font-bold">{uniqueSessions}</p>
             </div>
             <User className="w-8 h-8 text-primary/20" />
@@ -258,7 +258,7 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground dark:text-green-400/90">{lang === "ar" ? "غير مقروءة" : "Unread"}</p>
+              <p className="text-sm text-muted-foreground dark:text-green-400/90 font-bold">{lang === "ar" ? "غير مقروءة" : "Unread"}</p>
               <p className="text-2xl font-bold text-foreground dark:text-green-500">{unreadSessionsCount}</p>
             </div>
             <MessageCircle className="w-8 h-8 text-green-500/20 dark:text-green-400" />
@@ -267,7 +267,7 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground dark:text-orange-400/90">{lang === "ar" ? "مقروءة" : "Read"}</p>
+              <p className="text-sm text-muted-foreground dark:text-orange-400/90 font-bold">{lang === "ar" ? "مقروءة" : "Read"}</p>
               <p className="text-2xl font-bold text-foreground dark:text-orange-500">{readSessionsCount}</p>
             </div>
             <MessageSquare className="w-8 h-8 text-orange-500/20 dark:text-orange-400" />
@@ -276,7 +276,7 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{lang === "ar" ? "أكثر قناة نشاطاً" : "Top Channel"}</p>
+              <p className="text-sm text-muted-foreground font-bold">{lang === "ar" ? "أكثر قناة نشاطاً" : "Top Channel"}</p>
               <p className="text-2xl font-bold capitalize">{topChannel}</p>
             </div>
             <Globe className="w-8 h-8 text-primary/20" />

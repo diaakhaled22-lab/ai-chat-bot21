@@ -541,7 +541,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium leading-none truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground mt-1 capitalize">{user?.role}</p>
+              <p className="text-xs font-bold text-foreground/85 dark:text-muted-foreground mt-1 capitalize">{user?.role}</p>
             </div>
           </div>
         </div>
