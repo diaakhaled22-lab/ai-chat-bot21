@@ -1,10 +1,11 @@
-﻿import { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   useListAllChatLogs,
   useDeleteChatLog,
   getListAllChatLogsQueryKey,
-  useGetAdminRetention,
-  useUpdateAdminRetention,
+  useGetAdminChatLogRetention,
+  useUpdateAdminChatLogRetention,
+  getGetAdminChatLogRetentionQueryKey,
   useListCompanies,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,13 +73,15 @@ export default function AdminChatLogs() {
   });
 
   const { data: retentionData, isLoading: retentionLoading } =
-    useGetAdminRetention();
-  const updateRetention = useUpdateAdminRetention({
+    useGetAdminChatLogRetention();
+  const updateRetention = useUpdateAdminChatLogRetention({
     mutation: {
       onSuccess: () => {
         toast({ title: "Retention policy updated" });
         setPendingRetention(null);
-        queryClient.invalidateQueries({ queryKey: ["adminRetention"] });
+        queryClient.invalidateQueries({
+          queryKey: getGetAdminChatLogRetentionQueryKey(),
+        });
       },
     },
   });
