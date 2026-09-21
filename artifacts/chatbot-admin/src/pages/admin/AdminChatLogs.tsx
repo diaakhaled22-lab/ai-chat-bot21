@@ -183,6 +183,11 @@ export default function AdminChatLogs() {
   const totalMessages = filteredLogs.length;
   const activeSessions = sessions.length;
 
+  const unreadSessionsCount = sessions.filter((s) =>
+    s.messages.some((m) => !m.isRead),
+  ).length;
+  const readSessionsCount = activeSessions - unreadSessionsCount;
+
   const channelCounts = filteredLogs.reduce(
     (acc, log) => {
       acc[log.channel] = (acc[log.channel] || 0) + 1;
@@ -278,7 +283,7 @@ export default function AdminChatLogs() {
       </Card>
 
       {/* Mini Analytics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 shrink-0">
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
@@ -295,6 +300,28 @@ export default function AdminChatLogs() {
               <p className="text-2xl font-bold">{activeSessions}</p>
             </div>
             <User className="w-8 h-8 text-primary/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Unread</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-500">
+                {unreadSessionsCount}
+              </p>
+            </div>
+            <MessageCircle className="w-8 h-8 text-green-500/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Read</p>
+              <p className="text-2xl font-bold text-muted-foreground">
+                {readSessionsCount}
+              </p>
+            </div>
+            <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
           </CardContent>
         </Card>
         <Card className="bg-card">
