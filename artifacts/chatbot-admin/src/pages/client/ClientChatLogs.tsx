@@ -237,6 +237,7 @@ export default function ClientChatLogs() {
               <SelectItem value="all">{t("chat_logs_channel_all")}</SelectItem>
               <SelectItem value="telegram">{t("chat_logs_channel_telegram")}</SelectItem>
               <SelectItem value="whatsapp">{t("chat_logs_channel_whatsapp")}</SelectItem>
+              <SelectItem value="messenger">{t("chat_logs_channel_messenger")}</SelectItem>
               <SelectItem value="website">{t("chat_logs_channel_website")}</SelectItem>
             </SelectContent>
           </Select>
