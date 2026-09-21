@@ -436,6 +436,7 @@ export const ListAllChatLogsResponseItem = zod.object({
   "sessionId": zod.string().nullish(),
   "customerMessage": zod.string(),
   "botResponse": zod.string().nullish(),
+  "isRead": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 export const ListAllChatLogsResponse = zod.array(ListAllChatLogsResponseItem)
@@ -806,9 +807,20 @@ export const ListClientChatLogsResponseItem = zod.object({
   "sessionId": zod.string().nullish(),
   "customerMessage": zod.string(),
   "botResponse": zod.string().nullish(),
+  "isRead": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 export const ListClientChatLogsResponse = zod.array(ListClientChatLogsResponseItem)
+
+
+/**
+ * @summary Mark a session as read
+ */
+export const MarkClientSessionAsReadParams = zod.object({
+  "sessionId": zod.coerce.string()
+})
+
+export const MarkClientSessionAsReadResponse = zod.unknown()
 
 
 /**

@@ -441,6 +441,7 @@ export interface ChatLog {
   customerMessage: string;
   /** @nullable */
   botResponse?: string | null;
+  isRead?: boolean;
   createdAt: string;
 }
 

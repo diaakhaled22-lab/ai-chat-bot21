@@ -2224,6 +2224,76 @@ export function useListClientChatLogs<TData = Awaited<ReturnType<typeof listClie
 
 
 
+export const getMarkClientSessionAsReadUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/client/chat-logs/session/${sessionId}/read`
+}
+
+/**
+ * @summary Mark a session as read
+ */
+export const markClientSessionAsRead = async (sessionId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getMarkClientSessionAsReadUrl(sessionId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getMarkClientSessionAsReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markClientSessionAsRead>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markClientSessionAsRead>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['markClientSessionAsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markClientSessionAsRead>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  markClientSessionAsRead(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkClientSessionAsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markClientSessionAsRead>>>
+
+    export type MarkClientSessionAsReadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Mark a session as read
+ */
+export const useMarkClientSessionAsRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markClientSessionAsRead>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markClientSessionAsRead>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getMarkClientSessionAsReadMutationOptions(options));
+    }
+
 export const getDeleteClientChatLogUrl = (id: number,) => {
 
 
