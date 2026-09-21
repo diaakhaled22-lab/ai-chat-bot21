@@ -367,7 +367,7 @@ export default function AdminChatLogs() {
                 {readSessionsCount}
               </p>
             </div>
-            <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
+            <MessageSquare className="w-8 h-8 text-orange-500/20 dark:text-orange-400" />
           </CardContent>
         </Card>
         <Card className="bg-card">

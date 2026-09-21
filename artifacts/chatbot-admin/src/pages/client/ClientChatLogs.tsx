@@ -261,7 +261,7 @@ export default function ClientChatLogs() {
               <p className="text-sm text-muted-foreground">{lang === "ar" ? "مقروءة" : "Read"}</p>
               <p className="text-2xl font-bold text-muted-foreground">{readSessionsCount}</p>
             </div>
-            <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
+            <MessageSquare className="w-8 h-8 text-orange-500/20 dark:text-orange-400" />
           </CardContent>
         </Card>
         <Card className="bg-card">
