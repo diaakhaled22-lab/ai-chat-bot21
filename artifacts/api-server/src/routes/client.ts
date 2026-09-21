@@ -708,11 +708,58 @@ router.get("/client/chat-logs", async (req, res) => {
         sessionId: log.sessionId,
         customerMessage: log.customerMessage,
         botResponse: log.botResponse,
+        isRead: log.isRead,
         createdAt: log.createdAt.toISOString(),
       }))
     );
   } catch (err) {
     logger.error({ err }, "List client chat logs error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /client/chat-logs/session/:sessionId/read
+router.patch("/client/chat-logs/session/:sessionId/read", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const [myCompany] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!myCompany) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    if (sessionId.startsWith("msg_")) {
+      const logId = parseInt(sessionId.replace("msg_", ""), 10);
+      await db
+        .update(chatLogsTable)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(chatLogsTable.companyId, myCompany.id),
+            eq(chatLogsTable.id, logId)
+          )
+        );
+    } else {
+      await db
+        .update(chatLogsTable)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(chatLogsTable.companyId, myCompany.id),
+            eq(chatLogsTable.sessionId, sessionId)
+          )
+        );
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark session as read error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

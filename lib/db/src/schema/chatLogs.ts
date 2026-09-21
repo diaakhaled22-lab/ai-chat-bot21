@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { companiesTable } from "./companies";
@@ -10,6 +10,7 @@ export const chatLogsTable = pgTable("chat_logs", {
   sessionId: text("session_id"),
   customerMessage: text("customer_message").notNull(),
   botResponse: text("bot_response"),
+  isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

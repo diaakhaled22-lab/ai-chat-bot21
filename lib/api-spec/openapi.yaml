@@ -554,6 +554,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/ChatLog"
 
+  /client/chat-logs/session/{sessionId}/read:
+    patch:
+      operationId: markClientSessionAsRead
+      tags: [client-chat-logs]
+      summary: Mark a session as read
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session marked as read
+
   /client/chat-logs/{id}:
     delete:
       operationId: deleteClientChatLog
@@ -1275,6 +1290,8 @@ components:
           type: string
         botResponse:
           type: ["string", "null"]
+        isRead:
+          type: boolean
         createdAt:
           type: string
 

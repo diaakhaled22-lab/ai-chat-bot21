@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention } from "@workspace/api-client-react";
+import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useMarkClientSessionAsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot } from "lucide-react";
 
@@ -28,6 +28,7 @@ export default function ClientChatLogs() {
     toDate: toDate || undefined,
   });
   const deleteChatLog = useDeleteClientChatLog();
+  const markSessionAsRead = useMarkClientSessionAsRead();
   const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
 
   const currentRetention = retentionData?.retentionDays ?? 7;
@@ -70,6 +71,18 @@ export default function ClientChatLogs() {
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || sessions[0] || null;
   }, [sessions, selectedSessionId]);
+
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    const session = sessions.find(s => s.id === sessionId);
+    if (session && session.messages.some(m => !m.isRead)) {
+      markSessionAsRead.mutate({ sessionId }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+        }
+      });
+    }
+  };
 
   const handleDelete = (id: number) => {
     if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذه الرسالة؟" : "Delete this message?")) return;
@@ -293,12 +306,15 @@ export default function ClientChatLogs() {
                 return (
                   <div
                     key={session.id}
-                    onClick={() => setSelectedSessionId(session.id)}
+                    onClick={() => handleSelectSession(session.id)}
                     role="button"
                     className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative group cursor-pointer ${isSelected ? 'bg-muted border-l-4 border-l-primary' : ''}`}
                   >
-                    <div className="mt-1">
+                    <div className="mt-1 relative">
                       {getChannelIcon(session.channel)}
+                      {session.messages.some(m => !m.isRead) && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" title={lang === "ar" ? "رسالة جديدة" : "New message"} />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between mb-1">
