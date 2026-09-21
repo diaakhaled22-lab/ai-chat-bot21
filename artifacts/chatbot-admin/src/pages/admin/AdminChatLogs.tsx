@@ -230,7 +230,7 @@ export default function AdminChatLogs() {
   const activeSessions = sessions.length;
 
   const unreadSessionsCount = sessions.filter((s) =>
-    s.messages.some((m) => !m.isRead),
+    s.messages.some((m) => !m.isRead) && !localReadSessions.has(s.id)
   ).length;
   const readSessionsCount = activeSessions - unreadSessionsCount;
 
