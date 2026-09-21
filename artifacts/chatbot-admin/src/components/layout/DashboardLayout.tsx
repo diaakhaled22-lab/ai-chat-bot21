@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -413,35 +413,27 @@ function LiveChatBadge() {
   );
 }
 
-function ClientUnreadChatBadge() {
-  // Note: useListClientChatLogs natively doesn't have an unread count,
-  // so we fetch the logs and calculate the unread sessions (same logic as the page)
-  const { data: logs } = useListClientChatLogs();
-  
-  // Group logs into sessions and calculate unread
-  const unreadCount = (() => {
-    if (!logs) return 0;
-    const map = new Map<string, typeof logs>();
-    logs.forEach(log => {
-       const key = log.sessionId || `msg_${log.id}`;
-       if (!map.has(key)) map.set(key, []);
-       map.get(key)!.push(log);
-    });
-    
-    let count = 0;
-    for (const sessionLogs of map.values()) {
-      if (sessionLogs.some(m => !m.isRead)) {
-        count++;
-      }
-    }
-    return count;
-  })();
+function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
+  const { data: logs } = useListClientChatLogs(undefined, {
+    query: {
+      refetchInterval: 10_000,
+    },
+  });
+
+  const unreadCount = useMemo(() => {
+    if (!logs || !Array.isArray(logs)) return 0;
+    return logs.filter((log) => !log.isRead).length;
+  }, [logs]);
 
   if (unreadCount === 0) return null;
 
   return (
     <span
-      className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+      className={`ml-auto inline-flex items-center justify-center min-w-[24px] h-5 px-2 rounded-full text-xs font-bold leading-none transition-colors ${
+        isActive
+          ? "bg-white text-primary shadow-sm"
+          : "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+      }`}
     >
       {unreadCount > 99 ? "99+" : unreadCount}
     </span>
@@ -578,7 +570,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 <span className="flex-1">{link.label}</span>
                 {link.badge && role === "admin" && <LiveChatBadge />}
                 {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
-                {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge />}
+                {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} />}
               </Link>
             );
           })}
