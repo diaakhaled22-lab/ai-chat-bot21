@@ -74,7 +74,9 @@ export default function AdminChatLogs() {
         .then(() => {
           queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Failed to mark as read", err);
+          toast({ title: "Failed to mark message as read", description: "Make sure you restarted the API server.", variant: "destructive" });
           queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
         });
     }
