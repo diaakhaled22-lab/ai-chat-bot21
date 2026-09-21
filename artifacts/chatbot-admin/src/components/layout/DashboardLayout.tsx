@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch } from "@workspace/api-client-react";
+import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -47,6 +47,7 @@ interface NavLink {
   icon: LucideIcon;
   badge?: boolean;
   ticketBadge?: boolean;
+  clientChatBadge?: boolean;
 }
 
 interface Ticket {
@@ -405,9 +406,44 @@ function LiveChatBadge() {
   return (
     <span
       className={`ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all duration-300 ${today > 0 ? pulse ? "bg-emerald-400 text-black scale-110" : "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}
-      title={`${today} today · ${stats.totalChatLogs} total`}
+      title={`${today} today • ${stats.totalChatLogs} total`}
     >
       {today > 99 ? "99+" : today}
+    </span>
+  );
+}
+
+function ClientUnreadChatBadge() {
+  // Note: useListClientChatLogs natively doesn't have an unread count,
+  // so we fetch the logs and calculate the unread sessions (same logic as the page)
+  const { data: logs } = useListClientChatLogs();
+  
+  // Group logs into sessions and calculate unread
+  const unreadCount = (() => {
+    if (!logs) return 0;
+    const map = new Map<string, typeof logs>();
+    logs.forEach(log => {
+       const key = log.sessionId || `msg_${log.id}`;
+       if (!map.has(key)) map.set(key, []);
+       map.get(key)!.push(log);
+    });
+    
+    let count = 0;
+    for (const sessionLogs of map.values()) {
+      if (sessionLogs.some(m => !m.isRead)) {
+        count++;
+      }
+    }
+    return count;
+  })();
+
+  if (unreadCount === 0) return null;
+
+  return (
+    <span
+      className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+    >
+      {unreadCount > 99 ? "99+" : unreadCount}
     </span>
   );
 }
@@ -484,7 +520,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/webhook-history",  label: t("nav_webhook_history"), icon: Zap },
     { href: "/client/widget-preview",   label: t("nav_widget_preview"),  icon: Bot },
     { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles },
-    { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare },
+    { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },
     { href: "/client/usage",            label: t("nav_api_tokens"),      icon: KeyRound },
     { href: "/client/settings",         label: t("nav_settings"),        icon: Settings },
@@ -542,6 +578,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 <span className="flex-1">{link.label}</span>
                 {link.badge && role === "admin" && <LiveChatBadge />}
                 {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
+                {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge />}
               </Link>
             );
           })}
