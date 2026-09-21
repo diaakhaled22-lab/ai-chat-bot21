@@ -38,6 +38,7 @@ export default function ClientChatLogs() {
     
     // First, apply text search filter globally if present
     const filteredLogs = logs.filter(log => {
+      if (!search) return true;
       const searchLower = search.toLowerCase();
       const msgMatch = log.customerMessage ? log.customerMessage.toLowerCase().includes(searchLower) : false;
       const botMatch = log.botResponse ? log.botResponse.toLowerCase().includes(searchLower) : false;
