@@ -76,8 +76,29 @@ export default function ClientChatLogs() {
     setSelectedSessionId(sessionId);
     const session = sessions.find(s => s.id === sessionId);
     if (session && session.messages.some(m => !m.isRead)) {
+      
+      // Optimistic UI update for instant feedback
+      queryClient.setQueryData(
+        getListClientChatLogsQueryKey({
+          channel: channelFilter !== "all" ? channelFilter : undefined,
+          fromDate: fromDate || undefined,
+          toDate: toDate || undefined,
+        }),
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return oldData.map((log: any) => 
+            (log.sessionId === sessionId || `msg_${log.id}` === sessionId) 
+              ? { ...log, isRead: true } 
+              : log
+          );
+        }
+      );
+
       markSessionAsRead.mutate({ sessionId }, {
         onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+        },
+        onError: () => {
           queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
         }
       });
