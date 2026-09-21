@@ -19,6 +19,7 @@ export default function ClientChatLogs() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -74,6 +75,8 @@ export default function ClientChatLogs() {
 
   const handleSelectSession = (sessionId: string) => {
     setSelectedSessionId(sessionId);
+    setLocalReadSessions(prev => new Set(prev).add(sessionId));
+    
     const session = sessions.find(s => s.id === sessionId);
     if (session && session.messages.some(m => !m.isRead)) {
       
@@ -333,7 +336,7 @@ export default function ClientChatLogs() {
                   >
                     <div className="mt-1 relative">
                       {getChannelIcon(session.channel)}
-                      {session.messages.some(m => !m.isRead) && (
+                      {!localReadSessions.has(session.id) && session.messages.some(m => !m.isRead) && (
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" title={lang === "ar" ? "رسالة جديدة" : "New message"} />
                       )}
                     </div>
