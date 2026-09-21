@@ -9,7 +9,7 @@ import { refreshAiModels } from "./lib/aiModels";
 import { ensureAdminExists } from "./lib/adminBootstrap";
 import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
 
-const rawPort = process.env["PORT"] || "8080";
+const rawPort = process.env["API_PORT"] || (process.env["PORT"] && process.env["PORT"] !== "3000" && process.env["PORT"] !== "5173" ? process.env["PORT"] : "8080");
 const port = Number(rawPort) || 8080;
 
 async function expireCompanies() {
