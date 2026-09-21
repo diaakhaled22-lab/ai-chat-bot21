@@ -291,28 +291,51 @@ export default function ClientChatLogs() {
               sessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
                 return (
-                  <button
+                  <div
                     key={session.id}
                     onClick={() => setSelectedSessionId(session.id)}
-                    className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 ${isSelected ? 'bg-muted border-l-4 border-l-primary' : ''}`}
+                    role="button"
+                    className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative group cursor-pointer ${isSelected ? 'bg-muted border-l-4 border-l-primary' : ''}`}
                   >
                     <div className="mt-1">
                       {getChannelIcon(session.channel)}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-semibold truncate capitalize">
-                          {session.channel} User
+                          {session.channel} {lang === "ar" ? "مستخدم" : "User"}
                         </span>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذه المحادثة بالكامل؟" : "Delete this entire conversation?")) return;
+                              try {
+                                await Promise.all(session.messages.map(log => deleteChatLog.mutateAsync({ id: log.id })));
+                                queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+                                toast({ title: lang === "ar" ? "تم حذف المحادثة بنجاح" : "Conversation deleted" });
+                                if (selectedSessionId === session.id) {
+                                  setSelectedSessionId(null);
+                                }
+                              } catch (err) {
+                                toast({ title: "Failed to delete some messages", variant: "destructive" });
+                              }
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                            title={lang === "ar" ? "حذف المحادثة" : "Delete conversation"}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                         {session.lastMessage}
                       </p>
                     </div>
-                  </button>
+                  </div>
                 )
               })
             )}
