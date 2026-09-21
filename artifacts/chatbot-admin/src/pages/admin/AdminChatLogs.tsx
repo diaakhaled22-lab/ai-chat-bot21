@@ -362,8 +362,8 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Read</p>
-              <p className="text-2xl font-bold text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-orange-400/90">Read</p>
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-500">
                 {readSessionsCount}
               </p>
             </div>

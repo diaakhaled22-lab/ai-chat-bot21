@@ -258,8 +258,8 @@ export default function ClientChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{lang === "ar" ? "مقروءة" : "Read"}</p>
-              <p className="text-2xl font-bold text-muted-foreground">{readSessionsCount}</p>
+              <p className="text-sm text-muted-foreground dark:text-orange-400/90">{lang === "ar" ? "مقروءة" : "Read"}</p>
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-500">{readSessionsCount}</p>
             </div>
             <MessageSquare className="w-8 h-8 text-orange-500/20 dark:text-orange-400" />
           </CardContent>
