@@ -157,7 +157,7 @@ function KnowledgeFilesCard() {
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,.xlsx,.xls,.csv,.json"
+            accept=".xlsx,.xls,.csv,.json"
             className="hidden"
             onChange={(e) => {
               handleFilesSelected(e.target.files);
@@ -573,7 +573,7 @@ export default function ClientKnowledge() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_files")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {lang === "ar" ? "PDF, Excel, CSV" : "PDF, Excel, CSV"}
+                {lang === "ar" ? "Excel, CSV" : "Excel, CSV"}
               </p>
             </div>
             {readyFilesCount > 0 && (

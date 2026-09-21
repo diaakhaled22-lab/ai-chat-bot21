@@ -175,7 +175,7 @@ function KnowledgeDataSources({ company }: { company: Company }) {
           </div>
           <div>
             <p className="text-sm font-medium">Uploaded Files</p>
-            <p className="text-xs text-muted-foreground">PDFs, CSVs, and Excel sheets</p>
+            <p className="text-xs text-muted-foreground">CSVs, and Excel sheets</p>
           </div>
         </div>
         <div className="text-right">

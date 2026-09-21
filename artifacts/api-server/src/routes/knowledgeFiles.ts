@@ -54,7 +54,7 @@ router.post(
     const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
     const fileType = FILE_TYPE_BY_EXTENSION[ext];
     if (!fileType) {
-      res.status(400).json({ error: `Unsupported file type: .${ext}. Use PDF, Excel, CSV, or JSON.` });
+      res.status(400).json({ error: `Unsupported file type: .${ext}. Use Excel, CSV, or JSON.` });
       return;
     }
 

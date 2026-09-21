@@ -34,7 +34,7 @@ router.post(
 
     // Validate file type — only allow safe MIME types
     if (!isAllowedFileType(req.file.mimetype)) {
-      res.status(400).json({ error: `File type "${req.file.mimetype}" is not allowed. Allowed: PDF, CSV, JSON, Excel, images.` });
+      res.status(400).json({ error: `File type "${req.file.mimetype}" is not allowed. Allowed: CSV, JSON, Excel, images.` });
       return;
     }
 
