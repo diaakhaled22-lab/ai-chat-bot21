@@ -824,6 +824,16 @@ export const MarkClientSessionAsReadResponse = zod.unknown()
 
 
 /**
+ * @summary Mark a single log entry as read
+ */
+export const MarkClientLogAsReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkClientLogAsReadResponse = zod.unknown()
+
+
+/**
  * @summary Delete a chat log entry belonging to the client's company
  */
 export const DeleteClientChatLogParams = zod.object({

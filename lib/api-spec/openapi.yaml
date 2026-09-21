@@ -569,6 +569,21 @@ paths:
         "200":
           description: Session marked as read
 
+  /client/chat-logs/{id}/read:
+    patch:
+      operationId: markClientLogAsRead
+      tags: [client-chat-logs]
+      summary: Mark a single log entry as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Log marked as read
+
   /client/chat-logs/{id}:
     delete:
       operationId: deleteClientChatLog

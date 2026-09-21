@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useMarkClientSessionAsRead } from "@workspace/api-client-react";
+import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useMarkClientLogAsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot } from "lucide-react";
 
@@ -29,7 +29,7 @@ export default function ClientChatLogs() {
     toDate: toDate || undefined,
   });
   const deleteChatLog = useDeleteClientChatLog();
-  const markSessionAsRead = useMarkClientSessionAsRead();
+  const markLogAsRead = useMarkClientLogAsRead();
   const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
 
   const currentRetention = retentionData?.retentionDays ?? 7;
@@ -97,14 +97,14 @@ export default function ClientChatLogs() {
         }
       );
 
-      markSessionAsRead.mutate({ sessionId }, {
-        onSuccess: () => {
+      const unreadLogs = session.messages.filter(m => !m.isRead);
+      Promise.all(unreadLogs.map(m => markLogAsRead.mutateAsync({ id: m.id })))
+        .then(() => {
           queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
-        },
-        onError: () => {
+        })
+        .catch(() => {
           queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
-        }
-      });
+        });
     }
   };
 

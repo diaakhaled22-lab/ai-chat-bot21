@@ -736,7 +736,7 @@ router.patch("/client/chat-logs/session/:sessionId/read", async (req, res) => {
 
     if (sessionId.startsWith("msg_")) {
       const logId = parseInt(sessionId.replace("msg_", ""), 10);
-      await db
+      const res = await db
         .update(chatLogsTable)
         .set({ isRead: true })
         .where(
@@ -745,8 +745,9 @@ router.patch("/client/chat-logs/session/:sessionId/read", async (req, res) => {
             eq(chatLogsTable.id, logId)
           )
         );
+      logger.info({ sessionId, logId, myCompanyId: myCompany.id }, "Marked single msg as read");
     } else {
-      await db
+      const res = await db
         .update(chatLogsTable)
         .set({ isRead: true })
         .where(
@@ -755,11 +756,49 @@ router.patch("/client/chat-logs/session/:sessionId/read", async (req, res) => {
             eq(chatLogsTable.sessionId, sessionId)
           )
         );
+      logger.info({ sessionId, myCompanyId: myCompany.id }, "Marked session as read");
     }
 
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Mark session as read error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /client/chat-logs/:id/read
+router.patch("/client/chat-logs/:id/read", async (req, res) => {
+  try {
+    const logId = parseInt(req.params.id, 10);
+    if (isNaN(logId)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+
+    const [myCompany] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!myCompany) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    await db
+      .update(chatLogsTable)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(chatLogsTable.companyId, myCompany.id),
+          eq(chatLogsTable.id, logId)
+        )
+      );
+
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark log as read error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
