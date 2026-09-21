@@ -532,9 +532,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         {/* User info */}
         <div className="px-4 pt-4 pb-2 shrink-0">
-          <div className="px-2 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {role === "admin" ? "" : t("nav_client_portal")}
-          </div>
           <div className="flex items-center px-2 py-2">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold mr-3 shrink-0">
               {user?.name?.charAt(0).toUpperCase() ?? "U"}
