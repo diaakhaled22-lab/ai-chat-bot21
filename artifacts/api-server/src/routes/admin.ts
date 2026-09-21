@@ -829,16 +829,21 @@ router.get("/admin/chat-logs", async (req, res) => {
 // PATCH /admin/chat-logs/:id/read
 router.patch("/admin/chat-logs/:id/read", async (req, res) => {
   try {
+    logger.info({ id: req.params.id }, "RECEIVED REQUEST TO MARK AS READ");
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
+      logger.warn({ id: req.params.id }, "INVALID ID PROVIDED");
       res.status(400).json({ error: "Invalid id" });
       return;
     }
-    await db
+    const result = await db
       .update(chatLogsTable)
       .set({ isRead: true })
-      .where(eq(chatLogsTable.id, id));
-    res.json({ ok: true });
+      .where(eq(chatLogsTable.id, id))
+      .returning();
+      
+    logger.info({ id, rowsUpdated: result.length }, "DB UPDATE EXECUTED");
+    res.json({ ok: true, updated: result.length });
   } catch (err) {
     logger.error({ err }, "Mark admin chat log as read error");
     res.status(500).json({ error: "Internal server error" });
