@@ -224,7 +224,7 @@ export default function ClientChatLogs() {
       </Card>
 
       {/* Mini Analytics */}
-      <div className="grid grid-cols-3 gap-4 shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 shrink-0">
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
@@ -241,6 +241,24 @@ export default function ClientChatLogs() {
               <p className="text-2xl font-bold">{uniqueSessions}</p>
             </div>
             <User className="w-8 h-8 text-primary/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">{lang === "ar" ? "غير مقروءة" : "Unread"}</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-500">{unreadSessionsCount}</p>
+            </div>
+            <MessageCircle className="w-8 h-8 text-green-500/20" />
+          </CardContent>
+        </Card>
+        <Card className="bg-card">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">{lang === "ar" ? "مقروءة" : "Read"}</p>
+              <p className="text-2xl font-bold text-muted-foreground">{readSessionsCount}</p>
+            </div>
+            <MessageSquare className="w-8 h-8 text-muted-foreground/20" />
           </CardContent>
         </Card>
         <Card className="bg-card">
