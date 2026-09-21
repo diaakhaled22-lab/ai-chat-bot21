@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs } from "@workspace/api-client-react";
+import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -387,6 +387,7 @@ function AdminUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   const { data: logs } = useListAllChatLogs(undefined, {
     query: {
       refetchInterval: 10_000,
+      queryKey: getListAllChatLogsQueryKey(),
     },
   });
 
@@ -414,6 +415,7 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   const { data: logs } = useListClientChatLogs(undefined, {
     query: {
       refetchInterval: 10_000,
+      queryKey: getListClientChatLogsQueryKey(),
     },
   });
 

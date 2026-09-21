@@ -99,7 +99,7 @@ export default function AdminChatLogs() {
     },
   });
 
-  const currentRetention = retentionData?.days ?? 30;
+  const currentRetention = retentionData?.retentionDays ?? 30;
   const [pendingRetention, setPendingRetention] = useState<number | null>(null);
 
   const deleteChatLog = useDeleteChatLog();
@@ -158,7 +158,7 @@ export default function AdminChatLogs() {
 
   const handleSaveRetention = () => {
     if (pendingRetention !== null) {
-      updateRetention.mutate({ data: { days: pendingRetention } });
+      updateRetention.mutate({ data: { retentionDays: pendingRetention } });
     }
   };
 
