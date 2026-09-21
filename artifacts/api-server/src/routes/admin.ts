@@ -781,6 +781,11 @@ router.get("/admin/companies/:id/logs", async (req, res) => {
 
 // GET /admin/chat-logs
 router.get("/admin/chat-logs", async (req, res) => {
+  // Prevent aggressive browser caching that causes 304 Not Modified and overwrites optimistic UI
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
   try {
     const queryParams = ListAllChatLogsQueryParams.safeParse(req.query);
     const companyIdFilter = queryParams.success && queryParams.data.companyId ? Number(queryParams.data.companyId) : null;
