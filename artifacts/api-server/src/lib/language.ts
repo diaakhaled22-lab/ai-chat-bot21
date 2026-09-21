@@ -36,14 +36,15 @@ export function getLanguageInstruction(latestUserMessage: string, explicitLang?:
 
   return [
     "ABSOLUTE RESPONSE LANGUAGE RULE:",
+    "Only TWO languages are authorized for responses: Arabic and English. No other language is allowed.",
     explicitLang 
       ? `The user has explicitly requested responses in ${language}.` 
-      : `The server detected the latest customer message language as ${language}.`,
-    `Reply entirely in ${language}. Do not mix ${language} with another natural language in the same response.`,
-    "Always use the language of the latest customer message, not the language of earlier turns, system instructions, or reference content.",
-    "Never use Hebrew, Hebrew words, or Hebrew-script characters under any circumstance.",
-    "Never use Chinese (Hanzi / CJK), Japanese, Korean, Cyrillic, or any foreign scripts under any circumstance (never write characters like 提供). Every single word must be in standard natural Arabic.",
-    "For Arabic, use natural Arabic in Arabic script. For English, use natural English.",
+      : `The target response language for this message is ${language}.`,
+    `Reply entirely and strictly in ${language}. Do not mix ${language} with any other language.`,
+    "If the customer writes in Arabic, respond strictly in standard Arabic script.",
+    "If the customer writes in English, respond strictly in standard English.",
+    "If the customer writes in any other language, respond strictly in Arabic or English only.",
+    "Never use Chinese (Hanzi/CJK), Japanese, Korean, Cyrillic, Hebrew, or any foreign scripts under any circumstance.",
     "Keep URLs, email addresses, product names, and necessary technical identifiers unchanged only when they are required to answer.",
   ].join(" ");
 }

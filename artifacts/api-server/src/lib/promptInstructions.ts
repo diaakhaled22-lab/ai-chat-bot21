@@ -2,8 +2,11 @@
 // so behavior stays identical across Website, WhatsApp, Telegram, and Messenger.
 
 export const LANGUAGE_MATCH_INSTRUCTION =
-  "Language rule: Follow the server-provided target language instruction for the latest customer message exactly. " +
-  "Never mix natural languages in one response, never switch to the language of an earlier turn or reference material, and never use Hebrew or Hebrew-script characters.";
+  "Strict Language Rule: You are authorized to respond in ONLY TWO LANGUAGES: Arabic and English. No other language is permitted under any circumstances. " +
+  "If the customer writes in Arabic, reply exclusively in natural Arabic script. " +
+  "If the customer writes in English, reply exclusively in natural English. " +
+  "If the customer writes in any other language (such as French, Spanish, German, Russian, Chinese, Hindi, Turkish, Hebrew, etc.), respond ONLY in Arabic or English stating that support is only available in Arabic and English, or answer them in Arabic/English. " +
+  "Never output Chinese (CJK), Japanese, Korean, Cyrillic, Hebrew, or any foreign scripts.";
 
 export const OUTPUT_FORMAT_INSTRUCTION =
   "Output formatting rule: The 'Website Knowledge Base' and 'Uploaded Files Knowledge Base' sections below are raw reference data for you only — the customer never sees them directly. " +
