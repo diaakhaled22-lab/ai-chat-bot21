@@ -523,8 +523,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card flex flex-col overflow-hidden">
         {/* Logo */}
-        <div className="py-[15px] flex items-center px-5 border-b border-border shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mr-3 shrink-0">
+        <div className="py-[15px] flex items-center gap-3 px-5 border-b border-border shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
             <Bot className="w-6 h-6 text-primary" />
           </div>
           <span className="font-bold text-xl tracking-tight whitespace-nowrap">Mission Control</span>
@@ -532,8 +532,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         {/* User info */}
         <div className="px-4 pt-4 pb-2 shrink-0">
-          <div className="flex items-center px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold mr-3 shrink-0">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
               {user?.name?.charAt(0).toUpperCase() ?? "U"}
             </div>
             <div className="min-w-0">
@@ -558,9 +558,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
               >
-                <Icon className={`w-4 h-4 mr-3 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
                 <span className="flex-1">{link.label}</span>
                 {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
                 {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
@@ -574,11 +574,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className="p-4 border-t border-border bg-card shrink-0">
           <Button
             variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
             onClick={handleLogout}
             disabled={logout.isPending}
           >
-            <LogOut className="w-4 h-4 mr-3" />
+            <LogOut className="w-4 h-4" />
             {t("nav_sign_out")}
           </Button>
         </div>
