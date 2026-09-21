@@ -129,7 +129,7 @@ export default function ClientChatLogs() {
   const topChannel = Object.entries(channelCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || "None";
 
   return (
-    <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
+    <div className="space-y-6 flex flex-col flex-1 pb-10">
       <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t("chat_logs_title")}</h1>
@@ -270,7 +270,7 @@ export default function ClientChatLogs() {
       </div>
 
       {/* Inbox View Layout */}
-      <Card className="flex-1 min-h-[400px] overflow-hidden flex border-border">
+      <Card className="flex-1 min-h-[600px] overflow-hidden flex border-border">
         
         {/* Left Pane: Sessions List */}
         <div className="w-1/3 border-r border-border flex flex-col bg-muted/10">
