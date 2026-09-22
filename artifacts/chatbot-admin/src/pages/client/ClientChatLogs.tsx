@@ -43,6 +43,22 @@ export default function ClientChatLogs() {
 
   const currentRetention = retentionData?.retentionDays ?? 7;
 
+  const dateOptions = useMemo(() => {
+    const options = [];
+    const today = new Date();
+    for (let i = 0; i < currentRetention; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().split("T")[0];
+      let label = iso;
+      if (i === 0) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
+      else if (i === 1) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
+      
+      options.push({ value: iso, label });
+    }
+    return options;
+  }, [currentRetention, lang]);
+
   // Group logs into sessions
   const sessions = useMemo(() => {
     if (!logs) return [];
@@ -309,31 +325,31 @@ export default function ClientChatLogs() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-          <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
-          <input
-            type="date"
-            value={fromDate}
-            max={toDate || undefined}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="bg-transparent text-sm text-foreground outline-none w-[120px]"
-          />
-          <span className="text-muted-foreground text-xs">إلى</span>
-          <input
-            type="date"
-            value={toDate}
-            min={fromDate || undefined}
-            onChange={(e) => setToDate(e.target.value)}
-            className="bg-transparent text-sm text-foreground outline-none w-[120px]"
-          />
-          {hasDateFilter && (
-            <button
-              onClick={clearDateFilter}
-              className="text-muted-foreground hover:text-foreground shrink-0"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+        <div className="w-[220px]">
+          <Select 
+            value={hasDateFilter ? fromDate : "all"} 
+            onValueChange={(val) => {
+              if (val === "all") {
+                clearDateFilter();
+              } else {
+                setFromDate(val);
+                setToDate(val);
+              }
+            }}
+          >
+            <SelectTrigger className="h-full bg-card">
+              <div className="flex items-center gap-2 truncate">
+                <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
+                <SelectValue placeholder={lang === "ar" ? "كل الأيام" : "All Days"} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{lang === "ar" ? "كل الأيام" : "All Days"}</SelectItem>
+              {dateOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
