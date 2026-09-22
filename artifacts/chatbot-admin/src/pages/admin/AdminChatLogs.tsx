@@ -23,6 +23,7 @@ import {
   User,
   Bot,
   Building2,
+  Download,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -205,6 +206,33 @@ export default function AdminChatLogs() {
     refetch();
   };
 
+  const handleExportCSV = () => {
+    if (!logs || logs.length === 0) return;
+    
+    const headers = ["ID", "Company", "Channel", "Session ID", "Customer Message", "Bot Response", "Date"];
+    const csvContent = [
+      headers.join(","),
+      ...logs.map(log => [
+        log.id,
+        `"${(log.companyName || "").replace(/"/g, '""')}"`,
+        log.channel,
+        log.sessionId || "",
+        `"${(log.customerMessage || "").replace(/"/g, '""')}"`,
+        `"${(log.botResponse || "").replace(/"/g, '""')}"`,
+        new Date(log.createdAt).toISOString()
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `global-chat-logs-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleSaveRetention = () => {
     if (pendingRetention !== null) {
       updateRetention.mutate({ data: { retentionDays: pendingRetention } });
@@ -324,17 +352,22 @@ export default function AdminChatLogs() {
             View interactions across all deployed chatbots.
           </p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={isFetching || isLoading}
-          variant="outline"
-          size="sm"
-        >
-          <RefreshCw
-            className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleExportCSV} disabled={!logs?.length} variant="outline" className="bg-card">
+            <Download className="w-4 h-4 mr-2" />
+            {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+          </Button>
+          <Button
+            onClick={handleRefresh}
+            disabled={isFetching || isLoading}
+            variant="outline"
+          >
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
+            />
+            {lang === "ar" ? "تحديث" : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {/* Retention Policy */}
