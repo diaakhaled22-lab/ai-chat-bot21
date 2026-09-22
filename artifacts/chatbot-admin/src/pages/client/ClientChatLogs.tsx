@@ -28,8 +28,8 @@ function extractUserName(messages: any[]): string | null {
 
     const text = msg.customerMessage.trim();
     
-    // 1. Direct regex match
-    const match = text.match(/(?:my name is|i am|i'm|اسمي هو|اسمي|انا|أنا)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
+    // 1. Direct regex match (handles Arabic & English: "My name is X", "Name: X", "اسمي X", "الاسم: X", etc.)
+    const match = text.match(/(?:my name is|i am|i'm|name:|username:|اسمي هو|اسمي|انا|أنا|الاسم:|الاسم)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
     if (match) {
       return match[1] + (match[2] ? " " + match[2] : "");
     }
@@ -39,6 +39,7 @@ function extractUserName(messages: any[]): string | null {
       const prevMsg = messages[i - 1];
       if (prevMsg.botResponse) {
         const botText = prevMsg.botResponse.toLowerCase();
+        // Check if bot asked about "name" or "اسم"
         if ((botText.includes("name") || botText.includes("اسم") || botText.includes("who are you")) && text.split(/\s+/).length <= 3) {
           if (!text.includes("?") && !text.includes("لا") && !text.includes("no")) {
              return text;
