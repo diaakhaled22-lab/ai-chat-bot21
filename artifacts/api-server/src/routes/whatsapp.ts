@@ -377,7 +377,12 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
   } catch (err) {
       logger.error({ err }, "WhatsApp webhook error");
       if (company && company.id) {
-        void reportSystemMalfunction("عطل في ربط واتساب (WhatsApp Webhook Error)", "حدث خطأ غير متوقع أثناء معالجة رسالة عبر واتساب. قد يكون هناك مشكلة في توكن الربط أو تعطل مؤقت في الخدمة.", company.id);
+        void reportSystemMalfunction(
+          "عطل في ربط واتساب (WhatsApp Webhook Error)",
+          "حدث خطأ غير متوقع أثناء معالجة رسالة عبر واتساب. قد يكون هناك مشكلة في توكن الربط أو تعطل مؤقت في الخدمة.",
+          company.id,
+          err
+        );
       }
     }
 });

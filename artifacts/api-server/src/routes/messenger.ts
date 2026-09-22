@@ -350,7 +350,12 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
   } catch (err) {
       logger.error({ err }, "Messenger webhook error");
       if (company && company.id) {
-        void reportSystemMalfunction("عطل في ربط ماسنجر (Messenger Webhook Error)", "حدث خطأ غير متوقع أثناء معالجة رسالة عبر ماسنجر. قد يكون هناك مشكلة في توكن الربط أو تعطل مؤقت في الخدمة.", company.id);
+        void reportSystemMalfunction(
+          "عطل في ربط ماسنجر (Messenger Webhook Error)",
+          "حدث خطأ غير متوقع أثناء معالجة رسالة عبر ماسنجر. قد يكون هناك مشكلة في توكن الربط أو تعطل مؤقت في الخدمة.",
+          company.id,
+          err
+        );
       }
     }
 });

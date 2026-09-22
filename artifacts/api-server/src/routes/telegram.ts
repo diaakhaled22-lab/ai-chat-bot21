@@ -169,7 +169,12 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
   } catch (err) {
       logger.error({ err }, "Telegram webhook error");
       if (company && company.id) {
-        void reportSystemMalfunction("عطل في ربط تيليجرام (Telegram Webhook Error)", "حدث خطأ غير متوقع أثناء معالجة رسالة عبر تيليجرام. يرجى التأكد من صلاحية البوت.", company.id);
+        void reportSystemMalfunction(
+          "عطل في ربط تيليجرام (Telegram Webhook Error)",
+          "حدث خطأ غير متوقع أثناء معالجة رسالة عبر تيليجرام. يرجى التأكد من صلاحية البوت.",
+          company.id,
+          err
+        );
       }
     }
 });
