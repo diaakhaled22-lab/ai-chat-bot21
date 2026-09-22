@@ -56,6 +56,37 @@ function cleanDisplayMessage(text: string | null | undefined): string {
     .trim();
 }
 
+function extractUserName(messages: any[]): string | null {
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (!msg.customerMessage) continue;
+
+    const text = msg.customerMessage.trim();
+    if (text.startsWith("/")) continue;
+    if (/^\d+$/.test(text)) continue;
+    
+    // 1. Direct regex match
+    const match = text.match(/(?:my name is|i am|i'm|name:|username:|اسمي هو|اسمي|انا|أنا|الاسم:|الاسم)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
+    if (match) {
+      return match[1] + (match[2] ? " " + match[2] : "");
+    }
+
+    // 2. Contextual match
+    if (i > 0) {
+      const prevMsg = messages[i - 1];
+      if (prevMsg.botResponse) {
+        const botText = prevMsg.botResponse.toLowerCase();
+        if ((botText.includes("name") || botText.includes("اسم") || botText.includes("who are you")) && text.split(/\s+/).length <= 3) {
+          if (!text.includes("?") && !text.includes("لا") && !text.includes("no") && !/^\d+$/.test(text)) {
+             return text;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export default function AdminChatLogs() {
   const { lang, t } = useLanguage();
   const [search, setSearch] = useState("");
@@ -511,6 +542,7 @@ export default function AdminChatLogs() {
             ) : (
               sessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
+                const userName = extractUserName(session.messages);
                 return (
                   <div
                     key={session.id}
@@ -531,7 +563,7 @@ export default function AdminChatLogs() {
                     <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-semibold truncate capitalize">
-                          {session.companyName}
+                          {session.companyName} - {userName || "User"}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground shrink-0">
@@ -605,7 +637,10 @@ export default function AdminChatLogs() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm capitalize">
-                      {selectedSession.companyName} - {selectedSession.channel}
+                      {(() => {
+                         const uName = extractUserName(selectedSession.messages);
+                         return `${selectedSession.companyName} - ${uName || "User"} - ${selectedSession.channel}`;
+                      })()}
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {selectedSession.messages.length} messages
