@@ -78,7 +78,7 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-// ── Admin Bell ───────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Admin Bell Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
@@ -210,7 +210,7 @@ function NotificationBell() {
             <div className="px-4 py-1.5 bg-muted/30">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("notif_customer_problems")}
-                {openTicketCount > 0 && <span className="ml-1 text-amber-400">· {openTicketCount} {t("notif_open")}</span>}
+                {openTicketCount > 0 && <span className="ml-1 text-amber-400">Ã‚Â· {openTicketCount} {t("notif_open")}</span>}
               </span>
             </div>
             {ticketsFetching && tickets.length === 0 ? (
@@ -233,7 +233,7 @@ function NotificationBell() {
                         <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-xs text-muted-foreground truncate">{ticket.clientName}</span>
-                          <span className="text-muted-foreground/40 text-xs">·</span>
+                          <span className="text-muted-foreground/40 text-xs">Ã‚Â·</span>
                           <span className="text-xs text-muted-foreground shrink-0">{timeAgo(ticket.createdAt)}</span>
                         </div>
                       </div>
@@ -265,7 +265,7 @@ function NotificationBell() {
   );
 }
 
-// ── Client Bell ──────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Client Bell Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function ClientNotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -352,7 +352,7 @@ function ClientNotificationBell() {
   );
 }
 
-// ── Badge components ─────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Badge components Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function OpenTicketsBadge() {
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
@@ -439,7 +439,7 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   );
 }
 
-// ── Theme Toggle ─────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Theme Toggle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function ThemeToggle() {
   const { theme, toggle } = useTheme();
   return (
@@ -454,7 +454,7 @@ function ThemeToggle() {
   );
 }
 
-// ── Language Toggle ───────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Language Toggle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function LanguageToggle() {
   const { lang, setLang } = useLanguage();
   const next = lang === "en" ? "ar" : "en";
@@ -471,7 +471,7 @@ function LanguageToggle() {
   );
 }
 
-// ── Main layout ──────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Main layout Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const logout = useLogout();
@@ -551,7 +551,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
         </div>
 
-        {/* Nav — scrolls if items overflow, fills all remaining height */}
+        {/* Nav Ã¢â‚¬â€ scrolls if items overflow, fills all remaining height */}
         <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-0.5 space-y-0.5">
           {links.map((link) => {
             const Icon = link.icon;
@@ -572,7 +572,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           })}
         </nav>
 
-        {/* Sign out — always pinned at the bottom, never scrolls away */}
+        {/* Sign out Ã¢â‚¬â€ always pinned at the bottom, never scrolls away */}
         <div className="p-4 border-t border-border bg-card shrink-0">
           <Button
             variant="ghost"
@@ -614,7 +614,7 @@ function LiveStatusBar() {
 
   const { data: malfunctions, isError: isMalfunctionsError } = useQuery<any[]>({
     queryKey: ["admin-malfunctions-status"],
-    queryFn: () => customFetch(`/api/admin/malfunctions`),
+    queryFn: () => customFetch(/api/admin/malfunctions),
     refetchInterval: 10_000,
   });
 
@@ -623,21 +623,21 @@ function LiveStatusBar() {
   const pingColor = hasMalfunction ? "bg-red-400" : "bg-emerald-400";
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    <Link href="/admin/malfunctions" className="flex items-center gap-2 text-xs text-muted-foreground hover:opacity-80 transition-opacity">
       <span className="relative flex h-2 w-2">
-        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
+        <span className={nimate-ping absolute inline-flex h-full w-full rounded-full  opacity-75} />
+        <span className={elative inline-flex rounded-full h-2 w-2 } />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
         {hasMalfunction ? "Issues Detected" : "Live"}
       </span>
-      {stats && !hasMalfunction && (
-        <span className="ml-auto tabular-nums">
-          <Activity className="w-3 h-3 inline mr-1 opacity-60" />
-          {stats.todayChatLogs} today
+      {stats?.activeCompanies !== undefined && (
+        <span className="ml-auto flex items-center gap-1" title="Active Companies">
+          <Activity className="w-3 h-3" />
+          {stats.activeCompanies} active
         </span>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -645,13 +645,13 @@ function ClientLiveStatusBar() {
   const today = new Date().toISOString().split("T")[0];
   const { data: usage, isError: isUsageError } = useQuery<any>({
     queryKey: ["client-usage-today", today],
-    queryFn: () => customFetch(`/api/client/usage?from=${today}&to=${today}`),
+    queryFn: () => customFetch(/api/client/usage?from= + today + &to= + today),
     refetchInterval: 15_000,
   });
 
   const { data: malfunctions, isError: isMalfunctionsError } = useQuery<any[]>({
     queryKey: ["client-malfunctions-status"],
-    queryFn: () => customFetch(`/api/client/malfunctions`),
+    queryFn: () => customFetch(/api/client/malfunctions),
     refetchInterval: 15_000,
   });
 
@@ -660,20 +660,20 @@ function ClientLiveStatusBar() {
   const pingColor = hasMalfunction ? "bg-red-400" : "bg-emerald-400";
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    <Link href="/client/malfunctions" className="flex items-center gap-2 text-xs text-muted-foreground hover:opacity-80 transition-opacity">
       <span className="relative flex h-2 w-2">
-        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
+        <span className={nimate-ping absolute inline-flex h-full w-full rounded-full  opacity-75} />
+        <span className={elative inline-flex rounded-full h-2 w-2 } />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
         {hasMalfunction ? "Issues Detected" : "Live"}
       </span>
-      {usage && !hasMalfunction && (
-        <span className="ml-auto tabular-nums">
-          <Activity className="w-3 h-3 inline mr-1 opacity-60" />
+      {usage && (
+        <span className="ml-auto flex items-center gap-1">
+          <Activity className="w-3 h-3" />
           {usage.totalMessages} today
         </span>
       )}
-    </div>
+    </Link>
   );
 }

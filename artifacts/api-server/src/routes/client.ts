@@ -1529,10 +1529,13 @@ router.get("/client/platform-webhooks", async (req, res) => {
 // ── Malfunctions ───────────────────────────────────────────────────────────
 router.get("/client/malfunctions", async (req, res) => {
   try {
+    if (!req.session.companyId) {
+      return res.json([]);
+    }
     const list = await db.select().from(malfunctionsTable)
       .where(and(
         eq(malfunctionsTable.isActive, true),
-        eq(malfunctionsTable.companyId, req.session.companyId!)
+        eq(malfunctionsTable.companyId, req.session.companyId)
       ))
       .orderBy(desc(malfunctionsTable.createdAt));
     res.json(list);
@@ -1544,6 +1547,10 @@ router.get("/client/malfunctions", async (req, res) => {
 
 router.post("/client/malfunctions", async (req, res) => {
   try {
+    if (!req.session.companyId) {
+      res.status(400).json({ error: "Company required to report malfunction" });
+      return;
+    }
     const { title, description } = req.body as { title?: string; description?: string };
     if (!title || !description) {
       res.status(400).json({ error: "Missing title or description" });
