@@ -1,5 +1,5 @@
 import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/db";
-import { eq, sql, and, gte } from "drizzle-orm";
+import { eq, sql, and, gte, or } from "drizzle-orm";
 import { logger } from "./logger";
 
 export interface ResolvedAiConfig {
@@ -106,12 +106,31 @@ export async function assertCompanyQuotaNotExceeded(
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
+  // Check reset timestamps from admin_config
+  const resetConfig = await db
+    .select({ key: adminConfigTable.key, value: adminConfigTable.value })
+    .from(adminConfigTable)
+    .where(or(
+      eq(adminConfigTable.key, `quota_reset_company_${company.id}`),
+      eq(adminConfigTable.key, "quota_reset_all")
+    ));
+
+  let effectiveStart = monthStart;
+  for (const r of resetConfig) {
+    if (r.value) {
+      const d = new Date(r.value);
+      if (!isNaN(d.getTime()) && d > effectiveStart) {
+        effectiveStart = d;
+      }
+    }
+  }
+
   const logs = await db
     .select({ customerMessage: chatLogsTable.customerMessage, botResponse: chatLogsTable.botResponse })
     .from(chatLogsTable)
     .where(and(
       eq(chatLogsTable.companyId, company.id),
-      gte(chatLogsTable.createdAt, monthStart),
+      gte(chatLogsTable.createdAt, effectiveStart),
     ));
 
   const CHARS_PER_TOKEN = 4;

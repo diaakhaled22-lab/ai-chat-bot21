@@ -148,9 +148,29 @@ router.get("/admin/usage-cost", async (req, res) => {
     );
 
     const logs = await db
-      .select({ companyId: chatLogsTable.companyId, customerMessage: chatLogsTable.customerMessage, botResponse: chatLogsTable.botResponse })
+      .select({
+        companyId: chatLogsTable.companyId,
+        customerMessage: chatLogsTable.customerMessage,
+        botResponse: chatLogsTable.botResponse,
+        createdAt: chatLogsTable.createdAt,
+      })
       .from(chatLogsTable)
       .where(whereClause);
+
+    // Fetch reset timestamps from admin_config
+    const resetConfigs = await db
+      .select({ key: adminConfigTable.key, value: adminConfigTable.value })
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} LIKE 'quota_reset_%'`);
+
+    const resetMap = new Map<string, Date>();
+    for (const r of resetConfigs) {
+      if (r.value) {
+        const d = new Date(r.value);
+        if (!isNaN(d.getTime())) resetMap.set(r.key, d);
+      }
+    }
+    const globalReset = resetMap.get("quota_reset_all");
 
     const companyMap = new Map(companies.map((c) => [c.id, c]));
 
@@ -163,6 +183,11 @@ router.get("/admin/usage-cost", async (req, res) => {
     for (const log of logs) {
       const company = companyMap.get(log.companyId);
       if (!company) continue;
+
+      const companyReset = resetMap.get(`quota_reset_company_${log.companyId}`) || globalReset;
+      if (companyReset && log.createdAt && new Date(log.createdAt) < companyReset) {
+        continue;
+      }
 
       const modelKey = company.aiModel ?? "unknown";
       const provider = company.aiProvider ?? "unknown";
@@ -202,6 +227,56 @@ router.get("/admin/usage-cost", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Get admin usage cost error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/usage-cost/reset
+router.post("/admin/usage-cost/reset", async (req, res) => {
+  try {
+    const { companyId, deleteLogs } = req.body as { companyId?: number; deleteLogs?: boolean };
+    const nowIso = new Date().toISOString();
+
+    if (deleteLogs) {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const conditions = [gte(chatLogsTable.createdAt, monthStart)];
+      if (companyId) conditions.push(eq(chatLogsTable.companyId, companyId));
+
+      await db.delete(chatLogsTable).where(and(...conditions));
+    }
+
+    if (companyId) {
+      const key = `quota_reset_company_${companyId}`;
+      await db.insert(adminConfigTable)
+        .values({ key, value: nowIso })
+        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: nowIso, updatedAt: new Date() } });
+
+      await logAdminActivity(
+        req.session.userId!,
+        "Reset Quota Usage",
+        `Reset monthly quota usage counter for company ID ${companyId} (deleteLogs: ${!!deleteLogs})`,
+        req.ip || null
+      );
+    } else {
+      const key = "quota_reset_all";
+      await db.insert(adminConfigTable)
+        .values({ key, value: nowIso })
+        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: nowIso, updatedAt: new Date() } });
+
+      await logAdminActivity(
+        req.session.userId!,
+        "Reset All Quota Usage",
+        `Reset monthly quota usage counter for all companies (deleteLogs: ${!!deleteLogs})`,
+        req.ip || null
+      );
+    }
+
+    res.json({ ok: true, resetAt: nowIso });
+  } catch (error: any) {
+    logger.error({ error }, "Error resetting usage counter");
+    res.status(500).json({ error: error?.message || "Failed to reset usage counter" });
   }
 });
 

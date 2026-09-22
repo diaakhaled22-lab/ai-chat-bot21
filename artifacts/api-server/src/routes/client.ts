@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
 import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable } from "@workspace/db";
-import { eq, and, sql, gte, lte, desc, inArray } from "drizzle-orm";
+import { eq, and, or, sql, gte, lte, desc, inArray } from "drizzle-orm";
 import {
   CreateClientCompanyBody,
   UpdateClientCompanyBody,
@@ -118,12 +118,30 @@ router.get("/client/company/quota", async (req, res) => {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
+    const resetConfig = await db
+      .select({ key: adminConfigTable.key, value: adminConfigTable.value })
+      .from(adminConfigTable)
+      .where(or(
+        eq(adminConfigTable.key, `quota_reset_company_${company.id}`),
+        eq(adminConfigTable.key, "quota_reset_all")
+      ));
+
+    let effectiveStart = monthStart;
+    for (const r of resetConfig) {
+      if (r.value) {
+        const d = new Date(r.value);
+        if (!isNaN(d.getTime()) && d > effectiveStart) {
+          effectiveStart = d;
+        }
+      }
+    }
+
     const logs = await db
       .select({ customerMessage: chatLogsTable.customerMessage, botResponse: chatLogsTable.botResponse })
       .from(chatLogsTable)
       .where(and(
         eq(chatLogsTable.companyId, company.id),
-        gte(chatLogsTable.createdAt, monthStart),
+        gte(chatLogsTable.createdAt, effectiveStart),
       ));
 
     const CHARS_PER_TOKEN = 4;
