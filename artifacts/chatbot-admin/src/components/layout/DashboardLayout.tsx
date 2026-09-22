@@ -614,7 +614,7 @@ function LiveStatusBar() {
 
   const { data: malfunctions, isError: isMalfunctionsError } = useQuery<any[]>({
     queryKey: ["admin-malfunctions-status"],
-    queryFn: () => customFetch(/api/admin/malfunctions),
+    queryFn: () => customFetch("/api/admin/malfunctions"),
     refetchInterval: 10_000,
   });
 
@@ -651,7 +651,7 @@ function ClientLiveStatusBar() {
 
   const { data: malfunctions, isError: isMalfunctionsError } = useQuery<any[]>({
     queryKey: ["client-malfunctions-status"],
-    queryFn: () => customFetch(/api/client/malfunctions),
+    queryFn: () => customFetch("/api/client/malfunctions"),
     refetchInterval: 15_000,
   });
 
