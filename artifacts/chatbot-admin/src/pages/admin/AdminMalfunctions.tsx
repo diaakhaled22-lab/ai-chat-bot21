@@ -54,14 +54,6 @@ export default function AdminMalfunctions() {
     createMutation.mutate({ title: titleInput, description: descInput });
   };
 
-  const stats = {
-    totalActive: malfunctions?.filter((m: any) => m.isActive).length || 0,
-    totalResolved: malfunctions?.filter((m: any) => !m.isActive).length || 0,
-    fromUsers: malfunctions?.filter((m: any) => m.source === 'client').length || 0,
-    fromAdmin: malfunctions?.filter((m: any) => m.source === 'admin').length || 0,
-    fromSystem: malfunctions?.filter((m: any) => m.source === 'system').length || 0,
-  };
-
   const title = lang === "ar" ? "إدارة الأعطال" : "Manage Malfunctions";
   const desc = lang === "ar" ? "أضف، عدّل أو قم بحل الأعطال لكي تظهر في لوحة تحكم العملاء." : "Add or resolve active malfunctions displayed in the client dashboard.";
 
@@ -78,41 +70,6 @@ export default function AdminMalfunctions() {
             {lang === "ar" ? "إضافة عطل جديد" : "Add Malfunction"}
           </Button>
         )}
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "الأعطال النشطة" : "Active Issues"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">{stats.totalActive}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "الأعطال المحلولة" : "Resolved Issues"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">{stats.totalResolved}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "بلاغات العملاء" : "Client Reports"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.fromUsers}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "إضافات الإدارة والنظام" : "Admin/System Reports"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.fromAdmin + stats.fromSystem}</div>
-          </CardContent>
-        </Card>
       </div>
 
       {isError && (
