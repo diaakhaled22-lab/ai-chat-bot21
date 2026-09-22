@@ -1,3 +1,4 @@
+import { reportSystemMalfunction } from "../lib/malfunctions";
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -118,8 +119,8 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     if (!company.isActive) {
       await sendTelegramMessage(company.telegramBotApiKey!, chatId, localizedChannelMessage(
         userText,
-        "⚠️ هذه الخدمة غير نشطة حاليًا. يرجى التواصل مع الدعم.",
-        "⚠️ This chatbot is currently inactive. Please contact support.",
+        "âš ï¸ Ù‡Ø°Ù‡ Ø§Ù„Ø®Ø¯Ù…Ø© ØºÙŠØ± Ù†Ø´Ø·Ø© Ø­Ø§Ù„ÙŠÙ‹Ø§. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ø¯Ø¹Ù….",
+        "âš ï¸ This chatbot is currently inactive. Please contact support.",
       ));
       return;
     }
@@ -127,8 +128,8 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     if (!company.aiAgentApiKey) {
       await sendTelegramMessage(company.telegramBotApiKey!, chatId, localizedChannelMessage(
         userText,
-        "⚠️ لم يتم إعداد الذكاء الاصطناعي بعد.",
-        "⚠️ AI is not configured yet.",
+        "âš ï¸ Ù„Ù… ÙŠØªÙ… Ø¥Ø¹Ø¯Ø§Ø¯ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ Ø¨Ø¹Ø¯.",
+        "âš ï¸ AI is not configured yet.",
       ));
       return;
     }
@@ -166,8 +167,11 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
 
     logger.info({ companyId: company.id, chatId, sessionId }, "Telegram message handled");
   } catch (err) {
-    logger.error({ err }, "Telegram webhook error");
-  }
+      logger.error({ err }, "Telegram webhook error");
+      if (company && company.id) {
+        void reportSystemMalfunction("عطل في ربط تيليجرام (Telegram Webhook Error)", "حدث خطأ غير متوقع أثناء معالجة رسالة عبر تيليجرام. يرجى التأكد من صلاحية البوت.", company.id);
+      }
+    }
 });
 
 function getAppBaseUrl(req: import("express").Request): string {

@@ -25,10 +25,10 @@ function telegramWebhookSecret(token: string): string {
 }
 
 const router = Router();
-// Only enforce client auth on /client/* paths — other paths pass through unguarded
+// Only enforce client auth on /client/* paths â€” other paths pass through unguarded
 router.use("/client", requireClient);
 
-// GET /client/ai-models — the same hourly-refreshed catalog used by the admin UI
+// GET /client/ai-models â€” the same hourly-refreshed catalog used by the admin UI
 router.get("/client/ai-models", async (req, res) => {
   try {
     res.json(await getAiModelCatalog());
@@ -99,7 +99,7 @@ router.get("/client/company", async (req, res) => {
   }
 });
 
-// GET /client/company/quota  — current month token usage vs quota
+// GET /client/company/quota  â€” current month token usage vs quota
 router.get("/client/company/quota", async (req, res) => {
   try {
     const [company] = await db
@@ -519,7 +519,7 @@ router.put("/client/company", async (req, res) => {
   }
 });
 
-// POST /client/company/sync-website — manual trigger for website content sync
+// POST /client/company/sync-website â€” manual trigger for website content sync
 router.post("/client/company/sync-website", async (req, res) => {
   try {
     const [company] = await db
@@ -648,7 +648,7 @@ router.post("/client/company/test-google-sheet", async (req, res) => {
       const status = (apiErr as { code?: number; response?: { status?: number } })?.code
         ?? (apiErr as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
-        res.json({ success: false, message: "Sheet not found. Double-check the URL — the spreadsheet may have been deleted or moved." });
+        res.json({ success: false, message: "Sheet not found. Double-check the URL â€” the spreadsheet may have been deleted or moved." });
       } else if (status === 403) {
         res.json({
           success: false,
@@ -910,7 +910,7 @@ router.get("/client/usage", async (req, res) => {
       "gemini-1.5-pro":                      { input: 1.25,  output: 5.00  },
       "gemini-1.5-flash":                    { input: 0.075, output: 0.30  },
       "gemini-2.0-flash":                    { input: 0.10,  output: 0.40  },
-      // OpenRouter — free models
+      // OpenRouter â€” free models
       "google/gemma-4-31b-it:free":          { input: 0,     output: 0     },
       "meta-llama/llama-4-scout:free":       { input: 0,     output: 0     },
       "meta-llama/llama-4-maverick:free":    { input: 0,     output: 0     },
@@ -919,7 +919,7 @@ router.get("/client/usage", async (req, res) => {
       "qwen/qwen3-8b:free":                  { input: 0,     output: 0     },
       "mistralai/mistral-7b-instruct:free":  { input: 0,     output: 0     },
       "meta-llama/llama-3.1-8b-instruct:free": { input: 0,  output: 0     },
-      // OpenRouter — paid models
+      // OpenRouter â€” paid models
       "deepseek/deepseek-v4-flash":          { input: 0.14,  output: 0.28  },
       "deepseek/deepseek-r1":                { input: 0.55,  output: 2.19  },
       "deepseek/deepseek-v3":                { input: 0.27,  output: 1.10  },
@@ -1046,7 +1046,7 @@ router.get("/client/chat-log-retention", async (req, res) => {
   }
 });
 
-// PUT /client/chat-log-retention — restricted to admin only
+// PUT /client/chat-log-retention â€” restricted to admin only
 router.put("/client/chat-log-retention", async (req, res) => {
   res.status(403).json({ error: "Data retention policy can only be configured by a platform administrator." });
 });
@@ -1093,7 +1093,7 @@ router.put("/client/settings", async (req, res) => {
       changes.push("password changed");
     }
 
-    // ✅ Save notification email if provided
+    // âœ… Save notification email if provided
     if (notificationEmail !== undefined) {
       updates.notificationEmail = notificationEmail === "" ? null : notificationEmail;
       if (notificationEmail && notificationEmail !== user.notificationEmail) {
@@ -1233,7 +1233,7 @@ router.patch("/client/notifications/mark-read", async (req, res) => {
   }
 });
 
-// POST /client/chatbot-trial — try the client's chatbot using platform AI key
+// POST /client/chatbot-trial â€” try the client's chatbot using platform AI key
 router.post("/client/chatbot-trial", async (req, res) => {
   try {
     const messages: { role: string; content: string }[] = req.body?.messages ?? [];
@@ -1330,8 +1330,8 @@ router.post("/client/chatbot-trial", async (req, res) => {
   }
 });
 
-// ── Universal multi-provider streaming chat ──────────────────────────────────
-// POST /client/multi-ai/chat — uses admin-saved test keys per provider
+// â”€â”€ Universal multi-provider streaming chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// POST /client/multi-ai/chat â€” uses admin-saved test keys per provider
 router.post("/client/multi-ai/chat", async (req, res) => {
   try {
     const { provider, model, messages: chatMessages } = req.body as {
@@ -1367,7 +1367,7 @@ router.post("/client/multi-ai/chat", async (req, res) => {
 
     if (!apiKey) {
       res.status(400).json({
-        error: `No API key configured for ${provider}. Ask your admin to add it in Settings → AI Tester.`,
+        error: `No API key configured for ${provider}. Ask your admin to add it in Settings â†’ AI Tester.`,
       });
       return;
     }
@@ -1448,7 +1448,7 @@ router.post("/client/multi-ai/chat", async (req, res) => {
   }
 });
 
-// POST /client/test-messenger — verify the company's Messenger Page Access Token via Meta Graph API
+// POST /client/test-messenger â€” verify the company's Messenger Page Access Token via Meta Graph API
 router.post("/client/test-messenger", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
   try {
@@ -1475,7 +1475,7 @@ router.post("/client/test-messenger", async (req, res) => {
   }
 });
 
-// POST /client/test-whatsapp — verify the company's WhatsApp API Token via Meta Graph API
+// POST /client/test-whatsapp â€” verify the company's WhatsApp API Token via Meta Graph API
 router.post("/client/test-whatsapp", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
   try {
@@ -1495,7 +1495,7 @@ router.post("/client/test-whatsapp", async (req, res) => {
   }
 });
 
-// GET /client/platform-webhooks — return platform-level webhook URLs + verify tokens
+// GET /client/platform-webhooks â€” return platform-level webhook URLs + verify tokens
 router.get("/client/platform-webhooks", async (req, res) => {
   try {
     const rows = await db
@@ -1525,7 +1525,7 @@ router.get("/client/platform-webhooks", async (req, res) => {
 });
 
 export default router;
-// ── Malfunctions ───────────────────────────────────────────────────────────
+// â”€â”€ Malfunctions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get("/client/malfunctions", async (req, res) => {
   try {
     const list = await db.select().from(malfunctionsTable)

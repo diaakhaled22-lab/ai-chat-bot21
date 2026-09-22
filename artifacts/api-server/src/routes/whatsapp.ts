@@ -1,3 +1,4 @@
+import { reportSystemMalfunction } from "../lib/malfunctions";
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, adminConfigTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -101,8 +102,8 @@ async function sendWhatsAppMessage(phoneNumberId: string, apiToken: string, to: 
  *
  * Platform-level webhook verification handshake (no phone number ID in URL).
  * In the Meta App Dashboard set:
- *   Webhook URL   → <your-domain>/api/whatsapp/webhook
- *   Verify Token  → the token generated in Admin → Security / Webhook Settings
+ *   Webhook URL   â†’ <your-domain>/api/whatsapp/webhook
+ *   Verify Token  â†’ the token generated in Admin â†’ Security / Webhook Settings
  */
 router.get("/whatsapp/webhook", webhookLimiter, async (req, res) => {
   try {
@@ -185,8 +186,8 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
           if (!company.isActive) {
             await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, localizedChannelMessage(
               userText,
-              "⚠️ هذه الخدمة غير نشطة حاليًا. يرجى التواصل مع الدعم.",
-              "⚠️ This chatbot is currently inactive. Please contact support.",
+              "âš ï¸ Ù‡Ø°Ù‡ Ø§Ù„Ø®Ø¯Ù…Ø© ØºÙŠØ± Ù†Ø´Ø·Ø© Ø­Ø§Ù„ÙŠÙ‹Ø§. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ø¯Ø¹Ù….",
+              "âš ï¸ This chatbot is currently inactive. Please contact support.",
             ));
             continue;
           }
@@ -194,8 +195,8 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
           if (!company.aiAgentApiKey) {
             await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, localizedChannelMessage(
               userText,
-              "⚠️ لم يتم إعداد الذكاء الاصطناعي بعد.",
-              "⚠️ AI is not configured yet.",
+              "âš ï¸ Ù„Ù… ÙŠØªÙ… Ø¥Ø¹Ø¯Ø§Ø¯ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ Ø¨Ø¹Ø¯.",
+              "âš ï¸ AI is not configured yet.",
             ));
             continue;
           }
@@ -243,7 +244,7 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
 /**
  * GET /whatsapp/webhook/:phoneNumberId
  *
- * Per-company webhook verification (legacy — kept for backwards compatibility).
+ * Per-company webhook verification (legacy â€” kept for backwards compatibility).
  * Verify Token = whatsappApiToken stored in company settings.
  */
 router.get("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
@@ -323,8 +324,8 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           if (!company.isActive) {
             await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, localizedChannelMessage(
               userText,
-              "⚠️ هذه الخدمة غير نشطة حاليًا. يرجى التواصل مع الدعم.",
-              "⚠️ This chatbot is currently inactive. Please contact support.",
+              "âš ï¸ Ù‡Ø°Ù‡ Ø§Ù„Ø®Ø¯Ù…Ø© ØºÙŠØ± Ù†Ø´Ø·Ø© Ø­Ø§Ù„ÙŠÙ‹Ø§. ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ø¯Ø¹Ù….",
+              "âš ï¸ This chatbot is currently inactive. Please contact support.",
             ));
             continue;
           }
@@ -332,8 +333,8 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           if (!company.aiAgentApiKey) {
             await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, localizedChannelMessage(
               userText,
-              "⚠️ لم يتم إعداد الذكاء الاصطناعي بعد.",
-              "⚠️ AI is not configured yet.",
+              "âš ï¸ Ù„Ù… ÙŠØªÙ… Ø¥Ø¹Ø¯Ø§Ø¯ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ Ø¨Ø¹Ø¯.",
+              "âš ï¸ AI is not configured yet.",
             ));
             continue;
           }
@@ -374,8 +375,11 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
       }
     }
   } catch (err) {
-    logger.error({ err }, "WhatsApp webhook error");
-  }
+      logger.error({ err }, "WhatsApp webhook error");
+      if (company && company.id) {
+        void reportSystemMalfunction("عطل في ربط واتساب (WhatsApp Webhook Error)", "حدث خطأ غير متوقع أثناء معالجة رسالة عبر واتساب. قد يكون هناك مشكلة في توكن الربط أو تعطل مؤقت في الخدمة.", company.id);
+      }
+    }
 });
 
 export default router;

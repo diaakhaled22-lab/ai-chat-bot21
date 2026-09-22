@@ -26,10 +26,10 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
 const router = Router();
-// Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
+// Only enforce admin auth on /admin/* paths â€” other paths pass through this router unguarded
 router.use("/admin", requireAdmin);
 
-// GET /admin/ai-models — provider catalogs are refreshed automatically every hour
+// GET /admin/ai-models â€” provider catalogs are refreshed automatically every hour
 router.get("/admin/ai-models", async (req, res) => {
   try {
     res.json(await getAiModelCatalog());
@@ -509,7 +509,7 @@ router.get("/admin/companies/:id", async (req, res) => {
   }
 });
 
-// PATCH /admin/companies/:id  — update myId (custom reference)
+// PATCH /admin/companies/:id  â€” update myId (custom reference)
 router.patch("/admin/companies/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -627,7 +627,7 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
     if ("activationStart" in body.data || "activationEnd" in body.data) {
       let note: string;
       if (startStr || endStr) {
-        note = `Set activation window: ${startStr ?? "—"} → ${endStr ?? "—"}`;
+        note = `Set activation window: ${startStr ?? "â€”"} â†’ ${endStr ?? "â€”"}`;
       } else {
         note = "Cleared activation window";
       }
@@ -939,7 +939,7 @@ router.get("/admin/ticket-analytics", async (req, res) => {
       ? Math.round(resolvedRows.reduce((sum, r) => sum + (r.updatedAt.getTime() - r.createdAt.getTime()), 0) / resolvedRows.length)
       : 0;
 
-    // Model breakdown — only tickets that were AI-solved
+    // Model breakdown â€” only tickets that were AI-solved
     const modelMap: Record<string, { model: string; provider: string; count: number }> = {};
     for (const r of rows) {
       if (!r.aiModel) continue;
@@ -1018,7 +1018,7 @@ router.put("/admin/tickets/:id/resolve", async (req, res) => {
   }
 });
 
-// PUT /admin/tickets/:id/admin-note  — admin manually solves the ticket
+// PUT /admin/tickets/:id/admin-note  â€” admin manually solves the ticket
 router.put("/admin/tickets/:id/admin-note", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -1178,7 +1178,7 @@ router.put("/admin/support-settings", async (req, res) => {
   }
 });
 
-// GET /admin/support-ai-status  — live ping of the configured Support AI
+// GET /admin/support-ai-status  â€” live ping of the configured Support AI
 router.get("/admin/support-ai-status", async (req, res) => {
   try {
     const rows = await db
@@ -1550,9 +1550,9 @@ router.get("/admin/notifications", async (req, res) => {
   }
 });
 
-// ── AI Model Tester ──────────────────────────────────────────────────────────
+// â”€â”€ AI Model Tester â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// POST /admin/ai-test — fire a test message at any provider/model
+// POST /admin/ai-test â€” fire a test message at any provider/model
 router.post("/admin/ai-test", async (req, res) => {
   try {
     const { provider, model, apiKey: customKey, message } = req.body as {
@@ -1617,7 +1617,7 @@ router.post("/admin/ai-test", async (req, res) => {
   }
 });
 
-// GET /admin/ai-keys — masked per-provider saved keys
+// GET /admin/ai-keys â€” masked per-provider saved keys
 router.get("/admin/ai-keys", async (req, res) => {
   try {
     const providers = ["openai", "anthropic", "google", "openrouter"];
@@ -1637,7 +1637,7 @@ router.get("/admin/ai-keys", async (req, res) => {
   }
 });
 
-// PUT /admin/ai-keys — save a per-provider key
+// PUT /admin/ai-keys â€” save a per-provider key
 router.put("/admin/ai-keys", async (req, res) => {
   try {
     const { provider, apiKey } = req.body as { provider: string; apiKey: string };
@@ -1669,7 +1669,7 @@ router.patch("/admin/notifications/mark-read", async (req, res) => {
   }
 });
 
-// GET /admin/telegram-webhook — return platform Telegram webhook base URL
+// GET /admin/telegram-webhook â€” return platform Telegram webhook base URL
 router.get("/admin/telegram-webhook", async (req, res) => {
   try {
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
@@ -1682,7 +1682,7 @@ router.get("/admin/telegram-webhook", async (req, res) => {
   }
 });
 
-// GET /admin/whatsapp-webhook — return stored platform verify token + webhook URL
+// GET /admin/whatsapp-webhook â€” return stored platform verify token + webhook URL
 router.get("/admin/whatsapp-webhook", async (req, res) => {
   try {
     const [row] = await db
@@ -1787,7 +1787,7 @@ router.post("/admin/security/2fa/disable", async (req, res) => {
   }
 });
 
-// GET /admin/security/jwt-secret — return masked JWT secret + last rotated timestamp
+// GET /admin/security/jwt-secret â€” return masked JWT secret + last rotated timestamp
 router.get("/admin/security/jwt-secret", async (req, res) => {
   try {
     const [row] = await db
@@ -1801,7 +1801,7 @@ router.get("/admin/security/jwt-secret", async (req, res) => {
     }
 
     const v = row.value;
-    const maskedSecret = v.slice(0, 6) + "•".repeat(Math.max(0, v.length - 10)) + v.slice(-4);
+    const maskedSecret = v.slice(0, 6) + "â€¢".repeat(Math.max(0, v.length - 10)) + v.slice(-4);
     res.json({ exists: true, maskedSecret, lastRotated: row.updatedAt?.toISOString() ?? null });
   } catch (err) {
     logger.error({ err }, "Get JWT secret error");
@@ -1809,7 +1809,7 @@ router.get("/admin/security/jwt-secret", async (req, res) => {
   }
 });
 
-// POST /admin/security/jwt-secret/rotate — generate a new JWT secret and persist it
+// POST /admin/security/jwt-secret/rotate â€” generate a new JWT secret and persist it
 router.post("/admin/security/jwt-secret/rotate", async (req, res) => {
   try {
     const { randomBytes } = await import("crypto");
@@ -1823,7 +1823,7 @@ router.post("/admin/security/jwt-secret/rotate", async (req, res) => {
         set: { value: secret },
       });
 
-    const maskedSecret = secret.slice(0, 6) + "•".repeat(secret.length - 10) + secret.slice(-4);
+    const maskedSecret = secret.slice(0, 6) + "â€¢".repeat(secret.length - 10) + secret.slice(-4);
     res.json({ success: true, maskedSecret, lastRotated: new Date().toISOString() });
   } catch (err) {
     logger.error({ err }, "Rotate JWT secret error");
@@ -1831,7 +1831,7 @@ router.post("/admin/security/jwt-secret/rotate", async (req, res) => {
   }
 });
 
-// POST /admin/whatsapp-webhook/generate — generate & persist a new WhatsApp verify token
+// POST /admin/whatsapp-webhook/generate â€” generate & persist a new WhatsApp verify token
 router.post("/admin/whatsapp-webhook/generate", async (req, res) => {
   try {
     const { randomBytes } = await import("crypto");
@@ -1852,7 +1852,7 @@ router.post("/admin/whatsapp-webhook/generate", async (req, res) => {
   }
 });
 
-// GET /admin/messenger-webhook — return stored platform verify token + webhook URL
+// GET /admin/messenger-webhook â€” return stored platform verify token + webhook URL
 router.get("/admin/messenger-webhook", async (req, res) => {
   try {
     const [row] = await db
@@ -1875,7 +1875,7 @@ router.get("/admin/messenger-webhook", async (req, res) => {
   }
 });
 
-// POST /admin/messenger-webhook/generate — generate & persist a new verify token
+// POST /admin/messenger-webhook/generate â€” generate & persist a new verify token
 router.post("/admin/messenger-webhook/generate", async (req, res) => {
   try {
     const { randomBytes } = await import("crypto");
@@ -1940,7 +1940,7 @@ router.delete("/admin/audit-logs/:id", requireAdmin, async (req, res) => {
 });
 
 export default router;
-// ── Malfunctions ───────────────────────────────────────────────────────────
+// â”€â”€ Malfunctions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get("/admin/malfunctions", async (req, res) => {
   try {
     const list = await db.select().from(malfunctionsTable).orderBy(desc(malfunctionsTable.createdAt));
