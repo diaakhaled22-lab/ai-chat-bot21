@@ -1532,7 +1532,7 @@ router.get("/client/malfunctions", async (req, res) => {
     const list = await db.select().from(malfunctionsTable)
       .where(and(
         eq(malfunctionsTable.isActive, true),
-        sql`${malfunctionsTable.companyId} IS NULL OR ${malfunctionsTable.companyId} = ${req.session.companyId}`
+        eq(malfunctionsTable.companyId, req.session.companyId!)
       ))
       .orderBy(desc(malfunctionsTable.createdAt));
     res.json(list);
