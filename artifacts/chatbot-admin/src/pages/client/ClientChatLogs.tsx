@@ -211,7 +211,7 @@ export default function ClientChatLogs() {
                   {t("chat_logs_retention_admin_managed")}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <div className="text-xs text-muted-foreground mt-0.5">
                 {retentionLoading ? (
                   <Skeleton className="h-3 w-48 mt-1" />
                 ) : lang === "ar" ? (
@@ -219,18 +219,18 @@ export default function ClientChatLogs() {
                 ) : (
                   `Chat logs are automatically deleted after ${currentRetention} day${currentRetention === 1 ? "" : "s"} as set by your administrator.`
                 )}
-              </p>
+              </div>
             </div>
           </div>
           <div className="shrink-0 self-start sm:self-auto bg-muted/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-2">
             <Clock className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-bold tabular-nums">
+            <div className="text-sm font-bold tabular-nums">
               {retentionLoading ? (
                 <Skeleton className="h-4 w-12" />
               ) : (
                 `${currentRetention} ${lang === "ar" ? "أيام" : currentRetention === 1 ? "day" : "days"}`
               )}
-            </span>
+            </div>
           </div>
         </CardContent>
       </Card>
