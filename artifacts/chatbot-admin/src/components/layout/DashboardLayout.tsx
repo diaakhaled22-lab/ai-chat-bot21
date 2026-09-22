@@ -625,8 +625,8 @@ function LiveStatusBar() {
   return (
     <Link href="/admin/malfunctions" className="flex items-center gap-2 text-xs text-muted-foreground hover:opacity-80 transition-opacity">
       <span className="relative flex h-2 w-2">
-        <span className={nimate-ping absolute inline-flex h-full w-full rounded-full  opacity-75} />
-        <span className={elative inline-flex rounded-full h-2 w-2 } />
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
         {hasMalfunction ? "Issues Detected" : "Live"}
@@ -645,7 +645,7 @@ function ClientLiveStatusBar() {
   const today = new Date().toISOString().split("T")[0];
   const { data: usage, isError: isUsageError } = useQuery<any>({
     queryKey: ["client-usage-today", today],
-    queryFn: () => customFetch(/api/client/usage?from= + today + &to= + today),
+    queryFn: () => customFetch(`/api/client/usage?from=${today}&to=${today}`),
     refetchInterval: 15_000,
   });
 
@@ -662,8 +662,8 @@ function ClientLiveStatusBar() {
   return (
     <Link href="/client/malfunctions" className="flex items-center gap-2 text-xs text-muted-foreground hover:opacity-80 transition-opacity">
       <span className="relative flex h-2 w-2">
-        <span className={nimate-ping absolute inline-flex h-full w-full rounded-full  opacity-75} />
-        <span className={elative inline-flex rounded-full h-2 w-2 } />
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
         {hasMalfunction ? "Issues Detected" : "Live"}
