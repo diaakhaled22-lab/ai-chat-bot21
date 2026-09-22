@@ -21,6 +21,35 @@ function cleanDisplayMessage(text: string | null | undefined): string {
     .trim();
 }
 
+function extractUserName(messages: any[]): string | null {
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (!msg.customerMessage) continue;
+
+    const text = msg.customerMessage.trim();
+    
+    // 1. Direct regex match
+    const match = text.match(/(?:my name is|i am|i'm|اسمي هو|اسمي|انا|أنا)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
+    if (match) {
+      return match[1] + (match[2] ? " " + match[2] : "");
+    }
+
+    // 2. Contextual match (bot asked for name in previous message)
+    if (i > 0) {
+      const prevMsg = messages[i - 1];
+      if (prevMsg.botResponse) {
+        const botText = prevMsg.botResponse.toLowerCase();
+        if ((botText.includes("name") || botText.includes("اسم") || botText.includes("who are you")) && text.split(/\s+/).length <= 3) {
+          if (!text.includes("?") && !text.includes("لا") && !text.includes("no")) {
+             return text;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export default function ClientChatLogs() {
   const { t, lang } = useLanguage();
   const [search, setSearch] = useState("");
@@ -373,6 +402,7 @@ export default function ClientChatLogs() {
             ) : (
               sessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
+                const userName = extractUserName(session.messages);
                 return (
                   <div
                     key={session.id}
@@ -389,7 +419,7 @@ export default function ClientChatLogs() {
                     <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-semibold truncate capitalize">
-                          {session.channel} {lang === "ar" ? "مستخدم" : "User"}
+                          {userName ? userName : `${session.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground shrink-0">
