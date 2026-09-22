@@ -545,11 +545,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
         </div>
 
-        {role === "admin" && (
-          <div className="px-6 pb-3 shrink-0">
-            <LiveStatusBar />
-          </div>
-        )}
+        <div className="px-6 pb-3 shrink-0">
+          {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+        </div>
 
         {/* Nav — scrolls if items overflow, fills all remaining height */}
         <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-0.5 space-y-0.5">
@@ -623,6 +621,31 @@ function LiveStatusBar() {
         <span className="ml-auto tabular-nums">
           <Activity className="w-3 h-3 inline mr-1 opacity-60" />
           {stats.todayChatLogs} today
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ClientLiveStatusBar() {
+  const today = new Date().toISOString().split("T")[0];
+  const { data: usage } = useQuery<any>({
+    queryKey: ["client-usage-today", today],
+    queryFn: () => customFetch(`/api/client/usage?from=${today}&to=${today}`),
+    refetchInterval: 15_000,
+  });
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+      </span>
+      <span>Live</span>
+      {usage && (
+        <span className="ml-auto tabular-nums">
+          <Activity className="w-3 h-3 inline mr-1 opacity-60" />
+          {usage.totalMessages} today
         </span>
       )}
     </div>
