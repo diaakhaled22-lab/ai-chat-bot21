@@ -38,8 +38,6 @@ import ClientUniversalChat from "@/pages/client/ClientUniversalChat";
 import ClientWebhookHistory from "@/pages/client/ClientWebhookHistory";
 import ClientWidgetPreview from "@/pages/client/ClientWidgetPreview";
 import ClientChannels from "@/pages/client/ClientChannels";
-import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
-import ClientMalfunctions from "@/pages/client/ClientMalfunctions";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -146,9 +144,6 @@ function Router() {
       <Route path="/admin/webhook-messenger">
         {() => <ProtectedRoute component={AdminWebhookMessenger} allowedRole="admin" />}
       </Route>
-      <Route path="/admin/malfunctions">
-        {() => <ProtectedRoute component={AdminMalfunctions} allowedRole="admin" />}
-      </Route>
 
       {/* Client Routes */}
               <Route path="/client/company">
@@ -186,9 +181,6 @@ function Router() {
       </Route>
       <Route path="/client/universal-chat">
         {() => <ProtectedRoute component={ClientUniversalChat} allowedRole="client" />}
-      </Route>
-      <Route path="/client/malfunctions">
-        {() => <ProtectedRoute component={ClientMalfunctions} allowedRole="client" />}
       </Route>
 
       <Route component={NotFound} />

@@ -608,18 +608,30 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 }
 
 function LiveStatusBar() {
-  const { data: stats } = useGetAdminStats({
+  const { data: stats, isError: isStatsError } = useGetAdminStats({
     query: { refetchInterval: 10_000, queryKey: getGetAdminStatsQueryKey() },
   });
+
+  const { data: malfunctions, isError: isMalfunctionsError } = useQuery<any[]>({
+    queryKey: ["admin-malfunctions-status"],
+    queryFn: () => customFetch(`/api/admin/malfunctions`),
+    refetchInterval: 10_000,
+  });
+
+  const hasMalfunction = isStatsError || isMalfunctionsError || (malfunctions && malfunctions.some(m => m.isActive));
+  const dotColor = hasMalfunction ? "bg-red-500" : "bg-emerald-500";
+  const pingColor = hasMalfunction ? "bg-red-400" : "bg-emerald-400";
 
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span>Live</span>
-      {stats && (
+      <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
+        {hasMalfunction ? "Issues Detected" : "Live"}
+      </span>
+      {stats && !hasMalfunction && (
         <span className="ml-auto tabular-nums">
           <Activity className="w-3 h-3 inline mr-1 opacity-60" />
           {stats.todayChatLogs} today
@@ -631,20 +643,32 @@ function LiveStatusBar() {
 
 function ClientLiveStatusBar() {
   const today = new Date().toISOString().split("T")[0];
-  const { data: usage } = useQuery<any>({
+  const { data: usage, isError: isUsageError } = useQuery<any>({
     queryKey: ["client-usage-today", today],
     queryFn: () => customFetch(`/api/client/usage?from=${today}&to=${today}`),
     refetchInterval: 15_000,
   });
 
+  const { data: malfunctions, isError: isMalfunctionsError } = useQuery<any[]>({
+    queryKey: ["client-malfunctions-status"],
+    queryFn: () => customFetch(`/api/client/malfunctions`),
+    refetchInterval: 15_000,
+  });
+
+  const hasMalfunction = isUsageError || isMalfunctionsError || (malfunctions && malfunctions.length > 0);
+  const dotColor = hasMalfunction ? "bg-red-500" : "bg-emerald-500";
+  const pingColor = hasMalfunction ? "bg-red-400" : "bg-emerald-400";
+
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span>Live</span>
-      {usage && (
+      <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
+        {hasMalfunction ? "Issues Detected" : "Live"}
+      </span>
+      {usage && !hasMalfunction && (
         <span className="ml-auto tabular-nums">
           <Activity className="w-3 h-3 inline mr-1 opacity-60" />
           {usage.totalMessages} today

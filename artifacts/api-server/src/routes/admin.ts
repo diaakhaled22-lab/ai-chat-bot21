@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import {
@@ -1940,3 +1940,55 @@ router.delete("/admin/audit-logs/:id", requireAdmin, async (req, res) => {
 });
 
 export default router;
+// ── Malfunctions ───────────────────────────────────────────────────────────
+router.get("/admin/malfunctions", async (req, res) => {
+  try {
+    const list = await db.select().from(malfunctionsTable).orderBy(desc(malfunctionsTable.createdAt));
+    res.json(list);
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch malfunctions");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.post("/admin/malfunctions", async (req, res) => {
+  try {
+    const { title, description } = req.body as { title?: string; description?: string };
+    if (!title || !description) {
+      res.status(400).json({ error: "Missing title or description" });
+      return;
+    }
+    const result = await db.insert(malfunctionsTable).values({
+      title,
+      description,
+      isActive: true,
+    }).returning();
+    res.json(result[0]);
+  } catch (err) {
+    logger.error({ err }, "Failed to create malfunction");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.patch("/admin/malfunctions/:id/resolve", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    const result = await db.update(malfunctionsTable)
+      .set({ isActive: false, resolvedAt: new Date() })
+      .where(eq(malfunctionsTable.id, id))
+      .returning();
+    if (result.length === 0) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    res.json(result[0]);
+  } catch (err) {
+    logger.error({ err }, "Failed to resolve malfunction");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+

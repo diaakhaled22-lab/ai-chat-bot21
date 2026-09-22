@@ -12,3 +12,5 @@ export * from "./companyKnowledgeFiles";
 export * from "./companyWordPressIntegrations";
 export * from "./adminActivityLogs";
 export * from "./session";
+
+export * from "./malfunctions";

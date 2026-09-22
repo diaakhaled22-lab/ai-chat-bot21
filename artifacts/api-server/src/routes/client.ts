@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable } from "@workspace/db";
 import { eq, and, sql, gte, lte, desc, inArray } from "drizzle-orm";
 import {
   CreateClientCompanyBody,
@@ -1525,3 +1525,16 @@ router.get("/client/platform-webhooks", async (req, res) => {
 });
 
 export default router;
+// ── Malfunctions ───────────────────────────────────────────────────────────
+router.get("/client/malfunctions", async (req, res) => {
+  try {
+    const list = await db.select().from(malfunctionsTable)
+      .where(eq(malfunctionsTable.isActive, true))
+      .orderBy(desc(malfunctionsTable.createdAt));
+    res.json(list);
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch active malfunctions for client");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
