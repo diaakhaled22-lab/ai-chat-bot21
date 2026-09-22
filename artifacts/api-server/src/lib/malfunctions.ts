@@ -22,8 +22,7 @@ export async function reportSystemMalfunction(title: string, description: string
     if (rawError && process.env.OPENAI_API_KEY) {
       try {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const errorText = rawError instanceof Error ? rawError.message + " " + (rawError.stack || ") : String(rawError);
-        
+        const errorText = rawError instanceof Error ? rawError.message + " " + (rawError.stack || "") : String(rawError);
         const response = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [
