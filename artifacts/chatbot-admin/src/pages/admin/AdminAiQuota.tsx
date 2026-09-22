@@ -18,6 +18,7 @@ import {
   Coins,
   Cpu,
   Zap,
+  RotateCcw,
 } from "lucide-react";
 
 interface Company {
@@ -77,15 +78,27 @@ export default function AdminAiQuota() {
   const [quotaInput, setQuotaInput] = useState("");
 
   // Fetch Companies
-  const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
+  const {
+    data: companies = [],
+    isLoading: companiesLoading,
+    refetch: refetchCompanies,
+    isFetching: isFetchingCompanies,
+  } = useQuery<Company[]>({
     queryKey: ["admin-companies"],
     queryFn: () => customFetch("/api/admin/companies"),
+    refetchInterval: 10_000,
   });
 
   // Fetch Usage
-  const { data: usageData, isLoading: usageLoading } = useQuery<UsageCostData>({
+  const {
+    data: usageData,
+    isLoading: usageLoading,
+    refetch: refetchUsage,
+    isFetching: isFetchingUsage,
+  } = useQuery<UsageCostData>({
     queryKey: ["admin-usage-cost", "month"],
     queryFn: () => customFetch("/api/admin/usage-cost?range=month"),
+    refetchInterval: 10_000,
   });
 
   // Quota Mutation
@@ -159,23 +172,49 @@ export default function AdminAiQuota() {
     return companies.reduce((sum, c) => sum + (c.monthlyTokenQuota ?? 0), 0);
   }, [companies]);
 
-  const totalTokensConsumedMonth = useMemo(() => {
-    return usageData?.totalTokens ?? 0;
-  }, [usageData]);
+  const { totalTokensConsumedMonth, totalCostConsumedMonth } = useMemo(() => {
+    let tokens = 0;
+    let cost = 0;
+    for (const c of companies) {
+      if (c.monthlyTokenQuota && c.monthlyTokenQuota > 0) {
+        const usage = companyUsageMap.get(c.id);
+        if (usage) {
+          tokens += usage.tokens;
+          cost += usage.cost;
+        }
+      }
+    }
+    return { totalTokensConsumedMonth: tokens, totalCostConsumedMonth: cost };
+  }, [companies, companyUsageMap]);
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Cpu className="w-8 h-8 text-violet-400" />
-          {lang === "ar" ? "الذكاء الاصطناعي وإدارة الحصص (AI / Quota)" : "AI / Quota Management"}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          {lang === "ar"
-            ? "تكوين نموذج الدعم الفني بالذكاء الاصطناعي، ومراقبة وتحديد حصص الرموز (Token Quotas) لشركات العملاء."
-            : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <Cpu className="w-8 h-8 text-violet-400" />
+            {lang === "ar" ? "الذكاء الاصطناعي وإدارة الحصص (AI / Quota)" : "AI / Quota Management"}
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            {lang === "ar"
+              ? "تكوين نموذج الدعم الفني بالذكاء الاصطناعي، ومراقبة وتحديد حصص الرموز (Token Quotas) لشركات العملاء."
+              : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 self-start sm:self-auto shrink-0"
+          disabled={isFetchingCompanies || isFetchingUsage}
+          onClick={() => {
+            refetchCompanies();
+            refetchUsage();
+          }}
+        >
+          <RotateCcw className={`w-4 h-4 ${isFetchingCompanies || isFetchingUsage ? "animate-spin" : ""}`} />
+          {lang === "ar" ? "تحديث الأرقام" : "Refresh Stats"}
+        </Button>
       </div>
 
       {/* Overview Stats */}
@@ -209,7 +248,7 @@ export default function AdminAiQuota() {
               {totalTokensConsumedMonth.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              ${(usageData?.totalCostUsd ?? 0).toFixed(4)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
+              ${totalCostConsumedMonth.toFixed(4)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
             </p>
           </CardContent>
         </Card>
@@ -293,10 +332,12 @@ export default function AdminAiQuota() {
                   </tr>
                 ) : (
                   filteredCompanies.map((c) => {
+                    const hasQuota = typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0;
                     const usage = companyUsageMap.get(c.id);
-                    const tokensUsed = usage?.tokens ?? 0;
+                    const rawTokens = usage?.tokens ?? 0;
+                    const tokensUsed = hasQuota ? rawTokens : 0;
                     const quota = c.monthlyTokenQuota;
-                    const percent = quota ? Math.min(100, Math.round((tokensUsed / quota) * 100)) : null;
+                    const percent = hasQuota && quota ? Math.min(100, Math.round((tokensUsed / quota) * 100)) : null;
 
                     return (
                       <tr key={c.id} className="hover:bg-muted/20 transition-colors">
@@ -312,7 +353,7 @@ export default function AdminAiQuota() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
-                          {c.monthlyTokenQuota ? (
+                          {hasQuota ? (
                             <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
                               <TrendingUp className="w-3 h-3" />
                               {formatQuota(c.monthlyTokenQuota)}
@@ -324,7 +365,11 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono">
-                          {tokensUsed.toLocaleString()}
+                          {hasQuota ? (
+                            tokensUsed.toLocaleString()
+                          ) : (
+                            <span className="text-muted-foreground/40 font-sans text-xs">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {percent !== null ? (

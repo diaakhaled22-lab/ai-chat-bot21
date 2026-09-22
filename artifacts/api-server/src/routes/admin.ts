@@ -121,9 +121,22 @@ router.get("/admin/usage-cost", async (req, res) => {
       "gemini-2.0-flash":           { input: 0.10,  output: 0.40  },
     };
 
-    const { from, to } = req.query as { from?: string; to?: string };
-    const fromDate = from ? new Date(from) : undefined;
-    const toDate   = to   ? new Date(to)   : undefined;
+    const { from, to, range } = req.query as { from?: string; to?: string; range?: string };
+    let fromDate = from ? new Date(from) : undefined;
+    let toDate   = to   ? new Date(to)   : undefined;
+
+    if (!fromDate && range) {
+      const now = new Date();
+      if (range === "month") {
+        fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (range === "today") {
+        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (range === "7d") {
+        fromDate = new Date(now.getTime() - 7 * 864e5);
+      } else if (range === "30d") {
+        fromDate = new Date(now.getTime() - 30 * 864e5);
+      }
+    }
 
     const companies = await db
       .select({ id: companiesTable.id, name: companiesTable.name, aiProvider: companiesTable.aiProvider, aiModel: companiesTable.aiModel })
