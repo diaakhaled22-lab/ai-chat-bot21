@@ -18,6 +18,7 @@ import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification } from "../lib/email";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
+import { resolveCompanyAi, assertCompanyQuotaNotExceeded } from "../lib/supportAi";
 import crypto from 'crypto';
 
 function telegramWebhookSecret(token: string): string {
@@ -1167,42 +1168,52 @@ router.get("/client/company/ai-status", async (req, res) => {
       return;
     }
 
-    if (!company.aiAgentApiKey) {
+    // Check quota
+    try {
+      await assertCompanyQuotaNotExceeded(company);
+    } catch (quotaErr: any) {
+      res.json({
+        status: "quota_exceeded",
+        provider: company.aiProvider ?? "openai",
+        model: company.aiModel ?? "gpt-4o-mini",
+        detail: quotaErr?.message,
+      });
+      return;
+    }
+
+    let aiConfig;
+    try {
+      aiConfig = await resolveCompanyAi(company);
+    } catch {
       res.json({ status: "no_key", provider: company.aiProvider ?? "openai" });
       return;
     }
 
-    const provider = company.aiProvider ?? "openai";
-    const model = company.aiModel ?? (
-      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
-      provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" :
-      "gpt-4o-mini"
-    );
+    const { apiKey, provider, model, isSupportAgent } = aiConfig;
 
     try {
       if (provider === "google") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
+        const genAI = new GoogleGenerativeAI(apiKey);
         const genModel = genAI.getGenerativeModel({ model });
         await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
       } else if (provider === "anthropic") {
         const Anthropic = (await import("@anthropic-ai/sdk")).default;
-        const client = new Anthropic({ apiKey: company.aiAgentApiKey });
+        const client = new Anthropic({ apiKey });
         await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
       } else if (provider === "openrouter") {
         const OpenAI = (await import("openai")).default;
         const openai = new OpenAI({
-          apiKey: company.aiAgentApiKey,
+          apiKey,
           baseURL: "https://openrouter.ai/api/v1",
         });
         await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
       } else {
         const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
+        const openai = new OpenAI({ apiKey });
         await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
       }
-      res.json({ status: "ok", provider, model });
+      res.json({ status: "ok", provider, model, isSupportAgent });
     } catch (aiErr: unknown) {
       const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
       const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");

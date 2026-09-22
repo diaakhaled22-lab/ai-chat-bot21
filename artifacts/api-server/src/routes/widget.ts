@@ -150,17 +150,13 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     sysContent += await getWordPressKnowledgeSection(company.id);
     sysContent += await getKnowledgeFilesPromptSection(company.id);
 
-    const provider = company.aiProvider ?? "openai";
-    const model = company.aiModel ?? (
-      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
-      provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
-    );
+    const provider = aiConfig.provider;
+    const model = aiConfig.model;
 
     let aiReply = "";
 
     if (provider === "anthropic") {
-      const anthropic = new Anthropic({ apiKey: company.aiAgentApiKey });
+      const anthropic = new Anthropic({ apiKey: aiConfig.apiKey });
       const response = await anthropic.messages.create({
         model,
         max_tokens: 1024,
@@ -173,7 +169,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = (response.content?.[0] as { type: string; text: string })?.text ?? "";
 
     } else if (provider === "google") {
-      const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
+      const genAI = new GoogleGenerativeAI(aiConfig.apiKey);
       const genModel = genAI.getGenerativeModel({
         model,
         systemInstruction: sysContent || undefined,
@@ -187,7 +183,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = result.response.text();
 
     } else if (provider === "openrouter") {
-      const openrouter = new OpenAI({ apiKey: company.aiAgentApiKey, baseURL: "https://openrouter.ai/api/v1" });
+      const openrouter = new OpenAI({ apiKey: aiConfig.apiKey, baseURL: "https://openrouter.ai/api/v1" });
       const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
       if (sysContent) msgs.push({ role: "system", content: sysContent });
       for (const turn of conversationHistory) {
@@ -198,7 +194,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = completion.choices?.[0]?.message?.content ?? "";
 
     } else {
-      const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
+      const openai = new OpenAI({ apiKey: aiConfig.apiKey });
       const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
       if (sysContent) msgs.push({ role: "system", content: sysContent });
       for (const turn of conversationHistory) {

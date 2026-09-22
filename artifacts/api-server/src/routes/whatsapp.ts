@@ -1,4 +1,6 @@
 import { reportSystemMalfunction } from "../lib/malfunctions";
+import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
+import { webhookLimiter } from "../lib/security";
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, adminConfigTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -16,11 +18,16 @@ import { webhookLimiter } from "../lib/security";
 
 const router = Router();
 
-async function callAI(company: typeof companiesTable.$inferSelect, userMessage: string, history: { role: "user" | "assistant"; content: string }[]): Promise<string> {
-  if (!company.aiAgentApiKey) throw new Error("No AI API key configured");
+async function callAI(
+  company: typeof companiesTable.$inferSelect,
+  userMessage: string,
+  history: { role: "user" | "assistant"; content: string }[],
+  overrideAiConfig?: ResolvedAiConfig
+): Promise<string> {
+  const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
 
   let sysContent = company.systemPrompt ?? "";
-    if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
+  if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
   sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
@@ -30,15 +37,8 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   sysContent += await getWordPressKnowledgeSection(company.id);
   sysContent += await getKnowledgeFilesPromptSection(company.id);
 
-  const provider = company.aiProvider ?? "openai";
-  const model = company.aiModel ?? (
-    provider === "anthropic" ? "claude-3-5-haiku-20241022" :
-    provider === "google" ? "gemini-2.0-flash" :
-    provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
-  );
-
   if (provider === "anthropic") {
-    const client = new Anthropic({ apiKey: company.aiAgentApiKey });
+    const client = new Anthropic({ apiKey });
     const resp = await client.messages.create({
       model, max_tokens: 1024,
       system: sysContent || undefined,
@@ -50,7 +50,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
     return (resp.content?.[0] as any)?.text || "";
 
   } else if (provider === "google") {
-    const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
+    const genAI = new GoogleGenerativeAI(apiKey);
     const genModel = genAI.getGenerativeModel({
       model,
       systemInstruction: sysContent || undefined,
@@ -62,7 +62,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
     return result.response.text();
 
   } else if (provider === "openrouter") {
-    const openrouter = new OpenAI({ apiKey: company.aiAgentApiKey, baseURL: "https://openrouter.ai/api/v1" });
+    const openrouter = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
     const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
@@ -71,7 +71,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
     return (completion.choices?.[0]?.message?.content || "") as string;
 
   } else {
-    const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
+    const openai = new OpenAI({ apiKey });
     const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
@@ -192,11 +192,15 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
             continue;
           }
 
-          if (!company.aiAgentApiKey) {
+          let aiConfig: ResolvedAiConfig;
+          try {
+            await assertCompanyQuotaNotExceeded(company);
+            aiConfig = await resolveCompanyAi(company);
+          } catch (configErr: any) {
             await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, localizedChannelMessage(
               userText,
-              "âš ï¸ Ù„Ù… ÙŠØªÙ… Ø¥Ø¹Ø¯Ø§Ø¯ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ Ø¨Ø¹Ø¯.",
-              "âš ï¸ AI is not configured yet.",
+              configErr?.message || "⚠️ تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
+              configErr?.message || "⚠️ Unable to respond due to AI configuration issue or exceeded quota.",
             ));
             continue;
           }
@@ -214,7 +218,7 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
             if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
           }
 
-          const aiReply = enforceResponseLanguage(await callAI(company, userText, history), userText);
+          const aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
 
           await db.insert(chatLogsTable).values({
             companyId: company.id,
@@ -330,11 +334,15 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             continue;
           }
 
-          if (!company.aiAgentApiKey) {
+          let aiConfig: ResolvedAiConfig;
+          try {
+            await assertCompanyQuotaNotExceeded(company);
+            aiConfig = await resolveCompanyAi(company);
+          } catch (configErr: any) {
             await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, localizedChannelMessage(
               userText,
-              "âš ï¸ Ù„Ù… ÙŠØªÙ… Ø¥Ø¹Ø¯Ø§Ø¯ Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ø§ØµØ·Ù†Ø§Ø¹ÙŠ Ø¨Ø¹Ø¯.",
-              "âš ï¸ AI is not configured yet.",
+              configErr?.message || "⚠️ تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
+              configErr?.message || "⚠️ Unable to respond due to AI configuration issue or exceeded quota.",
             ));
             continue;
           }
@@ -352,7 +360,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
           }
 
-          const aiReply = enforceResponseLanguage(await callAI(company, userText, history), userText);
+          const aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
 
           await db.insert(chatLogsTable).values({
             companyId: company.id,

@@ -1059,6 +1059,13 @@ export default function AdminCompanies() {
               </Button>
             </div>
 
+            <div className="flex items-start gap-2 text-xs bg-violet-500/10 border border-violet-500/20 text-violet-300 dark:text-violet-300 p-2.5 rounded-lg">
+              <Zap className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+              <span>
+                <strong>Linked to Support AI Agent:</strong> Assigning a quota links this company to the Support AI Agent (configured in <strong>AI / Quota</strong>). The company's bot will use the agent's model & credentials up to this quota limit.
+              </span>
+            </div>
+
             {quotaTarget?.monthlyTokenQuota && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2.5 rounded-lg">
                 <TrendingUp className="w-3.5 h-3.5 shrink-0 text-blue-400" />
