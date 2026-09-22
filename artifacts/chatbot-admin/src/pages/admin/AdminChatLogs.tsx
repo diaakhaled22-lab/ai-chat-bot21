@@ -43,6 +43,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/hooks/use-language";
 
 const RETENTION_OPTIONS = [1, 3, 7, 14, 30, 90, 365];
 
@@ -56,6 +57,7 @@ function cleanDisplayMessage(text: string | null | undefined): string {
 }
 
 export default function AdminChatLogs() {
+  const { lang, t } = useLanguage();
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
@@ -101,6 +103,22 @@ export default function AdminChatLogs() {
 
   const currentRetention = retentionData?.retentionDays ?? 30;
   const [pendingRetention, setPendingRetention] = useState<number | null>(null);
+
+  const dateOptions = useMemo(() => {
+    const options = [];
+    const today = new Date();
+    for (let i = 0; i < currentRetention; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().split("T")[0];
+      let label = iso;
+      if (i === 0) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
+      else if (i === 1) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
+      
+      options.push({ value: iso, label });
+    }
+    return options;
+  }, [currentRetention, lang]);
 
   const deleteChatLog = useDeleteChatLog();
   const markLogAsRead = useMarkAdminChatLogAsRead();
@@ -444,32 +462,31 @@ export default function AdminChatLogs() {
           </Select>
         </div>
 
-        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-          <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
-          <input
-            type="date"
-            value={fromDate}
-            max={toDate || undefined}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="bg-transparent text-sm text-foreground outline-none w-[120px]"
-          />
-          <span className="text-muted-foreground text-xs">to</span>
-          <input
-            type="date"
-            value={toDate}
-            min={fromDate || undefined}
-            onChange={(e) => setToDate(e.target.value)}
-            className="bg-transparent text-sm text-foreground outline-none w-[120px]"
-          />
-          {hasDateFilter && (
-            <button
-              onClick={clearDateFilter}
-              className="text-muted-foreground hover:text-foreground shrink-0"
-              title="Clear dates"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+        <div className="w-[220px]">
+          <Select 
+            value={hasDateFilter ? fromDate : "all"} 
+            onValueChange={(val) => {
+              if (val === "all") {
+                clearDateFilter();
+              } else {
+                setFromDate(val);
+                setToDate(val);
+              }
+            }}
+          >
+            <SelectTrigger className="h-full bg-card">
+              <div className="flex items-center gap-2 truncate">
+                <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
+                <SelectValue placeholder={lang === "ar" ? "كل الأيام" : "All Days"} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{lang === "ar" ? "كل الأيام" : "All Days"}</SelectItem>
+              {dateOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
