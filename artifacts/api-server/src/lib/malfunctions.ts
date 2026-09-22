@@ -19,7 +19,7 @@ export async function reportSystemMalfunction(title: string, description: string
       companyId: companyId || null,
       title,
       description,
-      isActive: true,
+      source: "system",`n      isActive: true,
     });
     logger.info({ title, companyId }, "Auto-reported system malfunction");
   } catch (err) {

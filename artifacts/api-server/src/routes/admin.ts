@@ -1943,7 +1943,19 @@ export default router;
 // â”€â”€ Malfunctions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get("/admin/malfunctions", async (req, res) => {
   try {
-    const list = await db.select().from(malfunctionsTable).orderBy(desc(malfunctionsTable.createdAt));
+    const list = await db.select({
+      id: malfunctionsTable.id,
+      title: malfunctionsTable.title,
+      description: malfunctionsTable.description,
+      source: malfunctionsTable.source,
+      isActive: malfunctionsTable.isActive,
+      createdAt: malfunctionsTable.createdAt,
+      resolvedAt: malfunctionsTable.resolvedAt,
+      companyName: companiesTable.name
+    })
+    .from(malfunctionsTable)
+    .leftJoin(companiesTable, eq(malfunctionsTable.companyId, companiesTable.id))
+    .orderBy(desc(malfunctionsTable.createdAt));
     res.json(list);
   } catch (err) {
     logger.error({ err }, "Failed to fetch malfunctions");
@@ -1961,6 +1973,7 @@ router.post("/admin/malfunctions", async (req, res) => {
     const result = await db.insert(malfunctionsTable).values({
       title,
       description,
+      source: "admin",
       isActive: true,
     }).returning();
     res.json(result[0]);

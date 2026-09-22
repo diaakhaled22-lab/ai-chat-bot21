@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { AlertTriangle, CheckCircle2, Plus, Trash2, Check } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Plus, Trash2, Check, User, Monitor, ShieldAlert } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -40,7 +40,7 @@ export default function AdminMalfunctions() {
 
   const resolveMutation = useMutation({
     mutationFn: (id: number) =>
-      customFetch(`/api/admin/malfunctions/${id}/resolve`, {
+      customFetch(/api/admin/malfunctions/${"$"}id"}/resolve, {
         method: "PATCH",
       }),
     onSuccess: () => {
@@ -54,8 +54,16 @@ export default function AdminMalfunctions() {
     createMutation.mutate({ title: titleInput, description: descInput });
   };
 
-  const title = lang === "ar" ? "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø£Ø¹Ø·Ø§Ù„" : "Manage Malfunctions";
-  const desc = lang === "ar" ? "Ø£Ø¶ÙØŒ Ø¹Ø¯Ù‘Ù„ Ø£Ùˆ Ù‚Ù… Ø¨Ø­Ù„ Ø§Ù„Ø£Ø¹Ø·Ø§Ù„ Ù„ÙƒÙŠ ØªØ¸Ù‡Ø± ÙÙŠ Ù„ÙˆØ­Ø© ØªØ­ÙƒÙ… Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡." : "Add or resolve active malfunctions displayed in the client dashboard.";
+  const stats = {
+    totalActive: malfunctions?.filter((m: any) => m.isActive).length || 0,
+    totalResolved: malfunctions?.filter((m: any) => !m.isActive).length || 0,
+    fromUsers: malfunctions?.filter((m: any) => m.source === 'client').length || 0,
+    fromAdmin: malfunctions?.filter((m: any) => m.source === 'admin').length || 0,
+    fromSystem: malfunctions?.filter((m: any) => m.source === 'system').length || 0,
+  };
+
+  const title = lang === "ar" ? "إدارة الأعطال" : "Manage Malfunctions";
+  const desc = lang === "ar" ? "أضف، عدّل أو قم بحل الأعطال لكي تظهر في لوحة تحكم العملاء." : "Add or resolve active malfunctions displayed in the client dashboard.";
 
   return (
     <div className="space-y-6">
@@ -67,85 +75,122 @@ export default function AdminMalfunctions() {
         {!isAdding && (
           <Button onClick={() => setIsAdding(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            {lang === "ar" ? "Ø¥Ø¶Ø§ÙØ© Ø¹Ø·Ù„ Ø¬Ø¯ÙŠØ¯" : "Add Malfunction"}
+            {lang === "ar" ? "إضافة عطل جديد" : "Add Malfunction"}
           </Button>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "الأعطال النشطة" : "Active Issues"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">{stats.totalActive}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "الأعطال المحلولة" : "Resolved Issues"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-500">{stats.totalResolved}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "بلاغات العملاء" : "Client Reports"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.fromUsers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "إضافات الإدارة والنظام" : "Admin/System Reports"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.fromAdmin + stats.fromSystem}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {isError && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>{lang === "ar" ? "Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ø§ØªØµØ§Ù„" : "Connection Error"}</AlertTitle>
+          <AlertTitle>{lang === "ar" ? "خطأ في الاتصال" : "Connection Error"}</AlertTitle>
           <AlertDescription>
             {lang === "ar" 
-              ? "ØªØ¹Ø°Ø± Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø®Ø§Ø¯Ù…. Ø§Ù„Ø³ÙŠØ±ÙØ± Ù„Ø§ ÙŠØ³ØªØ¬ÙŠØ¨." 
+              ? "تعذر الاتصال بالخادم. السيرفر لا يستجيب." 
               : "Failed to connect to the server."}
           </AlertDescription>
         </Alert>
       )}
 
       {isAdding && (
-        <Card>
+        <Card className="border-primary/50">
           <CardHeader>
-            <CardTitle>{lang === "ar" ? "Ø¥Ø¶Ø§ÙØ© Ø¹Ø·Ù„ Ø¬Ø¯ÙŠØ¯" : "Add New Malfunction"}</CardTitle>
-            <CardDescription>{lang === "ar" ? "Ø³ÙŠØ¸Ù‡Ø± Ù‡Ø°Ø§ Ø§Ù„Ø¹Ø·Ù„ Ø¨Ø§Ù„Ù„ÙˆÙ† Ø§Ù„Ø£Ø­Ù…Ø± ÙÙŠ Ù„ÙˆØ­Ø© Ø§Ù„Ø¹Ù…ÙŠÙ„." : "This will be displayed as a red alert in the client dashboard."}</CardDescription>
+            <CardTitle>{lang === "ar" ? "إضافة عطل جديد" : "Add New Malfunction"}</CardTitle>
+            <CardDescription>{lang === "ar" ? "سيظهر هذا العطل باللون الأحمر في لوحة العميل." : "This will be displayed as a red alert in the client dashboard."}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">{lang === "ar" ? "Ø§Ù„Ø¹Ù†ÙˆØ§Ù†" : "Title"}</label>
-              <Input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} placeholder={lang === "ar" ? "Ù…Ø«Ø§Ù„: Ø¹Ø·Ù„ ÙÙŠ Ø®ÙˆØ§Ø¯Ù… Ø§Ù„ÙˆØ§ØªØ³Ø§Ø¨" : "e.g., WhatsApp Servers Down"} />
+              <label className="text-sm font-medium mb-1 block">{lang === "ar" ? "العنوان" : "Title"}</label>
+              <Input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} placeholder={lang === "ar" ? "مثال: عطل في خوادم الواتساب" : "e.g., WhatsApp Servers Down"} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">{lang === "ar" ? "Ø§Ù„ØªÙØ§ØµÙŠÙ„" : "Description"}</label>
-              <Textarea value={descInput} onChange={(e) => setDescInput(e.target.value)} placeholder={lang === "ar" ? "Ø§Ø´Ø±Ø­ Ø§Ù„Ù…Ø´ÙƒÙ„Ø© Ø¨Ø§Ø®ØªØµØ§Ø± Ù„Ù„Ø¹Ù…ÙŠÙ„..." : "Explain the issue briefly..."} rows={3} />
+              <label className="text-sm font-medium mb-1 block">{lang === "ar" ? "التفاصيل" : "Description"}</label>
+              <Textarea value={descInput} onChange={(e) => setDescInput(e.target.value)} placeholder={lang === "ar" ? "اشرح المشكلة باختصار للعميل..." : "Explain the issue briefly..."} rows={3} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setIsAdding(false)}>{lang === "ar" ? "Ø¥Ù„ØºØ§Ø¡" : "Cancel"}</Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending || !titleInput.trim() || !descInput.trim()}>{lang === "ar" ? "Ø­ÙØ¸ ÙˆÙ†Ø´Ø±" : "Save & Publish"}</Button>
+              <Button variant="outline" onClick={() => setIsAdding(false)}>{lang === "ar" ? "إلغاء" : "Cancel"}</Button>
+              <Button onClick={handleCreate} disabled={createMutation.isPending || !titleInput.trim() || !descInput.trim()}>{lang === "ar" ? "حفظ ونشر" : "Save & Publish"}</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
       {!isError && isLoading ? (
-        <div className="text-muted-foreground text-sm">{lang === "ar" ? "Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„..." : "Loading..."}</div>
+        <div className="text-muted-foreground text-sm">{lang === "ar" ? "جاري التحميل..." : "Loading..."}</div>
       ) : !isError && malfunctions?.length === 0 ? (
-        <Card className="bg-emerald-500/10 border-emerald-500/20">
-          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-            <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-4" />
-            <h3 className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
-              {lang === "ar" ? "Ø¬Ù…ÙŠØ¹ Ø§Ù„Ø£Ù†Ø¸Ù…Ø© ØªØ¹Ù…Ù„ Ø¨ÙƒÙØ§Ø¡Ø©" : "All Systems Operational"}
-            </h3>
-            <p className="text-emerald-600/80 dark:text-emerald-400/80 mt-2 text-sm">
-              {lang === "ar" ? "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø£ÙŠ Ø£Ø¹Ø·Ø§Ù„ Ù…Ø³Ø¬Ù„Ø©." : "No recorded malfunctions."}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="text-muted-foreground text-sm">{lang === "ar" ? "لا توجد أعطال مسجلة." : "No malfunctions recorded."}</div>
       ) : !isError && malfunctions && malfunctions.length > 0 ? (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">{lang === "ar" ? "Ø³Ø¬Ù„ Ø§Ù„Ø£Ø¹Ø·Ø§Ù„" : "Malfunctions History"}</h2>
+        <div className="space-y-4 mt-6">
+          <h2 className="text-xl font-semibold mb-4">{lang === "ar" ? "سجل الأعطال" : "Malfunctions History"}</h2>
           {malfunctions.map((m) => (
-            <Alert key={m.id} variant={m.isActive ? "destructive" : "default"} className={m.isActive ? "bg-red-500/5" : "bg-muted/30 border-muted-foreground/20"}>
-              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    {m.isActive ? <AlertTriangle className="h-5 w-5 text-red-500" /> : <CheckCircle2 className="h-5 w-5 text-muted-foreground" />}
-                    <AlertTitle className="text-base mb-0">{m.title} {m.companyName && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-normal">{m.companyName}</span>}</AlertTitle>
-                  </div>
-                  <AlertDescription className="mt-2 text-sm opacity-90 leading-relaxed ml-7">
+            <Alert key={m.id} variant={m.isActive ? "destructive" : "default"} className={m.isActive ? "bg-red-500/5" : "bg-muted/50 border-muted"}>
+              {m.isActive ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+              <div className="flex flex-col md:flex-row md:items-start justify-between w-full ml-2">
+                <div>
+                  <AlertTitle className="text-base mb-0 flex items-center gap-2">
+                    {m.title} 
+                    {m.companyName && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-normal">{m.companyName}</span>}
+                    {m.source === 'client' && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1"><User className="w-3 h-3"/> {lang === "ar" ? "بلاغ عميل" : "Client"}</span>}
+                    {m.source === 'system' && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1"><Monitor className="w-3 h-3"/> {lang === "ar" ? "نظام" : "System"}</span>}
+                    {m.source === 'admin' && <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {lang === "ar" ? "إدارة" : "Admin"}</span>}
+                  </AlertTitle>
+                  <AlertDescription className="mt-2 text-sm opacity-90 leading-relaxed">
                     {m.description}
-                    <div className="mt-2 text-xs opacity-70 flex gap-4">
-                      <span>{lang === "ar" ? "Ø£ÙØ¶ÙŠÙ:" : "Added:"} {new Date(m.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}</span>
+                    <div className="mt-4 text-xs opacity-70 flex items-center gap-4">
+                      <span>{lang === "ar" ? "وقت الحدوث:" : "Occurred:"} {new Date(m.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}</span>
                       {!m.isActive && m.resolvedAt && (
-                        <span>{lang === "ar" ? "ØªÙ… Ø§Ù„Ø­Ù„:" : "Resolved:"} {new Date(m.resolvedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                          {lang === "ar" ? "تم الحل:" : "Resolved:"} {new Date(m.resolvedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}
+                        </span>
                       )}
                     </div>
                   </AlertDescription>
                 </div>
                 {m.isActive && (
-                  <Button variant="outline" size="sm" onClick={() => resolveMutation.mutate(m.id)} disabled={resolveMutation.isPending} className="shrink-0">
-                    <Check className="w-4 h-4 mr-2" />
-                    {lang === "ar" ? "ØªØ­Ø¯ÙŠØ¯ ÙƒÙ€ Ù…Ø­Ù„ÙˆÙ„" : "Mark as Resolved"}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4 md:mt-0 md:ml-4 shrink-0 bg-background"
+                    onClick={() => resolveMutation.mutate(m.id)}
+                    disabled={resolveMutation.isPending}
+                  >
+                    <Check className="w-4 h-4 mr-2 text-emerald-500" />
+                    {lang === "ar" ? "تحديد كـ محلول" : "Mark as Resolved"}
                   </Button>
                 )}
               </div>

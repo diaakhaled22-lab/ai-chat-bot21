@@ -6,6 +6,7 @@ export const malfunctionsTable = pgTable("malfunctions", {
   companyId: integer("company_id").references(() => companiesTable.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  source: text("source").default("admin").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),

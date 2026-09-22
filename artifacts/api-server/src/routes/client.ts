@@ -1553,6 +1553,7 @@ router.post("/client/malfunctions", async (req, res) => {
       companyId: req.session.companyId,
       title,
       description,
+      source: "client",
       isActive: true,
     }).returning();
     res.json(result[0]);
