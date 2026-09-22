@@ -40,7 +40,7 @@ export default function AdminMalfunctions() {
 
   const resolveMutation = useMutation({
     mutationFn: (id: number) =>
-      customFetch(/api/admin/malfunctions/${"$"}id"}/resolve, {
+      customFetch(`/api/admin/malfunctions/${id}/resolve`, {
         method: "PATCH",
       }),
     onSuccess: () => {
