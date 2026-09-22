@@ -25,6 +25,7 @@ import AdminTickets from "@/pages/admin/AdminTickets";
 import AdminBroadcast from "@/pages/admin/AdminBroadcast";
 import AdminAITester from "@/pages/admin/AdminAITester";
 import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
+import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
 
 import ClientCompany from "./pages/client/ClientCompany";
 import ClientPrompts from "./pages/client/ClientPrompts";
@@ -33,6 +34,7 @@ import ClientChatLogs from "@/pages/client/ClientChatLogs";
 import ClientSettings from "@/pages/client/ClientSettings";
 import ClientUsage from "@/pages/client/ClientUsage";
 import ClientSupport from "@/pages/client/ClientSupport";
+import ClientMalfunctions from "@/pages/client/ClientMalfunctions";
 import ClientAIChat from "@/pages/client/ClientAIChat";
 import ClientUniversalChat from "@/pages/client/ClientUniversalChat";
 import ClientWebhookHistory from "@/pages/client/ClientWebhookHistory";
@@ -144,6 +146,9 @@ function Router() {
       <Route path="/admin/webhook-messenger">
         {() => <ProtectedRoute component={AdminWebhookMessenger} allowedRole="admin" />}
       </Route>
+      <Route path="/admin/malfunctions">
+        {() => <ProtectedRoute component={AdminMalfunctions} allowedRole="admin" />}
+      </Route>
 
       {/* Client Routes */}
               <Route path="/client/company">
@@ -181,6 +186,9 @@ function Router() {
       </Route>
       <Route path="/client/universal-chat">
         {() => <ProtectedRoute component={ClientUniversalChat} allowedRole="client" />}
+      </Route>
+      <Route path="/client/malfunctions">
+        {() => <ProtectedRoute component={ClientMalfunctions} allowedRole="client" />}
       </Route>
 
       <Route component={NotFound} />
