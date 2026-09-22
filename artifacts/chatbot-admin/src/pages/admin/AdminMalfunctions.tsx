@@ -1,41 +1,18 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { AlertTriangle, CheckCircle2, Plus, Trash2, Check, User, Monitor, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Check, User, Monitor, ShieldAlert } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminMalfunctions() {
   const { lang } = useLanguage();
   const queryClient = useQueryClient();
-  const [isAdding, setIsAdding] = useState(false);
-  const [titleInput, setTitleInput] = useState("");
-  const [descInput, setDescInput] = useState("");
 
   const { data: malfunctions, isLoading, isError } = useQuery<any[]>({
     queryKey: ["admin-malfunctions"],
     queryFn: () => customFetch("/api/admin/malfunctions"),
     refetchInterval: 15_000,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: { title: string; description: string }) =>
-      customFetch("/api/admin/malfunctions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-malfunctions"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-malfunctions-status"] });
-      setIsAdding(false);
-      setTitleInput("");
-      setDescInput("");
-    },
   });
 
   const resolveMutation = useMutation({
@@ -49,13 +26,8 @@ export default function AdminMalfunctions() {
     },
   });
 
-  const handleCreate = () => {
-    if (!titleInput.trim() || !descInput.trim()) return;
-    createMutation.mutate({ title: titleInput, description: descInput });
-  };
-
   const title = lang === "ar" ? "إدارة الأعطال" : "Manage Malfunctions";
-  const desc = lang === "ar" ? "أضف، عدّل أو قم بحل الأعطال لكي تظهر في لوحة تحكم العملاء." : "Add or resolve active malfunctions displayed in the client dashboard.";
+  const desc = lang === "ar" ? "متابعة وحل الأعطال لكي تظهر أو تختفي من لوحة تحكم العملاء." : "Monitor and resolve active malfunctions displayed in the client dashboard.";
 
   return (
     <div className="space-y-6">
@@ -64,12 +36,6 @@ export default function AdminMalfunctions() {
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
           <p className="text-muted-foreground mt-2">{desc}</p>
         </div>
-        {!isAdding && (
-          <Button onClick={() => setIsAdding(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            {lang === "ar" ? "إضافة عطل جديد" : "Add Malfunction"}
-          </Button>
-        )}
       </div>
 
       {isError && (
@@ -82,29 +48,6 @@ export default function AdminMalfunctions() {
               : "Failed to connect to the server."}
           </AlertDescription>
         </Alert>
-      )}
-
-      {isAdding && (
-        <Card className="border-primary/50">
-          <CardHeader>
-            <CardTitle>{lang === "ar" ? "إضافة عطل جديد" : "Add New Malfunction"}</CardTitle>
-            <CardDescription>{lang === "ar" ? "سيظهر هذا العطل باللون الأحمر في لوحة العميل." : "This will be displayed as a red alert in the client dashboard."}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">{lang === "ar" ? "العنوان" : "Title"}</label>
-              <Input value={titleInput} onChange={(e) => setTitleInput(e.target.value)} placeholder={lang === "ar" ? "مثال: عطل في خوادم الواتساب" : "e.g., WhatsApp Servers Down"} />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">{lang === "ar" ? "التفاصيل" : "Description"}</label>
-              <Textarea value={descInput} onChange={(e) => setDescInput(e.target.value)} placeholder={lang === "ar" ? "اشرح المشكلة باختصار للعميل..." : "Explain the issue briefly..."} rows={3} />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setIsAdding(false)}>{lang === "ar" ? "إلغاء" : "Cancel"}</Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending || !titleInput.trim() || !descInput.trim()}>{lang === "ar" ? "حفظ ونشر" : "Save & Publish"}</Button>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       {!isError && isLoading ? (
