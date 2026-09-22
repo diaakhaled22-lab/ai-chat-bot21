@@ -76,8 +76,6 @@ export default function AdminAiQuota() {
   const [search, setSearch] = useState("");
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
   const [quotaInput, setQuotaInput] = useState("");
-  const [resetTarget, setResetTarget] = useState<{ id: number; name: string } | null>(null);
-  const [deleteLogsOption, setDeleteLogsOption] = useState(false);
 
   // Fetch Companies
   const {
@@ -101,32 +99,6 @@ export default function AdminAiQuota() {
     queryKey: ["admin-usage-cost", "month"],
     queryFn: () => customFetch("/api/admin/usage-cost?range=month"),
     refetchInterval: 10_000,
-  });
-
-  // Reset Usage Mutation
-  const resetUsageMutation = useMutation({
-    mutationFn: ({ companyId, deleteLogs }: { companyId?: number; deleteLogs?: boolean }) =>
-      customFetch("/api/admin/usage-cost/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, deleteLogs }),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
-      toast({
-        title: lang === "ar" ? "تم تصفير عداد الاستهلاك بنجاح" : "Usage counter reset successfully",
-      });
-      setResetTarget(null);
-      setDeleteLogsOption(false);
-    },
-    onError: (err: any) => {
-      toast({
-        title: lang === "ar" ? "فشل تصفير العداد" : "Failed to reset counter",
-        description: err?.message,
-        variant: "destructive",
-      });
-    },
   });
 
   // Quota Mutation
@@ -320,27 +292,14 @@ export default function AdminAiQuota() {
               {lang === "ar" ? "تحديد حصة الرموز (Tokens) لكل شركة ومتابعة نسبة الاستهلاك." : "Set token limits per company and monitor their monthly consumption."}
             </p>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={lang === "ar" ? "بحث عن شركة..." : "Search companies..."}
-                className="pl-9 h-9 text-xs"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 text-xs text-amber-500 border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400 gap-1.5 shrink-0"
-              onClick={() => setResetTarget({ id: 0, name: lang === "ar" ? "جميع الشركات" : "All Companies" })}
-              title={lang === "ar" ? "تصفير عداد الاستهلاك الشهري لجميع الشركات" : "Reset monthly quota counter for all companies"}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">{lang === "ar" ? "تصفير عداد الجميع" : "Reset All Counters"}</span>
-              <span className="md:hidden">{lang === "ar" ? "تصفير الكل" : "Reset All"}</span>
-            </Button>
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={lang === "ar" ? "بحث عن شركة..." : "Search companies..."}
+              className="pl-9 h-9 text-xs"
+            />
           </div>
         </div>
 
@@ -446,27 +405,15 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => openQuotaDialog(c)}
-                            >
-                              <TrendingUp className="w-3 h-3 mr-1.5 text-blue-400" />
-                              {lang === "ar" ? "تعيين الحصة" : "Set Quota"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-amber-500 border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400"
-                              onClick={() => setResetTarget({ id: c.id, name: c.name })}
-                              title={lang === "ar" ? "تصفير عداد الاستهلاك لهذه الشركة" : "Reset usage counter for this company"}
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              <span className="hidden sm:inline ml-1">{lang === "ar" ? "تصفير" : "Reset"}</span>
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => openQuotaDialog(c)}
+                          >
+                            <TrendingUp className="w-3 h-3 mr-1.5 text-blue-400" />
+                            {lang === "ar" ? "تعيين الحصة" : "Set Quota"}
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -565,74 +512,6 @@ export default function AdminAiQuota() {
                 </>
               ) : (
                 lang === "ar" ? "حفظ التغييرات" : "Save Quota"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Quota Usage Modal */}
-      <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-500">
-              <RotateCcw className="w-5 h-5" />
-              {lang === "ar"
-                ? `تصفير عداد الاستهلاك: ${resetTarget?.name}`
-                : `Reset Usage Counter: ${resetTarget?.name}`}
-            </DialogTitle>
-            <DialogDescription>
-              {lang === "ar"
-                ? "سيتم تصفير عداد الرموز المستهلكة لهذا الشهر (Used This Month) ليعود إلى 0 والنسبة إلى 0%."
-                : "This will reset the monthly token usage counter back to 0 and usage back to 0%."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
-              {lang === "ar"
-                ? "💡 التصفير يعيد عداد الرموز المستهلكة إلى 0 فوراً للشهر الحالي. المحادثات وسجل الشات ستظل محفوظة بشكل طبيعي."
-                : "💡 Resetting brings consumed tokens back to 0 immediately for this month while preserving chat records."}
-            </div>
-
-            <div className="flex items-start gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="delete-logs-checkbox"
-                checked={deleteLogsOption}
-                onChange={(e) => setDeleteLogsOption(e.target.checked)}
-                className="mt-1 cursor-pointer"
-              />
-              <Label htmlFor="delete-logs-checkbox" className="text-xs cursor-pointer leading-relaxed text-muted-foreground">
-                {lang === "ar"
-                  ? "حذف رسائل وسجلات المحادثات (Chat Logs) لهذا الشهر أيضاً (اختياري)"
-                  : "Also permanently delete chat logs for this month (optional)"}
-              </Label>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResetTarget(null)}>
-              {lang === "ar" ? "إلغاء" : "Cancel"}
-            </Button>
-            <Button
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={() => {
-                if (!resetTarget) return;
-                resetUsageMutation.mutate({
-                  companyId: resetTarget.id === 0 ? undefined : resetTarget.id,
-                  deleteLogs: deleteLogsOption,
-                });
-              }}
-              disabled={resetUsageMutation.isPending}
-            >
-              {resetUsageMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {lang === "ar" ? "جاري التصفير..." : "Resetting..."}
-                </>
-              ) : (
-                lang === "ar" ? "تأكيد تصفير العداد إلى 0" : "Confirm Reset to 0"
               )}
             </Button>
           </DialogFooter>
