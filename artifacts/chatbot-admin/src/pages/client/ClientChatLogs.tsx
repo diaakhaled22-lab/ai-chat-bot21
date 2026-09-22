@@ -27,6 +27,8 @@ function extractUserName(messages: any[]): string | null {
     if (!msg.customerMessage) continue;
 
     const text = msg.customerMessage.trim();
+    if (text.startsWith("/")) continue;
+    if (/^\d+$/.test(text)) continue;
     
     // 1. Direct regex match (handles Arabic & English: "My name is X", "Name: X", "اسمي X", "الاسم: X", etc.)
     const match = text.match(/(?:my name is|i am|i'm|name:|username:|اسمي هو|اسمي|انا|أنا|الاسم:|الاسم)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
@@ -41,7 +43,7 @@ function extractUserName(messages: any[]): string | null {
         const botText = prevMsg.botResponse.toLowerCase();
         // Check if bot asked about "name" or "اسم"
         if ((botText.includes("name") || botText.includes("اسم") || botText.includes("who are you")) && text.split(/\s+/).length <= 3) {
-          if (!text.includes("?") && !text.includes("لا") && !text.includes("no")) {
+          if (!text.includes("?") && !text.includes("لا") && !text.includes("no") && !/^\d+$/.test(text)) {
              return text;
           }
         }
@@ -467,7 +469,7 @@ export default function ClientChatLogs() {
                <p>{lang === "ar" ? "اختر محادثة لعرض التفاصيل" : "Select a conversation to view"}</p>
              </div>
           ) : (
-             <>
+              <>
                 {/* Chat Header */}
                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/5 shadow-sm z-10 shrink-0">
                   <div className="flex items-center gap-3">
@@ -475,7 +477,12 @@ export default function ClientChatLogs() {
                        {getChannelIcon(selectedSession.channel)}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-sm capitalize">{selectedSession.channel} {lang === "ar" ? "مستخدم" : "User"}</h3>
+                      <h3 className="font-semibold text-sm capitalize">
+                        {(() => {
+                           const uName = extractUserName(selectedSession.messages);
+                           return uName ? uName : `${selectedSession.channel} ${lang === "ar" ? "مستخدم" : "User"}`;
+                        })()}
+                      </h3>
                       <p className="text-xs text-muted-foreground">{selectedSession.messages.length} {lang === "ar" ? "رسالة" : "messages"}</p>
                     </div>
                   </div>
