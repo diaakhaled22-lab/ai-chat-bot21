@@ -26,6 +26,7 @@ import AdminBroadcast from "@/pages/admin/AdminBroadcast";
 import AdminAITester from "@/pages/admin/AdminAITester";
 import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
 import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
+import AdminAiQuota from "@/pages/admin/AdminAiQuota";
 
 import ClientCompany from "./pages/client/ClientCompany";
 import ClientPrompts from "./pages/client/ClientPrompts";
@@ -148,6 +149,9 @@ function Router() {
       </Route>
       <Route path="/admin/malfunctions">
         {() => <ProtectedRoute component={AdminMalfunctions} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/ai-quota">
+        {() => <ProtectedRoute component={AdminAiQuota} allowedRole="admin" />}
       </Route>
 
       {/* Client Routes */}

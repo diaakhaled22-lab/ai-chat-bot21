@@ -28,6 +28,7 @@ import {
   ShieldCheck, ShieldAlert,
   AlertTriangle,
   Database,
+  Cpu,
   type LucideIcon,
 } from "lucide-react";
 import { PenTool } from "lucide-react";
@@ -494,6 +495,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/companies",          label: "Companies",          icon: Building2 },
     { href: "/admin/chat-logs",          label: "Chat Logs",          icon: MessageSquare, badge: true },
     { href: "/admin/tickets",            label: "Customer Problems",  icon: LifeBuoy, ticketBadge: true },
+    { href: "/admin/ai-quota",           label: "AI / Quota",         icon: Cpu },
     { href: "/admin/broadcast",          label: "Broadcast",          icon: Megaphone },
     { href: "/admin/webhook-messenger",  label: "Webhook Channels",  icon: Webhook },
     { href: "/admin/ai-tester",          label: "AI Tester",          icon: Sparkles },
