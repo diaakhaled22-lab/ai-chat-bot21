@@ -499,8 +499,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/ai-tester",          label: "AI Tester",          icon: Sparkles },
     { href: "/admin/audit-logs",         label: "Audit Logs",         icon: ShieldAlert },
     { href: "/admin/attack-monitoring",  label: "Attack Monitoring",  icon: ShieldAlert },
-    { href: "/admin/security",           label: "Security Settings",           icon: ShieldCheck },
-    { href: "/admin/malfunctions",       label: lang === "ar" ? "الأعطال" : "Malfunctions", icon: AlertTriangle },
+    { href: "/admin/security",           label: "Security Settings",  icon: ShieldCheck },
+    { href: "/admin/malfunctions",       label: "Malfunctions",       icon: AlertTriangle },
     { href: "/admin/settings",           label: "Settings",           icon: Settings },
   ];
 
@@ -515,7 +515,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },
     { href: "/client/usage",            label: t("nav_api_tokens"),      icon: KeyRound },
-    { href: "/client/malfunctions",     label: lang === "ar" ? "الأعطال" : "Malfunctions", icon: AlertTriangle },
+    { href: "/client/malfunctions",     label: t("nav_malfunctions") || "Malfunctions", icon: AlertTriangle },
     { href: "/client/settings",         label: t("nav_settings"),        icon: Settings },
   ];
 
