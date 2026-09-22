@@ -851,7 +851,7 @@ export default function AdminCompanies() {
                         {formatQuota(company.monthlyTokenQuota)}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground/50">Unlimited</span>
+                      <span className="text-xs text-muted-foreground/50">No Quota</span>
                     )}
                   </div>
 
@@ -1012,7 +1012,7 @@ export default function AdminCompanies() {
               Monthly Token Quota
             </DialogTitle>
             <DialogDescription>
-              Limit monthly AI token usage for <strong>{quotaTarget?.name}</strong>. Leave blank for unlimited.
+              Assign a monthly token quota for <strong>{quotaTarget?.name}</strong> to draw from the Support AI Agent. If no quota is set, Support AI is disabled for this company.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-2">
@@ -1055,7 +1055,7 @@ export default function AdminCompanies() {
                 className="text-muted-foreground text-xs"
                 onClick={() => setQuotaInput("")}
               >
-                <X className="w-3 h-3 mr-1" /> Clear — set to Unlimited
+                <X className="w-3 h-3 mr-1" /> Clear — disable Support AI Quota
               </Button>
             </div>
 

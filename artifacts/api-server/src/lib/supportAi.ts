@@ -35,14 +35,20 @@ export async function getSupportAiSettings(): Promise<{
 
 /**
  * Resolves the AI credentials for a company.
- * If the company has a quota assigned (monthlyTokenQuota != null) OR has no individual key,
- * it is linked to and uses the Support AI Agent credentials.
+ * - IF a token quota is set (monthlyTokenQuota > 0):
+ *   Usage is drawn from the Support AI Agent credentials (configured on AI / Quota page).
+ * - IF NO token quota is set (null or <= 0):
+ *   It will NEVER draw from the Support AI Agent.
+ *   It only draws from the company's own configured aiAgentApiKey.
+ *   If the company has no personal key, it throws an error.
  */
 export async function resolveCompanyAi(
   company: typeof companiesTable.$inferSelect
 ): Promise<ResolvedAiConfig> {
-  // If company has an assigned quota OR has no API key of its own, use Support AI Agent
-  if (company.monthlyTokenQuota !== null || !company.aiAgentApiKey) {
+  const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
+
+  // Case 1: Company has an assigned quota -> Use Support AI Agent
+  if (hasQuota) {
     const supportAi = await getSupportAiSettings();
     if (supportAi && supportAi.apiKey) {
       return {
@@ -51,10 +57,12 @@ export async function resolveCompanyAi(
         model: supportAi.model,
         isSupportAgent: true,
       };
+    } else {
+      throw new Error("لم يتم إعداد مفتاح وكيل الدعم الفني (Support AI Agent) في لوحة الإدارة حتى الآن.");
     }
   }
 
-  // Fallback to company's own configured API key
+  // Case 2: No quota set -> NEVER use Support AI Agent. Only use company's personal key if configured.
   if (company.aiAgentApiKey) {
     const provider = (company.aiProvider as any) || "openai";
     const model = company.aiModel || (
@@ -71,18 +79,27 @@ export async function resolveCompanyAi(
     };
   }
 
-  throw new Error("No AI API key configured. Either set a company API key or assign a Quota linked to the Support AI Agent.");
+  // Case 3: No quota and no personal key -> Blocked
+  throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة، ولا يوجد مفتاح API خاص بها. يرجى مراجعة إدارة المنصة لتحديد حصة.");
 }
 
 /**
- * Checks whether the company has exceeded its monthly token quota.
- * Throws an error if exceeded.
+ * Checks whether the company has exceeded its monthly token quota or has no quota allocated.
+ * Throws an error if exceeded or if no quota is allocated without a personal key.
  */
 export async function assertCompanyQuotaNotExceeded(
   company: typeof companiesTable.$inferSelect
 ): Promise<{ usedTokens: number; quota: number | null }> {
-  if (company.monthlyTokenQuota === null || company.monthlyTokenQuota === undefined) {
-    return { usedTokens: 0, quota: null }; // Unlimited
+  const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
+
+  // If no quota is set:
+  if (!hasQuota) {
+    // If company provided their own API key, they can run on their own key
+    if (company.aiAgentApiKey) {
+      return { usedTokens: 0, quota: null };
+    }
+    // Otherwise, blocked completely!
+    throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة. يرجى تحديد حصة من لوحة الإدارة أولاً لتفعيل الردود.");
   }
 
   const monthStart = new Date();
@@ -104,8 +121,8 @@ export async function assertCompanyQuotaNotExceeded(
     usedTokens += Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
   }
 
-  if (usedTokens >= company.monthlyTokenQuota) {
-    throw new Error(`Monthly token quota of ${company.monthlyTokenQuota.toLocaleString()} tokens exceeded (${usedTokens.toLocaleString()} used). Responses are paused until the next billing cycle or quota increase.`);
+  if (usedTokens >= company.monthlyTokenQuota!) {
+    throw new Error(`تم تجاوز حصة الرموز الشهرية المحددة للشركة (${company.monthlyTokenQuota!.toLocaleString()} رمز). يرجى ترقية الحصة.`);
   }
 
   return { usedTokens, quota: company.monthlyTokenQuota };

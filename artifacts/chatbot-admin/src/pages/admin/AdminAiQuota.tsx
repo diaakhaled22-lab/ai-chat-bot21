@@ -61,7 +61,7 @@ const QUOTA_PRESETS = [
 ];
 
 function formatQuota(num: number | null | undefined): string {
-  if (!num) return "Unlimited";
+  if (!num) return "No Quota";
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(num % 1_000_000 === 0 ? 0 : 1)}M`;
   if (num >= 1_000) return `${(num / 1_000).toFixed(0)}K`;
   return num.toLocaleString();
@@ -318,7 +318,9 @@ export default function AdminAiQuota() {
                               {formatQuota(c.monthlyTokenQuota)}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground/60 italic">{lang === "ar" ? "غير محدود" : "Unlimited"}</span>
+                            <span className="text-muted-foreground/60 text-[11px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">
+                              {lang === "ar" ? "بدون حصة (معطل)" : "No Quota (Disabled)"}
+                            </span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono">
@@ -376,8 +378,8 @@ export default function AdminAiQuota() {
             </DialogTitle>
             <DialogDescription>
               {lang === "ar"
-                ? "حدد الحد الأقصى لعدد الرموز (Tokens) التي يمكن للبوت استهلاكها شهرياً."
-                : "Limit the number of AI tokens this company's chatbot can consume per calendar month."}
+                ? "يتم خصم الرموز المستهلكة من مفتاح Support AI Agent حتى استهلاك هذه الحصة. بدون حصة، لن يتم السحب من مفتاح المنصة إطلاقاً."
+                : "Usage will be deducted from the Support AI Agent API key up to this limit. Without an assigned quota, Support AI will not be drawn from."}
             </DialogDescription>
           </DialogHeader>
 
@@ -389,7 +391,7 @@ export default function AdminAiQuota() {
               <div className="relative">
                 <Input
                   id="quota-input-ai"
-                  placeholder={lang === "ar" ? "مثال: 1000000 أو اتركه فارغاً لغير محدود" : "e.g. 1000000 (leave blank for unlimited)"}
+                  placeholder={lang === "ar" ? "مثال: 1000000 أو اتركه فارغاً لتعطيل الحصة" : "e.g. 1000000 (leave blank to disable quota)"}
                   value={quotaInput}
                   onChange={(e) => setQuotaInput(e.target.value.replace(/[^0-9]/g, ""))}
                   className="font-mono text-sm"
@@ -428,7 +430,7 @@ export default function AdminAiQuota() {
                   onClick={() => setQuotaInput("")}
                 >
                   <X className="w-3 h-3 mr-1" />
-                  {lang === "ar" ? "غير محدود" : "Unlimited"}
+                  {lang === "ar" ? "تعطيل الحصة" : "Clear — Disable Quota"}
                 </Button>
               </div>
             </div>
