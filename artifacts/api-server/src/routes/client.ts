@@ -868,7 +868,23 @@ router.get("/client/dashboard", async (req, res) => {
       .limit(1);
 
     if (!company) {
-      res.status(404).json({ error: "No company found" });
+      // Return empty stats so the dashboard page always renders
+      const now = new Date();
+      res.json({
+        companyName: null,
+        aiProvider: null,
+        aiModel: null,
+        isActive: false,
+        monthlyTokenQuota: null,
+        totalMessages: 0,
+        estimatedInputTokens: 0,
+        estimatedOutputTokens: 0,
+        estimatedCostUsd: 0,
+        pricingPer1MTokens: { input: 0, output: 0 },
+        byChannel: [],
+        periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
+        hasCompany: false,
+      });
       return;
     }
 
@@ -936,6 +952,7 @@ router.get("/client/dashboard", async (req, res) => {
       pricingPer1MTokens: modelPricing,
       byChannel: Object.entries(byChannelMap).map(([channel, d]) => ({ channel, ...d })),
       periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
+      hasCompany: true,
     });
   } catch (err) {
     logger.error({ err }, "Get client dashboard error");

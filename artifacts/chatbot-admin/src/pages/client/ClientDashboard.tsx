@@ -27,6 +27,7 @@ interface DashboardData {
   pricingPer1MTokens: { input: number; output: number };
   byChannel: Array<{ channel: string; messages: number; inputTokens: number; outputTokens: number }>;
   periodLabel: string;
+  hasCompany: boolean;
 }
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -192,14 +193,14 @@ export default function ClientDashboard() {
         </div>
       ) : (
         <>
-          {/* Error notice */}
-          {isError && !data && (
+          {/* Notice when no company or error */}
+          {(isError || !data?.hasCompany) && (
             <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400">
               <BarChart2 className="w-4 h-4 shrink-0" />
               <span>
                 {lang === "ar"
-                  ? "لا توجد بيانات استهلاك حتى الآن. ابدأ المحادثة لتظهر هنا."
-                  : "No usage data yet. Start chatting to see stats here."}
+                  ? "لم تقم بإعداد ملف الشركة بعد. توجه إلى 'بيانات الشركة' لضبط النموذج ومزود الخدمة."
+                  : "Company profile not set up yet. Go to 'Company Profile' to configure your AI provider and model."}
               </span>
             </div>
           )}
