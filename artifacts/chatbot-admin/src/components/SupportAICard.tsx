@@ -386,7 +386,7 @@ export default function SupportAICard() {
               {/* API Key */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium block">
-                  {lang === "ar" ? "3. مفتاح الـ API" : "3. API Key"}
+                  {lang === "ar" ? "مفتاح الـ API" : "API Key"}
                 </label>
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 overflow-hidden">
                   <div className="border-b border-emerald-500/20 px-4 py-2.5 flex items-center justify-between">

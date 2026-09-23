@@ -61,12 +61,19 @@ router.get("/admin/stats", async (req, res) => {
     const totalCompanies = totalCompaniesRow?.count ?? 0;
     const activeCompanies = activeRow?.count ?? 0;
     const inactiveCompanies = Number(totalCompanies) - Number(activeCompanies);
+
+    const [quotaRow] = await db
+      .select({ count: count() })
+      .from(companiesTable)
+      .where(sql`${companiesTable.monthlyTokenQuota} IS NOT NULL AND ${companiesTable.monthlyTokenQuota} > 0`);
+    const quotaCompanies = quotaRow?.count ?? 0;
+
     const totalClients = clientsRow?.count ?? 0;
     const totalChatLogs = totalLogsRow?.count ?? 0;
     const todayChatLogs = todayLogsRow?.count ?? 0;
     const openTicketCount = openTicketsRow?.count ?? 0;
 
-    res.json({ totalCompanies, activeCompanies, inactiveCompanies, totalClients, totalChatLogs, todayChatLogs, openTicketCount });
+    res.json({ totalCompanies, activeCompanies, inactiveCompanies, quotaCompanies, totalClients, totalChatLogs, todayChatLogs, openTicketCount });
   } catch (err) {
     logger.error({ err }, "Get admin stats error");
     res.status(500).json({ error: "Internal server error" });

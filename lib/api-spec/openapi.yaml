@@ -927,7 +927,7 @@ components:
 
     AdminStats:
       type: object
-      required: [totalCompanies, activeCompanies, inactiveCompanies, totalClients, totalChatLogs, todayChatLogs]
+      required: [totalCompanies, activeCompanies, inactiveCompanies, totalClients, totalChatLogs, todayChatLogs, quotaCompanies]
       properties:
         totalCompanies:
           type: integer
@@ -935,6 +935,9 @@ components:
           type: integer
         inactiveCompanies:
           type: integer
+        quotaCompanies:
+          type: integer
+          description: Companies with an assigned token quota
         totalClients:
           type: integer
         totalChatLogs:

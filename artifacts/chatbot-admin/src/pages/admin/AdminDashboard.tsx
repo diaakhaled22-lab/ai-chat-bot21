@@ -231,7 +231,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Platform stat cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="bg-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
@@ -264,6 +264,18 @@ export default function AdminDashboard() {
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-20" /> : (
               <div className="text-3xl font-bold">{stats?.inactiveCompanies || 0}</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Quota Assigned</CardTitle>
+            <Coins className="w-4 h-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <div className="text-3xl font-bold">{stats?.quotaCompanies || 0}</div>
             )}
           </CardContent>
         </Card>
