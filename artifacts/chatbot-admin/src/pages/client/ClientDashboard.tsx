@@ -183,27 +183,27 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* Main stat cards */}
+      {/* Main stat cards — always shown (0 when loading/error) */}
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="bg-card border border-border rounded-xl p-5 h-24 animate-pulse" />
           ))}
         </div>
-      ) : isError ? (
-        <div className="bg-card border border-border rounded-xl p-12 flex flex-col items-center gap-3 text-muted-foreground">
-          <BarChart2 className="w-12 h-12 opacity-20" />
-          <p className="text-lg font-medium">
-            {lang === "ar" ? "لا توجد بيانات متاحة" : "No data available"}
-          </p>
-          <p className="text-sm text-center">
-            {lang === "ar"
-              ? "قم بتهيئة بيانات شركتك وابدأ المحادثة أولاً."
-              : "Set up your company and start chatting to see stats here."}
-          </p>
-        </div>
       ) : (
         <>
+          {/* Error notice */}
+          {isError && !data && (
+            <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm text-amber-400">
+              <BarChart2 className="w-4 h-4 shrink-0" />
+              <span>
+                {lang === "ar"
+                  ? "لا توجد بيانات استهلاك حتى الآن. ابدأ المحادثة لتظهر هنا."
+                  : "No usage data yet. Start chatting to see stats here."}
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={MessageSquare}
