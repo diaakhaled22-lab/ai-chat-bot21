@@ -164,6 +164,12 @@ export default function AdminDashboard() {
     refetchInterval: 60 * 1000,
   });
 
+  const { data: companies, isLoading: companiesLoading } = useQuery<any[]>({
+    queryKey: ["admin-companies"],
+    queryFn: () => customFetch("/api/admin/companies"),
+    refetchInterval: 5 * 60 * 1000,
+  });
+
   const pieData = (usage?.byModel ?? []).map((m) => ({
     ...m,
     name: m.model,
@@ -171,6 +177,20 @@ export default function AdminDashboard() {
   }));
 
   const hasUsage = (usage?.totalTokens ?? 0) > 0;
+
+  const quotaCompanies = (companies ?? [])
+    .filter(c => c.monthlyTokenQuota != null && c.monthlyTokenQuota > 0)
+    .map(c => {
+      const u = (usage?.byCompany ?? []).find(x => x.companyId === c.id);
+      return {
+        ...c,
+        messages: u?.messages ?? 0,
+        inputTokens: u?.inputTokens ?? 0,
+        outputTokens: u?.outputTokens ?? 0,
+        costUsd: u?.costUsd ?? 0,
+      };
+    })
+    .sort((a, b) => b.monthlyTokenQuota - a.monthlyTokenQuota);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -560,6 +580,86 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   </tfoot>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quota Assigned Companies table */}
+        <Card className="bg-card border-border/50">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Coins className="w-4 h-4 text-amber-500" />
+                Quota Assigned Companies
+              </CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Companies with an active monthly token quota</p>
+          </CardHeader>
+          <CardContent className="p-0">
+            {companiesLoading || usageLoading ? (
+              <div className="p-6 space-y-3">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+              </div>
+            ) : quotaCompanies.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground">
+                <Coins className="w-8 h-8 opacity-20" />
+                <p className="text-xs">No companies have assigned quotas.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-muted/20">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Company</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Model</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Quota Assigned</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Messages</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Tokens Used</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Est. Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {quotaCompanies.map((c, i) => {
+                      const totalUsed = c.inputTokens + c.outputTokens;
+                      const quotaShare = c.monthlyTokenQuota > 0 ? (totalUsed / c.monthlyTokenQuota) * 100 : 0;
+                      return (
+                        <tr key={c.id} className="hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
+                                {i + 1}
+                              </span>
+                              <div>
+                                <p className="font-medium text-foreground">{c.name}</p>
+                                <p className="text-muted-foreground/60 capitalize">{c.aiProvider ?? "unknown"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.aiModel ?? ""] ?? MODEL_COLORS["unknown"] }} />
+                              <span className="font-mono">{c.aiModel ?? "unknown"}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums">{formatTokens(c.monthlyTokenQuota)}</td>
+                          <td className="px-4 py-3 text-right tabular-nums">{c.messages.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right tabular-nums">
+                            <div className="flex flex-col items-end gap-1">
+                              <span>{formatTokens(totalUsed)}</span>
+                              <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full rounded-full ${quotaShare > 90 ? 'bg-rose-500' : quotaShare > 75 ? 'bg-amber-500' : 'bg-emerald-500/60'}`} style={{ width: `${Math.min(quotaShare, 100)}%` }} />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="tabular-nums font-semibold text-emerald-400">{formatCost(c.costUsd)}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
                 </table>
               </div>
             )}

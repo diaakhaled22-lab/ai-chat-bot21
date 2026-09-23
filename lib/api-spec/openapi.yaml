@@ -1031,6 +1031,8 @@ components:
           enum: ["openai", "anthropic", "google", "openrouter", null]
         aiModel:
           type: ["string", "null"]
+        monthlyTokenQuota:
+          type: ["integer", "null"]
         telegramBotApiKey:
           type: ["string", "null"]
         telegramBotUsername:
@@ -1122,6 +1124,8 @@ components:
           enum: ["openai", "anthropic", "google", "openrouter", null]
         aiModel:
           type: ["string", "null"]
+        monthlyTokenQuota:
+          type: ["integer", "null"]
         telegramBotApiKey:
           type: ["string", "null"]
         telegramEnabled:
