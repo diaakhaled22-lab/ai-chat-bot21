@@ -858,6 +858,91 @@ router.delete("/client/chat-logs/:id", async (req, res) => {
   }
 });
 
+// GET /client/dashboard — returns current-month usage stats + assigned quota
+router.get("/client/dashboard", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "No company found" });
+      return;
+    }
+
+    // Always compute for the current month so quota progress is accurate
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const logs = await db
+      .select({
+        customerMessage: chatLogsTable.customerMessage,
+        botResponse: chatLogsTable.botResponse,
+        channel: chatLogsTable.channel,
+        createdAt: chatLogsTable.createdAt,
+      })
+      .from(chatLogsTable)
+      .where(
+        and(
+          eq(chatLogsTable.companyId, company.id),
+          gte(chatLogsTable.createdAt, monthStart),
+          lte(chatLogsTable.createdAt, monthEnd),
+        )
+      );
+
+    const CHARS_PER_TOKEN = 4;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const byChannelMap: Record<string, { messages: number; inputTokens: number; outputTokens: number }> = {};
+
+    for (const log of logs) {
+      const it = Math.ceil((log.customerMessage?.length ?? 0) / CHARS_PER_TOKEN);
+      const ot = Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
+      totalInputTokens += it;
+      totalOutputTokens += ot;
+      const ch = log.channel;
+      if (!byChannelMap[ch]) byChannelMap[ch] = { messages: 0, inputTokens: 0, outputTokens: 0 };
+      byChannelMap[ch].messages += 1;
+      byChannelMap[ch].inputTokens += it;
+      byChannelMap[ch].outputTokens += ot;
+    }
+
+    const pricing: Record<string, { input: number; output: number }> = {
+      "gpt-4o": { input: 2.50, output: 10.00 }, "gpt-4o-mini": { input: 0.15, output: 0.60 },
+      "gpt-4-turbo": { input: 10.00, output: 30.00 }, "gpt-3.5-turbo": { input: 0.50, output: 1.50 },
+      "claude-3-5-sonnet-20241022": { input: 3.00, output: 15.00 }, "claude-3-5-haiku-20241022": { input: 0.80, output: 4.00 },
+      "claude-3-opus-20240229": { input: 15.00, output: 75.00 }, "claude-3-haiku-20240307": { input: 0.25, output: 1.25 },
+      "gemini-1.5-pro": { input: 1.25, output: 5.00 }, "gemini-1.5-flash": { input: 0.075, output: 0.30 },
+      "gemini-2.0-flash": { input: 0.10, output: 0.40 },
+    };
+    const modelPricing = pricing[company.aiModel ?? ""] ?? { input: 0, output: 0 };
+    const estimatedCostUsd =
+      (totalInputTokens / 1_000_000) * modelPricing.input +
+      (totalOutputTokens / 1_000_000) * modelPricing.output;
+
+    res.json({
+      companyName: company.name,
+      aiProvider: company.aiProvider,
+      aiModel: company.aiModel,
+      isActive: company.isActive,
+      monthlyTokenQuota: company.monthlyTokenQuota ?? null,
+      totalMessages: logs.length,
+      estimatedInputTokens: totalInputTokens,
+      estimatedOutputTokens: totalOutputTokens,
+      estimatedCostUsd: Math.round(estimatedCostUsd * 10000) / 10000,
+      pricingPer1MTokens: modelPricing,
+      byChannel: Object.entries(byChannelMap).map(([channel, d]) => ({ channel, ...d })),
+      periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
+    });
+  } catch (err) {
+    logger.error({ err }, "Get client dashboard error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /client/usage
 router.get("/client/usage", async (req, res) => {
   try {

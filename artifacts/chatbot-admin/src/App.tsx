@@ -41,6 +41,7 @@ import ClientUniversalChat from "@/pages/client/ClientUniversalChat";
 import ClientWebhookHistory from "@/pages/client/ClientWebhookHistory";
 import ClientWidgetPreview from "@/pages/client/ClientWidgetPreview";
 import ClientChannels from "@/pages/client/ClientChannels";
+import ClientDashboard from "@/pages/client/ClientDashboard";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -155,6 +156,9 @@ function Router() {
       </Route>
 
       {/* Client Routes */}
+              <Route path="/client/dashboard">
+          {() => <ProtectedRoute component={ClientDashboard} allowedRole="client" />}
+        </Route>
               <Route path="/client/company">
           {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}
         </Route>

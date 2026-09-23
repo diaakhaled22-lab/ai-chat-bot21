@@ -507,6 +507,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   ];
 
   const clientLinks: NavLink[] = [
+    { href: "/client/dashboard",        label: t("nav_dashboard") || "Dashboard",  icon: LayoutDashboard },
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
     { href: "/client/prompts",          label: t("nav_prompts") || "Prompts", icon: PenTool },
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
