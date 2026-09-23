@@ -13,16 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-  SelectSeparator,
-} from "@/components/ui/select";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -130,21 +121,13 @@ function ModelPicker({
 }: { selectedProvider: string; selectedModel: string; onSelect: (provider: string, model: string) => void }) {
   const { lang } = useLanguage();
   const [activeProvider, setActiveProvider] = useState<string>(selectedProvider || "openai");
-
-  useEffect(() => {
-    if (selectedProvider) {
-      setActiveProvider(selectedProvider);
-    }
-  }, [selectedProvider]);
-
   const { data: syncedCatalog } = useQuery<AiModelCatalogResponse>({
     queryKey: ["admin-ai-model-catalog"],
     queryFn: () => customFetch("/api/admin/ai-models") as Promise<AiModelCatalogResponse>,
     staleTime: 30 * 60 * 1000,
     refetchInterval: 60 * 60 * 1000,
   });
-
-  const provider = PROVIDERS.find((p) => p.id === activeProvider) ?? PROVIDERS[0];
+  const provider   = PROVIDERS.find((p) => p.id === activeProvider) ?? PROVIDERS[0];
   const dynamicModels = syncedCatalog?.providers?.[activeProvider] ?? [];
   const allModels = mergeDynamicModels(
     provider.models.map((model) => ({ value: model.id, label: model.label, free: model.tier === "free" })),
@@ -152,38 +135,28 @@ function ModelPicker({
   );
   const freeModels = allModels.filter((m) => m.free);
   const paidModels = allModels.filter((m) => !m.free);
-
-  const selectedModelInfo =
-    selectedProvider === activeProvider
-      ? allModels.find((m) => m.value === selectedModel) ?? { value: selectedModel, label: selectedModel, free: false }
-      : null;
+  const isFreeSelected = selectedProvider === activeProvider && freeModels.some((m) => m.value === selectedModel);
+  const isPaidSelected = selectedProvider === activeProvider && paidModels.some((m) => m.value === selectedModel);
+  const freeValue = isFreeSelected ? selectedModel : "";
+  const paidValue = isPaidSelected ? selectedModel : "";
+  const selectClass =
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground " +
+    "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:opacity-50 cursor-pointer appearance-none";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Provider tabs */}
-      <div className="flex gap-1.5 p-1 rounded-lg bg-muted/40 border border-border/50 flex-wrap">
-        {PROVIDERS.map((p) => {
-          const isActive = p.id === activeProvider;
-          const isSelected = p.id === selectedProvider;
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setActiveProvider(p.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                isActive
-                  ? "bg-background text-foreground shadow-sm border border-border/60"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
-              {p.label}
-              {isSelected && (
-                <span className="text-[10px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300 font-normal">active</span>
-              )}
-            </button>
-          );
-        })}
+      <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/50">
+        {PROVIDERS.map((p) => (
+          <button key={p.id} onClick={() => setActiveProvider(p.id)}
+            className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-md transition-all ${
+              activeProvider === p.id
+                ? "bg-card text-foreground shadow-sm border border-border/50"
+                : "text-muted-foreground hover:text-foreground"
+            }`}>
+            {p.label}
+          </button>
+        ))}
       </div>
 
       {/* Free tier notice banner */}
@@ -211,105 +184,61 @@ function ModelPicker({
         </div>
       )}
 
-      {/* Model dropdown menu separating Free and Paid */}
+      <p className="text-[11px] text-muted-foreground">
+        Models are synced automatically every hour from the provider API.
+        {syncedCatalog?.syncedAt && ` Last synced ${new Date(syncedCatalog.syncedAt).toLocaleString()}.`}
+      </p>
+
+      {/* Free Tier */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            {activeProvider.toUpperCase()} Models ({allModels.length})
-          </span>
-          {selectedModelInfo && (
-            <span
-              className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                selectedModelInfo.free
-                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                  : "bg-violet-500/15 text-violet-400 border border-violet-500/30"
-              }`}
-            >
-              {selectedModelInfo.free ? <Zap className="w-3 h-3 text-emerald-400" /> : <Sparkles className="w-3 h-3 text-violet-400" />}
-              {selectedModelInfo.free ? "Free Tier / مجاني" : "Paid Tier / مدفوع"}
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-3 h-3 text-amber-400" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Free Tier</span>
+          {isFreeSelected && (
+            <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+              <CheckCircle2 className="w-3 h-3" /> Selected
             </span>
           )}
         </div>
+        <div className="relative">
+          <select value={freeValue} onChange={(e) => { if (e.target.value) onSelect(activeProvider, e.target.value); }}
+            className={`${selectClass} ${isFreeSelected ? "border-amber-500/50 bg-amber-500/5" : ""}`}>
+            <option value="">— Select free model —</option>
+            {freeModels.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        </div>
+        {isFreeSelected && (
+          <p className="text-xs text-muted-foreground px-1">Automatically synced from the provider API.</p>
+        )}
+      </div>
 
-        <Select
-          value={selectedProvider === activeProvider ? selectedModel : ""}
-          onValueChange={(modelValue) => onSelect(activeProvider, modelValue)}
-        >
-          <SelectTrigger className="w-full bg-background border-border h-10 px-3 text-xs sm:text-sm">
-            <SelectValue placeholder="— Select Model / اختيار النموذج —">
-              {selectedModelInfo ? (
-                <span className="flex items-center gap-2 truncate">
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded font-semibold uppercase shrink-0 ${
-                      selectedModelInfo.free
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : "bg-violet-500/20 text-violet-300 border border-violet-500/30"
-                    }`}
-                  >
-                    {selectedModelInfo.free ? "Free" : "Paid"}
-                  </span>
-                  <span className="font-medium text-foreground truncate">{selectedModelInfo.label}</span>
-                  <span className="text-[11px] text-muted-foreground font-mono truncate hidden sm:inline">
-                    ({selectedModelInfo.value})
-                  </span>
-                </span>
-              ) : undefined}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="max-h-[320px]">
-            {freeModels.length > 0 && (
-              <SelectGroup>
-                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 px-2 py-1.5 bg-emerald-500/10 rounded-sm mb-1">
-                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                  Free Models (النماذج المجانية)
-                </SelectLabel>
-                {freeModels.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="cursor-pointer py-2">
-                    <div className="flex items-center justify-between w-full gap-3">
-                      <span className="font-medium text-foreground">{m.label}</span>
-                      <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                        {m.value}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )}
-
-            {freeModels.length > 0 && paidModels.length > 0 && (
-              <SelectSeparator className="my-1.5 bg-border/60" />
-            )}
-
-            {paidModels.length > 0 && (
-              <SelectGroup>
-                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-violet-400 px-2 py-1.5 bg-violet-500/10 rounded-sm mb-1">
-                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                  Paid / Pro Models (النماذج المدفوعة)
-                </SelectLabel>
-                {paidModels.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="cursor-pointer py-2">
-                    <div className="flex items-center justify-between w-full gap-3">
-                      <span className="font-medium text-foreground">{m.label}</span>
-                      <span className="text-[10px] text-violet-300 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
-                        {m.value}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )}
-          </SelectContent>
-        </Select>
-
-        <p className="text-[11px] text-muted-foreground flex items-center justify-between pt-0.5">
-          <span>Models are synced automatically from the provider API.</span>
-          {syncedCatalog?.syncedAt && (
-            <span>
-              Last synced{" "}
-              {new Date(syncedCatalog.syncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      {/* Paid Tier */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="w-3 h-3 text-primary" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paid Tier</span>
+          {isPaidSelected && (
+            <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+              <CheckCircle2 className="w-3 h-3" /> Selected
             </span>
           )}
-        </p>
+        </div>
+        <div className="relative">
+          <select value={paidValue} onChange={(e) => { if (e.target.value) onSelect(activeProvider, e.target.value); }}
+            className={`${selectClass} ${isPaidSelected ? "border-primary/50 bg-primary/5" : ""}`}>
+            <option value="">— Select paid model —</option>
+            {paidModels.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        </div>
+        {isPaidSelected && (
+          <p className="text-xs text-muted-foreground px-1">Automatically synced from the provider API.</p>
+        )}
       </div>
     </div>
   );
@@ -501,7 +430,7 @@ export default function QuotaAICard() {
 
               {/* Model picker */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Select Measurement Model (اختيار نموذج القياس)</label>
+                <label className="text-sm font-medium mb-2 block">{lang === "ar" ? "اختر النموذج" : "Select Model"}</label>
                 <ModelPicker
                   selectedProvider={selectedProvider}
                   selectedModel={selectedModel}
@@ -557,7 +486,7 @@ export default function QuotaAICard() {
                       )}
                       {aiStatus?.status === "invalid_key" && (
                         <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                          {lang === "ar" ? "تم رفض المفتاح من قِبل المزود. يرجى تحديثه أعلاه." : "The API key saved is rejected by the AI provider. Update it above."}
+                          {lang === "ar" ? "تم رفض المفتاح من قِبل المزود. يرجى تحديثه أعلاه." : "The saved key was rejected by the provider. Update it above."}
                         </p>
                       )}
                       {aiStatus?.status === "no_key" && (
@@ -610,22 +539,19 @@ export default function QuotaAICard() {
                 </div>
               </div>
 
-              {/* Save button */}
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={() =>
-                    saveQuotaAi.mutate({
-                      ...(aiApiKey.trim() ? { aiApiKey: aiApiKey.trim() } : {}),
-                      aiProvider: selectedProvider,
-                      aiModel:    selectedModel,
-                    })
-                  }
-                  disabled={saveQuotaAi.isPending}
-                  className="bg-violet-600 hover:bg-violet-700 text-white text-xs px-4"
-                >
-                  {saveQuotaAi.isPending ? "Saving…" : "Save Quota AI Settings"}
-                </Button>
-              </div>
+              <Button
+                onClick={() =>
+                  saveQuotaAi.mutate({
+                    ...(aiApiKey.trim() ? { aiApiKey: aiApiKey.trim() } : {}),
+                    aiProvider: selectedProvider,
+                    aiModel: selectedModel,
+                  })
+                }
+                disabled={saveQuotaAi.isPending}
+                className="w-full"
+              >
+                {saveQuotaAi.isPending ? "Saving…" : "Save Support AI Settings"}
+              </Button>
             </>
           )}
         </CardContent>
