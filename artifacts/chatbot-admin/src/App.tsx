@@ -65,7 +65,7 @@ function ProtectedRoute({ component: Component, allowedRole, ...rest }: any) {
       if (!user) {
         setLocation("/login");
       } else if (allowedRole && user.role !== allowedRole) {
-        setLocation(user.role === "admin" ? "/admin/dashboard" : "/client/company");
+        setLocation(user.role === "admin" ? "/admin/dashboard" : "/client/dashboard");
       }
     }
   }, [user, isLoading, allowedRole, setLocation]);
@@ -92,7 +92,7 @@ function RootRedirect() {
   useEffect(() => {
     if (!isLoading) {
       if (user) {
-        setLocation(user.role === "admin" ? "/admin/dashboard" : "/client/company");
+        setLocation(user.role === "admin" ? "/admin/dashboard" : "/client/dashboard");
       } else {
         setLocation("/login");
       }
