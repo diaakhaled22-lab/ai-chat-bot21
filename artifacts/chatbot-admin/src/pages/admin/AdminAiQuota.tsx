@@ -560,11 +560,11 @@ export default function AdminAiQuota() {
         </Card>
       )}
 
-      {/* Company Quota AI Agent */}
+      {/* Support AI Agent */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Zap className="w-5 h-5 text-amber-400" />
-          {lang === "ar" ? "وكيل حصص الشركات (Company Quota AI Agent)" : "Company Quota AI Agent Configuration"}
+          {lang === "ar" ? "تكوين وكيل الدعم الفني الذكي (Support AI Agent)" : "Support AI Agent Configuration"}
         </h2>
         <QuotaAICard />
       </div>

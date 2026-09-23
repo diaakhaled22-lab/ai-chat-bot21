@@ -1327,15 +1327,15 @@ router.get("/admin/quota-ai-settings", async (req, res) => {
     const rows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
     const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
-    const key = cfg["quota_ai_api_key"] ?? "";
+    const key = cfg["quota_ai_api_key"] || cfg["support_ai_api_key"] || "";
     const masked = key.length > 8 ? `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}` : key ? "****" : "";
     res.json({
       hasKey: !!key,
       maskedKey: masked,
-      aiProvider: cfg["quota_ai_provider"] ?? "openai",
-      aiModel: cfg["quota_ai_model"] ?? "gpt-4o-mini",
+      aiProvider: cfg["quota_ai_provider"] || cfg["support_ai_provider"] || "openai",
+      aiModel: cfg["quota_ai_model"] || cfg["support_ai_model"] || "gpt-4o-mini",
     });
   } catch (err) {
     logger.error({ err }, "Get quota AI settings error");
@@ -1371,17 +1371,17 @@ router.put("/admin/quota-ai-settings", async (req, res) => {
   }
 });
 
-// GET /admin/quota-ai-status â€” live ping of the configured Quota AI
+// GET /admin/quota-ai-status — live ping of the configured Quota AI
 router.get("/admin/quota-ai-status", async (req, res) => {
   try {
     const rows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
     const cfg      = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
-    const apiKey   = cfg["quota_ai_api_key"]  ?? "";
-    const provider = cfg["quota_ai_provider"] ?? "openai";
-    const model    = cfg["quota_ai_model"]    ?? "gpt-4o-mini";
+    const apiKey   = cfg["quota_ai_api_key"]  || cfg["support_ai_api_key"]  || "";
+    const provider = cfg["quota_ai_provider"] || cfg["support_ai_provider"] || "openai";
+    const model    = cfg["quota_ai_model"]    || cfg["support_ai_model"]    || "gpt-4o-mini";
 
     if (!apiKey) {
       res.json({ status: "no_key", provider, model });
