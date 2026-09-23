@@ -153,6 +153,12 @@ export default function AdminAiQuota() {
     refetchInterval: 10_000,
   });
 
+  // Fetch Support AI Settings
+  const { data: supportSettings } = useQuery<{ aiProvider: string; aiModel: string }>({
+    queryKey: ["admin-support-settings"],
+    queryFn: () => customFetch("/api/admin/support-settings"),
+  });
+
   // Quota Mutation
   const setQuotaMutation = useMutation({
     mutationFn: ({ companyId, quota }: { companyId: number; quota: number | null }) =>
@@ -351,10 +357,12 @@ export default function AdminAiQuota() {
       const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
       const cost = hasQuota ? (usage?.cost ?? 0) : 0;
 
+      const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || supportSettings?.aiModel || "gpt-4o-mini";
+
       return [
         `"${c.name.replace(/"/g, '""')}"`,
         `"${c.clientName ? c.clientName.replace(/"/g, '""') : ''}"`,
-        `"${c.aiModel || 'Default'}"`,
+        `"${effectiveModel}"`,
         hasQuota ? (usage?.messages ?? 0) : 0,
         hasQuota ? (usage?.inputTokens ?? 0) : 0,
         hasQuota ? (usage?.outputTokens ?? 0) : 0,
@@ -735,6 +743,8 @@ export default function AdminAiQuota() {
                       ? Math.min(100, Math.max(tokensUsed > 0 ? 1 : 0, Math.round(percentFloat)))
                       : 0;
 
+                    const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || supportSettings?.aiModel || "gpt-4o-mini";
+
                     return (
                       <tr key={c.id} className="hover:bg-muted/20 transition-colors">
                         <td className="px-4 py-3">
@@ -744,8 +754,8 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-mono text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
-                            {c.aiModel || "Default"}
+                          <span className="font-mono text-[11px] font-medium text-foreground bg-muted/70 px-2 py-0.5 rounded border border-border/40 inline-block">
+                            {effectiveModel}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono text-muted-foreground">

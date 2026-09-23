@@ -462,6 +462,8 @@ router.get("/admin/companies", async (req, res) => {
         googleSheetsName: company.googleSheetsName,
         googleSheetsPage: company.googleSheetsPage,
         serviceAccountKey: maskApiKey(company.serviceAccountKey),
+        aiProvider: company.aiProvider ?? null,
+        aiModel: company.aiModel ?? null,
         aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
         aiAgentUrl: company.aiAgentUrl,
         monthlyTokenQuota: company.monthlyTokenQuota ?? null,
