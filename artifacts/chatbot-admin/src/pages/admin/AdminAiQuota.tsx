@@ -24,7 +24,9 @@ import {
   PieChart,
   ArrowUpDown,
   BarChart3,
-  Plus
+  Plus,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import {
   BarChart,
@@ -91,13 +93,34 @@ function formatQuota(num: number | null | undefined): string {
   return num.toLocaleString();
 }
 
+type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent";
+type SortDir = "asc" | "desc";
+
+function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  if (col !== sortKey) return <ArrowUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
+  return sortDir === "desc"
+    ? <ChevronDown className="w-3 h-3 text-primary inline ml-1" />
+    : <ChevronUp className="w-3 h-3 text-primary inline ml-1" />;
+}
+
 export default function AdminAiQuota() {
   const { lang } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("name");
+  const [sortKey, setSortKey] = useState<SortKey>("tokens");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const toggleSort = (col: SortKey) => {
+    if (sortKey === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(col);
+      setSortDir("desc");
+    }
+  };
+
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
   const [quotaInput, setQuotaInput] = useState("");
   const [showModelCostModal, setShowModelCostModal] = useState(false);
@@ -192,13 +215,15 @@ export default function AdminAiQuota() {
 
   // Build Company Stats Map
   const companyUsageMap = useMemo(() => {
-    const map = new Map<number, { tokens: number; messages: number; cost: number }>();
+    const map = new Map<number, { tokens: number; messages: number; cost: number; inputTokens: number; outputTokens: number }>();
     if (usageData?.byCompany) {
       for (const c of usageData.byCompany) {
         map.set(c.companyId, {
           tokens: c.inputTokens + c.outputTokens,
           messages: c.messages,
           cost: c.costUsd,
+          inputTokens: c.inputTokens,
+          outputTokens: c.outputTokens,
         });
       }
     }
@@ -226,30 +251,47 @@ export default function AdminAiQuota() {
     );
 
     result.sort((a, b) => {
-      const aUsage = companyUsageMap.get(a.id)?.tokens ?? 0;
-      const bUsage = companyUsageMap.get(b.id)?.tokens ?? 0;
-
+      const aUsage = companyUsageMap.get(a.id);
+      const bUsage = companyUsageMap.get(b.id);
       const aQuota = a.monthlyTokenQuota ?? 0;
       const bQuota = b.monthlyTokenQuota ?? 0;
-      
-      const aPercent = aQuota > 0 ? aUsage / aQuota : 0;
-      const bPercent = bQuota > 0 ? bUsage / bQuota : 0;
+      const aPercent = aQuota > 0 ? (aUsage?.tokens ?? 0) / aQuota : 0;
+      const bPercent = bQuota > 0 ? (bUsage?.tokens ?? 0) / bQuota : 0;
 
-      switch (sortBy) {
-        case "usage-desc":
-          return bUsage - aUsage;
-        case "usage-asc":
-          return aUsage - bUsage;
-        case "quota-util-desc":
-          return bPercent - aPercent;
+      let cmp = 0;
+      switch (sortKey) {
         case "name":
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case "messages":
+          cmp = (aUsage?.messages ?? 0) - (bUsage?.messages ?? 0);
+          break;
+        case "inputTokens":
+          cmp = (aUsage?.inputTokens ?? 0) - (bUsage?.inputTokens ?? 0);
+          break;
+        case "outputTokens":
+          cmp = (aUsage?.outputTokens ?? 0) - (bUsage?.outputTokens ?? 0);
+          break;
+        case "quota":
+          cmp = aQuota - bQuota;
+          break;
+        case "tokens":
+          cmp = (aUsage?.tokens ?? 0) - (bUsage?.tokens ?? 0);
+          break;
+        case "cost":
+          cmp = (aUsage?.cost ?? 0) - (bUsage?.cost ?? 0);
+          break;
+        case "percent":
+          cmp = aPercent - bPercent;
+          break;
         default:
-          return a.name.localeCompare(b.name);
+          cmp = 0;
       }
+      return sortDir === "desc" ? -cmp : cmp;
     });
 
     return result;
-  }, [companiesWithQuota, search, sortBy, companyUsageMap]);
+  }, [companiesWithQuota, search, sortKey, sortDir, companyUsageMap]);
 
   // Model cost breakdown filtered to companies with quota only
   const modelCostBreakdown = useMemo(() => {
@@ -289,7 +331,18 @@ export default function AdminAiQuota() {
   const exportToCSV = () => {
     if (!filteredAndSortedCompanies.length) return;
     
-    const headers = ["Company", "Client Name", "AI Model", "Quota", "Tokens Used", "Usage %", "Cost (USD)"];
+    const headers = [
+      "Company",
+      "Client Name",
+      "AI Model",
+      "Messages",
+      "Input Tokens",
+      "Output Tokens",
+      "Assigned Quota",
+      "Total Tokens Used",
+      "Usage %",
+      "Cost (USD)"
+    ];
     
     const rows = filteredAndSortedCompanies.map(c => {
       const hasQuota = typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0;
@@ -302,6 +355,9 @@ export default function AdminAiQuota() {
         `"${c.name.replace(/"/g, '""')}"`,
         `"${c.clientName ? c.clientName.replace(/"/g, '""') : ''}"`,
         `"${c.aiModel || 'Default'}"`,
+        hasQuota ? (usage?.messages ?? 0) : 0,
+        hasQuota ? (usage?.inputTokens ?? 0) : 0,
+        hasQuota ? (usage?.outputTokens ?? 0) : 0,
         c.monthlyTokenQuota ?? "Unlimited",
         tokensUsed,
         hasQuota ? `${percent.toFixed(2)}%` : "N/A",
@@ -544,16 +600,27 @@ export default function AdminAiQuota() {
               />
             </div>
             
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select 
+              value={`${sortKey}-${sortDir}`} 
+              onValueChange={(val) => {
+                const [k, d] = val.split("-");
+                setSortKey(k as SortKey);
+                setSortDir(d as SortDir);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-48 h-9 text-xs">
                 <ArrowUpDown className="w-3 h-3 mr-2 text-muted-foreground" />
                 <SelectValue placeholder={lang === "ar" ? "ترتيب حسب..." : "Sort by..."} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name">{lang === "ar" ? "الاسم (أبجدي)" : "Name (Alphabetical)"}</SelectItem>
-                <SelectItem value="usage-desc">{lang === "ar" ? "الأكثر استهلاكاً" : "Highest Usage"}</SelectItem>
-                <SelectItem value="usage-asc">{lang === "ar" ? "الأقل استهلاكاً" : "Lowest Usage"}</SelectItem>
-                <SelectItem value="quota-util-desc">{lang === "ar" ? "الأعلى استنفاداً للحصة" : "Highest Quota Utilization"}</SelectItem>
+                <SelectItem value="tokens-desc">{lang === "ar" ? "الأعلى استهلاكاً" : "Highest Tokens"}</SelectItem>
+                <SelectItem value="tokens-asc">{lang === "ar" ? "الأقل استهلاكاً" : "Lowest Tokens"}</SelectItem>
+                <SelectItem value="messages-desc">{lang === "ar" ? "الأكثر رسائل" : "Most Messages"}</SelectItem>
+                <SelectItem value="inputTokens-desc">{lang === "ar" ? "الأعلى مدخلات (Input)" : "Highest Input Tokens"}</SelectItem>
+                <SelectItem value="outputTokens-desc">{lang === "ar" ? "الأعلى مخرجات (Output)" : "Highest Output Tokens"}</SelectItem>
+                <SelectItem value="percent-desc">{lang === "ar" ? "الأعلى استنفاداً للحصة" : "Highest Quota %"}</SelectItem>
+                <SelectItem value="cost-desc">{lang === "ar" ? "الأعلى تكلفة" : "Highest Cost"}</SelectItem>
+                <SelectItem value="name-asc">{lang === "ar" ? "الاسم (أبجدي)" : "Name (A-Z)"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -564,27 +631,86 @@ export default function AdminAiQuota() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/50 bg-muted/20">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الشركة" : "Company"}</th>
+                  <th 
+                    className="text-left px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("name")}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {lang === "ar" ? "الشركة" : "Company"} <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "النموذج" : "Model"}</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الحصة" : "Quota"}</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الاستهلاك" : "Usage"}</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "التكلفة" : "Cost"}</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Percent"}</th>
+                  <th
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("messages")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "الرسائل" : "Messages"} <SortIcon col="messages" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("inputTokens")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "مدخلات" : "Input Tokens"} <SortIcon col="inputTokens" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("outputTokens")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "مخرجات" : "Output Tokens"} <SortIcon col="outputTokens" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("quota")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "الحصة" : "Quota"} <SortIcon col="quota" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("tokens")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "الاستهلاك" : "Total Used"} <SortIcon col="tokens" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("cost")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "التكلفة" : "Cost"} <SortIcon col="cost" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
+                    className="text-left px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("percent")}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {lang === "ar" ? "النسبة" : "Percent"} <SortIcon col="percent" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الإجراء" : "Action"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
                 {companiesLoading || usageLoading ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                       {lang === "ar" ? "جاري تحميل البيانات..." : "Loading data..."}
                     </td>
                   </tr>
                 ) : filteredAndSortedCompanies.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                      {lang === "ar" ? "لا توجد بيانات." : "No data found."}
+                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                      {lang === "ar" ? "لا توجد شركات بحصص محددة حالياً." : "No companies with assigned quotas."}
                     </td>
                   </tr>
                 ) : (
@@ -621,6 +747,15 @@ export default function AdminAiQuota() {
                           <span className="font-mono text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
                             {c.aiModel || "Default"}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-mono text-muted-foreground">
+                          {hasQuota ? (usage?.messages ?? 0).toLocaleString() : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-mono text-muted-foreground">
+                          {hasQuota ? (usage?.inputTokens ?? 0).toLocaleString() : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-mono text-muted-foreground">
+                          {hasQuota ? (usage?.outputTokens ?? 0).toLocaleString() : "—"}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {hasQuota ? (
