@@ -1321,6 +1321,110 @@ router.get("/admin/support-ai-status", async (req, res) => {
   }
 });
 
+// GET /admin/quota-ai-settings
+router.get("/admin/quota-ai-settings", async (req, res) => {
+  try {
+    const rows = await db
+      .select()
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model')`);
+    const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const key = cfg["quota_ai_api_key"] ?? "";
+    const masked = key.length > 8 ? `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}` : key ? "****" : "";
+    res.json({
+      hasKey: !!key,
+      maskedKey: masked,
+      aiProvider: cfg["quota_ai_provider"] ?? "openai",
+      aiModel: cfg["quota_ai_model"] ?? "gpt-4o-mini",
+    });
+  } catch (err) {
+    logger.error({ err }, "Get quota AI settings error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /admin/quota-ai-settings
+router.put("/admin/quota-ai-settings", async (req, res) => {
+  try {
+    const { aiApiKey, aiProvider, aiModel } = req.body as { aiApiKey?: string; aiProvider?: string; aiModel?: string };
+
+    const upserts: { key: string; value: string }[] = [];
+    if (aiApiKey && typeof aiApiKey === "string") upserts.push({ key: "quota_ai_api_key", value: aiApiKey });
+    if (aiProvider && typeof aiProvider === "string") upserts.push({ key: "quota_ai_provider", value: aiProvider });
+    if (aiModel && typeof aiModel === "string") upserts.push({ key: "quota_ai_model", value: aiModel });
+
+    if (upserts.length === 0) {
+      res.status(400).json({ error: "Nothing to update" });
+      return;
+    }
+
+    for (const item of upserts) {
+      await db
+        .insert(adminConfigTable)
+        .values(item)
+        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: item.value } });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Update quota AI settings error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /admin/quota-ai-status â€” live ping of the configured Quota AI
+router.get("/admin/quota-ai-status", async (req, res) => {
+  try {
+    const rows = await db
+      .select()
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model')`);
+    const cfg      = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const apiKey   = cfg["quota_ai_api_key"]  ?? "";
+    const provider = cfg["quota_ai_provider"] ?? "openai";
+    const model    = cfg["quota_ai_model"]    ?? "gpt-4o-mini";
+
+    if (!apiKey) {
+      res.json({ status: "no_key", provider, model });
+      return;
+    }
+
+    try {
+      if (provider === "anthropic") {
+        const Anthropic = (await import("@anthropic-ai/sdk")).default;
+        const client = new Anthropic({ apiKey });
+        await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+      } else if (provider === "google") {
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI    = new GoogleGenerativeAI(apiKey);
+        const genModel = genAI.getGenerativeModel({ model });
+        await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
+      } else if (provider === "openrouter") {
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+      } else {
+        const OpenAI = (await import("openai")).default;
+        const openai = new OpenAI({ apiKey });
+        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+      }
+      res.json({ status: "ok", provider, model });
+    } catch (aiErr: unknown) {
+      const msg     = aiErr instanceof Error ? aiErr.message : String(aiErr);
+      const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
+      const isAuth  = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+      res.json({
+        status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
+        provider,
+        model,
+        detail: msg.slice(0, 200),
+      });
+    }
+  } catch (err) {
+    logger.error({ err }, "Quota AI status check error");
+    res.status(500).json({ status: "error", detail: "Internal server error" });
+  }
+});
+
 // GET /admin/email-settings
 router.get("/admin/email-settings", async (req, res) => {
   try {

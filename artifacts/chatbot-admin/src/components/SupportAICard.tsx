@@ -278,7 +278,7 @@ export default function SupportAICard() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-violet-400 shrink-0" />
-            <CardTitle className="text-base">Support AI Agent</CardTitle>
+            <CardTitle className="text-base">Customer Problems AI Agent (وكيل حل مشاكل العملاء)</CardTitle>
             {statusPill && <span className="hidden sm:inline">{statusPill}</span>}
           </div>
           <button

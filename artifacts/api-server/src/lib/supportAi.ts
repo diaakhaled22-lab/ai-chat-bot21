@@ -33,12 +33,36 @@ export async function getSupportAiSettings(): Promise<{
   }
 }
 
+export async function getQuotaAiSettings(): Promise<{
+  apiKey: string;
+  provider: "openai" | "anthropic" | "google" | "openrouter";
+  model: string;
+} | null> {
+  try {
+    const rows = await db.select().from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+    
+    const cfg = Object.fromEntries(rows.map(r => [r.key, r.value ?? ""]));
+    const key = cfg["quota_ai_api_key"]?.trim() || cfg["support_ai_api_key"]?.trim();
+    if (!key) return null;
+
+    return {
+      apiKey: key,
+      provider: (cfg["quota_ai_provider"] || cfg["support_ai_provider"] || "openai") as any,
+      model: cfg["quota_ai_model"] || cfg["support_ai_model"] || "gpt-4o-mini",
+    };
+  } catch (err) {
+    logger.error({ err }, "Failed to get Quota AI settings");
+    return null;
+  }
+}
+
 /**
  * Resolves the AI credentials for a company.
  * - IF a token quota is set (monthlyTokenQuota > 0):
- *   Usage is drawn from the Support AI Agent credentials (configured on AI / Quota page).
+ *   Usage is drawn from the Company Quota AI Agent credentials (configured on AI / Quota page).
  * - IF NO token quota is set (null or <= 0):
- *   It will NEVER draw from the Support AI Agent.
+ *   It will NEVER draw from Platform / Quota AI Agent.
  *   It only draws from the company's own configured aiAgentApiKey.
  *   If the company has no personal key, it throws an error.
  */
@@ -47,18 +71,18 @@ export async function resolveCompanyAi(
 ): Promise<ResolvedAiConfig> {
   const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
 
-  // Case 1: Company has an assigned quota -> Use Support AI Agent
+  // Case 1: Company has an assigned quota -> Use Company Quota AI Agent
   if (hasQuota) {
-    const supportAi = await getSupportAiSettings();
-    if (supportAi && supportAi.apiKey) {
+    const quotaAi = await getQuotaAiSettings();
+    if (quotaAi && quotaAi.apiKey) {
       return {
-        apiKey: supportAi.apiKey,
-        provider: supportAi.provider,
-        model: supportAi.model,
+        apiKey: quotaAi.apiKey,
+        provider: quotaAi.provider,
+        model: quotaAi.model,
         isSupportAgent: true,
       };
     } else {
-      throw new Error("لم يتم إعداد مفتاح وكيل الدعم الفني (Support AI Agent) في لوحة الإدارة حتى الآن.");
+      throw new Error("لم يتم إعداد مفتاح وكيل حصص الشركات (Company Quota AI Agent) في صفحة AI / Quota حتى الآن.");
     }
   }
 

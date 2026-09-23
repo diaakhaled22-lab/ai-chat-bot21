@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import SupportAICard from "@/components/SupportAICard";
+import QuotaAICard from "@/components/QuotaAICard";
 import { useLanguage } from "@/hooks/use-language";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -153,10 +153,10 @@ export default function AdminAiQuota() {
     refetchInterval: 10_000,
   });
 
-  // Fetch Support AI Settings
-  const { data: supportSettings } = useQuery<{ aiProvider: string; aiModel: string }>({
-    queryKey: ["admin-support-settings"],
-    queryFn: () => customFetch("/api/admin/support-settings"),
+  // Fetch Quota AI Settings
+  const { data: quotaSettings } = useQuery<{ aiProvider: string; aiModel: string }>({
+    queryKey: ["admin-quota-ai-settings"],
+    queryFn: () => customFetch("/api/admin/quota-ai-settings"),
   });
 
   // Quota Mutation
@@ -357,7 +357,7 @@ export default function AdminAiQuota() {
       const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
       const cost = hasQuota ? (usage?.cost ?? 0) : 0;
 
-      const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || supportSettings?.aiModel || "gpt-4o-mini";
+      const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
 
       return [
         `"${c.name.replace(/"/g, '""')}"`,
@@ -560,13 +560,13 @@ export default function AdminAiQuota() {
         </Card>
       )}
 
-      {/* Feature 1: Support AI Agent (Identical to Customer Problems page) */}
+      {/* Company Quota AI Agent */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Zap className="w-5 h-5 text-amber-400" />
-          {lang === "ar" ? "تكوين وكيل الدعم الفني الذكي (Support AI Agent)" : "Support AI Agent Configuration"}
+          {lang === "ar" ? "وكيل حصص الشركات (Company Quota AI Agent)" : "Company Quota AI Agent Configuration"}
         </h2>
-        <SupportAICard />
+        <QuotaAICard />
       </div>
 
       {/* Feature 2: Company Quota Management */}
@@ -743,7 +743,7 @@ export default function AdminAiQuota() {
                       ? Math.min(100, Math.max(tokensUsed > 0 ? 1 : 0, Math.round(percentFloat)))
                       : 0;
 
-                    const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || supportSettings?.aiModel || "gpt-4o-mini";
+                    const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
 
                     return (
                       <tr key={c.id} className="hover:bg-muted/20 transition-colors">
