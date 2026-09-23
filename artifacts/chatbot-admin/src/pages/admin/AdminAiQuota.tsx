@@ -225,9 +225,36 @@ export default function AdminAiQuota() {
     return result;
   }, [companies, search, sortBy, companyUsageMap]);
 
+  const companiesWithQuota = useMemo(() => {
+    return companies.filter(
+      (c) => typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0
+    );
+  }, [companies]);
+
+  // Model cost breakdown filtered to companies with quota only
+  const modelCostBreakdown = useMemo(() => {
+    const quotaCompanyIds = new Set(companiesWithQuota.map((c) => c.id));
+    const map = new Map<string, { provider: string; model: string; inputTokens: number; outputTokens: number; costUsd: number }>();
+    if (usageData?.byCompany) {
+      for (const c of usageData.byCompany) {
+        if (!quotaCompanyIds.has(c.companyId)) continue;
+        const key = c.model || "unknown";
+        const existing = map.get(key) || { provider: c.provider || "unknown", model: key, inputTokens: 0, outputTokens: 0, costUsd: 0 };
+        existing.inputTokens += c.inputTokens;
+        existing.outputTokens += c.outputTokens;
+        existing.costUsd += c.costUsd;
+        map.set(key, existing);
+      }
+    }
+    return Array.from(map.values()).map(m => ({
+      ...m,
+      costUsd: Math.round(m.costUsd * 10000) / 10000
+    }));
+  }, [companiesWithQuota, usageData]);
+
   const topCompaniesData = useMemo(() => {
-    // Get top 10 companies by usage
-    const sorted = [...companies].sort((a, b) => {
+    // Only include companies that have an assigned quota (> 0)
+    const sorted = [...companiesWithQuota].sort((a, b) => {
       const aUsage = companyUsageMap.get(a.id)?.tokens ?? 0;
       const bUsage = companyUsageMap.get(b.id)?.tokens ?? 0;
       return bUsage - aUsage;
@@ -237,7 +264,7 @@ export default function AdminAiQuota() {
       tokens: companyUsageMap.get(c.id)?.tokens ?? 0,
       cost: companyUsageMap.get(c.id)?.cost ?? 0
     })).filter(c => c.tokens > 0);
-  }, [companies, companyUsageMap]);
+  }, [companiesWithQuota, companyUsageMap]);
 
   const exportToCSV = () => {
     if (!filteredAndSortedCompanies.length) return;
@@ -314,7 +341,7 @@ export default function AdminAiQuota() {
             variant="outline"
             size="sm"
             className="gap-2"
-            disabled={!usageData?.byModel?.length}
+            disabled={!modelCostBreakdown.length}
             onClick={() => setShowModelCostModal(true)}
           >
             <PieChart className="w-4 h-4 text-purple-400" />
@@ -359,7 +386,7 @@ export default function AdminAiQuota() {
               {formatQuota(totalAllocatedQuota)} <span className="text-xs font-normal text-muted-foreground">tokens</span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {companies.filter((c) => c.monthlyTokenQuota).length} {lang === "ar" ? "شركات بحصص محددة" : "companies with set quotas"}
+              {companiesWithQuota.length} {lang === "ar" ? "شركات بحصص محددة" : "companies with set quotas"}
             </p>
           </CardContent>
         </Card>
@@ -385,15 +412,15 @@ export default function AdminAiQuota() {
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
               <Building2 className="w-4 h-4 text-purple-400" />
-              {lang === "ar" ? "الشركات المسجلة" : "Total Companies"}
+              {lang === "ar" ? "الشركات ذات الحصة" : "Companies with Quota"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">
-              {companies.length}
+              {companiesWithQuota.length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {companies.filter((c) => c.isActive).length} {lang === "ar" ? "نشطة حالياً" : "currently active"}
+              {companiesWithQuota.filter((c) => c.isActive).length} {lang === "ar" ? "نشطة حالياً" : "currently active"}
             </p>
           </CardContent>
         </Card>
@@ -754,8 +781,8 @@ export default function AdminAiQuota() {
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
-                {usageData?.byModel?.length ? (
-                  usageData.byModel.map((m, idx) => (
+                {modelCostBreakdown.length ? (
+                  modelCostBreakdown.map((m, idx) => (
                     <tr key={idx} className="hover:bg-muted/10 transition-colors">
                       <td className="p-3 font-medium">
                         <span className="font-mono bg-muted/50 px-2 py-1 rounded">{m.model}</span>
@@ -771,22 +798,22 @@ export default function AdminAiQuota() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="text-center p-6 text-muted-foreground">
-                      {lang === "ar" ? "لا توجد بيانات تكلفة مسجلة حتى الآن." : "No cost data recorded yet."}
+                      {lang === "ar" ? "لا توجد بيانات تكلفة مسجلة للشركات ذات الحصة حتى الآن." : "No cost data recorded for quota companies yet."}
                     </td>
                   </tr>
                 )}
                 {/* Total Row */}
-                {usageData?.byModel?.length > 0 && (
+                {modelCostBreakdown.length > 0 && (
                   <tr className="bg-muted/20 font-bold border-t-2 border-border/50">
                     <td colSpan={2} className="p-3">{lang === "ar" ? "الإجمالي" : "Total"}</td>
                     <td className="p-3 text-right tabular-nums">
-                      {usageData.byModel.reduce((acc, m) => acc + m.inputTokens, 0).toLocaleString()}
+                      {modelCostBreakdown.reduce((acc, m) => acc + m.inputTokens, 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right tabular-nums">
-                      {usageData.byModel.reduce((acc, m) => acc + m.outputTokens, 0).toLocaleString()}
+                      {modelCostBreakdown.reduce((acc, m) => acc + m.outputTokens, 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right text-emerald-400 tabular-nums">
-                      ${usageData.byModel.reduce((acc, m) => acc + m.costUsd, 0).toFixed(4)}
+                      ${modelCostBreakdown.reduce((acc, m) => acc + m.costUsd, 0).toFixed(4)}
                     </td>
                   </tr>
                 )}
