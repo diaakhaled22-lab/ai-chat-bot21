@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -101,6 +102,8 @@ export default function AdminAiQuota() {
   const [quotaInput, setQuotaInput] = useState("");
   const [showModelCostModal, setShowModelCostModal] = useState(false);
 
+  const [showOnlyWithQuota, setShowOnlyWithQuota] = useState(true);
+
   // Fetch Companies
   const {
     data: companies = [],
@@ -191,6 +194,10 @@ export default function AdminAiQuota() {
       (c.clientName && c.clientName.toLowerCase().includes(search.toLowerCase())) ||
       (c.clientUsername && c.clientUsername.toLowerCase().includes(search.toLowerCase()))
     );
+
+    if (showOnlyWithQuota) {
+      result = result.filter(c => c.monthlyTokenQuota && c.monthlyTokenQuota > 0);
+    }
 
     result.sort((a, b) => {
       const aUsage = companyUsageMap.get(a.id)?.tokens ?? 0;
@@ -464,7 +471,18 @@ export default function AdminAiQuota() {
             </p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2 space-x-reverse mr-2">
+              <Switch 
+                id="quota-filter" 
+                checked={showOnlyWithQuota}
+                onCheckedChange={setShowOnlyWithQuota} 
+              />
+              <Label htmlFor="quota-filter" className="text-xs cursor-pointer select-none">
+                {lang === "ar" ? "عرض الشركات ذات الحصة فقط" : "Show with quota only"}
+              </Label>
+            </div>
+            
             <div className="relative w-full sm:w-56">
               <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
