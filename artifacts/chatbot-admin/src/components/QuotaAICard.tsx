@@ -87,10 +87,34 @@ const PROVIDERS: AIProvider[] = [
   },
 ];
 
+const PROVIDER_TIER_INFO: Record<string, { freeTier: string; freeTierAr: string; keyLink: string }> = {
+  openai: {
+    freeTier: "Free trial credits available on sign-up",
+    freeTierAr: "رصيد تجريبي مجاني متاح عند التسجيل",
+    keyLink: "https://platform.openai.com/api-keys",
+  },
+  anthropic: {
+    freeTier: "Free tier: $5 credit on sign-up",
+    freeTierAr: "الخطة المجانية: رصيد بقيمة 5$ عند التسجيل",
+    keyLink: "https://console.anthropic.com/settings/keys",
+  },
+  google: {
+    freeTier: "Free tier: Generous free quota (no credit card needed)",
+    freeTierAr: "الخطة المجانية: حصة مجانية سخية (بدون الحاجة لبطاقة بنكية)",
+    keyLink: "https://aistudio.google.com/app/apikey",
+  },
+  openrouter: {
+    freeTier: "Free models available — no credit card required for free tier",
+    freeTierAr: "نماذج مجانية متاحة — لا تتطلب بطاقة بنكية للخطة المجانية",
+    keyLink: "https://openrouter.ai/keys",
+  },
+};
+
 // ── ModelPicker ───────────────────────────────────────────────────────────────
 function ModelPicker({
   selectedProvider, selectedModel, onSelect,
 }: { selectedProvider: string; selectedModel: string; onSelect: (provider: string, model: string) => void }) {
+  const { lang } = useLanguage();
   const [activeProvider, setActiveProvider] = useState<string>(selectedProvider || "openai");
 
   useEffect(() => {
@@ -147,6 +171,31 @@ function ModelPicker({
           );
         })}
       </div>
+
+      {/* Free tier notice banner */}
+      {PROVIDER_TIER_INFO[activeProvider] && (
+        <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2.5 animate-in fade-in duration-200">
+          <span className="text-green-500 text-sm shrink-0">✓</span>
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-green-600 dark:text-green-400">
+              {lang === "ar"
+                ? PROVIDER_TIER_INFO[activeProvider].freeTierAr
+                : PROVIDER_TIER_INFO[activeProvider].freeTier}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {lang === "ar" ? "احصل على مفتاح الـ API المجاني من: " : "Get your free API key at "}
+              <a
+                href={PROVIDER_TIER_INFO[activeProvider].keyLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline hover:no-underline font-medium"
+              >
+                {PROVIDER_TIER_INFO[activeProvider].keyLink.replace("https://", "")}
+              </a>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Model dropdown menu separating Free and Paid */}
       <div className="space-y-1.5">
