@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import SupportAICard from "@/components/SupportAICard";
 import { useLanguage } from "@/hooks/use-language";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   TrendingUp,
@@ -19,7 +20,21 @@ import {
   Cpu,
   Zap,
   RotateCcw,
+  Download,
+  PieChart,
+  ArrowUpDown,
+  BarChart3
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Cell
+} from "recharts";
 
 interface Company {
   id: number;
@@ -50,6 +65,13 @@ interface UsageCostData {
   totalTokens: number;
   totalCostUsd: number;
   byCompany: CompanyUsage[];
+  byModel: {
+    provider: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    costUsd: number;
+  }[];
 }
 
 const QUOTA_PRESETS = [
@@ -74,8 +96,10 @@ export default function AdminAiQuota() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("name");
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
   const [quotaInput, setQuotaInput] = useState("");
+  const [showModelCostModal, setShowModelCostModal] = useState(false);
 
   // Fetch Companies
   const {
@@ -160,13 +184,89 @@ export default function AdminAiQuota() {
     return map;
   }, [usageData]);
 
-  const filteredCompanies = useMemo(() => {
-    return companies.filter((c) =>
+  // Filtering and Sorting
+  const filteredAndSortedCompanies = useMemo(() => {
+    let result = companies.filter((c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.clientName && c.clientName.toLowerCase().includes(search.toLowerCase())) ||
       (c.clientUsername && c.clientUsername.toLowerCase().includes(search.toLowerCase()))
     );
-  }, [companies, search]);
+
+    result.sort((a, b) => {
+      const aUsage = companyUsageMap.get(a.id)?.tokens ?? 0;
+      const bUsage = companyUsageMap.get(b.id)?.tokens ?? 0;
+
+      const aQuota = a.monthlyTokenQuota ?? 0;
+      const bQuota = b.monthlyTokenQuota ?? 0;
+      
+      const aPercent = aQuota > 0 ? aUsage / aQuota : 0;
+      const bPercent = bQuota > 0 ? bUsage / bQuota : 0;
+
+      switch (sortBy) {
+        case "usage-desc":
+          return bUsage - aUsage;
+        case "usage-asc":
+          return aUsage - bUsage;
+        case "quota-util-desc":
+          return bPercent - aPercent;
+        case "name":
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+
+    return result;
+  }, [companies, search, sortBy, companyUsageMap]);
+
+  const topCompaniesData = useMemo(() => {
+    // Get top 10 companies by usage
+    const sorted = [...companies].sort((a, b) => {
+      const aUsage = companyUsageMap.get(a.id)?.tokens ?? 0;
+      const bUsage = companyUsageMap.get(b.id)?.tokens ?? 0;
+      return bUsage - aUsage;
+    });
+    return sorted.slice(0, 10).map(c => ({
+      name: c.name,
+      tokens: companyUsageMap.get(c.id)?.tokens ?? 0,
+      cost: companyUsageMap.get(c.id)?.cost ?? 0
+    })).filter(c => c.tokens > 0);
+  }, [companies, companyUsageMap]);
+
+  const exportToCSV = () => {
+    if (!filteredAndSortedCompanies.length) return;
+    
+    const headers = ["Company", "Client Name", "AI Model", "Quota", "Tokens Used", "Usage %", "Cost (USD)"];
+    
+    const rows = filteredAndSortedCompanies.map(c => {
+      const hasQuota = typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0;
+      const usage = companyUsageMap.get(c.id);
+      const tokensUsed = hasQuota ? (usage?.tokens ?? 0) : 0;
+      const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
+      const cost = hasQuota ? (usage?.cost ?? 0) : 0;
+
+      return [
+        `"${c.name.replace(/"/g, '""')}"`,
+        `"${c.clientName ? c.clientName.replace(/"/g, '""') : ''}"`,
+        `"${c.aiModel || 'Default'}"`,
+        c.monthlyTokenQuota ?? "Unlimited",
+        tokensUsed,
+        hasQuota ? `${percent.toFixed(2)}%` : "N/A",
+        cost.toFixed(4)
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" }); // Add BOM for Excel Arabic support
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Quota_Export_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const totalAllocatedQuota = useMemo(() => {
     return companies.reduce((sum, c) => sum + (c.monthlyTokenQuota ?? 0), 0);
@@ -202,19 +302,40 @@ export default function AdminAiQuota() {
               : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto shrink-0"
-          disabled={isFetchingCompanies || isFetchingUsage}
-          onClick={() => {
-            refetchCompanies();
-            refetchUsage();
-          }}
-        >
-          <RotateCcw className={`w-4 h-4 ${isFetchingCompanies || isFetchingUsage ? "animate-spin" : ""}`} />
-          {lang === "ar" ? "تحديث الأرقام" : "Refresh Stats"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={!usageData?.byModel?.length}
+            onClick={() => setShowModelCostModal(true)}
+          >
+            <PieChart className="w-4 h-4 text-purple-400" />
+            {lang === "ar" ? "تفاصيل التكلفة" : "Cost Breakdown"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={exportToCSV}
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={isFetchingCompanies || isFetchingUsage}
+            onClick={() => {
+              refetchCompanies();
+              refetchUsage();
+            }}
+          >
+            <RotateCcw className={`w-4 h-4 ${isFetchingCompanies || isFetchingUsage ? "animate-spin" : ""}`} />
+            {lang === "ar" ? "تحديث" : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       {/* Overview Stats */}
@@ -271,7 +392,57 @@ export default function AdminAiQuota() {
         </Card>
       </div>
 
-      {/* ── Feature 1: Support AI Agent (Identical to Customer Problems page) ── */}
+      {/* Feature 1: Charts Section */}
+      {topCompaniesData.length > 0 && (
+        <Card className="bg-card border-border/50">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-emerald-400" />
+              {lang === "ar" ? "أعلى الشركات استهلاكاً (Top 10)" : "Top 10 Consumers"}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {lang === "ar" ? "حجم استهلاك الرموز (Tokens) خلال الشهر الحالي" : "Token consumption volume for the current month"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topCompaniesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val) => formatQuota(val)}
+                  />
+                  <RechartsTooltip 
+                    cursor={{ fill: "hsl(var(--muted)/0.5)" }}
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+                    formatter={(value: number, name: string) => [
+                      name === "tokens" ? value.toLocaleString() : value,
+                      name === "tokens" ? (lang === "ar" ? "الرموز" : "Tokens") : name
+                    ]}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: "bold", marginBottom: "4px" }}
+                  />
+                  <Bar dataKey="tokens" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                    {topCompaniesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill="hsl(var(--primary))" className="opacity-80 hover:opacity-100 transition-opacity" />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Feature 1: Support AI Agent (Identical to Customer Problems page) */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Zap className="w-5 h-5 text-amber-400" />
@@ -280,9 +451,9 @@ export default function AdminAiQuota() {
         <SupportAICard />
       </div>
 
-      {/* ── Feature 2: Company Quota Management ── */}
+      {/* Feature 2: Company Quota Management */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -292,14 +463,30 @@ export default function AdminAiQuota() {
               {lang === "ar" ? "تحديد حصة الرموز (Tokens) لكل شركة ومتابعة نسبة الاستهلاك." : "Set token limits per company and monitor their monthly consumption."}
             </p>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={lang === "ar" ? "بحث عن شركة..." : "Search companies..."}
-              className="pl-9 h-9 text-xs"
-            />
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-56">
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={lang === "ar" ? "بحث عن شركة..." : "Search companies..."}
+                className="pl-9 h-9 text-xs"
+              />
+            </div>
+            
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-48 h-9 text-xs">
+                <ArrowUpDown className="w-3 h-3 mr-2 text-muted-foreground" />
+                <SelectValue placeholder={lang === "ar" ? "ترتيب حسب..." : "Sort by..."} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">{lang === "ar" ? "الاسم (أبجدي)" : "Name (Alphabetical)"}</SelectItem>
+                <SelectItem value="usage-desc">{lang === "ar" ? "الأكثر استهلاكاً" : "Highest Usage"}</SelectItem>
+                <SelectItem value="usage-asc">{lang === "ar" ? "الأقل استهلاكاً" : "Lowest Usage"}</SelectItem>
+                <SelectItem value="quota-util-desc">{lang === "ar" ? "الأعلى استنفاداً للحصة" : "Highest Quota Utilization"}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -309,33 +496,35 @@ export default function AdminAiQuota() {
               <thead>
                 <tr className="border-b border-border/50 bg-muted/20">
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الشركة" : "Company"}</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "نموذج الذكاء الاصطناعي" : "AI Model"}</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الحصة المحددة" : "Assigned Quota"}</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "المستهلك هذا الشهر" : "Used This Month"}</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "نسبة الاستهلاك" : "Usage %"}</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "النموذج" : "Model"}</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الحصة" : "Quota"}</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الاستهلاك" : "Usage"}</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "التكلفة" : "Cost"}</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Percent"}</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الإجراء" : "Action"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
                 {companiesLoading || usageLoading ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                       {lang === "ar" ? "جاري تحميل البيانات..." : "Loading data..."}
                     </td>
                   </tr>
-                ) : filteredCompanies.length === 0 ? (
+                ) : filteredAndSortedCompanies.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {lang === "ar" ? "لا توجد شركات مطابقة للبحث." : "No companies found."}
+                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {lang === "ar" ? "لا توجد بيانات." : "No data found."}
                     </td>
                   </tr>
                 ) : (
-                  filteredCompanies.map((c) => {
+                  filteredAndSortedCompanies.map((c) => {
                     const hasQuota = typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0;
                     const usage = companyUsageMap.get(c.id);
                     const rawTokens = usage?.tokens ?? 0;
                     const tokensUsed = hasQuota ? rawTokens : 0;
+                    const cost = hasQuota ? (usage?.cost ?? 0) : 0;
                     const quota = c.monthlyTokenQuota;
                     const percentFloat = hasQuota && quota && quota > 0 ? (tokensUsed / quota) * 100 : null;
                     const percentDisplay = percentFloat === null
@@ -360,19 +549,18 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-mono text-[11px] text-muted-foreground">
+                          <span className="font-mono text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
                             {c.aiModel || "Default"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {hasQuota ? (
-                            <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
-                              <TrendingUp className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
                               {formatQuota(c.monthlyTokenQuota)}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground/60 text-[11px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">
-                              {lang === "ar" ? "بدون حصة (معطل)" : "No Quota (Disabled)"}
+                            <span className="text-muted-foreground/60 text-[10px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">
+                              {lang === "ar" ? "معطل" : "Disabled"}
                             </span>
                           )}
                         </td>
@@ -383,9 +571,12 @@ export default function AdminAiQuota() {
                             <span className="text-muted-foreground/40 font-sans text-xs">—</span>
                           )}
                         </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-emerald-500/90 font-medium">
+                          {hasQuota ? `$${cost.toFixed(4)}` : "—"}
+                        </td>
                         <td className="px-4 py-3">
                           {percentDisplay !== null ? (
-                            <div className="w-32 space-y-1">
+                            <div className="w-24 space-y-1">
                               <div className="flex items-center justify-between text-[10px]">
                                 <span className={percentFloat! >= 100 ? "text-red-500 font-bold" : percentFloat! >= 80 ? "text-amber-500 font-semibold" : "text-emerald-500"}>
                                   {percentDisplay}
@@ -408,11 +599,11 @@ export default function AdminAiQuota() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs"
+                            className="h-7 text-[11px]"
                             onClick={() => openQuotaDialog(c)}
                           >
                             <TrendingUp className="w-3 h-3 mr-1.5 text-blue-400" />
-                            {lang === "ar" ? "تعيين الحصة" : "Set Quota"}
+                            {lang === "ar" ? "الحصة" : "Quota"}
                           </Button>
                         </td>
                       </tr>
@@ -513,6 +704,81 @@ export default function AdminAiQuota() {
               ) : (
                 lang === "ar" ? "حفظ التغييرات" : "Save Quota"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Global Cost Breakdown Modal */}
+      <Dialog open={showModelCostModal} onOpenChange={setShowModelCostModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-purple-400" />
+              {lang === "ar" ? "تفاصيل التكلفة حسب النموذج" : "Cost Breakdown by Model"}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "ar" 
+                ? "إجمالي الاستهلاك والتكلفة التقديرية مقسمة حسب كل نموذج ذكاء اصطناعي لجميع الشركات هذا الشهر." 
+                : "Total usage and estimated cost broken down by AI model across all companies this month."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-3 font-medium text-muted-foreground">{lang === "ar" ? "النموذج" : "Model"}</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">{lang === "ar" ? "المزود" : "Provider"}</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">{lang === "ar" ? "مدخلات (Input)" : "Input Tokens"}</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">{lang === "ar" ? "مخرجات (Output)" : "Output Tokens"}</th>
+                  <th className="text-right p-3 font-medium text-emerald-500/90">{lang === "ar" ? "التكلفة" : "Total Cost"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y border-border/30">
+                {usageData?.byModel?.length ? (
+                  usageData.byModel.map((m, idx) => (
+                    <tr key={idx} className="hover:bg-muted/10 transition-colors">
+                      <td className="p-3 font-medium">
+                        <span className="font-mono bg-muted/50 px-2 py-1 rounded">{m.model}</span>
+                      </td>
+                      <td className="p-3 text-muted-foreground">{m.provider}</td>
+                      <td className="p-3 text-right tabular-nums">{m.inputTokens.toLocaleString()}</td>
+                      <td className="p-3 text-right tabular-nums">{m.outputTokens.toLocaleString()}</td>
+                      <td className="p-3 text-right font-semibold text-emerald-400 tabular-nums">
+                        ${m.costUsd.toFixed(4)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="text-center p-6 text-muted-foreground">
+                      {lang === "ar" ? "لا توجد بيانات تكلفة مسجلة حتى الآن." : "No cost data recorded yet."}
+                    </td>
+                  </tr>
+                )}
+                {/* Total Row */}
+                {usageData?.byModel?.length > 0 && (
+                  <tr className="bg-muted/20 font-bold border-t-2 border-border/50">
+                    <td colSpan={2} className="p-3">{lang === "ar" ? "الإجمالي" : "Total"}</td>
+                    <td className="p-3 text-right tabular-nums">
+                      {usageData.byModel.reduce((acc, m) => acc + m.inputTokens, 0).toLocaleString()}
+                    </td>
+                    <td className="p-3 text-right tabular-nums">
+                      {usageData.byModel.reduce((acc, m) => acc + m.outputTokens, 0).toLocaleString()}
+                    </td>
+                    <td className="p-3 text-right text-emerald-400 tabular-nums">
+                      ${usageData.byModel.reduce((acc, m) => acc + m.costUsd, 0).toFixed(4)}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowModelCostModal(false)}>
+              {lang === "ar" ? "إغلاق" : "Close"}
             </Button>
           </DialogFooter>
         </DialogContent>
