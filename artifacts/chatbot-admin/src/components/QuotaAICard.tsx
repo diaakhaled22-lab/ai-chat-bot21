@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import {
   Bot, Eye, EyeOff, CheckCircle2, ChevronDown,
-  Sparkles, Zap, RotateCcw,
+  Sparkles, Zap, RotateCcw, Lock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,20 @@ const PROVIDER_TIER_INFO: Record<string, { freeTier: string; freeTierAr: string;
     freeTierAr: "نماذج مجانية متاحة — لا تتطلب بطاقة بنكية للخطة المجانية",
     keyLink: "https://openrouter.ai/keys",
   },
+};
+
+const PROVIDER_KEY_LABELS: Record<string, string> = {
+  openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  google: "GOOGLE_AI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+};
+
+const PROVIDER_NAMES: Record<string, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  google: "Google Gemini",
+  openrouter: "OpenRouter",
 };
 
 // ── ModelPicker ───────────────────────────────────────────────────────────────
@@ -355,6 +369,8 @@ export default function QuotaAICard() {
     onError: () => toast({ title: "Failed to save settings", variant: "destructive" }),
   });
 
+  const isKeyConfigured = !!(quotaSettings as any)?.hasKey || !!aiApiKey.trim();
+
   const currentModelLabel =
     PROVIDERS.flatMap((p) => p.models).find((m) => m.id === selectedModel)?.label ?? selectedModel;
 
@@ -427,30 +443,60 @@ export default function QuotaAICard() {
           ) : (
             <>
               {/* API Key */}
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Platform API Key</label>
-                <div className="relative">
-                  <Input
-                    type={showApiKey ? "text" : "password"}
-                    placeholder={(quotaSettings as any)?.hasKey ? "Enter new key to replace…" : "sk-… / API key"}
-                    value={aiApiKey}
-                    onChange={(e) => setAiApiKey(e.target.value)}
-                    className="bg-background pr-10 font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium block">
+                  {lang === "ar" ? "3. مفتاح الـ API" : "3. API Key"}
+                </label>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 overflow-hidden">
+                  <div className="border-b border-emerald-500/20 px-4 py-2.5 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5" /> {lang === "ar" ? "السرية والأمان" : "Secrets"}
+                    </p>
+                    <span className="text-xs text-emerald-500 font-medium">
+                      {isKeyConfigured
+                        ? (lang === "ar" ? "✓ تم الضبط" : "✓ Configured")
+                        : (lang === "ar" ? "— غير مضبوط" : "— Not configured")}
+                    </span>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    <div className="flex items-center rounded-lg border border-emerald-500/20 bg-background overflow-hidden">
+                      <div className="px-3 py-2 bg-muted/50 border-r border-border shrink-0">
+                        <span className="font-mono text-xs text-muted-foreground uppercase">
+                          {PROVIDER_KEY_LABELS[selectedProvider] ?? "API_KEY"}
+                        </span>
+                      </div>
+                      <div className="flex-1 flex items-center pr-2">
+                        <Input
+                          type={showApiKey ? "text" : "password"}
+                          placeholder={isKeyConfigured ? "•••••••••••••••••••••••••••••••••••••••••••••••••" : "sk-… / API key"}
+                          value={aiApiKey}
+                          onChange={(e) => setAiApiKey(e.target.value)}
+                          className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-sm h-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="text-muted-foreground hover:text-foreground p-1 shrink-0"
+                        >
+                          {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    {isKeyConfigured ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                        {lang === "ar" ? "✓ الردود التلقائية الذكية نشطة باستخدام " : "✓ AI auto-responses are active using "}
+                        {PROVIDER_NAMES[selectedProvider] ?? selectedProvider} — {selectedModel || (lang === "ar" ? "النموذج الافتراضي" : "default model")}.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedProvider === "openai"      && "OpenAI key starts with sk-"}
+                        {selectedProvider === "anthropic"   && "Anthropic key starts with sk-ant-"}
+                        {selectedProvider === "google"      && "Google AI Studio key from aistudio.google.com"}
+                        {selectedProvider === "openrouter"  && "OpenRouter key starts with sk-or-v1- · free models available without billing"}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {selectedProvider === "openai"      && "OpenAI key starts with sk-"}
-                  {selectedProvider === "anthropic"   && "Anthropic key starts with sk-ant-"}
-                  {selectedProvider === "google"      && "Google AI Studio key from aistudio.google.com"}
-                  {selectedProvider === "openrouter"  && "OpenRouter key starts with sk-or-v1- · free models available without billing"}
-                </p>
               </div>
 
               {/* Model picker */}
