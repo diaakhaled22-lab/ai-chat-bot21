@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +23,8 @@ import {
   Download,
   PieChart,
   ArrowUpDown,
-  BarChart3
+  BarChart3,
+  Plus
 } from "lucide-react";
 import {
   BarChart,
@@ -102,7 +102,9 @@ export default function AdminAiQuota() {
   const [quotaInput, setQuotaInput] = useState("");
   const [showModelCostModal, setShowModelCostModal] = useState(false);
 
-  const [showOnlyWithQuota, setShowOnlyWithQuota] = useState(true);
+  const [isAssignNewOpen, setIsAssignNewOpen] = useState(false);
+  const [newAssignCompanyId, setNewAssignCompanyId] = useState<string>("");
+  const [newAssignQuota, setNewAssignQuota] = useState<string>("");
 
   // Fetch Companies
   const {
@@ -142,6 +144,7 @@ export default function AdminAiQuota() {
         title: lang === "ar" ? "تم تحديث الحصة بنجاح" : "Quota updated successfully",
       });
       setQuotaTarget(null);
+      setIsAssignNewOpen(false);
     },
     onError: (err: any) => {
       toast({
@@ -172,6 +175,21 @@ export default function AdminAiQuota() {
     setQuotaMutation.mutate({ companyId: quotaTarget.id, quota });
   };
 
+  const handleAssignNewQuota = () => {
+    if (!newAssignCompanyId) return;
+    const val = newAssignQuota.trim();
+    const quota = val === "" ? null : Number(val.replace(/,/g, ""));
+    if (quota === null || isNaN(quota) || quota <= 0) {
+      toast({
+        title: lang === "ar" ? "قيمة غير صالحة" : "Invalid value",
+        description: lang === "ar" ? "يرجى إدخال حصة أكبر من صفر" : "Please enter a quota greater than 0",
+        variant: "destructive",
+      });
+      return;
+    }
+    setQuotaMutation.mutate({ companyId: Number(newAssignCompanyId), quota });
+  };
+
   // Build Company Stats Map
   const companyUsageMap = useMemo(() => {
     const map = new Map<number, { tokens: number; messages: number; cost: number }>();
@@ -187,17 +205,25 @@ export default function AdminAiQuota() {
     return map;
   }, [usageData]);
 
-  // Filtering and Sorting
+  const companiesWithQuota = useMemo(() => {
+    return companies.filter(
+      (c) => typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0
+    );
+  }, [companies]);
+
+  const companiesWithoutQuota = useMemo(() => {
+    return companies.filter(
+      (c) => !c.monthlyTokenQuota || c.monthlyTokenQuota <= 0
+    );
+  }, [companies]);
+
+  // Filtering and Sorting (strictly companies with quota)
   const filteredAndSortedCompanies = useMemo(() => {
-    let result = companies.filter((c) =>
+    let result = companiesWithQuota.filter((c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       (c.clientName && c.clientName.toLowerCase().includes(search.toLowerCase())) ||
       (c.clientUsername && c.clientUsername.toLowerCase().includes(search.toLowerCase()))
     );
-
-    if (showOnlyWithQuota) {
-      result = result.filter(c => c.monthlyTokenQuota && c.monthlyTokenQuota > 0);
-    }
 
     result.sort((a, b) => {
       const aUsage = companyUsageMap.get(a.id)?.tokens ?? 0;
@@ -223,13 +249,7 @@ export default function AdminAiQuota() {
     });
 
     return result;
-  }, [companies, search, sortBy, companyUsageMap]);
-
-  const companiesWithQuota = useMemo(() => {
-    return companies.filter(
-      (c) => typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0
-    );
-  }, [companies]);
+  }, [companiesWithQuota, search, sortBy, companyUsageMap]);
 
   // Model cost breakdown filtered to companies with quota only
   const modelCostBreakdown = useMemo(() => {
@@ -498,18 +518,22 @@ export default function AdminAiQuota() {
             </p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2 space-x-reverse mr-2">
-              <Switch 
-                id="quota-filter" 
-                checked={showOnlyWithQuota}
-                onCheckedChange={setShowOnlyWithQuota} 
-              />
-              <Label htmlFor="quota-filter" className="text-xs cursor-pointer select-none">
-                {lang === "ar" ? "عرض الشركات ذات الحصة فقط" : "Show with quota only"}
-              </Label>
-            </div>
-            
+          <div className="flex flex-wrap items-center gap-2">
+            {companiesWithoutQuota.length > 0 && (
+              <Button
+                size="sm"
+                className="h-9 gap-1.5 text-xs"
+                onClick={() => {
+                  setNewAssignCompanyId(String(companiesWithoutQuota[0].id));
+                  setNewAssignQuota("");
+                  setIsAssignNewOpen(true);
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {lang === "ar" ? "تعيين حصة لشركة" : "Assign Quota"}
+              </Button>
+            )}
+
             <div className="relative w-full sm:w-56">
               <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
@@ -748,6 +772,98 @@ export default function AdminAiQuota() {
                 </>
               ) : (
                 lang === "ar" ? "حفظ التغييرات" : "Save Quota"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign New Quota Modal */}
+      <Dialog open={isAssignNewOpen} onOpenChange={setIsAssignNewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-400" />
+              {lang === "ar" ? "تعيين حصة لشركة" : "Assign Company Quota"}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "ar"
+                ? "اختر شركة من الشركات المسجلة وحدد لها حصة شهرية من الرموز (Tokens)."
+                : "Select a company and assign a monthly token quota to it."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label>{lang === "ar" ? "اختر الشركة" : "Select Company"}</Label>
+              <Select value={newAssignCompanyId} onValueChange={setNewAssignCompanyId}>
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder={lang === "ar" ? "اختر شركة..." : "Select a company..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {companiesWithoutQuota.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name} {c.clientName ? `(${c.clientName})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="new-quota-input">
+                {lang === "ar" ? "الحصة الشهرية (رموز / Tokens)" : "Monthly Token Quota"}
+              </Label>
+              <div className="relative">
+                <Input
+                  id="new-quota-input"
+                  placeholder={lang === "ar" ? "مثال: 1000000" : "e.g. 1000000"}
+                  value={newAssignQuota}
+                  onChange={(e) => setNewAssignQuota(e.target.value.replace(/[^0-9]/g, ""))}
+                  className="font-mono text-sm"
+                />
+                {newAssignQuota && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                    ≈ {formatQuota(Number(newAssignQuota))}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Presets */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-muted-foreground font-medium">
+                {lang === "ar" ? "خيارات سريعة:" : "Quick presets:"}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {QUOTA_PRESETS.map((p) => (
+                  <Button
+                    key={p.value}
+                    type="button"
+                    size="sm"
+                    variant={newAssignQuota === String(p.value) ? "default" : "outline"}
+                    className="text-xs h-7"
+                    onClick={() => setNewAssignQuota(String(p.value))}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignNewOpen(false)}>
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button onClick={handleAssignNewQuota} disabled={setQuotaMutation.isPending || !newAssignCompanyId || !newAssignQuota}>
+              {setQuotaMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {lang === "ar" ? "جاري الحفظ..." : "Saving..."}
+                </>
+              ) : (
+                lang === "ar" ? "تعيين الحصة" : "Assign Quota"
               )}
             </Button>
           </DialogFooter>
