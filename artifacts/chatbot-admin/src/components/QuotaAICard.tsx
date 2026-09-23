@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 // ── Model catalog ─────────────────────────────────────────────────────────────
@@ -262,6 +263,7 @@ type QuotaAiStatus = {
 export default function QuotaAICard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { lang } = useLanguage();
   const [showApiKey,       setShowApiKey]       = useState(false);
   const [aiApiKey,         setAiApiKey]         = useState("");
   const [selectedProvider, setSelectedProvider] = useState("openai");
@@ -414,25 +416,102 @@ export default function QuotaAICard() {
 
               {/* Agent Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium block">Agent Status</label>
-                <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/20 text-xs">
-                  <div className="flex items-center gap-2">
-                    {statusPill}
-                    {aiStatus?.detail && (
-                      <span className="text-muted-foreground text-[11px] truncate max-w-xs">{aiStatus.detail}</span>
+                <label className="text-sm font-medium block">{lang === "ar" ? "حالة الوكيل" : "Agent Status"}</label>
+                <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-all ${
+                  aiStatusLoading                        ? "border-border bg-muted/30"           :
+                  aiStatus?.status === "ok"              ? "border-emerald-500/40 bg-emerald-500/8" :
+                  aiStatus?.status === "no_key"          ? "border-amber-500/40 bg-amber-500/8"     :
+                  aiStatus?.status === "quota_exceeded"  ? "border-orange-500/40 bg-orange-500/8"   :
+                  aiStatus?.status === "invalid_key"     ? "border-red-500/40 bg-red-500/8"         :
+                  aiStatus?.status === "error"           ? "border-red-500/40 bg-red-500/8"         :
+                  "border-border bg-muted/30"
+                }`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {aiStatusLoading ? (
+                      <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-muted-foreground/30 animate-pulse" />
+                    ) : aiStatus?.status === "ok" ? (
+                      <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,0.4)]" />
+                    ) : aiStatus?.status === "quota_exceeded" ? (
+                      <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-orange-500" />
+                    ) : aiStatus?.status === "invalid_key" ? (
+                      <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-red-500" />
+                    ) : aiStatus?.status === "no_key" ? (
+                      <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    ) : (
+                      <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
                     )}
+                    <div className="min-w-0">
+                      <span className="font-medium">
+                        {aiStatusLoading                            ? (lang === "ar" ? "جاري فحص اتصال الذكاء الاصطناعي…" : "Checking AI connection…") :
+                         aiStatus?.status === "ok"                 ? (lang === "ar" ? "الذكاء الاصطناعي متصل ويعمل بنجاح" : "AI is connected and working") :
+                         aiStatus?.status === "quota_exceeded"     ? (lang === "ar" ? "تم تجاوز الحصة المجانية لمفتاح الـ API" : "Quota exceeded — API rate limit reached") :
+                         aiStatus?.status === "invalid_key"        ? (lang === "ar" ? "مفتاح API غير صالح أو منتهي الصلاحية" : "Invalid API key — authentication failed") :
+                         aiStatus?.status === "no_key"             ? (lang === "ar" ? "لم يتم إدخال مفتاح API للذكاء الاصطناعي" : "No AI API key configured") :
+                         aiStatus?.status === "error"              ? (lang === "ar" ? "خطأ في اتصال الذكاء الاصطناعي" : "AI connection error") :
+                         (lang === "ar" ? "حالة الذكاء الاصطناعي غير معروفة" : "Status unknown")}
+                      </span>
+                      {!aiStatusLoading && (aiStatus?.model || selectedModel) && (
+                        <span className="ml-2 text-xs text-muted-foreground font-mono">
+                          {aiStatus?.provider || selectedProvider} / {aiStatus?.model || selectedModel}
+                        </span>
+                      )}
+                      {aiStatus?.status === "quota_exceeded" && (
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                          {lang === "ar" ? "وصل المفتاح إلى الحد الأقصى للحصة المجانية. يرجى تفعيل الدفع أو استخدام مفتاح جديد أعلاه." : "Your API key has hit its free tier limit. Enable billing or use a new key above."}
+                        </p>
+                      )}
+                      {aiStatus?.status === "invalid_key" && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                          {lang === "ar" ? "تم رفض المفتاح من قِبل المزود. يرجى تحديثه أعلاه." : "The API key saved is rejected by the AI provider. Update it above."}
+                        </p>
+                      )}
+                      {aiStatus?.status === "no_key" && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                          {lang === "ar" ? "أدخل مفتاح API أعلاه لتفعيل نموذج الذكاء الاصطناعي." : "Enter an API key above to activate the AI Agent."}
+                        </p>
+                      )}
+                      {aiStatus?.status === "error" && aiStatus?.detail && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 truncate max-w-xs" title={aiStatus.detail}>
+                          {aiStatus.detail}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs text-muted-foreground gap-1.5"
+                    className="shrink-0 h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
                     onClick={() => refetchAiStatus()}
                     disabled={aiStatusLoading}
                   >
                     <RotateCcw className={`w-3.5 h-3.5 ${aiStatusLoading ? "animate-spin" : ""}`} />
-                    Test Key
+                    {lang === "ar" ? "إعادة الفحص" : "Recheck"}
                   </Button>
+                </div>
+
+                {/* Color legend */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_1px_rgba(16,185,129,0.5)]" />
+                    {lang === "ar" ? "متصل ويعمل" : "Connected & working"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                    {lang === "ar" ? "لا يوجد API Key" : "No API Key"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
+                    {lang === "ar" ? "تجاوز الحصة المجانية" : "Quota exceeded"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                    {lang === "ar" ? "مفتاح خاطئ أو منتهي" : "Invalid/expired key"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/40" />
+                    {lang === "ar" ? "حالة غير معروفة" : "Unknown status"}
+                  </span>
                 </div>
               </div>
 

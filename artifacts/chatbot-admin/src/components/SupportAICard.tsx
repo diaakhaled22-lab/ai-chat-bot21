@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 // ── Model catalog ─────────────────────────────────────────────────────────────
@@ -200,6 +201,7 @@ type SupportAiStatus = {
 export default function SupportAICard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { lang } = useLanguage();
   const [showApiKey,       setShowApiKey]       = useState(false);
   const [aiApiKey,         setAiApiKey]         = useState("");
   const [selectedProvider, setSelectedProvider] = useState("openai");
@@ -348,7 +350,7 @@ export default function SupportAICard() {
 
               {/* Agent Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium block">Agent Status</label>
+                <label className="text-sm font-medium block">{lang === "ar" ? "حالة الوكيل" : "Agent Status"}</label>
                 <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-all ${
                   aiStatusLoading                        ? "border-border bg-muted/30"           :
                   aiStatus?.status === "ok"              ? "border-emerald-500/40 bg-emerald-500/[.08]" :
@@ -376,13 +378,13 @@ export default function SupportAICard() {
                     )}
                     <div className="min-w-0">
                       <span className="font-medium">
-                        {aiStatusLoading                            ? "Checking AI agent…"                        :
-                         aiStatus?.status === "ok"                 ? "Agent is connected and working"            :
-                         aiStatus?.status === "quota_exceeded"     ? "Quota exceeded — rate limit reached"       :
-                         aiStatus?.status === "invalid_key"        ? "Invalid API key — authentication failed"   :
-                         aiStatus?.status === "no_key"             ? "No API key configured"                     :
-                         aiStatus?.status === "error"              ? "Connection error"                          :
-                         "Status unknown"}
+                        {aiStatusLoading                            ? (lang === "ar" ? "جاري فحص اتصال الذكاء الاصطناعي…" : "Checking AI connection…") :
+                         aiStatus?.status === "ok"                 ? (lang === "ar" ? "الذكاء الاصطناعي متصل ويعمل بنجاح" : "AI is connected and working") :
+                         aiStatus?.status === "quota_exceeded"     ? (lang === "ar" ? "تم تجاوز الحصة المجانية لمفتاح الـ API" : "Quota exceeded — API rate limit reached") :
+                         aiStatus?.status === "invalid_key"        ? (lang === "ar" ? "مفتاح API غير صالح أو منتهي الصلاحية" : "Invalid API key — authentication failed") :
+                         aiStatus?.status === "no_key"             ? (lang === "ar" ? "لم يتم إدخال مفتاح API للذكاء الاصطناعي" : "No AI API key configured") :
+                         aiStatus?.status === "error"              ? (lang === "ar" ? "خطأ في اتصال الذكاء الاصطناعي" : "AI connection error") :
+                         (lang === "ar" ? "حالة الذكاء الاصطناعي غير معروفة" : "Status unknown")}
                       </span>
                       {!aiStatusLoading && aiStatus?.model && (
                         <span className="ml-2 text-xs text-muted-foreground font-mono">
@@ -411,15 +413,41 @@ export default function SupportAICard() {
                       )}
                     </div>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
                     onClick={(e) => { e.stopPropagation(); refetchAiStatus(); }}
                     disabled={aiStatusLoading}
-                    className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                   >
-                    <RotateCcw className={`w-3 h-3 ${aiStatusLoading ? "animate-spin" : ""}`} />
-                    Recheck
-                  </button>
+                    <RotateCcw className={`w-3.5 h-3.5 ${aiStatusLoading ? "animate-spin" : ""}`} />
+                    {lang === "ar" ? "إعادة الفحص" : "Recheck"}
+                  </Button>
+                </div>
+
+                {/* Color legend */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_1px_rgba(16,185,129,0.5)]" />
+                    {lang === "ar" ? "متصل ويعمل" : "Connected & working"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                    {lang === "ar" ? "لا يوجد API Key" : "No API Key"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
+                    {lang === "ar" ? "تجاوز الحصة المجانية" : "Quota exceeded"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                    {lang === "ar" ? "مفتاح خاطئ أو منتهي" : "Invalid/expired key"}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/40" />
+                    {lang === "ar" ? "حالة غير معروفة" : "Unknown status"}
+                  </span>
                 </div>
               </div>
 
