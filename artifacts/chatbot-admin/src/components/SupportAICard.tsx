@@ -276,12 +276,14 @@ export default function SupportAICard() {
     useQuery<SupportAiStatus>({
       queryKey: ["admin-support-ai-status"],
       queryFn:  () => customFetch("/api/admin/support-ai-status") as Promise<SupportAiStatus>,
-      staleTime: 0,
+      staleTime: 60 * 1000,
+      retry: 1,
     });
 
   const { data: supportSettings, isLoading: supportLoading } = useQuery({
     queryKey: ["admin-support-settings"],
     queryFn:  () => customFetch("/api/admin/support-settings"),
+    staleTime: 30 * 1000,
   });
 
   useEffect(() => {
@@ -291,21 +293,25 @@ export default function SupportAICard() {
     }
   }, [supportSettings]);
 
-  // Auto-collapse once the agent is confirmed working
-  useEffect(() => {
-    if (aiStatus?.status === "ok") setCollapsed(true);
-  }, [aiStatus?.status]);
-
   const saveSupport = useMutation({
     mutationFn: (payload: { aiApiKey?: string; aiProvider: string; aiModel: string }) =>
       customFetch("/api/admin/support-settings", { method: "PUT", body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-support-settings"] });
-      toast({ title: "Support AI settings saved" });
+      toast({
+        title: lang === "ar" ? "تم حفظ إعدادات وكيل الدعم بنجاح" : "Support AI settings saved successfully",
+      });
       setAiApiKey("");
       refetchAiStatus();
     },
-    onError: () => toast({ title: "Failed to save settings", variant: "destructive" }),
+    onError: (err: any) => {
+      const errMsg = err?.data?.error || err?.message || (lang === "ar" ? "فشل حفظ الإعدادات" : "Failed to save settings");
+      toast({
+        title: lang === "ar" ? "فشل حفظ الإعدادات" : "Failed to save settings",
+        description: typeof errMsg === "string" ? errMsg : undefined,
+        variant: "destructive",
+      });
+    },
   });
 
   const isKeyConfigured = !!(supportSettings as any)?.hasKey || !!aiApiKey.trim();

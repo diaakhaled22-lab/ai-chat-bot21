@@ -212,7 +212,10 @@ export async function refreshAiModels(): Promise<AiModelCatalog> {
 export async function getAiModelCatalog(): Promise<{ providers: AiModelCatalog; syncedAt: string | null }> {
   const oneHour = 60 * 60 * 1000;
   if (!lastSyncedAt || Date.now() - lastSyncedAt.getTime() >= oneHour) {
-    await refreshAiModels();
+    // Refresh in background without blocking the HTTP response
+    refreshAiModels().catch((err) => {
+      logger.warn({ err }, "Background AI model catalog sync failed");
+    });
   }
   return {
     providers: cloneCatalog(catalog),

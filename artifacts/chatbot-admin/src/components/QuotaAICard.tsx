@@ -265,13 +265,33 @@ export default function QuotaAICard() {
   const { data: aiStatus, isLoading: aiStatusLoading, refetch: refetchAiStatus } =
     useQuery<QuotaAiStatus>({
       queryKey: ["admin-quota-ai-status"],
-      queryFn:  () => customFetch("/api/admin/quota-ai-status") as Promise<QuotaAiStatus>,
-      staleTime: 0,
+      queryFn: async () => {
+        try {
+          return (await customFetch("/api/admin/quota-ai-status")) as QuotaAiStatus;
+        } catch (err: any) {
+          if (err?.status === 404) {
+            return (await customFetch("/api/admin/support-ai-status")) as QuotaAiStatus;
+          }
+          throw err;
+        }
+      },
+      staleTime: 60 * 1000,
+      retry: 1,
     });
 
   const { data: quotaSettings, isLoading: quotaLoading } = useQuery({
     queryKey: ["admin-quota-ai-settings"],
-    queryFn:  () => customFetch("/api/admin/quota-ai-settings"),
+    queryFn: async () => {
+      try {
+        return await customFetch("/api/admin/quota-ai-settings");
+      } catch (err: any) {
+        if (err?.status === 404) {
+          return await customFetch("/api/admin/support-settings");
+        }
+        throw err;
+      }
+    },
+    staleTime: 30 * 1000,
   });
 
   useEffect(() => {
@@ -281,21 +301,40 @@ export default function QuotaAICard() {
     }
   }, [quotaSettings]);
 
-  // Auto-collapse once confirmed working
-  useEffect(() => {
-    if (aiStatus?.status === "ok") setCollapsed(true);
-  }, [aiStatus?.status]);
-
   const saveQuotaAi = useMutation({
-    mutationFn: (payload: { aiApiKey?: string; aiProvider: string; aiModel: string }) =>
-      customFetch("/api/admin/quota-ai-settings", { method: "PUT", body: JSON.stringify(payload) }),
+    mutationFn: async (payload: { aiApiKey?: string; aiProvider: string; aiModel: string }) => {
+      try {
+        return await customFetch("/api/admin/quota-ai-settings", {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } catch (err: any) {
+        if (err?.status === 404) {
+          return await customFetch("/api/admin/support-settings", {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          });
+        }
+        throw err;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-quota-ai-settings"] });
-      toast({ title: "Company Quota AI settings saved" });
+      queryClient.invalidateQueries({ queryKey: ["admin-support-settings"] });
+      toast({
+        title: lang === "ar" ? "تم حفظ إعدادات الذكاء الاصطناعي بنجاح" : "Support AI settings saved successfully",
+      });
       setAiApiKey("");
       refetchAiStatus();
     },
-    onError: () => toast({ title: "Failed to save settings", variant: "destructive" }),
+    onError: (err: any) => {
+      const errMsg = err?.data?.error || err?.message || (lang === "ar" ? "فشل حفظ الإعدادات" : "Failed to save settings");
+      toast({
+        title: lang === "ar" ? "فشل حفظ الإعدادات" : "Failed to save settings",
+        description: typeof errMsg === "string" ? errMsg : undefined,
+        variant: "destructive",
+      });
+    },
   });
 
   const isKeyConfigured = !!(quotaSettings as any)?.hasKey || !!aiApiKey.trim();

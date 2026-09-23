@@ -1286,23 +1286,32 @@ router.get("/admin/support-ai-status", async (req, res) => {
     }
 
     try {
-      if (provider === "anthropic") {
-        const Anthropic = (await import("@anthropic-ai/sdk")).default;
-        const client = new Anthropic({ apiKey });
-        await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
-      } else if (provider === "google") {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI    = new GoogleGenerativeAI(apiKey);
-        const genModel = genAI.getGenerativeModel({ model });
-        await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
-      } else if (provider === "openrouter") {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
-      } else {
-        const openai = new OpenAI({ apiKey });
-        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
-      }
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AI connection check timed out (5s limit)")), 5000)
+      );
+
+      const checkPromise = (async () => {
+        if (provider === "anthropic") {
+          const Anthropic = (await import("@anthropic-ai/sdk")).default;
+          const client = new Anthropic({ apiKey });
+          await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+        } else if (provider === "google") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genAI    = new GoogleGenerativeAI(apiKey);
+          const genModel = genAI.getGenerativeModel({ model });
+          await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
+        } else if (provider === "openrouter") {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+        } else {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({ apiKey });
+          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+        }
+      })();
+
+      await Promise.race([checkPromise, timeoutPromise]);
       res.json({ status: "ok", provider, model });
     } catch (aiErr: unknown) {
       const msg     = aiErr instanceof Error ? aiErr.message : String(aiErr);
@@ -1389,24 +1398,32 @@ router.get("/admin/quota-ai-status", async (req, res) => {
     }
 
     try {
-      if (provider === "anthropic") {
-        const Anthropic = (await import("@anthropic-ai/sdk")).default;
-        const client = new Anthropic({ apiKey });
-        await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
-      } else if (provider === "google") {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI    = new GoogleGenerativeAI(apiKey);
-        const genModel = genAI.getGenerativeModel({ model });
-        await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
-      } else if (provider === "openrouter") {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
-      } else {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey });
-        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
-      }
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("AI connection check timed out (5s limit)")), 5000)
+      );
+
+      const checkPromise = (async () => {
+        if (provider === "anthropic") {
+          const Anthropic = (await import("@anthropic-ai/sdk")).default;
+          const client = new Anthropic({ apiKey });
+          await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+        } else if (provider === "google") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genAI    = new GoogleGenerativeAI(apiKey);
+          const genModel = genAI.getGenerativeModel({ model });
+          await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
+        } else if (provider === "openrouter") {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+        } else {
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({ apiKey });
+          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+        }
+      })();
+
+      await Promise.race([checkPromise, timeoutPromise]);
       res.json({ status: "ok", provider, model });
     } catch (aiErr: unknown) {
       const msg     = aiErr instanceof Error ? aiErr.message : String(aiErr);
