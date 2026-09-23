@@ -13,6 +13,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+  SelectSeparator,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
@@ -81,13 +91,21 @@ function ModelPicker({
   selectedProvider, selectedModel, onSelect,
 }: { selectedProvider: string; selectedModel: string; onSelect: (provider: string, model: string) => void }) {
   const [activeProvider, setActiveProvider] = useState<string>(selectedProvider || "openai");
+
+  useEffect(() => {
+    if (selectedProvider) {
+      setActiveProvider(selectedProvider);
+    }
+  }, [selectedProvider]);
+
   const { data: syncedCatalog } = useQuery<AiModelCatalogResponse>({
     queryKey: ["admin-ai-model-catalog"],
     queryFn: () => customFetch("/api/admin/ai-models") as Promise<AiModelCatalogResponse>,
     staleTime: 30 * 60 * 1000,
     refetchInterval: 60 * 60 * 1000,
   });
-  const provider   = PROVIDERS.find((p) => p.id === activeProvider) ?? PROVIDERS[0];
+
+  const provider = PROVIDERS.find((p) => p.id === activeProvider) ?? PROVIDERS[0];
   const dynamicModels = syncedCatalog?.providers?.[activeProvider] ?? [];
   const allModels = mergeDynamicModels(
     provider.models.map((model) => ({ value: model.id, label: model.label, free: model.tier === "free" })),
@@ -95,8 +113,11 @@ function ModelPicker({
   );
   const freeModels = allModels.filter((m) => m.free);
   const paidModels = allModels.filter((m) => !m.free);
-  const isFreeSelected = selectedProvider === activeProvider && freeModels.some((m) => m.value === selectedModel);
-  const isPaidSelected = selectedProvider === activeProvider && paidModels.some((m) => m.value === selectedModel);
+
+  const selectedModelInfo =
+    selectedProvider === activeProvider
+      ? allModels.find((m) => m.value === selectedModel) ?? { value: selectedModel, label: selectedModel, free: false }
+      : null;
 
   return (
     <div className="space-y-3">
@@ -126,69 +147,105 @@ function ModelPicker({
         })}
       </div>
 
-      {/* Model cards */}
-      <div className="space-y-3">
-        {freeModels.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <Zap className="w-3 h-3" /> Free Tier Available
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {freeModels.map((m) => {
-                const isCurrent = selectedProvider === activeProvider && selectedModel === m.value;
-                return (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => onSelect(activeProvider, m.value)}
-                    className={`text-left p-2.5 rounded-lg border text-xs transition-all relative ${
-                      isCurrent
-                        ? "border-violet-500 bg-violet-500/10 shadow-sm shadow-violet-500/10"
-                        : "border-border/50 bg-card hover:border-border hover:bg-muted/30"
-                    }`}
-                  >
-                    {isCurrent && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 absolute top-2 right-2" />
-                    )}
-                    <div className="font-semibold text-foreground pr-4 truncate">{m.label}</div>
-                    <div className="font-mono text-[10px] text-muted-foreground truncate mt-0.5">{m.value}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+      {/* Model dropdown menu separating Free and Paid */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            {activeProvider.toUpperCase()} Models ({allModels.length})
+          </span>
+          {selectedModelInfo && (
+            <span
+              className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                selectedModelInfo.free
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                  : "bg-violet-500/15 text-violet-400 border border-violet-500/30"
+              }`}
+            >
+              {selectedModelInfo.free ? <Zap className="w-3 h-3 text-emerald-400" /> : <Sparkles className="w-3 h-3 text-violet-400" />}
+              {selectedModelInfo.free ? "Free Tier / مجاني" : "Paid Tier / مدفوع"}
+            </span>
+          )}
+        </div>
 
-        {paidModels.length > 0 && (
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" /> Paid / Pro Models
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {paidModels.map((m) => {
-                const isCurrent = selectedProvider === activeProvider && selectedModel === m.value;
-                return (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => onSelect(activeProvider, m.value)}
-                    className={`text-left p-2.5 rounded-lg border text-xs transition-all relative ${
-                      isCurrent
-                        ? "border-violet-500 bg-violet-500/10 shadow-sm shadow-violet-500/10"
-                        : "border-border/50 bg-card hover:border-border hover:bg-muted/30"
+        <Select
+          value={selectedProvider === activeProvider ? selectedModel : ""}
+          onValueChange={(modelValue) => onSelect(activeProvider, modelValue)}
+        >
+          <SelectTrigger className="w-full bg-background border-border h-10 px-3 text-xs sm:text-sm">
+            <SelectValue placeholder="— Select Model / اختيار النموذج —">
+              {selectedModelInfo ? (
+                <span className="flex items-center gap-2 truncate">
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded font-semibold uppercase shrink-0 ${
+                      selectedModelInfo.free
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : "bg-violet-500/20 text-violet-300 border border-violet-500/30"
                     }`}
                   >
-                    {isCurrent && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 absolute top-2 right-2" />
-                    )}
-                    <div className="font-semibold text-foreground pr-4 truncate">{m.label}</div>
-                    <div className="font-mono text-[10px] text-muted-foreground truncate mt-0.5">{m.value}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                    {selectedModelInfo.free ? "Free" : "Paid"}
+                  </span>
+                  <span className="font-medium text-foreground truncate">{selectedModelInfo.label}</span>
+                  <span className="text-[11px] text-muted-foreground font-mono truncate hidden sm:inline">
+                    ({selectedModelInfo.value})
+                  </span>
+                </span>
+              ) : undefined}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="max-h-[320px]">
+            {freeModels.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 px-2 py-1.5 bg-emerald-500/10 rounded-sm mb-1">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  Free Models (النماذج المجانية)
+                </SelectLabel>
+                {freeModels.map((m) => (
+                  <SelectItem key={m.value} value={m.value} className="cursor-pointer py-2">
+                    <div className="flex items-center justify-between w-full gap-3">
+                      <span className="font-medium text-foreground">{m.label}</span>
+                      <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                        {m.value}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+
+            {freeModels.length > 0 && paidModels.length > 0 && (
+              <SelectSeparator className="my-1.5 bg-border/60" />
+            )}
+
+            {paidModels.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="flex items-center gap-1.5 text-xs font-bold text-violet-400 px-2 py-1.5 bg-violet-500/10 rounded-sm mb-1">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                  Paid / Pro Models (النماذج المدفوعة)
+                </SelectLabel>
+                {paidModels.map((m) => (
+                  <SelectItem key={m.value} value={m.value} className="cursor-pointer py-2">
+                    <div className="flex items-center justify-between w-full gap-3">
+                      <span className="font-medium text-foreground">{m.label}</span>
+                      <span className="text-[10px] text-violet-300 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20">
+                        {m.value}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+          </SelectContent>
+        </Select>
+
+        <p className="text-[11px] text-muted-foreground flex items-center justify-between pt-0.5">
+          <span>Models are synced automatically from the provider API.</span>
+          {syncedCatalog?.syncedAt && (
+            <span>
+              Last synced{" "}
+              {new Date(syncedCatalog.syncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+        </p>
       </div>
     </div>
   );
@@ -347,7 +404,7 @@ export default function QuotaAICard() {
 
               {/* Model picker */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Select Model</label>
+                <label className="text-sm font-medium mb-2 block">Select Measurement Model (اختيار نموذج القياس)</label>
                 <ModelPicker
                   selectedProvider={selectedProvider}
                   selectedModel={selectedModel}
