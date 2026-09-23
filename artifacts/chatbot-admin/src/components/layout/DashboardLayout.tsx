@@ -611,6 +611,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 }
 
 function LiveStatusBar() {
+  const { lang } = useLanguage();
   const { data: stats, isError: isStatsError } = useGetAdminStats({
     query: { refetchInterval: 10_000, queryKey: getGetAdminStatsQueryKey() },
   });
@@ -632,12 +633,12 @@ function LiveStatusBar() {
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? "Issues Detected" : "Live"}
+        {hasMalfunction ? (lang === "ar" ? "يوجد مشكلة" : "Issues Detected") : (lang === "ar" ? "متصل" : "Live")}
       </span>
       {stats?.activeCompanies !== undefined && (
-        <span className="ml-auto flex items-center gap-1" title="Active Companies">
+        <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
           <Activity className="w-3 h-3" />
-          {stats.activeCompanies} active
+          <span>{stats.activeCompanies} {lang === "ar" ? "نشط" : "active"}</span>
         </span>
       )}
     </Link>
@@ -645,6 +646,7 @@ function LiveStatusBar() {
 }
 
 function ClientLiveStatusBar() {
+  const { lang } = useLanguage();
   const today = new Date().toISOString().split("T")[0];
   const { data: usage, isError: isUsageError } = useQuery<any>({
     queryKey: ["client-usage-today", today],
@@ -669,12 +671,12 @@ function ClientLiveStatusBar() {
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? "Issues Detected" : "Live"}
+        {hasMalfunction ? (lang === "ar" ? "يوجد مشكلة" : "Issues Detected") : (lang === "ar" ? "متصل" : "Live")}
       </span>
       {usage && (
-        <span className="ml-auto flex items-center gap-1">
+        <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
           <Activity className="w-3 h-3" />
-          {usage.totalMessages} today
+          <span>{lang === "ar" ? `اليوم ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
         </span>
       )}
     </Link>
