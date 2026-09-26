@@ -260,12 +260,12 @@ export default function AdminAITester() {
       </div>
 
       {/* Provider tabs */}
-      <div className="flex gap-0 border-b border-border">
+      <div className="flex gap-0 border-b border-border overflow-x-auto scrollbar-hide max-w-full">
         {PROVIDERS.map((p) => (
           <button
             key={p.id}
             onClick={() => { setActiveProvider(p.id); setResults({}); }}
-            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0 ${
               activeProvider === p.id
                 ? p.tabActive
                 : "text-muted-foreground border-transparent hover:text-foreground"

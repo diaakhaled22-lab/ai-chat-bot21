@@ -146,10 +146,10 @@ function ModelPicker({
   return (
     <div className="space-y-4">
       {/* Provider tabs */}
-      <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/50">
+      <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/50 overflow-x-auto scrollbar-hide">
         {PROVIDERS.map((p) => (
           <button key={p.id} onClick={() => setActiveProvider(p.id)}
-            className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-md transition-all ${
+            className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-md transition-all whitespace-nowrap shrink-0 ${
               activeProvider === p.id
                 ? "bg-card text-foreground shadow-sm border border-border/50"
                 : "text-muted-foreground hover:text-foreground"
