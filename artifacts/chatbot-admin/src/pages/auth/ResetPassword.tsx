@@ -58,7 +58,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex flex-col justify-center items-center bg-background p-4">
         <div className="w-full max-w-md">
           <Card className="border-border/50 shadow-2xl bg-card/80 backdrop-blur-xl">
             <CardContent className="flex flex-col items-center gap-4 py-8">
@@ -75,7 +75,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+    <div className="min-h-[100dvh] flex flex-col justify-center items-center bg-background p-4 py-12 sm:py-4 relative overflow-x-hidden overflow-y-auto">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">

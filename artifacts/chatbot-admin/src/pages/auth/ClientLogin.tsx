@@ -54,7 +54,7 @@ export default function ClientLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+    <div className="min-h-[100dvh] flex flex-col justify-center items-center bg-background p-4 py-12 sm:py-4 relative overflow-x-hidden overflow-y-auto">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
       
