@@ -186,7 +186,7 @@ export default function ClientDashboard() {
 
       {/* Main stat cards — always shown (0 when loading/error) */}
       {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="bg-card border border-border rounded-xl p-5 h-24 animate-pulse" />
           ))}
@@ -205,7 +205,7 @@ export default function ClientDashboard() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={MessageSquare}
               label={lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}
