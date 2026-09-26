@@ -503,8 +503,8 @@ export default function QuotaAICard() {
                     ) : (
                       <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
                     )}
-                    <div className="min-w-0">
-                      <span className="font-medium">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium block">
                         {aiStatusLoading                            ? (lang === "ar" ? "جاري فحص اتصال الذكاء الاصطناعي…" : "Checking AI connection…") :
                          aiStatus?.status === "ok"                 ? (lang === "ar" ? "الذكاء الاصطناعي متصل ويعمل بنجاح" : "AI is connected and working") :
                          aiStatus?.status === "quota_exceeded"     ? (lang === "ar" ? "تم تجاوز الحصة المجانية لمفتاح الـ API" : "Quota exceeded — API rate limit reached") :
@@ -514,7 +514,7 @@ export default function QuotaAICard() {
                          (lang === "ar" ? "حالة الذكاء الاصطناعي غير معروفة" : "Status unknown")}
                       </span>
                       {!aiStatusLoading && (aiStatus?.model || selectedModel) && (
-                        <span className="ml-2 text-xs text-muted-foreground font-mono">
+                        <span className="block mt-1 text-[11px] text-muted-foreground font-mono break-all leading-relaxed">
                           {aiStatus?.provider || selectedProvider} / {aiStatus?.model || selectedModel}
                         </span>
                       )}
