@@ -1510,9 +1510,9 @@ export default function ClientCompany() {
               {/* AI Engine */}
               <div className={`rounded-lg border p-3 flex items-center gap-3 ${company.aiAgentApiKey && company.aiProvider ? "border-primary/40 bg-primary/5" : "border-amber-500/40 bg-amber-500/5"}`}>
                 <span className="text-2xl">🤖</span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">AI Engine</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">AI Engine</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {company.aiProvider && company.aiModel
                       ? `${company.aiProvider.toUpperCase()} · ${company.aiModel}`
                       : company.aiAgentApiKey
@@ -1520,7 +1520,7 @@ export default function ClientCompany() {
                       : "⚠️ No API key — configure AI Provider above"}
                   </p>
                 </div>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${company.aiAgentApiKey && company.aiProvider ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-600"}`}>
+                <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${company.aiAgentApiKey && company.aiProvider ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-600"}`}>
                   {company.aiAgentApiKey && company.aiProvider ? "Active" : "Needs setup"}
                 </span>
               </div>
