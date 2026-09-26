@@ -309,8 +309,8 @@ export default function ClientChannels() {
 
             {/* ══ TELEGRAM ══════════════════════════════════════ */}
             <AccordionItem value="telegram" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
-              <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="telegram" size={22} />
                   <span className="font-semibold">{lang === "ar" ? "بوت تليجرام" : "Telegram"}</span>
                   <ChannelBadge enabled={telegramOn} configured={telegramConfigured} />
@@ -416,8 +416,8 @@ export default function ClientChannels() {
 
             {/* ══ WHATSAPP ══════════════════════════════════════ */}
             <AccordionItem value="whatsapp" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
-              <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="whatsapp" size={22} />
                   <span className="font-semibold">{lang === "ar" ? "واتساب للأعمال" : "WhatsApp"}</span>
                   <ChannelBadge enabled={whatsappOn} configured={whatsappConfigured} />
@@ -509,8 +509,8 @@ export default function ClientChannels() {
 
             {/* ══ MESSENGER ═════════════════════════════════════ */}
             <AccordionItem value="messenger" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
-              <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="messenger" size={22} />
                   <span className="font-semibold">{lang === "ar" ? "فيسبوك ماسنجر" : "Messenger"}</span>
                   <ChannelBadge enabled={messengerOn} configured={messengerConfigured} />
@@ -578,8 +578,8 @@ export default function ClientChannels() {
 
             {/* ══ WEBSITE WIDGET ════════════════════════════════ */}
             <AccordionItem value="widget" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
-              <AccordionTrigger className="hover:no-underline px-4 py-4 [&>svg]:ml-0">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="widget" size={22} />
                   <span className="font-semibold">{t("channels_website_title")}</span>
                   <ChannelBadge enabled={widgetOn} configured={widgetConfigured} />
