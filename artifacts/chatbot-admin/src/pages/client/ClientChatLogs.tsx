@@ -227,7 +227,7 @@ export default function ClientChatLogs() {
 
   return (
     <div className="space-y-6 flex flex-col flex-1 pb-10">
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t("chat_logs_title")}</h1>
           <p className="text-muted-foreground mt-2">{t("chat_logs_desc")}</p>
@@ -333,7 +333,7 @@ export default function ClientChatLogs() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 shrink-0">
+      <div className="flex flex-col md:flex-row gap-4 shrink-0">
         <div className="flex-1 flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">
           <Search className="w-5 h-5 ml-2 text-muted-foreground" />
           <Input 
@@ -343,7 +343,7 @@ export default function ClientChatLogs() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="w-[200px]">
+        <div className="w-full md:w-[200px]">
           <Select value={channelFilter} onValueChange={setChannelFilter}>
             <SelectTrigger className="h-full bg-card">
               <SelectValue placeholder={t("chat_logs_filter_channel")} />
@@ -357,7 +357,7 @@ export default function ClientChatLogs() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[220px]">
+        <div className="w-full md:w-[220px]">
           <Select 
             value={hasDateFilter ? fromDate : "all"} 
             onValueChange={(val) => {
@@ -389,7 +389,7 @@ export default function ClientChatLogs() {
       <Card className="flex-1 min-h-[600px] overflow-hidden flex border-border">
         
         {/* Left Pane: Sessions List */}
-        <div className="w-1/3 border-r border-border flex flex-col bg-muted/10">
+        <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-3 border-b border-border bg-card font-medium text-sm text-muted-foreground shrink-0">
             {lang === "ar" ? "المحادثات الأخيرة" : "Recent Conversations"}
           </div>
@@ -462,7 +462,7 @@ export default function ClientChatLogs() {
         </div>
 
         {/* Right Pane: Active Chat View */}
-        <div className="flex-1 flex flex-col bg-card relative">
+        <div className={`flex-1 flex-col bg-card relative ${!selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
           {!selectedSession ? (
              <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                <MessageSquare className="w-12 h-12 mb-4 opacity-20" />
@@ -473,6 +473,14 @@ export default function ClientChatLogs() {
                 {/* Chat Header */}
                 <div className="p-4 border-b border-border flex items-center justify-between bg-muted/5 shadow-sm z-10 shrink-0">
                   <div className="flex items-center gap-3">
+                    
+                    <button 
+                      onClick={() => setSelectedSessionId(null)}
+                      className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground"
+                      title="Back to list"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                        {getChannelIcon(selectedSession.channel)}
                     </div>
