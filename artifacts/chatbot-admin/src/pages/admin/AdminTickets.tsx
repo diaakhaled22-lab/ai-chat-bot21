@@ -134,8 +134,8 @@ function TicketCard({
             {ticket.aiModel && (
               <>
                 <span className="opacity-50">·</span>
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${prov.color}`}>
-                  {prov.label} · {ticket.aiModel}
+                <span className={`inline-flex min-w-0 max-w-[200px] sm:max-w-xs items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${prov.color}`}>
+                  <span className="shrink-0">{prov.label} · </span><span className="truncate">{ticket.aiModel}</span>
                 </span>
               </>
             )}
@@ -262,7 +262,7 @@ function TicketCard({
                 </p>
                 {ticket.aiModel && (
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${prov.color}`}>
-                    {prov.label} · {ticket.aiModel}
+                    <span className="shrink-0">{prov.label} · </span><span className="truncate">{ticket.aiModel}</span>
                   </span>
                 )}
               </div>
@@ -463,12 +463,12 @@ export default function AdminTickets() {
           )}
         </div>
 
-        <div className="flex gap-1.5 shrink-0">
+        <div className="flex gap-1.5 shrink-0 overflow-x-auto max-w-full scrollbar-hide pb-1">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 ${
                 filter === f.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
