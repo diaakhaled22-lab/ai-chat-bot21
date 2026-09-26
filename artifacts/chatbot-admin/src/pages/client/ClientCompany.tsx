@@ -1386,7 +1386,7 @@ export default function ClientCompany() {
                 type="button"
                 onClick={registerTelegramWebhook}
                 disabled={tgRegistering || !company.isActive}
-                className="bg-sky-500 hover:bg-sky-600 text-white gap-2"
+                className="bg-sky-500 hover:bg-sky-600 text-white gap-2 w-full sm:w-auto h-auto py-2 whitespace-normal"
                 size="sm"
               >
                 {tgRegistering ? (
