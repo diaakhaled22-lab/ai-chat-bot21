@@ -1444,7 +1444,7 @@ export default function ClientCompany() {
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
               {/* Row 1: Inputs */}
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Knowledge Sources</p>
-              <div className="grid grid-cols-5 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center text-xs">
                 <div className={`rounded-lg border p-2.5 space-y-1 ${company.systemPrompt ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">📝</div>
                   <div className="font-medium">System Prompt</div>
@@ -1530,7 +1530,7 @@ export default function ClientCompany() {
 
               {/* Channels */}
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Channels</p>
-              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
                 <div className={`rounded-lg border p-2.5 space-y-1 ${telegramConnected ? "border-sky-500/40 bg-sky-500/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">✈️</div>
                   <div className="font-medium">Telegram</div>
