@@ -289,7 +289,7 @@ export default function AdminBroadcast() {
                   {preview.companies.map((c) => (
                     <li key={c.id} className="flex items-center gap-2 text-sm">
                       <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="flex-1 truncate">{c.name}</span>
+                      <span className="flex-1 min-w-0 truncate">{c.name}</span>
                       <Badge
                         variant="outline"
                         className={`text-[10px] shrink-0 ${c.isActive ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" : "border-muted text-muted-foreground"}`}

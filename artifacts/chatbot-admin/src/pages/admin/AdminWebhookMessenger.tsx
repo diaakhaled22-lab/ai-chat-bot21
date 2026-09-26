@@ -68,7 +68,7 @@ function WebhookRow({ label, url }: { label: string; url: string }) {
     <div className="space-y-1">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
       <div className="flex items-center gap-2">
-        <pre className="flex-1 bg-muted/40 border border-border rounded-lg px-3 py-2 font-mono text-xs overflow-x-auto">
+        <pre className="flex-1 min-w-0 bg-muted/40 border border-border rounded-lg px-3 py-2 font-mono text-xs overflow-x-auto">
           {url}
         </pre>
         <CopyButton text={url} label={label} />
@@ -135,7 +135,7 @@ function StaticField({ label, value }: { label: string; value: string }) {
     <div className="space-y-1.5">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
       <div className="flex items-center gap-2">
-        <pre className="flex-1 bg-muted/40 border border-border rounded-lg px-3 py-2 font-mono text-xs overflow-x-auto select-all">
+        <pre className="flex-1 min-w-0 bg-muted/40 border border-border rounded-lg px-3 py-2 font-mono text-xs overflow-x-auto select-all">
           {value}
         </pre>
         <Button
