@@ -92,7 +92,8 @@ function TicketCard({
     }`}>
 
       {/* ── Header row ── */}
-      <div className="flex items-start gap-3 p-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 p-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0 w-full">
         {/* Status icon */}
         <div className={`mt-1 shrink-0 ${isOpen ? "text-amber-400" : "text-emerald-400"}`}>
           {isOpen ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
@@ -141,8 +142,10 @@ function TicketCard({
           </div>
         </div>
 
+        </div>
+
         {/* ── Action buttons (always visible for open tickets) ── */}
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end">
           {isOpen && (
             <>
               {/* AI Solve */}
@@ -408,7 +411,7 @@ export default function AdminTickets() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold">Customer Problems</h1>
           <p className="text-muted-foreground text-sm mt-1">

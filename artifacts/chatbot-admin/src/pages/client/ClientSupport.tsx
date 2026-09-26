@@ -35,7 +35,7 @@ function TicketRow({ ticket }: { ticket: Ticket }) {
           {isOpen ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium truncate">{ticket.title}</span>
             <Badge variant={isOpen ? "destructive" : "secondary"} className="text-[10px] shrink-0">
               {isOpen ? t("support_pending") : t("support_resolved")}
@@ -112,7 +112,7 @@ export default function ClientSupport() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t("support_title")}</h1>
           <p className="text-muted-foreground text-sm mt-1">
