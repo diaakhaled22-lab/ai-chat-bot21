@@ -34,6 +34,7 @@ import {
 import { PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -525,10 +526,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const links = role === "admin" ? adminLinks : clientLinks;
   const currentPage = links.find((l) => l.href === location)?.label ?? "";
 
-  return (
-    <div className="flex h-full w-full bg-background overflow-hidden text-foreground">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col overflow-hidden">
+  const sidebarContent = (
+    <>
+
         {/* Logo */}
         <div className="py-[15px] flex items-center gap-3 px-5 border-b border-border shrink-0">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
@@ -563,6 +563,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
               >
                 <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
@@ -587,12 +588,34 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             {t("nav_sign_out")}
           </Button>
         </div>
+      
+    </>
+  );
+
+
+  return (
+    <div className="flex h-full w-full bg-background overflow-hidden text-foreground">
+      {/* Sidebar */}
+      <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col overflow-hidden shrink-0">
+        {sidebarContent}
       </aside>
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="py-[17px] border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-8 shrink-0">
-          <p className="text-sm font-medium text-foreground">{currentPage}</p>
+        <header className="py-[17px] border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 md:px-8 shrink-0">
+          <div className="flex items-center gap-3">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-card [&>button]:hidden">
+                {sidebarContent}
+              </SheetContent>
+            </Sheet>
+            <p className="text-sm font-medium text-foreground">{currentPage}</p>
+          </div>
           <div className="flex items-center gap-1">
             <LanguageToggle />
             <ThemeToggle />
