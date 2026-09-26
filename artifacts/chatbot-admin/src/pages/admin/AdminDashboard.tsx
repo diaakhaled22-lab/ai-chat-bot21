@@ -322,13 +322,13 @@ export default function AdminDashboard() {
             AI Usage &amp; Cost Estimation
           </h2>
 
-          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1 overflow-x-auto max-w-full scrollbar-hide">
             <Calendar className="w-3.5 h-3.5 text-muted-foreground ml-1.5 shrink-0" />
             {RANGE_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
                 onClick={() => setActiveRange(opt.key)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
                   activeRange === opt.key
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"

@@ -262,7 +262,7 @@ export default function AdminAttackMonitoring() {
             </CardTitle>
             <CardDescription>These addresses were blocked after suspicious activity.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+          <CardContent className="flex flex-nowrap sm:flex-wrap gap-2 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0 scrollbar-hide w-full max-w-full">
             {data.blockedIps.map((blocked) => (
               <div key={blocked.ip} className="flex items-center gap-1 bg-red-500/10 border border-red-500/30 rounded-full pl-3 pr-1 py-1">
                 <span className="font-mono text-xs text-red-300">{blocked.ip}</span>

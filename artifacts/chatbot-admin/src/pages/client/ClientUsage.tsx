@@ -173,13 +173,13 @@ export default function ClientUsage() {
 
         {/* Date filter */}
         <div className="flex flex-col gap-2 items-end">
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto max-w-full scrollbar-hide justify-start sm:justify-end pb-1">
             <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
             {PRESETS.map((p) => (
               <button
                 key={p.key}
                 onClick={() => { setPreset(p.key); setShowCustom(false); }}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                   !showCustom && preset === p.key
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:text-foreground"
@@ -190,7 +190,7 @@ export default function ClientUsage() {
             ))}
             <button
               onClick={() => setShowCustom((v) => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 showCustom
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
