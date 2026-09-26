@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   MessageCircle, Send, Loader2, Check, AlertTriangle,
-  Zap, Copy, Layers,
+  Zap, Copy, Layers, Code,
 } from "lucide-react";
 import {
   useGetClientCompany,
@@ -749,6 +749,51 @@ export default function ClientChannels() {
               </div>
             )}
           </div>
+
+          {/* ── WordPress Integration Notice (Visible when FAB is enabled) ── */}
+          {fabEnabled && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-4 mt-4 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
+                  <Code className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-blue-600 dark:text-blue-400">
+                    {lang === "ar" ? "كيف أضيف الأيقونة العائمة إلى ووردبريس؟" : "How to add the FAB to WordPress?"}
+                  </h4>
+                  <div className="mt-2 text-sm text-muted-foreground space-y-2">
+                    {lang === "ar" ? (
+                      <>
+                        <p>بما أنك قمت بتفعيل زر المحادثة العائم، أفضل وأأمن طريقة لإضافته إلى موقعك (ووردبريس) هي كالتالي:</p>
+                        <ol className="list-decimal list-inside space-y-1 mt-1 text-xs">
+                          <li>قم بتنصيب وتفعيل إضافة <strong>WPCode</strong> من لوحة تحكم ووردبريس الخاصة بك.</li>
+                          <li>اذهب إلى <strong>Code Snippets</strong> ثم <strong>Header & Footer</strong>.</li>
+                          <li>انسخ <strong>كود التضمين (Embed Code)</strong> من صفحة <a href="/client/company" className="text-blue-500 hover:underline">بيانات الشركة (Company Profile)</a>.</li>
+                          <li>الصق الكود في صندوق <strong>Footer (تذييل الصفحة)</strong> واضغط <strong>حفظ</strong>.</li>
+                        </ol>
+                        <p className="text-xs mt-2 text-blue-500/80">
+                          هذه الطريقة تضمن أن الكود آمن ولن يُمسح عند تحديث القالب.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p>Since you have enabled the Floating Action Button, here is the best and safest way to add it to your WordPress site:</p>
+                        <ol className="list-decimal list-inside space-y-1 mt-1 text-xs">
+                          <li>Install and activate the <strong>WPCode</strong> plugin from your WordPress admin dashboard.</li>
+                          <li>Go to <strong>Code Snippets</strong> &gt; <strong>Header & Footer</strong>.</li>
+                          <li>Copy your <strong>Embed Code</strong> from the <a href="/client/company" className="text-blue-500 hover:underline">Company Profile</a> page.</li>
+                          <li>Paste the code into the <strong>Footer</strong> box and click <strong>Save</strong>.</li>
+                        </ol>
+                        <p className="text-xs mt-2 text-blue-500/80">
+                          This method ensures the code is safe and won't be deleted when updating your theme.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Sticky Save ──────────────────────────────────── */}
           <div className="flex justify-end pt-2 sticky bottom-6 z-10">
