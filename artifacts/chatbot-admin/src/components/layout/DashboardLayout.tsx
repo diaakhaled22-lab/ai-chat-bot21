@@ -478,7 +478,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const logout = useLogout();
   const { data: user } = useGetMe();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleLogout = () => {
