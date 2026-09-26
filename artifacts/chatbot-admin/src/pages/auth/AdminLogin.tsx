@@ -67,7 +67,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col items-center bg-background p-4 py-12 sm:py-4 relative overflow-x-hidden overflow-y-auto">
+    <div className="h-[100dvh] flex flex-col items-center bg-background p-4 pt-12 pb-24 sm:py-4 relative overflow-x-hidden overflow-y-auto">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
       
