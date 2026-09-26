@@ -31,7 +31,7 @@ import {
   Cpu,
   type LucideIcon,
 } from "lucide-react";
-import { PenTool } from "lucide-react";
+import { PenTool, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
