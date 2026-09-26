@@ -602,7 +602,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         <header className="py-[17px] border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 md:px-8 shrink-0">
           <div className="flex items-center gap-3">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -624,7 +624,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
