@@ -1034,7 +1034,7 @@ export default function AdminCompanies() {
 
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Quick Presets</Label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                 {QUOTA_PRESETS.map((p) => (
                   <Button
                     key={p.label}
@@ -1113,7 +1113,7 @@ export default function AdminCompanies() {
 
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">{t("admin_companies_retention_presets")}</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {RETENTION_PRESETS.map((p) => (
                   <Button
                     key={p.value}
@@ -1320,7 +1320,7 @@ export default function AdminCompanies() {
             <div className="space-y-5 pt-2">
 
               {/* Status + Subscription */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-muted/30 rounded-xl p-3 border border-border">
                   <p className="text-xs text-muted-foreground mb-1.5">Status</p>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${

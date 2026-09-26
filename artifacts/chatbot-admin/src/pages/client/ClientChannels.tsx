@@ -821,7 +821,7 @@ export default function ClientChannels() {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
           <Send className="w-3.5 h-3.5" /> {lang === "ar" ? "حالة القنوات" : "Channel status"}
         </p>
-        <div className="grid grid-cols-4 gap-3 text-center text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
           {[
             { channel: "telegram" as const, label: lang === "ar" ? "تليجرام" : "Telegram",  enabled: telegramOn,  configured: telegramConfigured,  color: "sky" },
             { channel: "whatsapp" as const, label: lang === "ar" ? "واتساب" : "WhatsApp",  enabled: whatsappOn,   configured: whatsappConfigured,   color: "green" },
