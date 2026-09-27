@@ -332,7 +332,7 @@ export default function ClientChatLogs() {
       </Card>
 
       {/* Mini Analytics */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 shrink-0">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
         <Card className="bg-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</CardTitle>
@@ -599,6 +599,7 @@ export default function ClientChatLogs() {
     </div>
   );
 }
+
 
 
 
