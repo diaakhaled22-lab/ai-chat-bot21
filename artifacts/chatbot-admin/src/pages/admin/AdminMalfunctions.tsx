@@ -60,18 +60,18 @@ export default function AdminMalfunctions() {
           {malfunctions.map((m) => (
             <Alert key={m.id} variant={m.isActive ? "destructive" : "default"} className={m.isActive ? "bg-red-500/5" : "bg-muted/50 border-muted"}>
               {m.isActive ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-              <div className="flex flex-col md:flex-row md:items-start justify-between w-full ml-2">
-                <div>
-                  <AlertTitle className="text-base mb-0 flex items-center gap-2">
-                    {m.title} 
-                    {m.companyName && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-normal">{m.companyName}</span>}
-                    {m.source === 'client' && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1"><User className="w-3 h-3"/> {lang === "ar" ? "بلاغ عميل" : "Client"}</span>}
-                    {m.source === 'system' && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1"><Monitor className="w-3 h-3"/> {lang === "ar" ? "نظام" : "System"}</span>}
-                    {m.source === 'admin' && <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1"><ShieldAlert className="w-3 h-3"/> {lang === "ar" ? "إدارة" : "Admin"}</span>}
+              <div className="flex flex-col md:flex-row md:items-start justify-between w-full">
+                <div className="flex-1 min-w-0">
+                  <AlertTitle className="text-base mb-2 flex flex-wrap items-center gap-2">
+                    <span className="truncate">{m.title}</span>
+                    {m.companyName && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-normal whitespace-nowrap">{m.companyName}</span>}
+                    {m.source === 'client' && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap"><User className="w-3 h-3"/> {lang === "ar" ? "بلاغ عميل" : "Client"}</span>}
+                    {m.source === 'system' && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap"><Monitor className="w-3 h-3"/> {lang === "ar" ? "نظام" : "System"}</span>}
+                    {m.source === 'admin' && <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap"><ShieldAlert className="w-3 h-3"/> {lang === "ar" ? "إدارة" : "Admin"}</span>}
                   </AlertTitle>
                   <AlertDescription className="mt-2 text-sm opacity-90 leading-relaxed">
                     {m.description}
-                    <div className="mt-4 text-xs opacity-70 flex items-center gap-4">
+                    <div className="mt-4 text-xs opacity-70 flex flex-wrap items-center gap-x-4 gap-y-2">
                       <span>{lang === "ar" ? "وقت الحدوث:" : "Occurred:"} {new Date(m.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}</span>
                       {!m.isActive && m.resolvedAt && (
                         <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -85,7 +85,7 @@ export default function AdminMalfunctions() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="mt-4 md:mt-0 md:ml-4 shrink-0 bg-background"
+                    className="mt-4 md:mt-0 md:ms-4 shrink-0 bg-background w-full md:w-auto"
                     onClick={() => resolveMutation.mutate(m.id)}
                     disabled={resolveMutation.isPending}
                   >

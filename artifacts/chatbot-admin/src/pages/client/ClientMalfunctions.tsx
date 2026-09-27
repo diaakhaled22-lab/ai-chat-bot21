@@ -57,8 +57,8 @@ export default function ClientMalfunctions() {
           {malfunctions.map((m) => (
             <Alert key={m.id} variant="destructive" className="bg-red-500/5">
               <AlertTriangle className="h-5 w-5" />
-              <AlertTitle className="text-base ml-2">{m.title}</AlertTitle>
-              <AlertDescription className="mt-2 ml-2 text-sm opacity-90 leading-relaxed">
+              <AlertTitle className="text-base break-words">{m.title}</AlertTitle>
+              <AlertDescription className="mt-2 text-sm opacity-90 leading-relaxed">
                 {m.description}
                 <div className="mt-4 text-xs opacity-70">
                   {new Date(m.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}
