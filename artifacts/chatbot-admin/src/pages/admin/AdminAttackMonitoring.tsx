@@ -146,7 +146,7 @@ export default function AdminAttackMonitoring() {
             <TrendingUp className="w-4 h-4 text-red-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Failed in last 5 minutes</p>
-              <p className="text-lg font-semibold">{analytics?.recentFailedAttempts ?? 0}</p>
+              <p className="text-lg font-semibold mt-1.5">{analytics?.recentFailedAttempts ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -155,7 +155,7 @@ export default function AdminAttackMonitoring() {
             <Activity className="w-4 h-4 text-primary mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Recorded failed attempts</p>
-              <p className="text-lg font-semibold">{analytics?.totalFailedAttempts ?? 0}</p>
+              <p className="text-lg font-semibold mt-1.5">{analytics?.totalFailedAttempts ?? 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -164,7 +164,7 @@ export default function AdminAttackMonitoring() {
             <Activity className="w-4 h-4 text-amber-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Failed attempts</p>
-              <p className="text-lg font-semibold">
+              <p className="text-lg font-semibold mt-1.5">
                 {policy.maxFailedAttempts} within {policy.failureWindowMinutes} minutes
               </p>
             </div>
@@ -175,7 +175,7 @@ export default function AdminAttackMonitoring() {
             <Clock3 className="w-4 h-4 text-orange-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Account lockout</p>
-              <p className="text-lg font-semibold">{policy.accountLockoutMinutes} minutes</p>
+              <p className="text-lg font-semibold mt-1.5">{policy.accountLockoutMinutes} minutes</p>
               <p className="text-xs text-muted-foreground mt-0.5">Subsequent attempts are blocked.</p>
             </div>
           </CardContent>
@@ -185,7 +185,7 @@ export default function AdminAttackMonitoring() {
             <Ban className="w-4 h-4 text-red-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Suspicious activity</p>
-              <p className="text-lg font-semibold">IP block after {policy.additionalAttemptsBeforeIpBlock} more</p>
+              <p className="text-lg font-semibold mt-1.5">IP block after {policy.additionalAttemptsBeforeIpBlock} more</p>
               <p className="text-xs text-muted-foreground mt-0.5">Repeated attempts during lockout.</p>
             </div>
           </CardContent>
