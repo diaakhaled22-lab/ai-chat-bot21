@@ -143,7 +143,7 @@ export default function AdminAttackMonitoring() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Failed in last 5 min</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground truncate pr-2">Failed in last 5 min</CardTitle>
             <TrendingUp className="h-4 w-4 text-red-400" />
           </CardHeader>
           <CardContent>
@@ -152,7 +152,7 @@ export default function AdminAttackMonitoring() {
         </Card>
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Recorded failed attempts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground truncate pr-2">Recorded failed attempts</CardTitle>
             <Activity className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
@@ -161,7 +161,7 @@ export default function AdminAttackMonitoring() {
         </Card>
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Failed attempts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground truncate pr-2">Failed attempts</CardTitle>
             <Activity className="h-4 w-4 text-amber-400" />
           </CardHeader>
           <CardContent>
@@ -173,7 +173,7 @@ export default function AdminAttackMonitoring() {
         </Card>
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Account lockout</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground truncate pr-2">Account lockout</CardTitle>
             <Clock3 className="h-4 w-4 text-orange-400" />
           </CardHeader>
           <CardContent>
@@ -183,7 +183,7 @@ export default function AdminAttackMonitoring() {
         </Card>
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Suspicious activity</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground truncate pr-2">Suspicious activity</CardTitle>
             <Ban className="h-4 w-4 text-red-400" />
           </CardHeader>
           <CardContent>
