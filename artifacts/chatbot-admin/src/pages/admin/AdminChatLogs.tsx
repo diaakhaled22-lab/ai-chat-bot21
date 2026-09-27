@@ -424,7 +424,7 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground font-bold">Total Messages</p>
+              <CardTitle className="text-sm font-bold text-muted-foreground truncate pr-2">Total Messages</CardTitle>
               <p className="text-2xl font-bold">{totalMessages}</p>
             </div>
             <MessageSquare className="w-8 h-8 text-primary/20" />
@@ -433,7 +433,7 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground font-bold">Active Sessions</p>
+              <CardTitle className="text-sm font-bold text-muted-foreground truncate pr-2">Active Sessions</CardTitle>
               <p className="text-2xl font-bold">{activeSessions}</p>
             </div>
             <User className="w-8 h-8 text-primary/20" />
@@ -442,7 +442,7 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground dark:text-green-400/90 font-bold">Unread</p>
+              <CardTitle className="text-sm font-bold text-muted-foreground dark:text-green-400/90 truncate pr-2">Unread</CardTitle>
               <p className="text-2xl font-bold text-foreground dark:text-green-500">
                 {unreadSessionsCount}
               </p>
@@ -453,7 +453,7 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground dark:text-orange-400/90 font-bold">Read</p>
+              <CardTitle className="text-sm font-bold text-muted-foreground dark:text-orange-400/90 truncate pr-2">Read</CardTitle>
               <p className="text-2xl font-bold text-foreground dark:text-orange-500">
                 {readSessionsCount}
               </p>
@@ -464,7 +464,7 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground font-bold">Top Channel</p>
+              <CardTitle className="text-sm font-bold text-muted-foreground truncate pr-2">Top Channel</CardTitle>
               <p className="text-2xl font-bold capitalize">{topChannel}</p>
             </div>
             <Globe className="w-8 h-8 text-primary/20" />
@@ -473,7 +473,7 @@ export default function AdminChatLogs() {
         <Card className="bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground font-bold">Top Company</p>
+              <CardTitle className="text-sm font-bold text-muted-foreground truncate pr-2">Top Company</CardTitle>
               <p className="text-lg font-bold truncate max-w-[120px]">
                 {topCompany}
               </p>
@@ -744,3 +744,4 @@ export default function AdminChatLogs() {
     </div>
   );
 }
+

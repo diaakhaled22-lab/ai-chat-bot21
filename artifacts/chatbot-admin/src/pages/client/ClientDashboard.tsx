@@ -63,7 +63,7 @@ function StatCard({
         <Icon className="w-5 h-5" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5">{label}</p>
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5 truncate pr-2">{label}</p>
         <p className="text-2xl font-bold tabular-nums truncate">{value}</p>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
@@ -363,3 +363,4 @@ export default function ClientDashboard() {
     </div>
   );
 }
+
