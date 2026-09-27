@@ -85,7 +85,7 @@ export default function AdminMalfunctions() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="mt-4 md:mt-0 md:ms-4 shrink-0 bg-background w-full md:w-auto"
+                    className="mt-4 md:mt-0 md:ml-4 shrink-0 bg-background w-full md:w-auto"
                     onClick={() => resolveMutation.mutate(m.id)}
                     disabled={resolveMutation.isPending}
                   >

@@ -130,7 +130,7 @@ export default function AdminBroadcast() {
         setTitle("");
         setMessage("");
       } else {
-        toast({ title: (data as any).error ?? "Failed to send broadcast", variant: "destructive" });
+        toast({ title: data.message ?? "Failed to send broadcast", variant: "destructive" });
       }
     } catch {
       toast({ title: "Connection error. Please try again.", variant: "destructive" });
