@@ -1704,4 +1704,77 @@ router.post("/client/malfunctions", async (req, res) => {
   }
 });
 
+router.post("/client/chat/reply", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
+  try {
+    const { sessionId, channel, message } = req.body;
+    if (!sessionId || !channel || !message) return res.status(400).json({ error: "Missing required fields" });
+
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
+    if (!company) return res.status(404).json({ error: "Company not found" });
+
+    if (channel === "telegram") {
+      const axios = require("axios").default;
+      await axios.post(https://api.telegram.org/bot + company.telegramBotApiKey + /sendMessage, {
+        chat_id: sessionId,
+        text: message
+      });
+    } else if (channel === "whatsapp") {
+      const axios = require("axios").default;
+      await axios.post(https://graph.facebook.com/v17.0/ + company.whatsappPhoneNumberId + /messages, {
+        messaging_product: "whatsapp",
+        to: sessionId,
+        type: "text",
+        text: { body: message }
+      }, {
+        headers: { Authorization: Bearer  + company.whatsappApiToken }
+      });
+    } else if (channel === "messenger") {
+      const axios = require("axios").default;
+      await axios.post(https://graph.facebook.com/v17.0/ + company.messengerPageId + /messages, {
+        recipient: { id: sessionId },
+        message: { text: message }
+      }, {
+        headers: { Authorization: Bearer  + company.messengerApiKey },
+        params: { access_token: company.messengerApiKey }
+      });
+    }
+
+    await db.insert(chatLogsTable).values({
+      companyId: company.id,
+      channel: channel as any,
+      sessionId,
+      customerMessage: "",
+      botResponse: [????]  + message,
+      isHandoff: true,
+      isHumanReply: true
+    });
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/client/chat/resolve", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
+  try {
+    const { sessionId, channel } = req.body;
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
+    
+    await db.insert(chatLogsTable).values({
+      companyId: company.id,
+      channel: channel as any,
+      sessionId,
+      customerMessage: "",
+      botResponse: "[HANDOFF_RESOLVED]",
+      isHandoff: false,
+      isHumanReply: false
+    });
+    res.json({ ok: true });
+  } catch(err) {
+    res.status(500).json({ error: "Error resolving" });
+  }
+});
+
 export default router;

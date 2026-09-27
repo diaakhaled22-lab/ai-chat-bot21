@@ -1,3 +1,4 @@
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
@@ -200,15 +201,28 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
           if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
         }
 
-        const aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+        
+    if (isSessionInHandoff(priorLogs)) {
+      return;
+    }
 
-        await db.insert(chatLogsTable).values({
-          companyId: company.id,
-          channel: "messenger",
-          sessionId,
-          customerMessage: userText,
-          botResponse: aiReply,
-        });
+    let aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+    let isHandoff = false;
+
+    if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
+      aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
+      isHandoff = true;
+    }
+
+    await db.insert(chatLogsTable).values({
+      companyId: company.id,
+      channel: "messenger",
+      sessionId,
+      customerMessage: userText,
+      botResponse: aiReply,
+      isHandoff,
+    });
+    
 
         await sendMessengerMessage(company.messengerApiKey, senderId, aiReply);
 

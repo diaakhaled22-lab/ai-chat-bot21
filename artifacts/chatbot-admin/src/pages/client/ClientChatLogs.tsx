@@ -62,7 +62,45 @@ export default function ClientChatLogs() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
 
+    const [replyMessage, setReplyMessage] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleReply = async () => {
+    if (!replyMessage.trim() || !selectedSession) return;
+    setIsReplying(true);
+    try {
+      await fetch("/api/client/chat/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({
+          sessionId: selectedSession.id,
+          channel: selectedSession.channel,
+          message: replyMessage
+        })
+      });
+      setReplyMessage("");
+      queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!selectedSession) return;
+    try {
+      await fetch("/api/client/chat/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({
+          sessionId: selectedSession.id,
+          channel: selectedSession.channel,
+        })
+      });
+      queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+    } catch(e) {}
+  };
+
   const { toast } = useToast();
   const { data: logs, isLoading, isFetching, refetch } = useListClientChatLogs({
     channel: channelFilter !== "all" ? channelFilter : undefined,
@@ -129,6 +167,16 @@ export default function ClientChatLogs() {
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || sessions[0] || null;
   }, [sessions, selectedSessionId]);
+
+  
+  const isHandoff = useMemo(() => {
+    if (!selectedSession) return false;
+    for (let i = selectedSession.messages.length - 1; i >= 0; i--) {
+      if (selectedSession.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
+      if (selectedSession.messages[i].isHandoff) return true;
+    }
+    return false;
+  }, [selectedSession]);
 
   const handleSelectSession = (sessionId: string) => {
     setSelectedSessionId(sessionId);
@@ -516,7 +564,7 @@ export default function ClientChatLogs() {
                       </div>
                       
                       {/* Bot Bubble */}
-                      {log.botResponse && (
+                      {log.botResponse && log.botResponse !== `[HANDOFF_RESOLVED]` && (
                         <div className="flex items-end gap-2 flex-row-reverse">
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                             <Bot className="w-4 h-4 text-primary" />
@@ -551,4 +599,5 @@ export default function ClientChatLogs() {
     </div>
   );
 }
+
 

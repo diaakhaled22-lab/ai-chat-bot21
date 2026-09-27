@@ -1,3 +1,4 @@
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
@@ -28,6 +29,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   
 
   let sysContent = company.systemPrompt ?? "";
+  sysContent += HANDOFF_SYSTEM_PROMPT;
     if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
   sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
@@ -149,7 +151,17 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
     }
 
-    const aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+        if (isSessionInHandoff(priorLogs)) {
+      return;
+    }
+
+    let aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+    let isHandoff = false;
+
+    if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
+      aiReply = localizedChannelMessage(userText, "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
+      isHandoff = true;
+    }
 
     await db.insert(chatLogsTable).values({
       companyId: company.id,
@@ -157,6 +169,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       sessionId,
       customerMessage: userText,
       botResponse: aiReply,
+      isHandoff,
     });
 
     await sendTelegramMessage(company.telegramBotApiKey!, chatId, aiReply);
@@ -255,4 +268,8 @@ router.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (
 });
 
 export default router;
+
+
+
+
 

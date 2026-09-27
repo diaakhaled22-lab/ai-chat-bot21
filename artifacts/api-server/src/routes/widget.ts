@@ -1,3 +1,4 @@
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -127,12 +128,12 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     let conversationHistory: { role: "user" | "assistant"; content: string }[] = [];
     if (sessionId && typeof sessionId === "string") {
-      const priorLogs = await db
-        .select()
-        .from(chatLogsTable)
-        .where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId)))
-        .orderBy(asc(chatLogsTable.createdAt))
-        .limit(20);
+      const priorLogs = await db.select().from(chatLogsTable).where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId))).orderBy(asc(chatLogsTable.createdAt)).limit(20);
+
+    if (isSessionInHandoff(priorLogs)) {
+      res.json({ reply: localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.") });
+      return;
+    }
 
       for (const log of priorLogs) {
         conversationHistory.push({ role: "user", content: log.customerMessage });
@@ -143,6 +144,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     }
 
     let sysContent = company.systemPrompt ?? "";
+    sysContent += HANDOFF_SYSTEM_PROMPT;
     if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
     sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
     sysContent += `\n\n${getLanguageInstruction(message.trim(), explicitLang)}`;
@@ -210,7 +212,12 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
 
-    aiReply = enforceResponseLanguage(aiReply, message.trim(), explicitLang);
+        aiReply = enforceResponseLanguage(aiReply, message.trim(), explicitLang);
+    let isHandoff = false;
+    if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
+      aiReply = localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
+      isHandoff = true;
+    }
 
     if (sessionId && typeof sessionId === "string") {
       await db.insert(chatLogsTable).values({
@@ -219,6 +226,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         sessionId,
         customerMessage: message.trim(),
         botResponse: aiReply,
+        isHandoff,
       });
     }
 
@@ -243,4 +251,5 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 });
 
 export default router;
+
 
