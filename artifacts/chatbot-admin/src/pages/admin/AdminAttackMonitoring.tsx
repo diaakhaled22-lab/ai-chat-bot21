@@ -130,7 +130,7 @@ export default function AdminAttackMonitoring() {
 
       {analytics?.spikeAlert.active && (
         <Card className="border-red-500/40 bg-red-500/10" role="alert" aria-live="assertive">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-start gap-3 h-full">
             <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold text-red-300">Sudden failed-login spike detected</p>
@@ -142,7 +142,7 @@ export default function AdminAttackMonitoring() {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="bg-card">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-start gap-3 h-full">
             <TrendingUp className="w-4 h-4 text-red-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Failed in last 5 minutes</p>
@@ -151,7 +151,7 @@ export default function AdminAttackMonitoring() {
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-start gap-3 h-full">
             <Activity className="w-4 h-4 text-primary mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Recorded failed attempts</p>
@@ -160,7 +160,7 @@ export default function AdminAttackMonitoring() {
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-start gap-3 h-full">
             <Activity className="w-4 h-4 text-amber-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Failed attempts</p>
@@ -171,7 +171,7 @@ export default function AdminAttackMonitoring() {
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-start gap-3 h-full">
             <Clock3 className="w-4 h-4 text-orange-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Account lockout</p>
@@ -181,7 +181,7 @@ export default function AdminAttackMonitoring() {
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 flex items-start gap-3">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-start gap-3 h-full">
             <Ban className="w-4 h-4 text-red-400 mt-0.5" />
             <div>
               <p className="text-xs text-muted-foreground">Suspicious activity</p>
