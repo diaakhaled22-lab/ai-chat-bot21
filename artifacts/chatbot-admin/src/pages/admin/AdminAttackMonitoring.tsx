@@ -140,7 +140,7 @@ export default function AdminAttackMonitoring() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="bg-card">
           <CardContent className="p-4 flex items-start gap-3">
             <TrendingUp className="w-4 h-4 text-red-400 mt-0.5" />
