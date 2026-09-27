@@ -284,50 +284,50 @@ export default function ClientChatLogs() {
       </Card>
 
       {/* Mini Analytics */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 shrink-0">
-        <Card className="bg-card">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground font-bold truncate pr-2">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</p>
-              <p className="text-2xl font-bold">{totalMessages}</p>
-            </div>
-            <MessageSquare className="w-8 h-8 text-primary/20" />
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 shrink-0">
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</CardTitle>
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalMessages}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground font-bold truncate pr-2">{lang === "ar" ? "المحادثات (Sessions)" : "Active Sessions"}</p>
-              <p className="text-2xl font-bold">{uniqueSessions}</p>
-            </div>
-            <User className="w-8 h-8 text-primary/20" />
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "الجلسات النشطة (Sessions)" : "Active Sessions"}</CardTitle>
+            <User className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{uniqueSessions}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground dark:text-green-400/90 font-bold truncate pr-2">{lang === "ar" ? "غير مقروءة" : "Unread"}</p>
-              <p className="text-2xl font-bold text-foreground dark:text-green-500">{unreadSessionsCount}</p>
-            </div>
-            <MessageCircle className="w-8 h-8 text-green-500/20 dark:text-green-400" />
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "غير مقروءة" : "Unread"}</CardTitle>
+            <MessageCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-500">{unreadSessionsCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground dark:text-orange-400/90 font-bold truncate pr-2">{lang === "ar" ? "مقروءة" : "Read"}</p>
-              <p className="text-2xl font-bold text-foreground dark:text-orange-500">{readSessionsCount}</p>
-            </div>
-            <MessageSquare className="w-8 h-8 text-orange-500/20 dark:text-orange-400" />
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "مقروءة" : "Read"}</CardTitle>
+            <MessageSquare className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-500">{readSessionsCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground font-bold truncate pr-2">{lang === "ar" ? "أكثر قناة نشاطاً" : "Top Channel"}</p>
-              <p className="text-2xl font-bold capitalize">{topChannel}</p>
-            </div>
-            <Globe className="w-8 h-8 text-primary/20" />
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "القناة الأكثر نشاطاً" : "Top Channel"}</CardTitle>
+            <Globe className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold capitalize">{topChannel}</div>
           </CardContent>
         </Card>
       </div>

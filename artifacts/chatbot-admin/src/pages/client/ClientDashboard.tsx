@@ -58,16 +58,16 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex items-start gap-4">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5 truncate pr-2">{label}</p>
-        <p className="text-2xl font-bold tabular-nums truncate">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-      </div>
-    </div>
+    <Card className="bg-card border-border/50">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium truncate pr-2">{label}</CardTitle>
+        <Icon className={`h-4 w-4 ${color.replace('bg-', 'text-').replace('/10', '')}`} />
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-bold tabular-nums truncate">{value}</div>
+        {sub && <p className="text-xs text-muted-foreground mt-1 truncate">{sub}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
