@@ -157,17 +157,19 @@ export default function AdminBroadcast() {
       </div>
 
       {result && (
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4">
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <p className="font-semibold text-emerald-700 dark:text-emerald-400">
-              Broadcast delivered to {result.sent} client{result.sent !== 1 ? "s" : ""}
-            </p>
-            <p className="text-sm text-emerald-600/80 dark:text-emerald-400/70">
-              Recipients will see the message in their notification bell.
-            </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4">
+          <div className="flex items-start gap-3 flex-1">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-semibold text-emerald-700 dark:text-emerald-400">
+                Broadcast delivered to {result.sent} client{result.sent !== 1 ? "s" : ""}
+              </p>
+              <p className="text-sm text-emerald-600/80 dark:text-emerald-400/70">
+                Recipients will see the message in their notification bell.
+              </p>
+            </div>
           </div>
-          <Button variant="ghost" size="sm" className="ml-auto shrink-0" onClick={reset}>
+          <Button variant="ghost" size="sm" className="w-full sm:w-auto shrink-0 border border-emerald-500/20 sm:border-transparent" onClick={reset}>
             <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> New
           </Button>
         </div>
@@ -339,15 +341,15 @@ export default function AdminBroadcast() {
         )}
 
         {/* Send button */}
-        <div className="flex items-center gap-3 justify-end">
-          <Button variant="outline" onClick={reset} disabled={sending}>
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end mt-4">
+          <Button variant="outline" onClick={reset} disabled={sending} className="w-full sm:w-auto">
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset
           </Button>
           <Button
             onClick={handleSend}
             disabled={sending || !title.trim() || !message.trim() || (preview?.count ?? 0) === 0}
-            className="gap-2 min-w-[160px]"
+            className="w-full sm:w-auto gap-2 sm:min-w-[160px]"
           >
             {sending ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
