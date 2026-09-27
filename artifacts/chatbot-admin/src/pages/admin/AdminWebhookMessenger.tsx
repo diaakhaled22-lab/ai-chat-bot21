@@ -93,12 +93,12 @@ function CompanyCard({
   return (
     <Card className={`bg-card border-border/50 ${isMessenger ? "border-blue-500/20" : "border-green-500/20"}`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <span>{isMessenger ? "📨" : "💬"}</span>
-            {company.name}
+            <span className="shrink-0">{isMessenger ? "📨" : "💬"}</span>
+            <span className="truncate">{company.name}</span>
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {company.isActive ? (
               <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 bg-emerald-500/5 gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Active
@@ -260,7 +260,7 @@ export default function AdminWebhookMessenger() {
       <PlatformCredentialsSection />
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="bg-card border-blue-500/20">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-xl shrink-0">📨</div>
