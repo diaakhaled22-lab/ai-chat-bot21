@@ -19,6 +19,7 @@ import { sendNewTicketNotification } from "../lib/email";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded } from "../lib/supportAi";
+import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
 import crypto from 'crypto';
 
 function telegramWebhookSecret(token: string): string {
@@ -303,6 +304,7 @@ router.post("/client/company", async (req, res) => {
         generalInfo: data.generalInfo ?? null,
         isActive: false,
         systemPrompt: data.systemPrompt ?? null,
+        securityPrompt: data.securityPrompt ?? DEFAULT_SECURITY_PROMPT,
         googleSheetsEnabled: data.googleSheetsEnabled ?? false,
         googleSheetsLink: data.googleSheetsLink ?? null,
         googleSheetsName: data.googleSheetsName ?? null,
