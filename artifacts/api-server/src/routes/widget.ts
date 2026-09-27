@@ -117,8 +117,8 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       res.status(503).json({
         error: localizedChannelMessage(
           message,
-          configErr?.message || "تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
-          configErr?.message || "Unable to respond due to AI configuration issue or exceeded quota.",
+          "نعتذر، المساعد الذكي غير متاح حالياً. يرجى التواصل مع فريق خدمة العملاء مباشرة.",
+          "We apologize, the smart assistant is currently unavailable. Please contact customer support directly.",
           explicitLang
         ),
       });
@@ -243,3 +243,4 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 });
 
 export default router;
+

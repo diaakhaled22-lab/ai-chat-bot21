@@ -130,8 +130,8 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     } catch (configErr: any) {
       await sendTelegramMessage(company.telegramBotApiKey!, chatId, localizedChannelMessage(
         userText,
-        configErr?.message || "⚠️ تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
-        configErr?.message || "⚠️ Unable to respond due to AI configuration issue or exceeded quota.",
+        "نعتذر، المساعد الذكي غير متاح حالياً. يرجى التواصل مع فريق خدمة العملاء مباشرة.",
+        "We apologize, the smart assistant is currently unavailable. Please contact customer support directly.",
       ));
       return;
     }
@@ -255,3 +255,4 @@ router.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (
 });
 
 export default router;
+

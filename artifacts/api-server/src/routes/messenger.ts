@@ -181,8 +181,8 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
         } catch (configErr: any) {
           await sendMessengerMessage(company.messengerApiKey, senderId, localizedChannelMessage(
             userText,
-            configErr?.message || "⚠️ تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
-            configErr?.message || "⚠️ Unable to respond due to AI configuration issue or exceeded quota.",
+            "نعتذر، المساعد الذكي غير متاح حالياً. يرجى التواصل مع فريق خدمة العملاء مباشرة.",
+            "We apologize, the smart assistant is currently unavailable. Please contact customer support directly.",
           ));
           continue;
         }
@@ -313,8 +313,8 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
         } catch (configErr: any) {
           await sendMessengerMessage(company.messengerApiKey, senderId, localizedChannelMessage(
             userText,
-            configErr?.message || "⚠️ تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
-            configErr?.message || "⚠️ Unable to respond due to AI configuration issue or exceeded quota.",
+            "نعتذر، المساعد الذكي غير متاح حالياً. يرجى التواصل مع فريق خدمة العملاء مباشرة.",
+            "We apologize, the smart assistant is currently unavailable. Please contact customer support directly.",
           ));
           continue;
         }
@@ -367,3 +367,4 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
 });
 
 export default router;
+
