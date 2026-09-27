@@ -2,6 +2,7 @@ import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
+import { downloadTelegramAudio, transcribeAudio } from '../lib/audio';
 import { db, companiesTable, chatLogsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -102,11 +103,12 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     const update = req.body;
 
     const message = update.message || update.edited_message;
-    if (!message || !message.text) return;
+    if (!message) return;
 
     const chatId: number = message.chat.id;
-    const userText: string = message.text;
     const sessionId = `tg_${chatId}`;
+    let userText: string = message.text || "";
+    let isVoice = false;
 
     const [foundCompany] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
     company = foundCompany;
@@ -115,6 +117,22 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       logger.warn({ secret: secret.slice(0, 8) }, "Telegram webhook: no company matched");
       return;
     }
+
+    if (!userText && (message.voice || message.audio)) {
+      try {
+        const fileId = message.voice ? message.voice.file_id : message.audio.file_id;
+        const buffer = await downloadTelegramAudio(company.telegramBotApiKey!, fileId);
+        const transcript = await transcribeAudio(company, buffer, "audio.ogg");
+        userText = "[????? ?????] " + transcript;
+        isVoice = true;
+      } catch (err) {
+        logger.error({ err }, "Error transcribing telegram audio");
+        // We could send a fallback message or just return
+        return;
+      }
+    }
+
+    if (!userText) return;
 
     if (!company.isActive) {
       await sendTelegramMessage(company.telegramBotApiKey!, chatId, localizedChannelMessage(
@@ -282,6 +300,7 @@ router.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (
 });
 
 export default router;
+
 
 
 

@@ -3,6 +3,7 @@ import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
 import { Router } from "express";
+import { downloadWhatsAppAudio, transcribeAudio } from '../lib/audio';
 import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -176,10 +177,25 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
           continue;
         }
 
-        for (const message of messages) {
-          const senderPhone = message.from;
-          const userText    = message.type === "text" ? message.text?.body : undefined;
-          if (!senderPhone || !userText) continue;
+        
+          for (const message of messages) {
+            const senderPhone = message.from;
+            let userText = message.type === "text" ? message.text?.body : undefined;
+
+            if (!userText && (message.type === "audio" || message.type === "voice")) {
+               try {
+                  const mediaId = message.audio?.id || message.voice?.id;
+                  if (mediaId && company.whatsappApiToken) {
+                     const buffer = await downloadWhatsAppAudio(company.whatsappApiToken, mediaId);
+                     const transcript = await transcribeAudio(company, buffer, "audio.ogg");
+                     userText = "[رسالة صوتية] " + transcript;
+                  }
+               } catch (err) {
+                  // ignore
+               }
+            }
+
+            if (!senderPhone || !userText) continue;
 
           const sessionId = `wa_${senderPhone}`;
 
@@ -346,10 +362,25 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
       for (const change of entry.changes ?? []) {
         const messages = change.value?.messages ?? [];
 
-        for (const message of messages) {
-          const senderPhone = message.from;
-          const userText    = message.type === "text" ? message.text?.body : undefined;
-          if (!senderPhone || !userText) continue;
+        
+          for (const message of messages) {
+            const senderPhone = message.from;
+            let userText = message.type === "text" ? message.text?.body : undefined;
+
+            if (!userText && (message.type === "audio" || message.type === "voice")) {
+               try {
+                  const mediaId = message.audio?.id || message.voice?.id;
+                  if (mediaId && company.whatsappApiToken) {
+                     const buffer = await downloadWhatsAppAudio(company.whatsappApiToken, mediaId);
+                     const transcript = await transcribeAudio(company, buffer, "audio.ogg");
+                     userText = "[رسالة صوتية] " + transcript;
+                  }
+               } catch (err) {
+                  // ignore
+               }
+            }
+
+            if (!senderPhone || !userText) continue;
 
           const sessionId = `wa_${senderPhone}`;
 
@@ -424,4 +455,5 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
 });
 
 export default router;
+
 
