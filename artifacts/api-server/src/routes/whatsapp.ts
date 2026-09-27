@@ -1,4 +1,4 @@
-import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData } from '../lib/handoff';
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
@@ -240,7 +240,8 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
     }
 
     let rawReply = await callAI(company, userText, history, aiConfig);
-    const { cleanResponse, leadData } = extractLeadData(rawReply);
+    const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
+    const { cleanResponse, metrics } = extractMetrics(tempResponse);
     
     let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
@@ -269,7 +270,7 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
       customerMessage: userText,
       botResponse: aiReply,
       isHandoff,
-    });
+    , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
     
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
@@ -427,7 +428,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             sessionId,
             customerMessage: userText,
             botResponse: aiReply,
-          });
+          , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 

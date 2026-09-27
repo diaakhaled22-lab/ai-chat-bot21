@@ -13,9 +13,12 @@ export const chatLogsTable = pgTable("chat_logs", {
   isRead: boolean("is_read").notNull().default(false),
   isHumanReply: boolean("is_human_reply").notNull().default(false),
   isHandoff: boolean("is_handoff").notNull().default(false),
+  sentiment: text("sentiment"),
+  intent: text("intent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertChatLogSchema = createInsertSchema(chatLogsTable).omit({ id: true, createdAt: true });
 export type InsertChatLog = z.infer<any> // typeof insertChatLogSchema>;
 export type ChatLog = typeof chatLogsTable.$inferSelect;
+

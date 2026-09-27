@@ -1,4 +1,4 @@
-import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData } from '../lib/handoff';
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -146,6 +146,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     let sysContent = company.systemPrompt ?? "";
     sysContent += HANDOFF_SYSTEM_PROMPT;
     sysContent += LEAD_GEN_SYSTEM_PROMPT;
+    sysContent += METRICS_SYSTEM_PROMPT;
     if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
     sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
     sysContent += `\n\n${getLanguageInstruction(message.trim(), explicitLang)}`;
@@ -213,7 +214,8 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
 
-        const { cleanResponse, leadData } = extractLeadData(aiReply);
+        const { cleanResponse: tempResponse, leadData } = extractLeadData(aiReply);
+    const { cleanResponse, metrics } = extractMetrics(tempResponse);
     aiReply = enforceResponseLanguage(cleanResponse, message.trim(), explicitLang);
     let isHandoff = false;
     
@@ -242,7 +244,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         customerMessage: message.trim(),
         botResponse: aiReply,
         isHandoff,
-      });
+      , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
     }
 
     void syncConversationToSheet(company, [

@@ -174,7 +174,8 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     }
 
     let rawReply = await callAI(company, userText, history, aiConfig);
-    const { cleanResponse, leadData } = extractLeadData(rawReply);
+    const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
+    const { cleanResponse, metrics } = extractMetrics(tempResponse);
     let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
 
@@ -202,7 +203,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       customerMessage: userText,
       botResponse: aiReply,
       isHandoff,
-    });
+    , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
 
     await sendTelegramMessage(company.telegramBotApiKey!, chatId, aiReply);
 
