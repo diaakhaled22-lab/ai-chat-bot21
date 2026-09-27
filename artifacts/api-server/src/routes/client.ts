@@ -1715,27 +1715,27 @@ router.post("/client/chat/reply", async (req, res) => {
 
     if (channel === "telegram") {
       const axios = require("axios").default;
-      await axios.post(https://api.telegram.org/bot + company.telegramBotApiKey + /sendMessage, {
+      await axios.post("https://api.telegram.org/bot" + company.telegramBotApiKey + "/sendMessage", {
         chat_id: sessionId,
         text: message
       });
     } else if (channel === "whatsapp") {
       const axios = require("axios").default;
-      await axios.post(https://graph.facebook.com/v17.0/ + company.whatsappPhoneNumberId + /messages, {
+      await axios.post("https://graph.facebook.com/v17.0/" + company.whatsappPhoneNumberId + "/messages", {
         messaging_product: "whatsapp",
         to: sessionId,
         type: "text",
         text: { body: message }
       }, {
-        headers: { Authorization: Bearer  + company.whatsappApiToken }
+        headers: { Authorization: "Bearer " + company.whatsappApiToken }
       });
     } else if (channel === "messenger") {
       const axios = require("axios").default;
-      await axios.post(https://graph.facebook.com/v17.0/ + company.messengerPageId + /messages, {
+      await axios.post("https://graph.facebook.com/v17.0/" + company.messengerPageId + "/messages", {
         recipient: { id: sessionId },
         message: { text: message }
       }, {
-        headers: { Authorization: Bearer  + company.messengerApiKey },
+        headers: { Authorization: "Bearer " + company.messengerApiKey },
         params: { access_token: company.messengerApiKey }
       });
     }
@@ -1745,7 +1745,7 @@ router.post("/client/chat/reply", async (req, res) => {
       channel: channel as any,
       sessionId,
       customerMessage: "",
-      botResponse: [????]  + message,
+      botResponse: "[موظف] " + message,
       isHandoff: true,
       isHumanReply: true
     });
@@ -1783,7 +1783,7 @@ router.get("/client/leads", async (req, res) => {
     const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
     if (!company) return res.status(404).json({ error: "Company not found" });
 
-    const leads = await db.select().from(leadsTable).where(eq(leadsTable.companyId, company.id)).orderBy(sqlcreated_at DESC);
+    const leads = await db.select().from(leadsTable).where(eq(leadsTable.companyId, company.id)).orderBy(sql`created_at DESC`);
     res.json(leads);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -1791,3 +1791,4 @@ router.get("/client/leads", async (req, res) => {
 });
 
 export default router;
+

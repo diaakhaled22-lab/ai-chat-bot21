@@ -10,7 +10,8 @@
                     "test":  "NODE_ENV=production node --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts",
                     "typecheck":  "tsc -p tsconfig.json --noEmit"
                 },
-    "dependencies":  {
+    "dependencies": {
+    "axios": "^1.7.9",
                          "@anthropic-ai/sdk":  "^0.106.0",
                          "@google-cloud/storage":  "^7.21.0",
                          "@google/generative-ai":  "^0.24.1",
@@ -56,4 +57,5 @@
                             "@types/qrcode":  "^1.5.5"
                         }
 }
+
 

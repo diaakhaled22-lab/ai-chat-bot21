@@ -1,31 +1,34 @@
-import axios from "axios";
 import OpenAI, { toFile } from "openai";
 import { getSupportAiSettings } from "./supportAi";
 import { companiesTable } from "@workspace/db";
 import { type InferSelectModel } from "drizzle-orm";
 
 export async function downloadTelegramAudio(telegramToken: string, fileId: string): Promise<Buffer> {
-  const getFileRes = await axios.get(`https://api.telegram.org/bot${telegramToken}/getFile?file_id=${fileId}`);
-  const filePath = getFileRes.data.result.file_path;
+  const getFileRes = await fetch(`https://api.telegram.org/bot${telegramToken}/getFile?file_id=${fileId}`);
+  const getFileData = await getFileRes.json();
+  const filePath = getFileData.result.file_path;
   const fileUrl = `https://api.telegram.org/file/bot${telegramToken}/${filePath}`;
-  const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
-  return Buffer.from(response.data);
+  
+  const response = await fetch(fileUrl);
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 export async function downloadWhatsAppAudio(whatsappToken: string, mediaId: string): Promise<Buffer> {
-  const getUrlRes = await axios.get(`https://graph.facebook.com/v17.0/${mediaId}`, {
+  const getUrlRes = await fetch(`https://graph.facebook.com/v17.0/${mediaId}`, {
     headers: { Authorization: `Bearer ${whatsappToken}` },
   });
-  const mediaUrl = getUrlRes.data.url;
-  const response = await axios.get(mediaUrl, {
-    responseType: "arraybuffer",
+  const getUrlData = await getUrlRes.json();
+  const mediaUrl = getUrlData.url;
+  
+  const response = await fetch(mediaUrl, {
     headers: { Authorization: `Bearer ${whatsappToken}` },
   });
-  return Buffer.from(response.data);
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 export async function transcribeAudio(company: InferSelectModel<typeof companiesTable>, buffer: Buffer, filename: string): Promise<string> {
-  // First, try to see if company uses OpenAI directly
   let apiKey = company.aiAgentApiKey;
   let useCompanyKey = company.aiAgentProvider === "openai";
 
@@ -48,4 +51,3 @@ export async function transcribeAudio(company: InferSelectModel<typeof companies
   
   return transcription.text;
 }
-
