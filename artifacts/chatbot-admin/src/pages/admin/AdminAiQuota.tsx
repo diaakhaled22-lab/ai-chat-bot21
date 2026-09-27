@@ -357,7 +357,7 @@ export default function AdminAiQuota() {
       const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
       const cost = hasQuota ? (usage?.cost ?? 0) : 0;
 
-      const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
+      const effectiveModel = c.aiModel || ((usage as any)?.model && (usage as any).model !== "unknown" ? (usage as any).model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
 
       return [
         `"${c.name.replace(/"/g, '""')}"`,
@@ -743,7 +743,7 @@ export default function AdminAiQuota() {
                       ? Math.min(100, Math.max(tokensUsed > 0 ? 1 : 0, Math.round(percentFloat)))
                       : 0;
 
-                    const effectiveModel = c.aiModel || (usage?.model && usage.model !== "unknown" ? usage.model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
+                    const effectiveModel = c.aiModel || ((usage as any)?.model && (usage as any).model !== "unknown" ? (usage as any).model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
 
                     return (
                       <tr key={c.id} className="hover:bg-muted/20 transition-colors">

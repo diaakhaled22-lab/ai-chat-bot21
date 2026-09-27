@@ -295,7 +295,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-bold">{stats?.quotaCompanies || 0}</div>
+              <div className="text-3xl font-bold">{(stats as any)?.quotaCompanies || 0}</div>
             )}
           </CardContent>
         </Card>
