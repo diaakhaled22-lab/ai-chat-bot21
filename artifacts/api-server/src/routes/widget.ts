@@ -243,8 +243,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         sessionId,
         customerMessage: message.trim(),
         botResponse: aiReply,
-        isHandoff,
-      , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+        isHandoff, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
     }
 
     void syncConversationToSheet(company, [

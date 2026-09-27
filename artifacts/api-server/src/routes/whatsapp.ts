@@ -269,8 +269,7 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
       sessionId,
       customerMessage: userText,
       botResponse: aiReply,
-      isHandoff,
-    , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+      isHandoff, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
     
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
@@ -427,8 +426,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             channel: "whatsapp",
             sessionId,
             customerMessage: userText,
-            botResponse: aiReply,
-          , sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+            botResponse: aiReply, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 
