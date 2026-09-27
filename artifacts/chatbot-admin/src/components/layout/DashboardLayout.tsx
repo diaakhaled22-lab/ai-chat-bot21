@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -535,7 +535,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
             <Bot className="w-6 h-6 text-primary" />
           </div>
-          <span className="font-bold text-xl tracking-tight whitespace-nowrap">Mission Control</span>
+          <span className="font-bold text-xl tracking-tight whitespace-nowrap">Bot Manager</span>
         </div>
 
         {/* User info */}
@@ -706,3 +706,4 @@ function ClientLiveStatusBar() {
     </Link>
   );
 }
+

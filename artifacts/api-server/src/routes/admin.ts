@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte } from "drizzle-orm";
@@ -1944,7 +1944,7 @@ router.post("/admin/security/2fa/generate", async (req, res) => {
       return;
     }
     const secret = authenticator.generateSecret();
-    const otpauthUrl = authenticator.keyuri(req.session.name || "Admin", "Mission Control", secret);
+    const otpauthUrl = authenticator.keyuri(req.session.name || "Admin", "Bot Manager", secret);
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
     
     res.json({ secret, qrCodeDataUrl });
@@ -2222,4 +2222,5 @@ router.patch("/admin/malfunctions/:id/resolve", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 

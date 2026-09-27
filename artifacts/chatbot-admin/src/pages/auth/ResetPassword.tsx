@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Bot, Lock, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,7 +83,7 @@ export default function ResetPassword() {
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 border border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.2)]">
             <Bot className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Mission Control</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Bot Manager</h1>
           <p className="text-muted-foreground mt-2">AI Deployment Management</p>
         </div>
 
@@ -139,3 +139,4 @@ export default function ResetPassword() {
     </div>
   );
 }
+

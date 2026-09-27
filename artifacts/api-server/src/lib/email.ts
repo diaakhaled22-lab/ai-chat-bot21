@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+﻿import nodemailer from "nodemailer";
 import { db, adminConfigTable, notificationsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { escapeHtml } from "./security";
@@ -59,13 +59,13 @@ export async function sendNewTicketNotification(ticket: {
 
     const transporter = buildTransporter(cfg);
     await transporter.sendMail({
-      from: `"Mission Control" <${cfg.smtpUser}>`,
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
       to: cfg.recipientEmail,
       subject: `[New Problem #${ticket.id}] ${ticket.title}`,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
           <h2 style="margin:0 0 4px;color:#18181b;font-size:20px;">New Customer Problem</h2>
-          <p style="margin:0 0 20px;color:#71717a;font-size:14px;">Submitted via Mission Control</p>
+          <p style="margin:0 0 20px;color:#71717a;font-size:14px;">Submitted via Bot Manager</p>
 
           <table style="width:100%;border-collapse:collapse;">
             <tr>
@@ -89,7 +89,7 @@ export async function sendNewTicketNotification(ticket: {
           </table>
 
           <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa;">
-            Log in to Mission Control to review and resolve this problem.
+            Log in to Bot Manager to review and resolve this problem.
           </p>
         </div>
       `,
@@ -109,9 +109,9 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
     }
     const transporter = buildTransporter(cfg);
     await transporter.sendMail({
-      from: `"Mission Control" <${cfg.smtpUser}>`,
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
       to,
-      subject: "Mission Control — Password Reset",
+      subject: "Bot Manager — Password Reset",
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
           <h2 style="margin:0 0 8px;color:#18181b;">Reset Your Password</h2>
@@ -135,9 +135,9 @@ export async function sendTestEmail() {
   }
   const transporter = buildTransporter(cfg);
   await transporter.sendMail({
-    from: `"Mission Control" <${cfg.smtpUser}>`,
+    from: `"Bot Manager" <${cfg.smtpUser}>`,
     to: cfg.recipientEmail,
-    subject: "Mission Control — Test Email",
+    subject: "Bot Manager — Test Email",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
         <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
@@ -160,7 +160,7 @@ export async function sendClientNotification(clientEmail: string, title: string,
           ${escapeHtml(messageText).replace(/\n/g, "<br>")}
         </p>
         <p style="font-size: 14px; margin-bottom: 20px;">
-          Please check the Mission Control client portal for more details.
+          Please check the Bot Manager client portal for more details.
         </p>
       </div>
     </div>
@@ -170,7 +170,7 @@ export async function sendClientNotification(clientEmail: string, title: string,
   if (!isEmailConfigured(cfg)) return;
   const transporter = buildTransporter(cfg);
   await transporter.sendMail({
-    from: `"Mission Control" <${cfg.smtpUser}>`,
+    from: `"Bot Manager" <${cfg.smtpUser}>`,
     to: clientEmail,
     subject: `[Notification] ${title}`,
     html
@@ -216,14 +216,14 @@ export async function sendAttackSpikeNotification(input: {
 
     const transporter = buildTransporter(cfg);
     await transporter.sendMail({
-      from: `"Mission Control" <${cfg.smtpUser}>`,
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
       to: cfg.recipientEmail,
       subject: `[Security Alert] ${input.recentFailedAttempts} failed login attempts`,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
           <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
           <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
-          <p style="margin:0;color:#450a0a;font-size:13px;">Open Mission Control → Attack Monitoring to review IP addresses, targeted accounts, and automatic blocks.</p>
+          <p style="margin:0;color:#450a0a;font-size:13px;">Open Bot Manager → Attack Monitoring to review IP addresses, targeted accounts, and automatic blocks.</p>
         </div>
       `,
     });
@@ -270,14 +270,14 @@ export async function sendSecurityEventEmail(event: 'account_locked' | 'ip_block
 
     const transporter = buildTransporter(cfg);
     await transporter.sendMail({
-      from: `"Mission Control" <${cfg.smtpUser}>`,
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
       to: cfg.recipientEmail,
       subject: `[Security Alert] ${title}`,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
           <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
           <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
-          <p style="margin:0;color:#450a0a;font-size:13px;">Open Mission Control → Attack Monitoring to review and manage this incident.</p>
+          <p style="margin:0;color:#450a0a;font-size:13px;">Open Bot Manager → Attack Monitoring to review and manage this incident.</p>
         </div>
       `,
     });
@@ -286,3 +286,4 @@ export async function sendSecurityEventEmail(event: 'account_locked' | 'ip_block
     logger.error({ err }, "Failed to send security event email");
   }
 }
+

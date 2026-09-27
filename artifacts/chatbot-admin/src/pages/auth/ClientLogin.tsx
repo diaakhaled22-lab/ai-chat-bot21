@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -63,7 +63,7 @@ export default function ClientLogin() {
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 border border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.2)]">
             <Bot className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Mission Control</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Bot Manager</h1>
           <p className="text-muted-foreground mt-2">Client Portal</p>
         </div>
 
@@ -120,3 +120,4 @@ export default function ClientLogin() {
     </div>
   );
 }
+

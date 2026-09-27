@@ -1,4 +1,4 @@
-export type Lang = "en" | "ar";
+﻿export type Lang = "en" | "ar";
 
 const translations = {
   en: {
@@ -28,7 +28,7 @@ const translations = {
     nav_client_portal: "Client Portal",
     nav_live: "Live",
     nav_today: "today",
-    nav_mission_control: "Mission Control",
+    nav_mission_control: "Bot Manager",
 
     // ── Notifications ───────────────────────────────────────────────────────
     notif_title: "Notifications",
@@ -687,4 +687,5 @@ const translations = {
 
 export type TranslationKey = keyof typeof translations.en;
 export { translations };
+
 

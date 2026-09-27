@@ -1,4 +1,4 @@
-# Mission Control – AI Chatbot Platform
+﻿# Bot Manager – AI Chatbot Platform
 
 An AI chatbot management platform for deploying and managing AI-powered chat widgets for client companies.
 
@@ -50,3 +50,4 @@ pnpm --filter @workspace/db run push
 ## User preferences
 
 - Keep existing monorepo structure and stack.
+
