@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   Database,
   Cpu,
-  PenTool, type LucideIcon,
+  PenTool, Menu, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -707,6 +707,7 @@ function ClientLiveStatusBar() {
     </Link>
   );
 }
+
 
 
 
