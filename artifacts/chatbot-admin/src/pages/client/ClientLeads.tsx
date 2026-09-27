@@ -35,20 +35,20 @@ export default function ClientLeads() {
     const csvContent = [
       headers.join(","),
       ...filteredLeads.map(l => [
-        \`"\${l.name || ''}"\`,
-        \`"\${l.email || ''}"\`,
-        \`"\${l.phone || ''}"\`,
-        \`"\${l.interest || ''}"\`,
-        \`"\${l.channel || ''}"\`,
-        \`"\${new Date(l.createdAt).toLocaleString()}"\`
+        `"${l.name || ''}"`,
+        `"${l.email || ''}"`,
+        `"${l.phone || ''}"`,
+        `"${l.interest || ''}"`,
+        `"${l.channel || ''}"`,
+        `"${new Date(l.createdAt).toLocaleString()}"`
       ].join(","))
-    ].join("\\n");
+    ].join("\n");
     
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = \`leads_export_\${new Date().toISOString().split("T")[0]}.csv\`;
+    link.download = `leads_export_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
