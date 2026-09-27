@@ -123,7 +123,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
         const fileId = message.voice ? message.voice.file_id : message.audio.file_id;
         const buffer = await downloadTelegramAudio(company.telegramBotApiKey!, fileId);
         const transcript = await transcribeAudio(company, buffer, "audio.ogg");
-        userText = "[????? ?????] " + transcript;
+        userText = "[رسالة صوتية] " + transcript;
         isVoice = true;
       } catch (err) {
         logger.error({ err }, "Error transcribing telegram audio");
@@ -192,7 +192,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     }
 
     if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
-      aiReply = localizedChannelMessage(userText, "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
+      aiReply = localizedChannelMessage(userText, "جاري تحويلك الى موظف دعم فني وسيتواصل معك قريبا.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
     }
 
@@ -202,7 +202,10 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       sessionId,
       customerMessage: userText,
       botResponse: aiReply,
-      isHandoff, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+      isHandoff,
+        sentiment: metrics?.sentiment || null,
+        intent: metrics?.intent || null,
+      });
 
     await sendTelegramMessage(company.telegramBotApiKey!, chatId, aiReply);
 

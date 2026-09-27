@@ -236,7 +236,10 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
       sessionId,
       customerMessage: userText,
       botResponse: aiReply,
-      isHandoff, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+      isHandoff,
+        sentiment: metrics?.sentiment || null,
+        intent: metrics?.intent || null,
+      });
     
 
         await sendMessengerMessage(company.messengerApiKey, senderId, aiReply);

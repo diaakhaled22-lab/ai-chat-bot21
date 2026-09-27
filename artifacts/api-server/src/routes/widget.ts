@@ -131,7 +131,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       const priorLogs = await db.select().from(chatLogsTable).where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId))).orderBy(asc(chatLogsTable.createdAt)).limit(20);
 
     if (isSessionInHandoff(priorLogs)) {
-      res.json({ reply: localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.") });
+      res.json({ reply: localizedChannelMessage(message.trim(), "جاري تحويلك الى موظف دعم فني وسيتواصل معك قريبا.", "You are being transferred to a human agent. They will reply to you shortly.") });
       return;
     }
 
@@ -243,7 +243,10 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         sessionId,
         customerMessage: message.trim(),
         botResponse: aiReply,
-        isHandoff, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+        isHandoff,
+        sentiment: metrics?.sentiment || null,
+        intent: metrics?.intent || null,
+      });
     }
 
     void syncConversationToSheet(company, [
