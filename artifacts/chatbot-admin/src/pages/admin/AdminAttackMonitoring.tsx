@@ -142,52 +142,53 @@ export default function AdminAttackMonitoring() {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="bg-card">
-          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-center gap-3 h-full">
-            <TrendingUp className="w-4 h-4 text-red-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-muted-foreground">Failed in last 5 minutes</p>
-              <p className="text-lg font-semibold mt-1.5">{analytics?.recentFailedAttempts ?? 0}</p>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Failed in last 5 min</CardTitle>
+            <TrendingUp className="h-4 w-4 text-red-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.recentFailedAttempts ?? 0}</div>
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-center gap-3 h-full">
-            <Activity className="w-4 h-4 text-" />
-            <div>
-              <p className="text-xs text-muted-foreground">Recorded failed attempts</p>
-              <p className="text-lg font-semibold mt-1.5">{analytics?.totalFailedAttempts ?? 0}</p>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Recorded failed attempts</CardTitle>
+            <Activity className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics?.totalFailedAttempts ?? 0}</div>
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-center gap-3 h-full">
-            <Activity className="w-4 h-4 text-amber-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-muted-foreground">Failed attempts</p>
-              <p className="text-lg font-semibold mt-1.5">
-                {policy.maxFailedAttempts} within {policy.failureWindowMinutes} minutes
-              </p>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Failed attempts</CardTitle>
+            <Activity className="h-4 w-4 text-amber-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {policy.maxFailedAttempts}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">within {policy.failureWindowMinutes} minutes</p>
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-center gap-3 h-full">
-            <Clock3 className="w-4 h-4 text-orange-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-muted-foreground">Account lockout</p>
-              <p className="text-lg font-semibold mt-1.5">{policy.accountLockoutMinutes} minutes</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Subsequent attempts are blocked.</p>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Account lockout</CardTitle>
+            <Clock3 className="h-4 w-4 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{policy.accountLockoutMinutes} min</div>
+            <p className="text-xs text-muted-foreground mt-1">Subsequent attempts blocked</p>
           </CardContent>
         </Card>
         <Card className="bg-card">
-          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-center gap-3 h-full">
-            <Ban className="w-4 h-4 text-red-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-muted-foreground">Suspicious activity</p>
-              <p className="text-lg font-semibold mt-1.5">IP block after {policy.additionalAttemptsBeforeIpBlock} more</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Repeated attempts during lockout.</p>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Suspicious activity</CardTitle>
+            <Ban className="h-4 w-4 text-red-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">IP Block</div>
+            <p className="text-xs text-muted-foreground mt-1">after {policy.additionalAttemptsBeforeIpBlock} more attempts</p>
           </CardContent>
         </Card>
       </div>
