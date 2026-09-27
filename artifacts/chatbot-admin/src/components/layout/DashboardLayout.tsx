@@ -32,7 +32,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -708,6 +707,7 @@ function ClientLiveStatusBar() {
     </Link>
   );
 }
+
 
 
 
