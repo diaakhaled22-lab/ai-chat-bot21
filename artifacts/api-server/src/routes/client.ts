@@ -304,7 +304,7 @@ router.post("/client/company", async (req, res) => {
         generalInfo: data.generalInfo ?? null,
         isActive: false,
         systemPrompt: data.systemPrompt ?? null,
-        securityPrompt: data.securityPrompt ?? DEFAULT_SECURITY_PROMPT,
+        securityPrompt: DEFAULT_SECURITY_PROMPT,
         googleSheetsEnabled: data.googleSheetsEnabled ?? false,
         googleSheetsLink: data.googleSheetsLink ?? null,
         googleSheetsName: data.googleSheetsName ?? null,
