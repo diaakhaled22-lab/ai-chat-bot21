@@ -32,6 +32,7 @@ import ClientCompany from "./pages/client/ClientCompany";
 import ClientPrompts from "./pages/client/ClientPrompts";
 import ClientKnowledge from "@/pages/client/ClientKnowledge";
 import ClientChatLogs from "@/pages/client/ClientChatLogs";
+import ClientLeads from "@/pages/client/ClientLeads";
 import ClientSettings from "@/pages/client/ClientSettings";
 import ClientUsage from "@/pages/client/ClientUsage";
 import ClientSupport from "@/pages/client/ClientSupport";
@@ -174,6 +175,9 @@ function Router() {
       <Route path="/client/chat-logs">
         {() => <ProtectedRoute component={ClientChatLogs} allowedRole="client" />}
       </Route>
+      <Route path="/client/leads">
+        {() => <ProtectedRoute component={ClientLeads} allowedRole="client" />}
+      </Route>
       <Route path="/client/support">
         {() => <ProtectedRoute component={ClientSupport} allowedRole="client" />}
       </Route>
@@ -222,3 +226,4 @@ function App() {
 }
 
 export default App;
+

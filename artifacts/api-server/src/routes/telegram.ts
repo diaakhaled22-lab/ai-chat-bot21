@@ -155,8 +155,22 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       return;
     }
 
-    let aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+    let rawReply = await callAI(company, userText, history, aiConfig);
+    const { cleanResponse, leadData } = extractLeadData(rawReply);
+    let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
+
+    if (leadData) {
+      await db.insert(leadsTable).values({
+        companyId: company.id,
+        channel: "telegram",
+        sessionId,
+        name: leadData.name || null,
+        email: leadData.email || null,
+        phone: leadData.phone || null,
+        interest: leadData.interest || null,
+      });
+    }
 
     if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
       aiReply = localizedChannelMessage(userText, "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
@@ -268,6 +282,7 @@ router.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (
 });
 
 export default router;
+
 
 
 

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,7 +31,8 @@ import {
   Cpu,
   type LucideIcon,
 } from "lucide-react";
-import { PenTool, Menu } from "lucide-react";
+
+import { Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -80,7 +81,7 @@ function timeAgo(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Admin Bell Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// â”€â”€ Admin Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
@@ -212,7 +213,7 @@ function NotificationBell() {
             <div className="px-4 py-1.5 bg-muted/30">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("notif_customer_problems")}
-                {openTicketCount > 0 && <span className="ml-1 text-amber-400">Ã‚Â· {openTicketCount} {t("notif_open")}</span>}
+                {openTicketCount > 0 && <span className="ml-1 text-amber-400">Â· {openTicketCount} {t("notif_open")}</span>}
               </span>
             </div>
             {ticketsFetching && tickets.length === 0 ? (
@@ -235,7 +236,7 @@ function NotificationBell() {
                         <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-xs text-muted-foreground truncate">{ticket.clientName}</span>
-                          <span className="text-muted-foreground/40 text-xs">Ã‚Â·</span>
+                          <span className="text-muted-foreground/40 text-xs">Â·</span>
                           <span className="text-xs text-muted-foreground shrink-0">{timeAgo(ticket.createdAt)}</span>
                         </div>
                       </div>
@@ -267,7 +268,7 @@ function NotificationBell() {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Client Bell Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// â”€â”€ Client Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ClientNotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -354,7 +355,7 @@ function ClientNotificationBell() {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Badge components Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// â”€â”€ Badge components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function OpenTicketsBadge() {
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
@@ -441,7 +442,7 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Theme Toggle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// â”€â”€ Theme Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ThemeToggle() {
   const { theme, toggle } = useTheme();
   return (
@@ -456,7 +457,7 @@ function ThemeToggle() {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Language Toggle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// â”€â”€ Language Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function LanguageToggle() {
   const { lang, setLang } = useLanguage();
   const next = lang === "en" ? "ar" : "en";
@@ -473,7 +474,7 @@ function LanguageToggle() {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Main layout Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// â”€â”€ Main layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [location, setLocation] = useLocation();
   const logout = useLogout();
@@ -518,6 +519,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/widget-preview",   label: t("nav_widget_preview"),  icon: Bot },
     { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles },
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
+      { href: "/client/leads",            label: lang === "ar" ? "??????? ?????????" : "Leads CRM", icon: MessageSquare },
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },
     { href: "/client/usage",            label: t("nav_api_tokens"),      icon: KeyRound },
     { href: "/client/malfunctions",     label: t("nav_malfunctions") || "Malfunctions", icon: AlertTriangle },
@@ -555,7 +557,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
         </div>
 
-        {/* Nav Ã¢â‚¬â€ scrolls if items overflow, fills all remaining height */}
+        {/* Nav â€” scrolls if items overflow, fills all remaining height */}
         <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-0.5 space-y-0.5">
           {links.map((link) => {
             const Icon = link.icon;
@@ -577,7 +579,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           })}
         </nav>
 
-        {/* Sign out Ã¢â‚¬â€ always pinned at the bottom, never scrolls away */}
+        {/* Sign out â€” always pinned at the bottom, never scrolls away */}
         <div className="p-4 border-t border-border bg-card shrink-0">
           <Button
             variant="ghost"
@@ -657,12 +659,12 @@ function LiveStatusBar() {
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? (lang === "ar" ? "يوجد مشكلة" : "Issues Detected") : (lang === "ar" ? "متصل" : "Live")}
+        {hasMalfunction ? (lang === "ar" ? "???? ?????" : "Issues Detected") : (lang === "ar" ? "????" : "Live")}
       </span>
       {stats?.activeCompanies !== undefined && (
         <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
           <Activity className="w-3 h-3" />
-          <span>{stats.activeCompanies} {lang === "ar" ? "نشط" : "active"}</span>
+          <span>{stats.activeCompanies} {lang === "ar" ? "???" : "active"}</span>
         </span>
       )}
     </Link>
@@ -695,15 +697,17 @@ function ClientLiveStatusBar() {
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? (lang === "ar" ? "يوجد مشكلة" : "Issues Detected") : (lang === "ar" ? "متصل" : "Live")}
+        {hasMalfunction ? (lang === "ar" ? "???? ?????" : "Issues Detected") : (lang === "ar" ? "????" : "Live")}
       </span>
       {usage && (
         <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
           <Activity className="w-3 h-3" />
-          <span>{lang === "ar" ? `اليوم ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
+          <span>{lang === "ar" ? `????? ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
         </span>
       )}
     </Link>
   );
 }
+
+
 

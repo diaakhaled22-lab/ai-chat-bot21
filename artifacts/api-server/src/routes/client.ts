@@ -1777,4 +1777,17 @@ router.post("/client/chat/resolve", async (req, res) => {
   }
 });
 
+router.get("/client/leads", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
+  try {
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
+    if (!company) return res.status(404).json({ error: "Company not found" });
+
+    const leads = await db.select().from(leadsTable).where(eq(leadsTable.companyId, company.id)).orderBy(sqlcreated_at DESC);
+    res.json(leads);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

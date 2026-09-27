@@ -14,3 +14,5 @@ export * from "./adminActivityLogs";
 export * from "./session";
 
 export * from "./malfunctions";
+
+export * from './leads';

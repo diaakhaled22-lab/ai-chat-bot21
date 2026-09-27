@@ -1,6 +1,6 @@
-import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData } from '../lib/handoff';
 import { Router } from "express";
-import { db, companiesTable, chatLogsTable } from "@workspace/db";
+import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
@@ -145,6 +145,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     let sysContent = company.systemPrompt ?? "";
     sysContent += HANDOFF_SYSTEM_PROMPT;
+    sysContent += LEAD_GEN_SYSTEM_PROMPT;
     if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
     sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
     sysContent += `\n\n${getLanguageInstruction(message.trim(), explicitLang)}`;
@@ -212,8 +213,22 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
 
-        aiReply = enforceResponseLanguage(aiReply, message.trim(), explicitLang);
+        const { cleanResponse, leadData } = extractLeadData(aiReply);
+    aiReply = enforceResponseLanguage(cleanResponse, message.trim(), explicitLang);
     let isHandoff = false;
+    
+    if (leadData && sessionId && typeof sessionId === "string") {
+      await db.insert(leadsTable).values({
+        companyId: company.id,
+        channel: "website",
+        sessionId,
+        name: leadData.name || null,
+        email: leadData.email || null,
+        phone: leadData.phone || null,
+        interest: leadData.interest || null,
+      });
+    }
+
     if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
       aiReply = localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
@@ -251,5 +266,6 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 });
 
 export default router;
+
 
 

@@ -1,9 +1,9 @@
-import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
 import { Router } from "express";
-import { db, companiesTable, chatLogsTable, adminConfigTable } from "@workspace/db";
+import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
@@ -223,12 +223,27 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
       return;
     }
 
-    let aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+    let rawReply = await callAI(company, userText, history, aiConfig);
+    const { cleanResponse, leadData } = extractLeadData(rawReply);
+    
+    let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
 
-    if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
+    if (aiReply.trim() === "[HANDOFF_REQUESTED]" || rawReply.trim() === "[HANDOFF_REQUESTED]") {
       aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
+    }
+
+    if (leadData) {
+      await db.insert(leadsTable).values({
+        companyId: company.id,
+        channel: "whatsapp",
+        sessionId,
+        name: leadData.name || null,
+        email: leadData.email || null,
+        phone: leadData.phone || null,
+        interest: leadData.interest || null,
+      });
     }
 
     await db.insert(chatLogsTable).values({
