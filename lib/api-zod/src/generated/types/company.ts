@@ -53,6 +53,8 @@ export interface Company {
   /** @nullable */
   aiModel?: string | null;
   /** @nullable */
+  monthlyTokenQuota?: number | null;
+  /** @nullable */
   telegramBotApiKey?: string | null;
   /**
      * Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me/<username> share link.

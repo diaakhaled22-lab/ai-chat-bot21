@@ -1421,7 +1421,7 @@ export const getMarkAdminChatLogAsReadUrl = (id: number,) => {
 }
 
 /**
- * @summary Mark a single log entry as read by admin
+ * @summary Mark an admin chat log entry as read
  */
 export const markAdminChatLogAsRead = async (id: number, options?: RequestInit): Promise<void> => {
 
@@ -1469,7 +1469,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type MarkAdminChatLogAsReadMutationError = ErrorType<void>
 
     /**
- * @summary Mark a single log entry as read by admin
+ * @summary Mark an admin chat log entry as read
  */
 export const useMarkAdminChatLogAsRead = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAdminChatLogAsRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}

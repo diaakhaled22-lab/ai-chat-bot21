@@ -36,6 +36,8 @@ export interface CompanyInput {
   /** @nullable */
   aiModel?: string | null;
   /** @nullable */
+  monthlyTokenQuota?: number | null;
+  /** @nullable */
   telegramBotApiKey?: string | null;
   /** @nullable */
   telegramEnabled?: boolean | null;

@@ -367,6 +367,25 @@ paths:
         "404":
           description: Not found
 
+  /admin/chat-logs/{id}/read:
+    patch:
+      operationId: markAdminChatLogAsRead
+      tags: [admin-chat-logs]
+      summary: Mark an admin chat log entry as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Log marked as read
+        "400":
+          description: Invalid id
+        "404":
+          description: Not found
+
   /admin/chat-log-retention:
     get:
       operationId: getAdminChatLogRetention
@@ -1313,6 +1332,8 @@ components:
         botResponse:
           type: ["string", "null"]
         isRead:
+          type: boolean
+        isHandoff:
           type: boolean
         createdAt:
           type: string

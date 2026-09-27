@@ -920,6 +920,7 @@ router.get("/admin/chat-logs", async (req, res) => {
         customerMessage: log.customerMessage,
         botResponse: log.botResponse,
         isRead: log.isRead,
+        isHandoff: log.isHandoff,
         createdAt: log.createdAt.toISOString(),
       }))
     );

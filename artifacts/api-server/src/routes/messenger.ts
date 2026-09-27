@@ -361,7 +361,10 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
           if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
         }
 
-        const aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+        const rawReply = await callAI(company, userText, history, aiConfig);
+        const { cleanResponse: tempResponse } = extractLeadData(rawReply);
+        const { cleanResponse, metrics } = extractMetrics(tempResponse);
+        const aiReply = enforceResponseLanguage(cleanResponse, userText);
 
         await db.insert(chatLogsTable).values({
           companyId: company.id,

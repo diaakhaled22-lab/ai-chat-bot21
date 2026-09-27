@@ -60,6 +60,8 @@ export interface AdminStats {
   totalCompanies: number;
   activeCompanies: number;
   inactiveCompanies: number;
+  /** Companies with an assigned token quota */
+  quotaCompanies: number;
   totalClients: number;
   /** Total chat log entries across all companies and channels */
   totalChatLogs: number;
@@ -146,6 +148,8 @@ export interface Company {
   aiProvider?: CompanyAiProvider;
   /** @nullable */
   aiModel?: string | null;
+  /** @nullable */
+  monthlyTokenQuota?: number | null;
   /** @nullable */
   telegramBotApiKey?: string | null;
   /**
@@ -261,6 +265,8 @@ export interface CompanyInput {
   aiProvider?: CompanyInputAiProvider;
   /** @nullable */
   aiModel?: string | null;
+  /** @nullable */
+  monthlyTokenQuota?: number | null;
   /** @nullable */
   telegramBotApiKey?: string | null;
   /** @nullable */
@@ -442,6 +448,7 @@ export interface ChatLog {
   /** @nullable */
   botResponse?: string | null;
   isRead?: boolean;
+  isHandoff?: boolean;
   createdAt: string;
 }
 

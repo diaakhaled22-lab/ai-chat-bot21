@@ -5,7 +5,10 @@ import { type InferSelectModel } from "drizzle-orm";
 
 export async function downloadTelegramAudio(telegramToken: string, fileId: string): Promise<Buffer> {
   const getFileRes = await fetch(`https://api.telegram.org/bot${telegramToken}/getFile?file_id=${fileId}`);
-  const getFileData = await getFileRes.json();
+  const getFileData = await getFileRes.json() as { result?: { file_path?: string } };
+  if (!getFileData.result?.file_path) {
+    throw new Error("Telegram did not return an audio file path.");
+  }
   const filePath = getFileData.result.file_path;
   const fileUrl = `https://api.telegram.org/file/bot${telegramToken}/${filePath}`;
   
@@ -18,7 +21,10 @@ export async function downloadWhatsAppAudio(whatsappToken: string, mediaId: stri
   const getUrlRes = await fetch(`https://graph.facebook.com/v17.0/${mediaId}`, {
     headers: { Authorization: `Bearer ${whatsappToken}` },
   });
-  const getUrlData = await getUrlRes.json();
+  const getUrlData = await getUrlRes.json() as { url?: string };
+  if (!getUrlData.url) {
+    throw new Error("WhatsApp did not return an audio media URL.");
+  }
   const mediaUrl = getUrlData.url;
   
   const response = await fetch(mediaUrl, {
@@ -30,7 +36,7 @@ export async function downloadWhatsAppAudio(whatsappToken: string, mediaId: stri
 
 export async function transcribeAudio(company: InferSelectModel<typeof companiesTable>, buffer: Buffer, filename: string): Promise<string> {
   let apiKey = company.aiAgentApiKey;
-  let useCompanyKey = company.aiAgentProvider === "openai";
+  let useCompanyKey = company.aiProvider === "openai";
 
   if (!useCompanyKey) {
     const supportAi = await getSupportAiSettings();

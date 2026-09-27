@@ -1,9 +1,9 @@
-import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT } from '../lib/handoff';
+import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, extractLeadData, extractMetrics } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
 import { downloadTelegramAudio, transcribeAudio } from '../lib/audio';
-import { db, companiesTable, chatLogsTable } from "@workspace/db";
+import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";

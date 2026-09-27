@@ -73,6 +73,7 @@ export const GetAdminStatsResponse = zod.object({
   "totalCompanies": zod.number(),
   "activeCompanies": zod.number(),
   "inactiveCompanies": zod.number(),
+  "quotaCompanies": zod.number().describe('Companies with an assigned token quota'),
   "totalClients": zod.number(),
   "totalChatLogs": zod.number().describe('Total chat log entries across all companies and channels'),
   "todayChatLogs": zod.number().describe('Chat log entries created today')
@@ -174,6 +175,7 @@ export const ListCompaniesResponseItem = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -235,6 +237,7 @@ export const GetCompanyResponse = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -300,6 +303,7 @@ export const UpdateCompanyMyIdResponse = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -376,6 +380,7 @@ export const ToggleCompanyStatusResponse = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -437,6 +442,7 @@ export const ListAllChatLogsResponseItem = zod.object({
   "customerMessage": zod.string(),
   "botResponse": zod.string().nullish(),
   "isRead": zod.boolean().optional(),
+  "isHandoff": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 export const ListAllChatLogsResponse = zod.array(ListAllChatLogsResponseItem)
@@ -453,7 +459,7 @@ export const DeleteChatLogResponse = zod.unknown()
 
 
 /**
- * @summary Mark a single log entry as read by admin
+ * @summary Mark an admin chat log entry as read
  */
 export const MarkAdminChatLogAsReadParams = zod.object({
   "id": zod.coerce.number()
@@ -567,6 +573,7 @@ export const GetClientCompanyResponse = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -616,6 +623,7 @@ export const CreateClientCompanyBody = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramEnabled": zod.boolean().nullish(),
   "whatsappApiToken": zod.string().nullish(),
@@ -664,6 +672,7 @@ export const CreateClientCompanyResponse = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -713,6 +722,7 @@ export const UpdateClientCompanyBody = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramEnabled": zod.boolean().nullish(),
   "whatsappApiToken": zod.string().nullish(),
@@ -761,6 +771,7 @@ export const UpdateClientCompanyResponse = zod.object({
   "aiAgentUrl": zod.string().nullish(),
   "aiProvider": zod.union([zod.literal('openai'),zod.literal('anthropic'),zod.literal('google'),zod.literal('openrouter'),zod.literal(null)]).nullish(),
   "aiModel": zod.string().nullish(),
+  "monthlyTokenQuota": zod.number().nullish(),
   "telegramBotApiKey": zod.string().nullish(),
   "telegramBotUsername": zod.string().nullish().describe('Auto-fetched from Telegram via getMe when the bot token is saved. Used to build the public t.me\/<username> share link.'),
   "telegramEnabled": zod.boolean().nullish().describe('Whether the Telegram channel is enabled for this company.'),
@@ -818,6 +829,7 @@ export const ListClientChatLogsResponseItem = zod.object({
   "customerMessage": zod.string(),
   "botResponse": zod.string().nullish(),
   "isRead": zod.boolean().optional(),
+  "isHandoff": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 export const ListClientChatLogsResponse = zod.array(ListClientChatLogsResponseItem)

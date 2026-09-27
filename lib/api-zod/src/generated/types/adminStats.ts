@@ -10,6 +10,8 @@ export interface AdminStats {
   totalCompanies: number;
   activeCompanies: number;
   inactiveCompanies: number;
+  /** Companies with an assigned token quota */
+  quotaCompanies: number;
   totalClients: number;
   /** Total chat log entries across all companies and channels */
   totalChatLogs: number;

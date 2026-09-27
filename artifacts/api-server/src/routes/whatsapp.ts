@@ -149,7 +149,13 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
         changes?: {
           value?: {
             metadata?: { phone_number_id?: string };
-            messages?: { from?: string; text?: { body?: string }; type?: string }[];
+            messages?: {
+              from?: string;
+              text?: { body?: string };
+              audio?: { id?: string };
+              voice?: { id?: string };
+              type?: string;
+            }[];
             statuses?: unknown[];
           };
         }[];
@@ -338,7 +344,13 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
       entry?: {
         changes?: {
           value?: {
-            messages?: { from?: string; text?: { body?: string }; type?: string }[];
+             messages?: {
+               from?: string;
+               text?: { body?: string };
+               audio?: { id?: string };
+               voice?: { id?: string };
+               type?: string;
+             }[];
             statuses?: unknown[];
           };
         }[];
@@ -419,7 +431,10 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
           }
 
-          const aiReply = enforceResponseLanguage(await callAI(company, userText, history, aiConfig), userText);
+           const rawReply = await callAI(company, userText, history, aiConfig);
+           const { cleanResponse: tempResponse } = extractLeadData(rawReply);
+           const { cleanResponse, metrics } = extractMetrics(tempResponse);
+           const aiReply = enforceResponseLanguage(cleanResponse, userText);
 
           await db.insert(chatLogsTable).values({
             companyId: company.id,

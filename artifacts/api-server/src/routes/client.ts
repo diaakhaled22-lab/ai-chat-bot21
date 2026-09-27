@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable, leadsTable } from "@workspace/db";
 import { eq, and, or, sql, gte, lte, desc, inArray } from "drizzle-orm";
 import {
   CreateClientCompanyBody,
@@ -730,6 +730,7 @@ router.get("/client/chat-logs", async (req, res) => {
         customerMessage: log.customerMessage,
         botResponse: log.botResponse,
         isRead: log.isRead,
+         isHandoff: log.isHandoff,
         createdAt: log.createdAt.toISOString(),
       }))
     );
@@ -1705,13 +1706,22 @@ router.post("/client/malfunctions", async (req, res) => {
 });
 
 router.post("/client/chat/reply", async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Client access required" });
+    return;
+  }
   try {
     const { sessionId, channel, message } = req.body;
-    if (!sessionId || !channel || !message) return res.status(400).json({ error: "Missing required fields" });
+    if (!sessionId || !channel || !message) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
 
     const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
-    if (!company) return res.status(404).json({ error: "Company not found" });
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
 
     if (channel === "telegram") {
       const axios = require("axios").default;
@@ -1757,7 +1767,10 @@ router.post("/client/chat/reply", async (req, res) => {
 });
 
 router.post("/client/chat/resolve", async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Client access required" });
+    return;
+  }
   try {
     const { sessionId, channel } = req.body;
     const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
@@ -1778,10 +1791,16 @@ router.post("/client/chat/resolve", async (req, res) => {
 });
 
 router.get("/client/leads", async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Client access required" });
+    return;
+  }
   try {
     const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
-    if (!company) return res.status(404).json({ error: "Company not found" });
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
 
     const leads = await db.select().from(leadsTable).where(eq(leadsTable.companyId, company.id)).orderBy(sql`created_at DESC`);
     res.json(leads);

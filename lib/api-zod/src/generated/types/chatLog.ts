@@ -19,5 +19,6 @@ export interface ChatLog {
   /** @nullable */
   botResponse?: string | null;
   isRead?: boolean;
+  isHandoff?: boolean;
   createdAt: string;
 }
