@@ -94,7 +94,7 @@ async function sendTelegramMessage(botToken: string, chatId: number, text: strin
 
 router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
   res.sendStatus(200);
-
+  let company: typeof companiesTable.$inferSelect | undefined;
   try {
     const secret = Array.isArray(req.params.secret) ? req.params.secret[0] : String(req.params.secret || "");
     const update = req.body;
@@ -106,7 +106,8 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     const userText: string = message.text;
     const sessionId = `tg_${chatId}`;
 
-    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
+    const [foundCompany] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
+    company = foundCompany;
 
     if (!company) {
       logger.warn({ secret: secret.slice(0, 8) }, "Telegram webhook: no company matched");

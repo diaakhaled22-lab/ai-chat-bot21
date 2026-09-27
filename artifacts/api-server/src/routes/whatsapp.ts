@@ -14,7 +14,6 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
-import { webhookLimiter } from "../lib/security";
 
 const router = Router();
 
@@ -287,7 +286,7 @@ router.get("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
  */
 router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
   res.sendStatus(200);
-
+  let company: typeof companiesTable.$inferSelect | undefined;
   try {
     const { phoneNumberId } = req.params;
     const body = req.body as {
@@ -302,7 +301,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
     };
 
     const companies = await db.select().from(companiesTable);
-    const company   = companies.find(c => c.whatsappPhoneNumberId === phoneNumberId);
+    company = companies.find(c => c.whatsappPhoneNumberId === phoneNumberId);
 
     if (!company) {
       logger.warn({ phoneNumberId }, "WhatsApp webhook: no company matched phone number ID");

@@ -12,6 +12,7 @@ import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
+import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
 
 const router = Router();
 
@@ -108,12 +109,16 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       return;
     }
 
-    if (!company.aiAgentApiKey) {
+    let aiConfig;
+    try {
+      await assertCompanyQuotaNotExceeded(company);
+      aiConfig = await resolveCompanyAi(company);
+    } catch (configErr: any) {
       res.status(503).json({
         error: localizedChannelMessage(
           message,
-          "لم يتم إعداد الذكاء الاصطناعي لهذه الخدمة بعد.",
-          "AI is not configured for this chatbot yet.",
+          configErr?.message || "تعذر الرد بسبب مشكلة في إعدادات الذكاء الاصطناعي أو تجاوز الحصة.",
+          configErr?.message || "Unable to respond due to AI configuration issue or exceeded quota.",
           explicitLang
         ),
       });

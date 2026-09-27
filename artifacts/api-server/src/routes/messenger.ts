@@ -269,6 +269,7 @@ router.get("/messenger/webhook/:pageId", async (req, res) => {
 router.post("/messenger/webhook/:pageId", async (req, res) => {
   res.sendStatus(200);
 
+  let company: typeof companiesTable.$inferSelect | undefined;
   try {
     const { pageId } = req.params;
     const body = req.body as {
@@ -276,7 +277,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
     };
 
     const companies = await db.select().from(companiesTable);
-    const company   = companies.find(c => c.messengerPageId === pageId);
+    company = companies.find(c => c.messengerPageId === pageId);
 
     if (!company) {
       logger.warn({ pageId }, "Messenger webhook: no company matched page ID");
