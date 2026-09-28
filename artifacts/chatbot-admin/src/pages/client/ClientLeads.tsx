@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Download, Users, Clock, CalendarRange } from "lucide-react";
+import { Search, Download, Users, Clock, CalendarRange, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,6 @@ import { useLanguage } from "@/hooks/use-language";
 export default function ClientLeads() {
   const { t, lang } = useLanguage();
   const [search, setSearch] = useState("");
-
   const queryClient = useQueryClient();
 
   const deleteLeadMutation = useMutation({
@@ -34,8 +33,6 @@ export default function ClientLeads() {
       deleteLeadMutation.mutate(leadId);
     }
   };
-
-
   const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
   const currentRetention = retentionData?.retentionDays ?? 7;
 
@@ -203,6 +200,7 @@ export default function ClientLeads() {
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "الاهتمام" : "Interest"}</th>
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "القناة" : "Channel"}</th>
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "التاريخ" : "Date"}</th>
+                  <th className="px-4 sm:px-6 py-4 font-semibold w-12"></th>
                   <th className="px-4 sm:px-6 py-4 font-semibold w-12"></th>
               </tr>
             </thead>
