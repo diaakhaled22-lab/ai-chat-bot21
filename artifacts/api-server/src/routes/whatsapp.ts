@@ -17,6 +17,8 @@ import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 
+import crypto from 'crypto';
+
 const router = Router();
 
 async function callAI(
