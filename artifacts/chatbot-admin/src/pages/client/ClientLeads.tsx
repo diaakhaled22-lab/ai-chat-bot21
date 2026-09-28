@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Download, Users, Clock, CalendarRange } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,28 @@ import { useLanguage } from "@/hooks/use-language";
 export default function ClientLeads() {
   const { t, lang } = useLanguage();
   const [search, setSearch] = useState("");
+
+  const queryClient = useQueryClient();
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (leadId: number) => {
+      const res = await fetch(`/api/client/leads/${leadId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to delete lead');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-leads"] });
+    }
+  });
+
+  const handleDelete = (leadId: number) => {
+    if (confirm(lang === "ar" ? "هل أنت متأكد من حذف هذا العميل؟" : "Are you sure you want to delete this lead?")) {
+      deleteLeadMutation.mutate(leadId);
+    }
+  };
+
 
   const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
   const currentRetention = retentionData?.retentionDays ?? 7;
@@ -181,6 +203,7 @@ export default function ClientLeads() {
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "الاهتمام" : "Interest"}</th>
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "القناة" : "Channel"}</th>
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "التاريخ" : "Date"}</th>
+                  <th className="px-4 sm:px-6 py-4 font-semibold w-12"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -197,7 +220,7 @@ export default function ClientLeads() {
                 ))
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 sm:px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 sm:px-6 py-12 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center">
                       <Users className="w-12 h-12 text-muted-foreground/30 mb-3" />
                       <p>{lang === "ar" ? "لا يوجد عملاء محتملين مسجلين بعد." : "No leads found yet."}</p>
