@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Bot, Send, Plus, Trash2, MessageSquare, Loader2, User, Sparkles, RotateCcw,
 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -116,8 +117,7 @@ export default function ClientAIChat() {
     }
   };
 
-  const deleteConversation = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const deleteConversation = async (id: number) => {
     try {
       await fetch(`/api/openai/conversations/${id}`, { method: "DELETE" });
       const updated = conversations.filter((c) => c.id !== id);
@@ -248,12 +248,13 @@ export default function ClientAIChat() {
               >
                 <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                 <span className="flex-1 truncate">{conv.title}</span>
-                <button
-                  onClick={(e) => deleteConversation(conv.id, e)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:text-destructive"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <ConfirmDeleteDialog onConfirm={() => deleteConversation(conv.id)}>
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:text-destructive"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </ConfirmDeleteDialog>
               </div>
             ))}
           </div>

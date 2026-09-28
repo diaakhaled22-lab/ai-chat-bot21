@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Bot, Send, User, Loader2, Trash2, ChevronDown, Leaf, Zap,
 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -346,12 +347,13 @@ export default function ClientUniversalChat() {
           onModelChange={handleModelChange}
         />
         {messages.length > 0 && (
-          <button
-            onClick={clearChat}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> {lang === "ar" ? "مسح المحادثة" : "Clear"}
-          </button>
+          <ConfirmDeleteDialog onConfirm={clearChat}>
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> {lang === "ar" ? "مسح المحادثة" : "Clear"}
+            </button>
+          </ConfirmDeleteDialog>
         )}
       </div>
 

@@ -13,6 +13,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
@@ -227,9 +228,11 @@ function KnowledgeFilesCard() {
                     {file.status === "error" && (
                       <span className="text-xs text-red-600">✗ {lang === "ar" ? "خطأ" : "Error"}</span>
                     )}
-                    <Button type="button" variant="ghost" size="icon" onClick={() => handleDelete(file.id)} disabled={deleteFile.isPending}>
-                      <Trash2 className="w-4 h-4 text-muted-foreground" />
-                    </Button>
+                    <ConfirmDeleteDialog onConfirm={() => handleDelete(file.id)}>
+                      <Button type="button" variant="ghost" size="icon" disabled={deleteFile.isPending}>
+                        <Trash2 className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    </ConfirmDeleteDialog>
                   </div>
                 </div>
               );

@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot, ArrowLeft, Smile, Frown, Meh, Angry } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -214,7 +215,6 @@ export default function ClientChatLogs() {
   };
 
   const handleDelete = (id: number) => {
-    if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذه الرسالة؟" : "Delete this message?")) return;
     deleteChatLog.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
@@ -476,10 +476,10 @@ export default function ClientChatLogs() {
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف هذه المحادثة بالكامل؟" : "Delete this entire conversation?")) return;
+                          <ConfirmDeleteDialog
+                            title={lang === "ar" ? "حذف المحادثة" : "Delete conversation"}
+                            description={lang === "ar" ? "هل أنت متأكد من حذف هذه المحادثة بالكامل؟" : "Delete this entire conversation?"}
+                            onConfirm={async () => {
                               try {
                                 await Promise.all(session.messages.map(log => deleteChatLog.mutateAsync({ id: log.id })));
                                 queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
@@ -491,11 +491,14 @@ export default function ClientChatLogs() {
                                 toast({ title: "Failed to delete some messages", variant: "destructive" });
                               }
                             }}
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                            title={lang === "ar" ? "حذف المحادثة" : "Delete conversation"}
                           >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                            <button
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                              title={lang === "ar" ? "حذف المحادثة" : "Delete conversation"}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </ConfirmDeleteDialog>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
@@ -577,13 +580,14 @@ export default function ClientChatLogs() {
                               <span className="text-[10px] text-muted-foreground">
                                 {new Date(log.createdAt).toLocaleString()}
                               </span>
-                              <button 
-                                onClick={() => handleDelete(log.id)}
-                                className="text-muted-foreground hover:text-destructive transition-colors"
-                                title="Delete message pair"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                              <ConfirmDeleteDialog onConfirm={() => handleDelete(log.id)}>
+                                <button 
+                                  className="text-muted-foreground hover:text-destructive transition-colors"
+                                  title="Delete message pair"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </ConfirmDeleteDialog>
                             </div>
                           </div>
                         </div>

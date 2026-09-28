@@ -25,6 +25,7 @@ import {
   Building2,
   Download, ArrowLeft,
 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -255,7 +256,7 @@ export default function AdminChatLogs() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this message?")) return;
+    
     try {
       await deleteChatLog.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
@@ -599,36 +600,22 @@ export default function AdminChatLogs() {
                               { hour: "2-digit", minute: "2-digit" },
                             )}
                           </span>
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (!confirm("Delete this entire conversation?"))
-                                return;
-                              try {
-                                await Promise.all(
-                                  session.messages.map((log) =>
-                                    deleteChatLog.mutateAsync({ id: log.id }),
-                                  ),
-                                );
-                                queryClient.invalidateQueries({
-                                  queryKey: getListAllChatLogsQueryKey(),
-                                });
-                                toast({ title: "Conversation deleted" });
-                                if (selectedSessionId === session.id) {
-                                  setSelectedSessionId(null);
-                                }
-                              } catch (err) {
-                                toast({
-                                  title: "Failed to delete some messages",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
+                          <ConfirmDeleteDialog onConfirm={async () => {
+      try {
+        await Promise.all(session.messages.map((log) => deleteChatLog.mutateAsync({ id: log.id })));
+        queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+        toast({ title: "Conversation deleted" });
+        if (selectedSessionId === session.id) { setSelectedSessionId(null); }
+      } catch (err) { toast({ title: "Failed to delete some messages", variant: "destructive" }); }
+    }}>
+<button
+                            
                             className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
                             title="Delete conversation"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
+</ConfirmDeleteDialog>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 mb-1">
@@ -717,13 +704,15 @@ export default function AdminChatLogs() {
                             <span className="text-[10px] text-muted-foreground">
                               {new Date(log.createdAt).toLocaleString()}
                             </span>
-                            <button
-                              onClick={() => handleDelete(log.id)}
+                            <ConfirmDeleteDialog onConfirm={() => handleDelete(log.id)}>
+<button
+                              
                               className="text-muted-foreground hover:text-destructive transition-colors"
                               title="Delete message pair"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
+</ConfirmDeleteDialog>
                           </div>
                         </div>
                       </div>

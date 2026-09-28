@@ -23,6 +23,7 @@ import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";

@@ -1,31 +1,58 @@
 const fs = require('fs');
 
-const files = [
-  'artifacts/api-server/src/routes/whatsapp.ts',
-  'artifacts/api-server/src/routes/messenger.ts',
-  'artifacts/api-server/src/routes/telegram.ts'
-];
+function fixFile(file) {
+  if (!fs.existsSync(file)) return;
+  let c = fs.readFileSync(file, 'utf8');
 
-for (const file of files) {
-  let content = fs.readFileSync(file, 'utf8');
-  
-  if (content.includes('sysContent += LEAD_GEN_SYSTEM_PROMPT;')) {
-    console.log(file + ' already has LEAD_GEN_SYSTEM_PROMPT');
-    continue;
-  }
-
-  // Regex replacement to handle any line endings
-  const regex = /  let sysContent = company\.systemPrompt \?\? "";\r?\n  (?:if |sysContent)/;
-  
-  const match = content.match(regex);
-  if (match) {
-    const replacement = \  let sysContent = company.systemPrompt ?? "";\n  sysContent += HANDOFF_SYSTEM_PROMPT;\n  sysContent += LEAD_GEN_SYSTEM_PROMPT;\n  sysContent += METRICS_SYSTEM_PROMPT;\n  \ + match[0].split('\n')[1].trim();
+  // Replace simple Trash2 buttons calling handleDelete
+  // E.g. <button onClick={() => handleDelete(log.id)} ...> <Trash2 /> </button>
+  const simpleButtonRegex = /<button[^>]*?onClick=\{\(\)\s*=>\s*handleDelete\([^)]+\)\}[^>]*?>[\s\S]*?<Trash2[^>]*?>[\s\S]*?<\/button>/g;
+  c = c.replace(simpleButtonRegex, (match) => {
+    const idMatch = match.match(/handleDelete\(([^)]+)\)/);
+    if (!idMatch) return match;
+    const id = idMatch[1];
     
-    // We only replace the first occurrence (or all, if we want)
-    content = content.replace(/  let sysContent = company\.systemPrompt \?\? "";\r?\n/, \  let sysContent = company.systemPrompt ?? "";\n  sysContent += HANDOFF_SYSTEM_PROMPT;\n  sysContent += LEAD_GEN_SYSTEM_PROMPT;\n  sysContent += METRICS_SYSTEM_PROMPT;\n\);
-    fs.writeFileSync(file, content);
-    console.log('Fixed ' + file);
-  } else {
-    console.log('Could not match regex in ' + file);
-  }
+    // strip onClick from button
+    const newButton = match.replace(/onClick=\{[^}]+\}/, '');
+    
+    return `<ConfirmDeleteDialog onConfirm={() => handleDelete(${id})}>\n${newButton}\n</ConfirmDeleteDialog>`;
+  });
+
+  // also handle `handleDeleteSession` if it exists
+  const sessionButtonRegex = /<button[^>]*?onClick=\{async\s*\(e\)\s*=>\s*\{[\s\S]*?deleteChatLog\.mutateAsync\(\{ id: log\.id \}\)[\s\S]*?\}\}[^>]*?>[\s\S]*?<Trash2[^>]*?>[\s\S]*?<\/button>/g;
+  c = c.replace(sessionButtonRegex, (match) => {
+    // strip onClick from button
+    const newButton = match.replace(/onClick=\{async[\s\S]*?\}\}/, '');
+    
+    return `<ConfirmDeleteDialog onConfirm={async () => {
+      try {
+        await Promise.all(session.messages.map((log) => deleteChatLog.mutateAsync({ id: log.id })));
+        queryClient.invalidateQueries({ queryKey: getListAllChatLogsQueryKey() });
+        toast({ title: "Conversation deleted" });
+        if (selectedSessionId === session.id) { setSelectedSessionId(null); }
+      } catch (err) { toast({ title: "Failed to delete some messages", variant: "destructive" }); }
+    }}>\n${newButton}\n</ConfirmDeleteDialog>`;
+  });
+
+  // ClientChatLogs `handleDeleteSession` replacement if needed
+  const clientSessionButtonRegex = /<button[^>]*?onClick=\{async\s*\(e\)\s*=>\s*\{[\s\S]*?getListClientChatLogsQueryKey[\s\S]*?\}\}[^>]*?>[\s\S]*?<Trash2[^>]*?>[\s\S]*?<\/button>/g;
+  c = c.replace(clientSessionButtonRegex, (match) => {
+    const newButton = match.replace(/onClick=\{async[\s\S]*?\}\}/, '');
+    return `<ConfirmDeleteDialog onConfirm={async () => {
+      try {
+        await Promise.all(session.messages.map((log) => deleteChatLog.mutateAsync({ id: log.id })));
+        queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+        toast({ title: lang === "ar" ? "تم حذف المحادثة بنجاح" : "Conversation deleted" });
+        if (selectedSessionId === session.id) { setSelectedSessionId(null); }
+      } catch (err) { toast({ title: "Failed to delete some messages", variant: "destructive" }); }
+    }}>\n${newButton}\n</ConfirmDeleteDialog>`;
+  });
+
+  fs.writeFileSync(file, c, 'utf8');
 }
+
+[
+  'artifacts/chatbot-admin/src/pages/admin/AdminChatLogs.tsx',
+].forEach(fixFile);
+
+console.log("Fixed AdminChatLogs.tsx");
