@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Download, Users, Clock } from "lucide-react";
+import { Search, Download, Users, Clock, CalendarRange } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -25,15 +26,40 @@ export default function ClientLeads() {
     }
   });
 
+  const [dateFilter, setDateFilter] = useState("all");
+
+  const dateOptions = useMemo(() => {
+    const options = [];
+    const today = new Date();
+    for (let i = 0; i < currentRetention; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().split("T")[0];
+      let label = iso;
+      if (i === 0) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
+      else if (i === 1) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
+      
+      options.push({ value: iso, label });
+    }
+    return options;
+  }, [currentRetention, lang]);
+
   const filteredLeads = useMemo(() => {
     if (!leads) return [];
-    return leads.filter(l => 
-      (l.name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (l.email || "").toLowerCase().includes(search.toLowerCase()) ||
-      (l.phone || "").toLowerCase().includes(search.toLowerCase()) ||
-      (l.interest || "").toLowerCase().includes(search.toLowerCase())
-    );
-  }, [leads, search]);
+    return leads.filter(l => {
+      const matchesSearch = (l.name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (l.email || "").toLowerCase().includes(search.toLowerCase()) ||
+        (l.phone || "").toLowerCase().includes(search.toLowerCase()) ||
+        (l.interest || "").toLowerCase().includes(search.toLowerCase());
+      
+      let matchesDate = true;
+      if (dateFilter !== "all" && l.createdAt) {
+        const leadDate = new Date(l.createdAt).toISOString().split("T")[0];
+        matchesDate = leadDate === dateFilter;
+      }
+      return matchesSearch && matchesDate;
+    });
+  }, [leads, search, dateFilter]);
 
   const handleExportCSV = () => {
     if (!filteredLeads.length) return;
@@ -116,15 +142,31 @@ export default function ClientLeads() {
         </div>
       </Card>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-col md:flex-row gap-4 shrink-0 w-full">
+        <div className="flex-1 flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">
+          <Search className="w-5 h-5 ml-2 text-muted-foreground" />
           <Input 
             placeholder={lang === "ar" ? "ابحث بالاسم، الهاتف، الايميل..." : "Search name, phone, email..."}
-            className="pl-9 bg-card w-full" 
+            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+        <div className="w-full md:w-[220px]">
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="h-full bg-card">
+              <div className="flex items-center gap-2 truncate">
+                <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
+                <SelectValue placeholder={lang === "ar" ? "كل الأيام" : "All Days"} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{lang === "ar" ? "كل الأيام" : "All Days"}</SelectItem>
+              {dateOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
