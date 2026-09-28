@@ -201,7 +201,6 @@ export default function ClientLeads() {
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "القناة" : "Channel"}</th>
                 <th className="px-4 sm:px-6 py-4 font-semibold">{lang === "ar" ? "التاريخ" : "Date"}</th>
                   <th className="px-4 sm:px-6 py-4 font-semibold w-12"></th>
-                  <th className="px-4 sm:px-6 py-4 font-semibold w-12"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -214,7 +213,8 @@ export default function ClientLeads() {
                     <td className="px-4 sm:px-6 py-4"><Skeleton className="h-4 w-32" /></td>
                     <td className="px-4 sm:px-6 py-4"><Skeleton className="h-4 w-16" /></td>
                     <td className="px-4 sm:px-6 py-4"><Skeleton className="h-4 w-24" /></td>
-                  </tr>
+                      <td className="px-4 sm:px-6 py-4"><Skeleton className="h-8 w-8 rounded-md" /></td>
+                    </tr>
                 ))
               ) : filteredLeads.length === 0 ? (
                 <tr>
@@ -233,8 +233,13 @@ export default function ClientLeads() {
                     <td className="px-4 sm:px-6 py-4 text-muted-foreground">{lead.phone || "-"}</td>
                     <td className="px-4 sm:px-6 py-4">{lead.interest || "-"}</td>
                     <td className="px-4 sm:px-6 py-4 capitalize text-muted-foreground">{lead.channel}</td>
-                    <td className="px-4 sm:px-6 py-4 text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</td>
-                  </tr>
+                                          <td className="px-4 sm:px-6 py-4 text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 sm:px-6 py-4">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(lead.id)} disabled={deleteLeadMutation.isPending}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
                 ))
               )}
             </tbody>
