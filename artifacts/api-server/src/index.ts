@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db } from "@workspace/db";
-import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTable, notificationsTable, usersTable } from "@workspace/db";
+import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTable, notificationsTable, usersTable, leadsTable } from "@workspace/db";
 import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
@@ -173,6 +173,42 @@ async function purgeOldChatLogs() {
 
 setInterval(purgeOldChatLogs, 60 * 60 * 1000); // Run every hour
 purgeOldChatLogs();
+
+// Auto-purge leads older than each company's retention setting (default 7 days)
+async function purgeOldLeads() {
+  try {
+    const [adminRow] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "chat_log_retention_days"))
+      .limit(1);
+    const globalRetentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 7;
+
+    const companies = await db
+      .select({ id: companiesTable.id, chatLogRetentionDays: companiesTable.chatLogRetentionDays })
+      .from(companiesTable);
+
+    let totalDeleted = 0;
+    for (const company of companies) {
+      const retentionDays = company.chatLogRetentionDays ?? globalRetentionDays;
+      const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+      const deleted = await db
+        .delete(leadsTable)
+        .where(and(eq(leadsTable.companyId, company.id), lt(leadsTable.createdAt, cutoff)))
+        .returning({ id: leadsTable.id });
+      totalDeleted += deleted.length;
+    }
+
+    if (totalDeleted > 0) {
+      logger.info({ count: totalDeleted }, "Purged old leads based on retention policy");
+    }
+  } catch (err) {
+    logger.error({ err }, "Error purging old leads");
+  }
+}
+
+setInterval(purgeOldLeads, 60 * 60 * 1000); // Run every hour
+purgeOldLeads();
 
 // AutoSync: re-scrape website URLs every 6 hours for companies with websiteAutoSync enabled
 setInterval(syncAllAutoSyncCompanies, 6 * 60 * 60 * 1000);

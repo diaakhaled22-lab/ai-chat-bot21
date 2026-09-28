@@ -1,14 +1,20 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Download, Users } from "lucide-react";
+import { Search, Download, Users, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
 
 export default function ClientLeads() {
   const { t, lang } = useLanguage();
   const [search, setSearch] = useState("");
+
+  const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
+  const currentRetention = retentionData?.retentionDays ?? 7;
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["client-leads"],
@@ -71,6 +77,44 @@ export default function ClientLeads() {
           </Button>
         </div>
       </div>
+
+      {/* Retention Policy Banner */}
+      <Card className="bg-card border-border shrink-0">
+        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold">{lang === "ar" ? "سياسة الاحتفاظ بالبيانات" : "Data Retention Policy"}</p>
+                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">
+                  {lang === "ar" ? "إعدادات المدير" : "Configured by Administrator"}
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {retentionLoading ? (
+                  <Skeleton className="h-3 w-48 mt-1" />
+                ) : lang === "ar" ? (
+                  `يتم مسح بيانات العملاء المحتملين (Leads) تلقائياً بعد ${currentRetention} ${currentRetention === 1 ? "يوم" : currentRetention === 2 ? "يومين" : "أيام"} حسب إعدادات المدير.`
+                ) : (
+                  `Leads are automatically deleted after ${currentRetention} day${currentRetention === 1 ? "" : "s"} as set by your administrator.`
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 bg-muted/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <div className="text-sm font-bold tabular-nums">
+              {retentionLoading ? (
+                <Skeleton className="h-4 w-12" />
+              ) : (
+                `${currentRetention} ${lang === "ar" ? "أيام" : currentRetention === 1 ? "day" : "days"}`
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
         <div className="relative w-full sm:max-w-xs">
