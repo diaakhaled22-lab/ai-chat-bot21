@@ -514,7 +514,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/prompts",          label: t("nav_prompts") || "Prompts", icon: PenTool },
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
-    { href: "/client/webhook-history",  label: t("nav_webhook_history"), icon: Zap },
     { href: "/client/widget-preview",   label: t("nav_widget_preview"),  icon: Bot },
     { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles },
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
@@ -522,6 +521,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },
     { href: "/client/usage",            label: t("nav_api_tokens"),      icon: KeyRound },
     { href: "/client/malfunctions",     label: t("nav_malfunctions") || "Malfunctions", icon: AlertTriangle },
+    { href: "/client/webhook-history",  label: t("nav_webhook_history"), icon: Zap },
     { href: "/client/settings",         label: t("nav_settings"),        icon: Settings },
   ];
 
