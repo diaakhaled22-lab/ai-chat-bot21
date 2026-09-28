@@ -30,6 +30,9 @@ async function callAI(
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
 
   let sysContent = company.systemPrompt ?? "";
+  sysContent += HANDOFF_SYSTEM_PROMPT;
+  sysContent += LEAD_GEN_SYSTEM_PROMPT;
+  sysContent += METRICS_SYSTEM_PROMPT;
   if (company.securityPrompt) sysContent += `\n\nSecurity Instructions:\n${company.securityPrompt}`;
   sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
