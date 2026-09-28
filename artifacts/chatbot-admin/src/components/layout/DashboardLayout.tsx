@@ -658,12 +658,12 @@ function LiveStatusBar() {
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? (lang === "ar" ? "???? ?????" : "Issues Detected") : (lang === "ar" ? "????" : "Live")}
+        {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues Detected") : (lang === "ar" ? "يعمل" : "Live")}
       </span>
       {stats?.activeCompanies !== undefined && (
         <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
           <Activity className="w-3 h-3" />
-          <span>{stats.activeCompanies} {lang === "ar" ? "???" : "active"}</span>
+          <span>{stats.activeCompanies} {lang === "ar" ? "نشط" : "active"}</span>
         </span>
       )}
     </Link>
@@ -696,12 +696,12 @@ function ClientLiveStatusBar() {
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
       <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? (lang === "ar" ? "???? ?????" : "Issues Detected") : (lang === "ar" ? "????" : "Live")}
+        {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues Detected") : (lang === "ar" ? "يعمل" : "Live")}
       </span>
       {usage && (
         <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
           <Activity className="w-3 h-3" />
-          <span>{lang === "ar" ? `????? ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
+          <span>{lang === "ar" ? `اليوم ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
         </span>
       )}
     </Link>
