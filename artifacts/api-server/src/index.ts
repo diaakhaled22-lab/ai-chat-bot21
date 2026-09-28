@@ -102,8 +102,8 @@ async function sendRenewalReminders() {
         {
           userId: company.clientId,
           type: "renewal_reminder" as const,
-          title: "Subscription expiring soon",
-          message: `Your subscription expires on ${endDate}. Please contact your administrator to renew.`,
+          title: "Subscription expiring soon | اقترب موعد انتهاء الاشتراك",
+          message: `Your subscription expires on ${endDate}. Please contact your administrator to renew. | ينتهي اشتراكك في ${endDate}. يرجى التواصل مع الإدارة للتجديد.`,
           companyId: company.id,
         },
         ...adminUsers.map((admin) => ({
@@ -121,8 +121,8 @@ async function sendRenewalReminders() {
       if (company.notificationEmail) {
         sendClientNotification(
           company.notificationEmail,
-          "Subscription expiring soon",
-          `Your subscription for "${company.name}" expires on ${endDate}.\nPlease contact your administrator to renew.`
+          "Subscription expiring soon | اقترب موعد انتهاء الاشتراك",
+          `Your subscription for "${company.name}" expires on ${endDate}.\nPlease contact your administrator to renew.\n\nينتهي اشتراكك لـ "${company.name}" في ${endDate}. يرجى التواصل مع الإدارة للتجديد.`
         ).catch(e => {
           logger.error({ err: e, email: company.notificationEmail }, "Failed to send renewal reminder email");
         });
