@@ -21,7 +21,25 @@ function WidgetPreview({ widgetKey, companyName, isActive, hasAi }: {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => "preview_" + Math.random().toString(36).slice(2));
-  const bottomRef = useRef<HTMLDivElement>(null);
+  
+    useEffect(() => {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = window.location.host;
+      const ws = new WebSocket(`${protocol}//${host}/api/widget/ws?sessionId=${sessionId}`);
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "new_message") {
+            setMessages((prev) => [...prev, { role: data.role as "bot", text: data.text }]);
+          }
+        } catch(e) {}
+      };
+      
+      return () => ws.close();
+    }, [sessionId]);
+
+    const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

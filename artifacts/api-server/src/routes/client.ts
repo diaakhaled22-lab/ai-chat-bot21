@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { notifyWidgetClient } from "../lib/ws";
+
 import { sendWhatsAppMessage } from "./whatsapp";
 import { sendTelegramMessage } from "./telegram";
 import { sendMessengerMessage } from "./messenger";

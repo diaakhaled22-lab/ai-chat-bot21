@@ -231,7 +231,7 @@ async function startServer() {
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 
-  app.listen(port, "0.0.0.0", (err?: Error) => {
+  const server = app.listen(port, "0.0.0.0", (err?: Error) => {
     if (err) {
       logger.error({ err }, "Error listening on port");
       process.exit(1);
@@ -239,6 +239,8 @@ async function startServer() {
 
     logger.info({ port }, "Server listening");
   });
+
+  import("./lib/ws").then(ws => ws.initWebSocket(server));
 }
 
 void startServer();

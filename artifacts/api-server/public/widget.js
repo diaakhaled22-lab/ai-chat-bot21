@@ -533,7 +533,35 @@
       .catch(function () {});
   }
 
+  
+  var ws = null;
+  function connectWebSocket() {
+    if (ws) return;
+    var wsBase = apiBase.replace(/^http/, "ws");
+    var wsUrl = wsBase + "/widget/ws?sessionId=" + encodeURIComponent(sessionId);
+    ws = new WebSocket(wsUrl);
+    ws.onmessage = function(event) {
+      try {
+        var data = JSON.parse(event.data);
+        if (data.type === "new_message") {
+          addMessage(data.role, data.text);
+          if (autoSpeak) speak(data.text);
+          if (!isOpen && !hasStoredFabPosition) {
+             // Maybe show a badge? 
+             var badge = document.getElementById("cw-badge");
+             if (badge) badge.style.display = "block";
+          }
+        }
+      } catch(e) {}
+    };
+    ws.onclose = function() {
+      ws = null;
+      setTimeout(connectWebSocket, 3000);
+    };
+  }
+
   function init() {
+    connectWebSocket();
     createStyles();
     createHTML();
     applyFabPosition();
