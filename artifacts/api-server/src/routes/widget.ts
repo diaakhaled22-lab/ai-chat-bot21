@@ -131,7 +131,17 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       const priorLogs = await db.select().from(chatLogsTable).where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId))).orderBy(asc(chatLogsTable.createdAt)).limit(20);
 
     if (isSessionInHandoff(priorLogs)) {
-      res.json({ reply: localizedChannelMessage(message.trim(), "جاري تحويلك الى موظف دعم فني وسيتواصل معك قريبا.", "You are being transferred to a human agent. They will reply to you shortly.") });
+      if (sessionId && typeof sessionId === "string") {
+        await db.insert(chatLogsTable).values({
+          companyId: company.id,
+          channel: "website",
+          sessionId,
+          customerMessage: message.trim(),
+          botResponse: null,
+          isHandoff: true
+        });
+      }
+      res.json({ reply: "" });
       return;
     }
 

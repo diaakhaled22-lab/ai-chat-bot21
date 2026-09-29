@@ -87,7 +87,7 @@ async function callAI(
   }
 }
 
-async function sendWhatsAppMessage(phoneNumberId: string, apiToken: string, to: string, text: string) {
+export async function sendWhatsAppMessage(phoneNumberId: string, apiToken: string, to: string, text: string) {
   await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
     method: "POST",
     headers: {
@@ -439,17 +439,43 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
           }
 
-           const rawReply = await callAI(company, userText, history, aiConfig);
-           const { cleanResponse: tempResponse } = extractLeadData(rawReply);
-           const { cleanResponse, metrics } = extractMetrics(tempResponse);
-           const aiReply = enforceResponseLanguage(cleanResponse, userText);
+          if (isSessionInHandoff(priorLogs)) {
+            return;
+          }
+
+          let rawReply = await callAI(company, userText, history, aiConfig);
+          const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
+          const { cleanResponse, metrics } = extractMetrics(tempResponse);
+          let aiReply = enforceResponseLanguage(cleanResponse, userText);
+          let isHandoff = false;
+
+          if (aiReply.trim() === "[HANDOFF_REQUESTED]" || rawReply.trim() === "[HANDOFF_REQUESTED]") {
+            aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
+            isHandoff = true;
+          }
+
+          if (leadData) {
+            await db.insert(leadsTable).values({
+              companyId: company.id,
+              channel: "whatsapp",
+              sessionId,
+              name: leadData.name || null,
+              email: leadData.email || null,
+              phone: leadData.phone || null,
+              interest: leadData.interest || null,
+            });
+          }
 
           await db.insert(chatLogsTable).values({
             companyId: company.id,
             channel: "whatsapp",
             sessionId,
             customerMessage: userText,
-            botResponse: aiReply, sentiment: metrics?.sentiment || null, intent: metrics?.intent || null});
+            botResponse: aiReply,
+            isHandoff,
+            sentiment: metrics?.sentiment || null,
+            intent: metrics?.intent || null
+          });
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 

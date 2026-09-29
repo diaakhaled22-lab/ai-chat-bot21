@@ -97,7 +97,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   }
 }
 
-async function sendTelegramMessage(botToken: string, chatId: number, text: string) {
+export async function sendTelegramMessage(botToken: string, chatId: number, text: string) {
   await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

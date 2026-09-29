@@ -1840,3 +1840,86 @@ router.delete("/client/leads/:id", async (req, res) => {
 
 export default router;
 
+
+// POST /client/chat/reply
+import { sendWhatsAppMessage } from "./whatsapp";
+import { sendTelegramMessage } from "./telegram";
+import { sendMessengerMessage } from "./messenger";
+import { sendWidgetMessage } from "./widget";
+
+router.post("/client/chat/reply", async (req, res) => {
+  try {
+    const { sessionId, message, resolveHandoff } = req.body;
+    if (!sessionId || !message) {
+      res.status(400).json({ error: "Missing sessionId or message" });
+      return;
+    }
+
+    const [myCompany] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!myCompany) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    // Determine channel
+    let channel: "whatsapp" | "telegram" | "messenger" | "website";
+    if (sessionId.startsWith("wa_")) channel = "whatsapp";
+    else if (sessionId.startsWith("tg_")) channel = "telegram";
+    else if (sessionId.startsWith("fb_")) channel = "messenger";
+    else if (sessionId.startsWith("wg_")) channel = "website";
+    else {
+      res.status(400).json({ error: "Unknown session type" });
+      return;
+    }
+
+    // Send the message
+    if (channel === "whatsapp") {
+      const recipientPhone = sessionId.replace("wa_", "");
+      if (myCompany.whatsappPhoneNumberId && myCompany.whatsappApiToken) {
+        await sendWhatsAppMessage(myCompany.whatsappPhoneNumberId, myCompany.whatsappApiToken, recipientPhone, message);
+      }
+    } else if (channel === "telegram") {
+      const chatId = parseInt(sessionId.replace("tg_", ""), 10);
+      if (myCompany.telegramBotApiKey) {
+        await sendTelegramMessage(myCompany.telegramBotApiKey, chatId, message);
+      }
+    } else if (channel === "messenger") {
+      const senderId = sessionId.replace("fb_", "");
+      if (myCompany.messengerApiKey) {
+        await sendMessengerMessage(myCompany.messengerApiKey, senderId, message);
+      }
+    } else if (channel === "website") {
+      if (typeof sendWidgetMessage === 'function') {
+        await sendWidgetMessage(myCompany.id, sessionId, message);
+      }
+    }
+
+    await db.insert(chatLogsTable).values({
+      companyId: myCompany.id,
+      channel,
+      sessionId,
+      botResponse: message,
+      isHandoff: resolveHandoff ? false : true,
+    });
+
+    if (resolveHandoff) {
+      await db.insert(chatLogsTable).values({
+        companyId: myCompany.id,
+        channel,
+        sessionId,
+        botResponse: "[HANDOFF_RESOLVED]",
+        isHandoff: false,
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "Reply error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});

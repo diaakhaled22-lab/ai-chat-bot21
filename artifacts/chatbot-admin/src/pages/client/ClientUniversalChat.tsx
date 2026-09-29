@@ -1,421 +1,358 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import {
-  Bot, Send, User, Loader2, Trash2, ChevronDown, Leaf, Zap,
-} from "lucide-react";
-import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead } from "@workspace/api-client-react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2 } from 'lucide-react';
+
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 
-// ── Model catalog (must mirror AdminAITester + backend) ────────────────────
-type Tier = "free" | "paid";
-interface AIModel { id: string; label: string; tier: Tier; }
-interface AIProvider { id: string; label: string; color: string; bgColor: string; models: AIModel[]; }
-
-const PROVIDERS: AIProvider[] = [
-  {
-    id: "openai", label: "OpenAI",
-    color: "text-emerald-400", bgColor: "bg-emerald-500/10 border-emerald-500/30",
-    models: [
-      { id: "gpt-4o-mini",   label: "GPT-4o mini",   tier: "free" },
-      { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo",  tier: "free" },
-      { id: "gpt-4o",        label: "GPT-4o",          tier: "paid" },
-      { id: "gpt-4-turbo",   label: "GPT-4 Turbo",     tier: "paid" },
-      { id: "o3-mini",       label: "o3-mini",          tier: "paid" },
-      { id: "o1-mini",       label: "o1-mini",          tier: "paid" },
-    ],
-  },
-  {
-    id: "anthropic", label: "Anthropic",
-    color: "text-orange-400", bgColor: "bg-orange-500/10 border-orange-500/30",
-    models: [
-      { id: "claude-3-haiku-20240307",    label: "Claude 3 Haiku",    tier: "free" },
-      { id: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku",  tier: "free" },
-      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", tier: "paid" },
-      { id: "claude-3-opus-20240229",     label: "Claude 3 Opus",     tier: "paid" },
-      { id: "claude-sonnet-4-5",          label: "Claude Sonnet 4.5", tier: "paid" },
-      { id: "claude-opus-4-5",            label: "Claude Opus 4.5",   tier: "paid" },
-    ],
-  },
-  {
-    id: "google", label: "Google Gemini",
-    color: "text-blue-400", bgColor: "bg-blue-500/10 border-blue-500/30",
-    models: [
-      { id: "gemini-2.0-flash-lite",    label: "Gemini 2.0 Flash Lite",    tier: "free" },
-      { id: "gemini-1.5-flash",         label: "Gemini 1.5 Flash",         tier: "free" },
-      { id: "gemini-2.0-flash",         label: "Gemini 2.0 Flash",         tier: "free" },
-      { id: "gemini-1.5-pro",           label: "Gemini 1.5 Pro",           tier: "paid" },
-      { id: "gemini-2.5-flash-preview", label: "Gemini 2.5 Flash Preview", tier: "paid" },
-      { id: "gemini-2.5-pro-preview",   label: "Gemini 2.5 Pro Preview",   tier: "paid" },
-    ],
-  },
-  {
-    id: "openrouter", label: "OpenRouter",
-    color: "text-purple-400", bgColor: "bg-purple-500/10 border-purple-500/30",
-    models: [
-      { id: "google/gemma-4-31b-it:free",             label: "Gemma 4 31B ⭐",        tier: "free" },
-      { id: "openai/gpt-oss-20b:free",                label: "OpenAI OSS 20B",         tier: "free" },
-      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron Super 120B",    tier: "free" },
-      { id: "nvidia/nemotron-nano-9b-v2:free",        label: "Nemotron Nano 9B",       tier: "free" },
-      { id: "deepseek/deepseek-v4-flash",             label: "DeepSeek V4 Flash ⭐",   tier: "paid" },
-      { id: "deepseek/deepseek-r1",                   label: "DeepSeek R1",            tier: "paid" },
-      { id: "deepseek/deepseek-v3",                   label: "DeepSeek V3",            tier: "paid" },
-      { id: "anthropic/claude-3.5-sonnet",            label: "Claude 3.5 Sonnet",      tier: "paid" },
-      { id: "openai/gpt-4o",                          label: "GPT-4o",                 tier: "paid" },
-      { id: "mistralai/mistral-large",                label: "Mistral Large",          tier: "paid" },
-      { id: "meta-llama/llama-3.3-70b-instruct",      label: "Llama 3.3 70B",          tier: "paid" },
-    ],
-  },
-];
-
-type Message = { role: "user" | "assistant"; content: string };
-
-// ── Sub-components ──────────────────────────────────────────────────────────
-function MessageBubble({ role, content }: { role: string; content: string }) {
-  const isUser = role === "user";
-  return (
-    <div className={cn("flex gap-3 max-w-full", isUser ? "flex-row-reverse" : "flex-row")}>
-      <div className={cn(
-        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-        isUser ? "bg-primary text-primary-foreground" : "bg-muted border border-border",
-      )}>
-        {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4 text-primary" />}
-      </div>
-      <div className={cn(
-        "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words",
-        isUser
-          ? "bg-primary text-primary-foreground rounded-tr-sm"
-          : "bg-muted border border-border rounded-tl-sm",
-      )}>
-        {content}
-      </div>
-    </div>
-  );
+function cleanDisplayMessage(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/提供/g, "تقديم")
+    .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }
 
-function TypingIndicator() {
-  return (
-    <div className="flex gap-3">
-      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-muted border border-border">
-        <Bot className="w-4 h-4 text-primary" />
-      </div>
-      <div className="bg-muted border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
-      </div>
-    </div>
-  );
+function extractUserName(messages: any[]): string | null {
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (!msg.customerMessage) continue;
+    const text = msg.customerMessage.trim();
+    if (text.startsWith("/")) continue;
+    if (/^\d+$/.test(text)) continue;
+    const match = text.match(/(?:my name is|i am|i'm|name:|username:|اسمي هو|اسمي|انا|أنا|الاسم:|الاسم)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
+    if (match) return match[1] + (match[2] ? " " + match[2] : "");
+  }
+  return null;
 }
 
-function ModelSelector({
-  provider,
-  model,
-  onProviderChange,
-  onModelChange,
-}: {
-  provider: AIProvider;
-  model: AIModel;
-  onProviderChange: (p: AIProvider) => void;
-  onModelChange: (m: AIModel) => void;
-}) {
-  const { t, lang } = useLanguage();
-  const [openProvider, setOpenProvider] = useState(false);
-  const [openModel,    setOpenModel]    = useState(false);
-  const freeModels = provider.models.filter((m) => m.tier === "free");
-  const paidModels = provider.models.filter((m) => m.tier === "paid");
-
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {/* Provider picker */}
-      <div className="relative">
-        <button
-          onClick={() => { setOpenProvider((v) => !v); setOpenModel(false); }}
-          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border ${provider.bgColor} ${provider.color} hover:opacity-80 transition-opacity`}
-        >
-          {provider.label}
-          <ChevronDown className="w-3 h-3" />
-        </button>
-        {openProvider && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-40">
-            {PROVIDERS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  onProviderChange(p);
-                  onModelChange(p.models[0]);
-                  setOpenProvider(false);
-                }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${
-                  p.id === provider.id ? `font-semibold ${p.color}` : "text-foreground"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Model picker */}
-      <div className="relative">
-        <button
-          onClick={() => { setOpenModel((v) => !v); setOpenProvider(false); }}
-          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border bg-muted/50 hover:bg-muted transition-colors text-foreground"
-        >
-          <span className={cn(
-            "text-[9px] font-bold px-1 py-0.5 rounded uppercase",
-            model.tier === "free" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
-          )}>
-            {model.tier === "free" ? (lang === "ar" ? "مجاني" : "FREE") : (lang === "ar" ? "مدفوع" : "PAID")}
-          </span>
-          {model.label}
-          <ChevronDown className="w-3 h-3 text-muted-foreground" />
-        </button>
-        {openModel && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-56 max-h-72 overflow-y-auto">
-            {freeModels.length > 0 && (
-              <>
-                <div className="px-3 py-1 text-[10px] font-semibold text-emerald-400 uppercase tracking-wide flex items-center gap-1">
-                  <Leaf className="w-2.5 h-2.5" /> {lang === "ar" ? "مجاني" : "Free"}
-                </div>
-                {freeModels.map((m) => (
-                  <button key={m.id} onClick={() => { onModelChange(m); setOpenModel(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${m.id === model.id ? "font-semibold text-foreground bg-muted" : "text-foreground"}`}
-                  >{m.label}</button>
-                ))}
-              </>
-            )}
-            {paidModels.length > 0 && (
-              <>
-                <div className="px-3 py-1 text-[10px] font-semibold text-amber-400 uppercase tracking-wide flex items-center gap-1 mt-1 border-t border-border pt-2">
-                  <Zap className="w-2.5 h-2.5" /> {lang === "ar" ? "مدفوع" : "Paid"}
-                </div>
-                {paidModels.map((m) => (
-                  <button key={m.id} onClick={() => { onModelChange(m); setOpenModel(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${m.id === model.id ? "font-semibold text-foreground bg-muted" : "text-foreground"}`}
-                  >{m.label}</button>
-                ))}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Main ────────────────────────────────────────────────────────────────────
 export default function ClientUniversalChat() {
   const { t, lang } = useLanguage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
+  const [replyText, setReplyText] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [activeProvider, setActiveProvider] = useState<AIProvider>(PROVIDERS[3]); // OpenRouter default
-  const [activeModel,    setActiveModel]    = useState<AIModel>(PROVIDERS[3].models[0]);
-  const [messages,       setMessages]       = useState<Message[]>([]);
-  const [input,          setInput]          = useState("");
-  const [streaming,      setStreaming]       = useState(false);
-  const [streamContent,  setStreamContent]  = useState("");
+  const { data: logs, isLoading } = useListClientChatLogs();
+  const markLogAsRead = useMarkClientLogAsRead();
 
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const abortRef    = useRef<AbortController | null>(null);
-
-  const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  useEffect(() => { scrollToBottom(); }, [messages, streamContent, scrollToBottom]);
-
-  function handleProviderChange(p: AIProvider) {
-    setActiveProvider(p);
-    setMessages([]);
-    setStreamContent("");
-  }
-
-  function handleModelChange(m: AIModel) {
-    setActiveModel(m);
-    setMessages([]);
-    setStreamContent("");
-  }
-
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text || streaming) return;
-
-    const userMsg: Message = { role: "user", content: text };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    setInput("");
-    setStreaming(true);
-    setStreamContent("");
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/client/multi-ai/chat`, {
+  // ── MUTATION FOR REPLY / RESOLVE ───────────────────────────────────────────
+  const useReplyMutation = useMutation({
+    mutationFn: async ({ sessionId, message, resolveHandoff }: { sessionId: string; message: string; resolveHandoff: boolean }) => {
+      const res = await fetch("/api/client/chat/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        signal: controller.signal,
-        body: JSON.stringify({
-          provider: activeProvider.id,
-          model: activeModel.id,
-          messages: newMessages,
-        }),
+        body: JSON.stringify({ sessionId, message, resolveHandoff }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Request failed" }));
-        toast({ title: lang === "ar" ? "خطأ في الشات" : "Chat error", description: err.error, variant: "destructive" });
-        setStreaming(false);
-        return;
-      }
-
-      const reader  = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let full   = "";
-      let buffer = "";
-
-      outer: while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const event of events) {
-          for (const line of event.split("\n")) {
-            if (!line.startsWith("data: ")) continue;
-            const data = line.slice(6).trim();
-            if (!data) continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) { full += parsed.content; setStreamContent(full); }
-              if (parsed.error) {
-                toast({ title: lang === "ar" ? "خطأ في الاستجابة" : "AI error", description: parsed.error, variant: "destructive" });
-                break outer;
-              }
-              if (parsed.done) break outer;
-            } catch { /* ignore malformed JSON */ }
-          }
-        }
-      }
-
-      if (full) {
-        setMessages((prev) => [...prev, { role: "assistant", content: full }]);
-      }
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        toast({ title: lang === "ar" ? "خطأ في الاتصال" : "Connection error", description: lang === "ar" ? "تعذر الوصول إلى مزود الذكاء الاصطناعي" : "Could not reach the AI", variant: "destructive" });
-      }
-    } finally {
-      setStreaming(false);
-      setStreamContent("");
-      abortRef.current = null;
-      setTimeout(() => textareaRef.current?.focus(), 50);
+      if (!res.ok) throw new Error("Failed to send message");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+    },
+    onError: () => {
+      toast({ title: lang === "ar" ? "خطأ" : "Error", description: lang === "ar" ? "فشل إرسال الرسالة" : "Failed to send message", variant: "destructive" });
     }
-  }
+  });
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleSendReply = () => {
+    if (!replyText.trim() || !selectedSessionId) return;
+    useReplyMutation.mutate({ sessionId: selectedSessionId, message: replyText.trim(), resolveHandoff: false });
+    setReplyText("");
+  };
+
+  const handleResolveHandoff = () => {
+    if (!selectedSessionId) return;
+    useReplyMutation.mutate({ sessionId: selectedSessionId, message: "", resolveHandoff: true });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSendReply();
     }
-  }
+  };
 
-  function clearChat() {
-    setMessages([]);
-    setStreamContent("");
-  }
+  // ── SESSIONS PROCESSING ────────────────────────────────────────────────────
+  const sessions = useMemo(() => {
+    if (!logs) return [];
+    const filteredLogs = logs.filter(log => {
+      if (!search) return true;
+      const searchLower = search.toLowerCase();
+      const msgMatch = log.customerMessage ? log.customerMessage.toLowerCase().includes(searchLower) : false;
+      const botMatch = log.botResponse ? log.botResponse.toLowerCase().includes(searchLower) : false;
+      return msgMatch || botMatch;
+    });
 
-  const isEmpty = messages.length === 0 && !streaming;
+    const map = new Map<string, typeof logs>();
+    filteredLogs.forEach(log => {
+       const key = log.sessionId || `msg_${log.id}`;
+       if (!map.has(key)) map.set(key, []);
+       map.get(key)!.push(log);
+    });
+
+    return Array.from(map.values()).map(sessionLogs => {
+        const sorted = [...sessionLogs].sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        const lastMsg = sorted[sorted.length - 1];
+        return {
+            id: lastMsg.sessionId || `msg_${lastMsg.id}`,
+            channel: lastMsg.channel,
+            lastMessage: lastMsg.customerMessage || lastMsg.botResponse,
+            updatedAt: lastMsg.createdAt,
+            messages: sorted,
+        }
+    }).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [logs, search]);
+
+  const selectedSession = useMemo(() => {
+    return sessions.find(s => s.id === selectedSessionId) || null;
+  }, [sessions, selectedSessionId]);
+
+  const isHandoff = useMemo(() => {
+    if (!selectedSession) return false;
+    for (let i = selectedSession.messages.length - 1; i >= 0; i--) {
+      if (selectedSession.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
+      if (selectedSession.messages[i].isHandoff) return true;
+    }
+    return false;
+  }, [selectedSession]);
+
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setLocalReadSessions(prev => new Set(prev).add(sessionId));
+    
+    const session = sessions.find(s => s.id === sessionId);
+    if (session && session.messages.some(m => !m.isRead)) {
+      queryClient.setQueryData(
+        getListClientChatLogsQueryKey(),
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return oldData.map((log: any) => 
+            (log.sessionId === sessionId || `msg_${log.id}` === sessionId) 
+              ? { ...log, isRead: true } 
+              : log
+          );
+        }
+      );
+
+      const unreadLogs = session.messages.filter(m => !m.isRead);
+      Promise.all(unreadLogs.map(m => markLogAsRead.mutateAsync({ id: m.id })))
+        .then(() => queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() }))
+        .catch(() => queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() }));
+    }
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectedSession?.messages, isHandoff]);
+
+  const getChannelIcon = (channel: string) => {
+    switch (channel) {
+      case "telegram": return <MessageCircle className="w-4 h-4 text-sky-500" />;
+      case "whatsapp": return <MessageSquare className="w-4 h-4 text-emerald-500" />;
+      case "website": return <Globe className="w-4 h-4 text-purple-500" />;
+      default: return <MessageCircle className="w-4 h-4" />;
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Header */}
-      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/50">
-        <ModelSelector
-          provider={activeProvider}
-          model={activeModel}
-          onProviderChange={handleProviderChange}
-          onModelChange={handleModelChange}
-        />
-        {messages.length > 0 && (
-          <ConfirmDeleteDialog onConfirm={clearChat}>
-            <button
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> {lang === "ar" ? "مسح المحادثة" : "Clear"}
-            </button>
-          </ConfirmDeleteDialog>
-        )}
+    <div className="space-y-6 flex flex-col flex-1 pb-10 h-full min-h-[700px]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{lang === "ar" ? "المحادثة الشاملة" : "Universal Chat"}</h1>
+          <p className="text-muted-foreground mt-2">{lang === "ar" ? "إدارة المحادثات الحية والتدخل البشري" : "Manage live conversations and human handoff"}</p>
+        </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4 space-y-4">
-          {isEmpty && (
-            <div className="flex flex-col items-center justify-center h-64 text-center gap-3 text-muted-foreground">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border ${activeProvider.bgColor}`}>
-                <Bot className={`w-7 h-7 ${activeProvider.color}`} />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">
-                  {activeProvider.label} · {activeModel.label}
-                </p>
-                <p className="text-sm mt-1">{lang === "ar" ? "ابدأ المحادثة أدناه لتجربة المساعد الذكي" : "Start a conversation below"}</p>
-              </div>
-            </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} role={msg.role} content={msg.content} />
-          ))}
-
-          {streaming && (
-            streamContent
-              ? <MessageBubble role="assistant" content={streamContent} />
-              : <TypingIndicator />
-          )}
-
-          <div ref={bottomRef} />
-        </div>
-      </ScrollArea>
-
-      {/* Input */}
-      <div className="shrink-0 border-t border-border p-4 bg-background">
-        <div className="flex gap-2 items-end">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={lang === "ar" ? `اكتب رسالة إلى ${activeModel.label}…` : `Message ${activeModel.label}…`}
-            rows={1}
-            disabled={streaming}
-            className="resize-none bg-muted/50 border-border text-sm min-h-[42px] max-h-32"
+      <div className="flex flex-col md:flex-row gap-4 shrink-0">
+        <div className="flex-1 flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">
+          <Search className="w-5 h-5 ml-2 text-muted-foreground" />
+          <Input 
+            placeholder={lang === "ar" ? "ابحث في المحادثات..." : "Search conversations..."} 
+            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <Button
-            size="icon"
-            onClick={sendMessage}
-            disabled={!input.trim() || streaming}
-            className="shrink-0 h-[42px] w-[42px]"
-          >
-            {streaming
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />}
-          </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-          {lang === "ar" ? "اضغط Enter للإرسال · Shift+Enter لسطر جديد" : "Enter ↵ to send · Shift+Enter for new line · Uses admin-configured API key"}
-        </p>
       </div>
+
+      {/* Inbox View Layout */}
+      <Card className="flex-1 overflow-hidden flex border-border h-full">
+        
+        {/* Left Pane: Sessions List */}
+        <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-3 border-b border-border bg-card font-medium text-sm text-muted-foreground shrink-0">
+            {lang === "ar" ? "المحادثات الأخيرة" : "Recent Conversations"}
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+               Array.from({ length: 5 }).map((_, i) => (
+                 <div key={i} className="p-4 border-b border-border"><Skeleton className="w-full h-10" /></div>
+               ))
+            ) : sessions.length === 0 ? (
+               <div className="p-8 text-center text-muted-foreground text-sm">
+                 {lang === "ar" ? "لا توجد محادثات" : "No conversations found"}
+               </div>
+            ) : (
+              sessions.map((session) => {
+                const isSelected = selectedSession?.id === session.id;
+                const userName = extractUserName(session.messages);
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => handleSelectSession(session.id)}
+                    role="button"
+                    className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative cursor-pointer ${isSelected ? 'bg-muted border-l-4 border-l-primary' : ''}`}
+                  >
+                    <div className="mt-1 relative">
+                      {getChannelIcon(session.channel)}
+                      {!localReadSessions.has(session.id) && session.messages.some(m => !m.isRead) && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold truncate capitalize">
+                          {userName ? userName : `${session.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {session.lastMessage}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Pane: Active Chat View */}
+        <div className={`flex-1 flex-col bg-card relative ${!selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
+          {!selectedSession ? (
+             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground h-full">
+               <MessageSquare className="w-12 h-12 mb-4 opacity-20" />
+               <p>{lang === "ar" ? "اختر محادثة لعرض التفاصيل" : "Select a conversation to view"}</p>
+             </div>
+          ) : (
+              <div className="flex flex-col h-full flex-1 min-h-0">
+                {/* Chat Header */}
+                <div className="p-4 border-b border-border flex items-center justify-between bg-muted/5 shadow-sm z-10 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setSelectedSessionId(null)}
+                      className="md:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                       {getChannelIcon(selectedSession.channel)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm capitalize">
+                        {extractUserName(selectedSession.messages) || `${selectedSession.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{selectedSession.messages.length} {lang === "ar" ? "رسالة" : "messages"}</p>
+                    </div>
+                  </div>
+                  {isHandoff && (
+                    <Badge variant="destructive" className="animate-pulse">
+                      {lang === "ar" ? "تدخل بشري نشط" : "Human Handoff Active"}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {selectedSession.messages.map(log => (
+                    <div key={log.id} className="space-y-4">
+                      {log.customerMessage && (
+                        <div className="flex items-end gap-2">
+                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                            <User className="w-4 h-4 text-secondary-foreground/70" />
+                          </div>
+                          <div className="flex flex-col gap-1 max-w-[75%]">
+                            <div className="bg-secondary text-secondary-foreground rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+                              {log.customerMessage}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground ml-2">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {log.botResponse && log.botResponse !== `[HANDOFF_RESOLVED]` && (
+                        <div className="flex items-end gap-2 flex-row-reverse">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <Bot className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="flex flex-col gap-1 items-end max-w-[75%]">
+                            <div className={`text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${log.isHandoff ? 'bg-orange-500' : 'bg-primary'}`}>
+                              {cleanDisplayMessage(log.botResponse)}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground mr-2">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Reply Box */}
+                <div className="p-4 border-t border-border bg-card flex flex-col gap-3 shrink-0">
+                  {isHandoff && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-muted-foreground">
+                        {lang === "ar" ? "أنت تتحدث حالياً مع المستخدم مباشرة." : "You are currently speaking directly with the user."}
+                      </span>
+                      <Button size="sm" variant="outline" onClick={handleResolveHandoff} disabled={useReplyMutation.isPending}>
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        {lang === "ar" ? "إنهاء التدخل" : "Resolve Handoff"}
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex gap-2 items-end">
+                    <Textarea 
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={lang === "ar" ? "اكتب رسالتك هنا..." : "Type your message..."}
+                      className="resize-none min-h-[42px] max-h-32 bg-muted/50"
+                      rows={1}
+                      disabled={useReplyMutation.isPending}
+                    />
+                    <Button 
+                      onClick={handleSendReply} 
+                      disabled={!replyText.trim() || useReplyMutation.isPending}
+                      className="h-[42px] px-4"
+                    >
+                      {useReplyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+          )}
+        </div>
+
+      </Card>
     </div>
   );
 }
