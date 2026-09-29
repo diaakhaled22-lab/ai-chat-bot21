@@ -1,4 +1,8 @@
 import { Router } from "express";
+import { sendWhatsAppMessage } from "./whatsapp";
+import { sendTelegramMessage } from "./telegram";
+import { sendMessengerMessage } from "./messenger";
+
 
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
@@ -1766,7 +1770,7 @@ router.post("/client/chat/reply", async (req, res) => {
           channel: channel as any,
           sessionId,
           customerMessage: "",
-          botResponse: "[مراسل البشري] " + message,
+          botResponse: "[Human] " + message,
           isHandoff: true,
           });
     }
