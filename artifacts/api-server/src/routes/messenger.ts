@@ -208,8 +208,16 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
 
         
     if (isSessionInHandoff(priorLogs)) {
-      return;
-    }
+            await db.insert(chatLogsTable).values({
+              companyId: company.id,
+              channel: "messenger",
+              sessionId,
+              customerMessage: userText,
+              botResponse: null,
+              isHandoff: true
+            });
+            return;
+          }
 
     let rawReply = await callAI(company, userText, history, aiConfig);
     const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
@@ -370,8 +378,16 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
         }
 
         if (isSessionInHandoff(priorLogs)) {
-          return;
-        }
+            await db.insert(chatLogsTable).values({
+              companyId: company.id,
+              channel: "messenger",
+              sessionId,
+              customerMessage: userText,
+              botResponse: null,
+              isHandoff: true
+            });
+            return;
+          }
 
         let rawReply = await callAI(company, userText, history, aiConfig);
         const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);

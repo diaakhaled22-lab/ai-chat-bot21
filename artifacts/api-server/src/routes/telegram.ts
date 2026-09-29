@@ -180,8 +180,16 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     }
 
         if (isSessionInHandoff(priorLogs)) {
-      return;
-    }
+            await db.insert(chatLogsTable).values({
+              companyId: company.id,
+              channel: "telegram",
+              sessionId,
+              customerMessage: userText,
+              botResponse: null,
+              isHandoff: true
+            });
+            return;
+          }
 
     let rawReply = await callAI(company, userText, history, aiConfig);
     const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);

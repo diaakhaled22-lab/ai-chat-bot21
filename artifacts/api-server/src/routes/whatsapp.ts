@@ -247,8 +247,16 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
 
           
     if (isSessionInHandoff(priorLogs)) {
-      return;
-    }
+            await db.insert(chatLogsTable).values({
+              companyId: company.id,
+              channel: "whatsapp",
+              sessionId,
+              customerMessage: userText,
+              botResponse: null,
+              isHandoff: true
+            });
+            return;
+          }
 
     let rawReply = await callAI(company, userText, history, aiConfig);
     const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
@@ -440,6 +448,14 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           }
 
           if (isSessionInHandoff(priorLogs)) {
+            await db.insert(chatLogsTable).values({
+              companyId: company.id,
+              channel: "whatsapp",
+              sessionId,
+              customerMessage: userText,
+              botResponse: null,
+              isHandoff: true
+            });
             return;
           }
 
