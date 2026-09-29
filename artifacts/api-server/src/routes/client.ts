@@ -1727,15 +1727,19 @@ router.post("/client/chat/reply", async (req, res) => {
       return;
     }
 
-    let channel = "";
-    if (sessionId.startsWith("wa_")) channel = "whatsapp";
-    else if (sessionId.startsWith("tg_")) channel = "telegram";
-    else if (sessionId.startsWith("fb_")) channel = "messenger";
-    else if (sessionId.startsWith("wg_")) channel = "website";
-    else {
-      res.status(400).json({ error: "Unknown session type" });
+    
+    const [log] = await db
+      .select()
+      .from(chatLogsTable)
+      .where(eq(chatLogsTable.sessionId, sessionId))
+      .limit(1);
+
+    if (!log) {
+      res.status(404).json({ error: "Session not found in logs" });
       return;
     }
+    const channel = log.channel;
+
 
     if (!resolveHandoff && message) {
         if (channel === "whatsapp") {
@@ -1764,8 +1768,7 @@ router.post("/client/chat/reply", async (req, res) => {
           customerMessage: "",
           botResponse: "[مراسل البشري] " + message,
           isHandoff: true,
-          isHumanReply: true
-        });
+          });
     }
 
     if (resolveHandoff) {
@@ -1776,8 +1779,7 @@ router.post("/client/chat/reply", async (req, res) => {
         customerMessage: "",
         botResponse: "[HANDOFF_RESOLVED]",
         isHandoff: false,
-        isHumanReply: false
-      });
+        });
     }
 
     res.json({ success: true, ok: true });
