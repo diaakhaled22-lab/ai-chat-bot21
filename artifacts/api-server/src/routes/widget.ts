@@ -230,15 +230,38 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     let isHandoff = false;
     
     if (leadData && sessionId && typeof sessionId === "string") {
-      await db.insert(leadsTable).values({
-        companyId: company.id,
-        channel: "website",
-        sessionId,
-        name: leadData.name || null,
-        email: leadData.email || null,
-        phone: leadData.phone || null,
-        interest: leadData.interest || null,
-      });
+      const [existingLead] = await db
+        .select()
+        .from(leadsTable)
+        .where(
+          and(
+            eq(leadsTable.companyId, company.id),
+            eq(leadsTable.sessionId, sessionId)
+          )
+        )
+        .limit(1);
+
+      if (existingLead) {
+        await db
+          .update(leadsTable)
+          .set({
+            name: leadData.name || existingLead.name,
+            email: leadData.email || existingLead.email,
+            phone: leadData.phone || existingLead.phone,
+            interest: leadData.interest || existingLead.interest,
+          })
+          .where(eq(leadsTable.id, existingLead.id));
+      } else {
+        await db.insert(leadsTable).values({
+          companyId: company.id,
+          channel: "website",
+          sessionId,
+          name: leadData.name || null,
+          email: leadData.email || null,
+          phone: leadData.phone || null,
+          interest: leadData.interest || null,
+        });
+      }
     }
 
     if (aiReply.includes("[HANDOFF_REQUESTED]")) {

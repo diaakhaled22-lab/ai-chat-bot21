@@ -198,16 +198,39 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
 
-    if (leadData) {
-      await db.insert(leadsTable).values({
-        companyId: company.id,
-        channel: "telegram",
-        sessionId,
-        name: leadData.name || null,
-        email: leadData.email || null,
-        phone: leadData.phone || null,
-        interest: leadData.interest || null,
-      });
+    if (leadData && sessionId && typeof sessionId === "string") {
+      const [existingLead] = await db
+        .select()
+        .from(leadsTable)
+        .where(
+          and(
+            eq(leadsTable.companyId, company.id),
+            eq(leadsTable.sessionId, sessionId)
+          )
+        )
+        .limit(1);
+
+      if (existingLead) {
+        await db
+          .update(leadsTable)
+          .set({
+            name: leadData.name || existingLead.name,
+            email: leadData.email || existingLead.email,
+            phone: leadData.phone || existingLead.phone,
+            interest: leadData.interest || existingLead.interest,
+          })
+          .where(eq(leadsTable.id, existingLead.id));
+      } else {
+        await db.insert(leadsTable).values({
+          companyId: company.id,
+          channel: "telegram",
+          sessionId,
+          name: leadData.name || null,
+          email: leadData.email || null,
+          phone: leadData.phone || null,
+          interest: leadData.interest || null,
+        });
+      }
     }
 
     if (aiReply.includes("[HANDOFF_REQUESTED]")) {
