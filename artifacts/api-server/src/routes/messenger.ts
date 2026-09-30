@@ -233,18 +233,42 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
       }
 
     if (leadData && sessionId && typeof sessionId === "string") {
-      const [existingLead] = await db
-        .select()
-        .from(leadsTable)
-        .where(
-          and(
-            eq(leadsTable.companyId, company.id),
-            eq(leadsTable.sessionId, sessionId)
+      let existingLead = null;
+
+      // 1. Try to find by phone (if provided) to merge leads across channels/sessions
+      if (leadData.phone) {
+        const [byPhone] = await db
+          .select()
+          .from(leadsTable)
+          .where(
+            and(
+              eq(leadsTable.companyId, company.id),
+              eq(leadsTable.phone, leadData.phone)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
+        if (byPhone) existingLead = byPhone;
+      }
+
+      // 2. If not found by phone, try to find by current sessionId
+      if (!existingLead) {
+        const [bySession] = await db
+          .select()
+          .from(leadsTable)
+          .where(
+            and(
+              eq(leadsTable.companyId, company.id),
+              eq(leadsTable.sessionId, sessionId)
+            )
+          )
+          .limit(1);
+        if (bySession) existingLead = bySession;
+      }
 
       if (existingLead) {
+        // Only update the phone if we didn't have one before and we just got one,
+        // or if we matched by sessionId and the phone is changing.
+        // Also update sessionId to the latest one so future messages track correctly.
         await db
           .update(leadsTable)
           .set({
@@ -252,6 +276,8 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
             email: leadData.email || existingLead.email,
             phone: leadData.phone || existingLead.phone,
             interest: leadData.interest || existingLead.interest,
+            sessionId: sessionId,
+            channel: "messenger" // Update channel to the most recent one used
           })
           .where(eq(leadsTable.id, existingLead.id));
       } else {
@@ -426,18 +452,42 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
       }
 
         if (leadData && sessionId && typeof sessionId === "string") {
-      const [existingLead] = await db
-        .select()
-        .from(leadsTable)
-        .where(
-          and(
-            eq(leadsTable.companyId, company.id),
-            eq(leadsTable.sessionId, sessionId)
+      let existingLead = null;
+
+      // 1. Try to find by phone (if provided) to merge leads across channels/sessions
+      if (leadData.phone) {
+        const [byPhone] = await db
+          .select()
+          .from(leadsTable)
+          .where(
+            and(
+              eq(leadsTable.companyId, company.id),
+              eq(leadsTable.phone, leadData.phone)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
+        if (byPhone) existingLead = byPhone;
+      }
+
+      // 2. If not found by phone, try to find by current sessionId
+      if (!existingLead) {
+        const [bySession] = await db
+          .select()
+          .from(leadsTable)
+          .where(
+            and(
+              eq(leadsTable.companyId, company.id),
+              eq(leadsTable.sessionId, sessionId)
+            )
+          )
+          .limit(1);
+        if (bySession) existingLead = bySession;
+      }
 
       if (existingLead) {
+        // Only update the phone if we didn't have one before and we just got one,
+        // or if we matched by sessionId and the phone is changing.
+        // Also update sessionId to the latest one so future messages track correctly.
         await db
           .update(leadsTable)
           .set({
@@ -445,6 +495,8 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
             email: leadData.email || existingLead.email,
             phone: leadData.phone || existingLead.phone,
             interest: leadData.interest || existingLead.interest,
+            sessionId: sessionId,
+            channel: "messenger" // Update channel to the most recent one used
           })
           .where(eq(leadsTable.id, existingLead.id));
       } else {
