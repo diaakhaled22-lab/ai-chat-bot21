@@ -241,7 +241,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       });
     }
 
-    if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
+    if (aiReply.includes("[HANDOFF_REQUESTED]")) {
       aiReply = localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
         triggerHandoffNotification(company, sessionId, "website");
@@ -281,6 +281,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 });
 
 export default router;
+
 
 
 

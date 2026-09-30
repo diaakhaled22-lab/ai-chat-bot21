@@ -226,7 +226,7 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
     let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
 
-    if (aiReply.trim() === "[HANDOFF_REQUESTED]" || rawReply.trim() === "[HANDOFF_REQUESTED]") {
+    if (aiReply.includes("[HANDOFF_REQUESTED]") || rawReply.includes("[HANDOFF_REQUESTED]")) {
       aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
         triggerHandoffNotification(company, sessionId, "messenger");
@@ -396,7 +396,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
         let aiReply = enforceResponseLanguage(cleanResponse, userText);
         let isHandoff = false;
 
-        if (aiReply.trim() === "[HANDOFF_REQUESTED]" || rawReply.trim() === "[HANDOFF_REQUESTED]") {
+        if (aiReply.includes("[HANDOFF_REQUESTED]") || rawReply.includes("[HANDOFF_REQUESTED]")) {
           aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
           isHandoff = true;
         triggerHandoffNotification(company, sessionId, "messenger");
@@ -450,4 +450,5 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
 });
 
 export default router;
+
 

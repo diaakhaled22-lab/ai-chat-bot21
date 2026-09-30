@@ -210,7 +210,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       });
     }
 
-    if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
+    if (aiReply.includes("[HANDOFF_REQUESTED]")) {
       aiReply = localizedChannelMessage(userText, "جاري تحويلك الى موظف دعم فني وسيتواصل معك قريبا.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
         triggerHandoffNotification(company, sessionId, "telegram");
@@ -323,6 +323,7 @@ router.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (
 });
 
 export default router;
+
 
 
 
