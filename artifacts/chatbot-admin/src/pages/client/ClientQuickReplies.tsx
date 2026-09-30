@@ -53,7 +53,7 @@ export default function ClientQuickReplies() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await customFetch(\`/client/canned-responses/\${id}\`, { method: "DELETE" });
+      const res = await customFetch(`/client/canned-responses/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
