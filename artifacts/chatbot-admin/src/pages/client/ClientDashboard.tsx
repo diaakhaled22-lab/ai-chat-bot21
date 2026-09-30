@@ -350,7 +350,7 @@ export default function ClientDashboard() {
           )}
 
           {/* Sentiment Analysis Card */}
-          {data.sentiments && (data.sentiments.positive + data.sentiments.neutral + data.sentiments.negative + data.sentiments.angry > 0) && (
+          {data.sentiments && (
             <div className="grid gap-4 md:grid-cols-2 mt-4">
               <Card>
                 <CardHeader>
@@ -359,6 +359,13 @@ export default function ClientDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center h-[300px]">
+                  
+                  {(data.sentiments.positive + data.sentiments.neutral + data.sentiments.negative + data.sentiments.angry) === 0 ? (
+                    <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
+                      <BarChart2 className="w-8 h-8 opacity-20" />
+                      <p className="text-sm">{lang === "ar" ? "لا توجد بيانات مشاعر بعد. تحدث مع البوت لتبدأ!" : "No sentiment data yet. Chat with the bot!"}</p>
+                    </div>
+                  ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -390,6 +397,7 @@ export default function ClientDashboard() {
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
+                  )}
                 </CardContent>
               </Card>
             </div>
