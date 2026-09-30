@@ -189,6 +189,9 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
               botResponse: null,
               isHandoff: true
             });
+
+    // Notify client of new message
+    triggerNewMessageNotification(company, sessionId, "telegram", userText);
             return;
           }
 

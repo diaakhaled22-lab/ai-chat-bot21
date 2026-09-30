@@ -95,3 +95,43 @@ export async function triggerHandoffNotification(company: { id: number, clientId
     logger.error({ err, companyId: company.id }, "Failed to trigger handoff notification");
   }
 }
+
+
+export async function triggerNewMessageNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string, customerMessage: string) {
+  if (!company.clientId) return;
+  try {
+    const title = `New message (${channel})`;
+    const snippet = customerMessage.length > 40 ? customerMessage.substring(0, 40) + '...' : customerMessage;
+    
+    // Check if an unread notification for this exact session exists
+    const [existing] = await db
+      .select({ id: notificationsTable.id })
+      .from(notificationsTable)
+      .where(
+        and(
+          eq(notificationsTable.companyId, company.id),
+          eq(notificationsTable.type, 'new_message'),
+          eq(notificationsTable.isRead, false),
+          // We can use a simple LIKE to check if it contains the sessionId
+          sql`${notificationsTable.message} LIKE ${'%' + sessionId + '%'}`
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      // Do not spam
+      return;
+    }
+
+    await db.insert(notificationsTable).values({
+      userId: company.clientId,
+      type: 'new_message',
+      title,
+      message: `[${sessionId.substring(0,8)}] ${snippet}`,
+      companyId: company.id,
+      isRead: false
+    });
+  } catch (err) {
+    logger.error({ err }, 'Error triggering new message notification');
+  }
+}

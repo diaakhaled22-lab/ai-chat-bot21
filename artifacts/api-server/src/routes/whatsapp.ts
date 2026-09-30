@@ -1,4 +1,4 @@
-import { isSessionInHandoff, triggerHandoffNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
+import { isSessionInHandoff, triggerHandoffNotification, triggerNewMessageNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
@@ -255,6 +255,9 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
               botResponse: null,
               isHandoff: true
             });
+
+    // Notify client of new message
+    triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
             return;
           }
 

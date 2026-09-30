@@ -336,7 +336,16 @@ function ClientNotificationBell() {
           ) : (
             <ul className="divide-y divide-border/40">
               {notifications.map((n) => (
-                <li key={n.id} className={`px-4 py-3 flex items-start gap-3 ${!n.isRead ? "bg-amber-500/5" : ""}`}>
+                <li 
+                  key={n.id} 
+                  className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors ${!n.isRead ? "bg-amber-500/5" : ""}`}
+                  onClick={() => {
+                    setOpen(false);
+                    if (n.type === "new_message" || n.type === "handoff_request") {
+                      setLocation("/client/universal-chat");
+                    }
+                  }}
+                >
                   <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium leading-tight">{n.title}</p>
