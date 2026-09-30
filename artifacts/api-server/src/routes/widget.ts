@@ -1,4 +1,4 @@
-import { isSessionInHandoff, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
+import { isSessionInHandoff, triggerHandoffNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -244,7 +244,8 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
       aiReply = localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
-    }
+        triggerHandoffNotification(company, sessionId, "website");
+      }
 
     if (sessionId && typeof sessionId === "string") {
       await db.insert(chatLogsTable).values({

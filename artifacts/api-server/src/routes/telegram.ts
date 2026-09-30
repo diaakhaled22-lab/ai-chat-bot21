@@ -1,3 +1,4 @@
+import { triggerHandoffNotification } from "../lib/handoff";
 import {
   isSessionInHandoff,
   HANDOFF_SYSTEM_PROMPT,
@@ -212,7 +213,8 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     if (aiReply.trim() === "[HANDOFF_REQUESTED]") {
       aiReply = localizedChannelMessage(userText, "جاري تحويلك الى موظف دعم فني وسيتواصل معك قريبا.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
-    }
+        triggerHandoffNotification(company, sessionId, "telegram");
+      }
 
     await db.insert(chatLogsTable).values({
       companyId: company.id,
