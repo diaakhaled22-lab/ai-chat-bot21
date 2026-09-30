@@ -16,3 +16,5 @@ export * from "./session";
 export * from "./malfunctions";
 
 export * from './leads';
+
+export * from "./cannedResponses";

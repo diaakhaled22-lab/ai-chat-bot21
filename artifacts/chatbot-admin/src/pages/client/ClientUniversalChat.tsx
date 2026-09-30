@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead } from "@workspace/api-client-react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,16 @@ function extractUserName(messages: any[]): string | null {
   return null;
 }
 
+
+interface CannedResponse {
+  id: number;
+  companyId: number;
+  title: string;
+  content: string;
+}
+
 export default function ClientUniversalChat() {
+
   const { t, lang } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,7 +53,25 @@ export default function ClientUniversalChat() {
   const [replyText, setReplyText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  
   const { data: logs, isLoading } = useListClientChatLogs();
+  const { data: cannedResponses = [] } = useQuery({
+    queryKey: ["canned-responses"],
+    queryFn: async () => {
+      const { customFetch } = await import("@workspace/api-client-react");
+      const res = await customFetch("/client/canned-responses");
+      if (!res.ok) return [];
+      return (await res.json()) as CannedResponse[];
+    }
+  });
+  
+  const showQuickReplies = replyText.startsWith("/");
+  const filteredQuickReplies = showQuickReplies ? cannedResponses.filter(r => r.title.toLowerCase().includes(replyText.slice(1).toLowerCase())) : [];
+  
+  const handleSelectQuickReply = (content: string) => {
+    setReplyText(content);
+  };
+
   const markLogAsRead = useMarkClientLogAsRead();
 
   // ── MUTATION FOR REPLY / RESOLVE ───────────────────────────────────────────
@@ -329,7 +356,28 @@ export default function ClientUniversalChat() {
                       </Button>
                     </div>
                   )}
+                  
+                  {/* Quick Replies Dropdown */}
+                  {showQuickReplies && filteredQuickReplies.length > 0 && (
+                    <div className="mb-2 bg-popover border border-border rounded-lg shadow-lg overflow-hidden flex flex-col max-h-48 overflow-y-auto">
+                      <div className="px-3 py-1.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground flex items-center gap-2">
+                        <Zap className="w-3 h-3" />
+                        {lang === "ar" ? "اختر رداً سريعاً" : "Select Quick Reply"}
+                      </div>
+                      {filteredQuickReplies.map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => handleSelectQuickReply(r.content)}
+                          className="flex flex-col text-start px-3 py-2 hover:bg-muted focus:bg-muted transition-colors border-b border-border/50 last:border-0"
+                        >
+                          <span className="font-medium text-sm text-primary">/{r.title}</span>
+                          <span className="text-xs text-muted-foreground truncate w-full">{r.content}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex gap-2 items-end">
+
                     <Textarea 
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}

@@ -43,6 +43,7 @@ import ClientWebhookHistory from "@/pages/client/ClientWebhookHistory";
 import ClientWidgetPreview from "@/pages/client/ClientWidgetPreview";
 import ClientChannels from "@/pages/client/ClientChannels";
 import ClientDashboard from "@/pages/client/ClientDashboard";
+import ClientQuickReplies from "@/pages/client/ClientQuickReplies";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -201,6 +202,9 @@ function Router() {
       </Route>
       <Route path="/client/malfunctions">
         {() => <ProtectedRoute component={ClientMalfunctions} allowedRole="client" />}
+      </Route>
+      <Route path="/client/quick-replies">
+        {() => <ProtectedRoute component={ClientQuickReplies} allowedRole="client" />}
       </Route>
 
       <Route component={NotFound} />
