@@ -892,6 +892,8 @@ router.get("/client/dashboard", async (req, res) => {
         estimatedCostUsd: 0,
         pricingPer1MTokens: { input: 0, output: 0 },
         byChannel: [],
+          sentiments: { positive: 0, neutral: 0, negative: 0, angry: 0 },
+          intents: [],
         periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
         hasCompany: false,
       });
@@ -923,6 +925,9 @@ router.get("/client/dashboard", async (req, res) => {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     const byChannelMap: Record<string, { messages: number; inputTokens: number; outputTokens: number }> = {};
+    const sentiments = { positive: 0, neutral: 0, negative: 0, angry: 0 };
+    const intents: Record<string, number> = {};
+
 
     for (const log of logs) {
       const it = Math.ceil((log.customerMessage?.length ?? 0) / CHARS_PER_TOKEN);
@@ -961,6 +966,8 @@ router.get("/client/dashboard", async (req, res) => {
       estimatedCostUsd: Math.round(estimatedCostUsd * 10000) / 10000,
       pricingPer1MTokens: modelPricing,
       byChannel: Object.entries(byChannelMap).map(([channel, d]) => ({ channel, ...d })),
+        sentiments,
+        intents: Object.entries(intents).map(([name, count]) => ({ name, count })).sort((a,b)=>b.count-a.count),
       periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
       hasCompany: true,
     });

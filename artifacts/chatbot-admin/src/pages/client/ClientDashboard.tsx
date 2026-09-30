@@ -28,6 +28,8 @@ interface DashboardData {
   pricingPer1MTokens: { input: number; output: number };
   byChannel: Array<{ channel: string; messages: number; inputTokens: number; outputTokens: number }>;
   periodLabel: string;
+  sentiments: { positive: number; neutral: number; negative: number; angry: number };
+  intents: Array<{ name: string; count: number }>;
   hasCompany: boolean;
 }
 
