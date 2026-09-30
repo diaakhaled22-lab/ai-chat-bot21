@@ -1,3 +1,4 @@
+import { initWebSocket } from "./lib/ws";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db } from "@workspace/db";
@@ -240,7 +241,7 @@ async function startServer() {
     logger.info({ port }, "Server listening");
   });
 
-  import("./lib/ws").then(ws => ws.initWebSocket(server));
+  initWebSocket(server);
 }
 
 void startServer();
