@@ -1109,15 +1109,35 @@ router.post("/client/tickets", async (req, res) => {
       .returning();
 
     const [user] = await db
-      .select({ name: usersTable.name })
+      .select({ name: usersTable.name, companyId: usersTable.companyId })
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId!));
+
+    // Create notifications for all admins
+    const admins = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+      
+    if (admins.length > 0) {
+      await db.insert(notificationsTable).values(
+        admins.map(admin => ({
+          userId: admin.id,
+          type: "ticket",
+          title: `New Problem: ${ticket.title}`,
+          message: `Client ${user?.name ?? "Unknown"} reported a problem.`,
+          companyId: user?.companyId ?? null,
+        }))
+      );
+    }
 
     sendNewTicketNotification({
       id: ticket.id,
       title: ticket.title,
       description: ticket.description,
       clientName: user?.name ?? "Unknown",
+    }).catch(err => {
+      logger.error({ err }, "Failed to send new ticket notification email");
     });
 
     res.status(201).json({
