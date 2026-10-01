@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2 } from 'lucide-react';
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,7 @@ export default function ClientUniversalChat() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [channelFilter, setChannelFilter] = useState<string>("all");
   const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
   const [replyText, setReplyText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -173,6 +174,69 @@ export default function ClientUniversalChat() {
     }).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [logs, search]);
 
+  
+  // ── KPI Calculations ───────────────────────────────────────────────────────
+  const kpis = useMemo(() => {
+    if (!logs || !sessions) {
+      return {
+        totalSessions: 0,
+        todaySessions: 0,
+        activeHandoffCount: 0,
+        unreadCount: 0,
+        aiAutomatedRate: 100,
+        channelCounts: { whatsapp: 0, telegram: 0, messenger: 0, website: 0 },
+      };
+    }
+
+    const todayStr = new Date().toDateString();
+    let todayCount = 0;
+    let handoffCount = 0;
+    const channelCounts: Record<string, number> = { whatsapp: 0, telegram: 0, messenger: 0, website: 0 };
+
+    sessions.forEach((s) => {
+      if (new Date(s.updatedAt).toDateString() === todayStr) {
+        todayCount++;
+      }
+      if (s.channel && channelCounts[s.channel] !== undefined) {
+        channelCounts[s.channel]++;
+      }
+      for (let i = s.messages.length - 1; i >= 0; i--) {
+        if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
+        if (s.messages[i].isHandoff) {
+          handoffCount++;
+          break;
+        }
+      }
+    });
+
+    const unread = logs.filter((l) => !l.isRead).length;
+    const total = sessions.length;
+    const aiRate = total > 0 ? Math.round(((total - handoffCount) / total) * 100) : 100;
+
+    return {
+      totalSessions: total,
+      todaySessions: todayCount,
+      activeHandoffCount: handoffCount,
+      unreadCount: unread,
+      aiAutomatedRate: Math.max(0, aiRate),
+      channelCounts,
+    };
+  }, [logs, sessions]);
+
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((s) => {
+      if (channelFilter === "all") return true;
+      if (channelFilter === "handoff") {
+        for (let i = s.messages.length - 1; i >= 0; i--) {
+          if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
+          if (s.messages[i].isHandoff) return true;
+        }
+        return false;
+      }
+      return s.channel === channelFilter;
+    });
+  }, [sessions, channelFilter]);
+
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || null;
   }, [sessions, selectedSessionId]);
@@ -233,12 +297,158 @@ export default function ClientUniversalChat() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 shrink-0">
-        <div className="flex-1 flex items-center space-x-2 bg-card p-2 rounded-lg border border-border">
-          <Search className="w-5 h-5 ml-2 text-muted-foreground" />
+      {/* KPI Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 shrink-0">
+        {/* Total Conversations */}
+        <Card 
+          onClick={() => setChannelFilter("all")}
+          className={`p-4 border transition-all cursor-pointer hover:shadow-md ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "border-border bg-card/60"}`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "ar" ? "إجمالي المحادثات" : "Total Conversations"}
+            </span>
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight tabular-nums">{kpis.totalSessions}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {kpis.todaySessions} {lang === "ar" ? "اليوم" : "today"}
+            </span>
+          </div>
+        </Card>
+
+        {/* Active Handoffs */}
+        <Card 
+          onClick={() => setChannelFilter("handoff")}
+          className={`p-4 border transition-all cursor-pointer hover:shadow-md ${channelFilter === "handoff" ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30" : kpis.activeHandoffCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-border bg-card/60"}`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "ar" ? "طلبات التدخل البشري" : "Active Handoffs"}
+            </span>
+            <div className={`p-2 rounded-lg ${kpis.activeHandoffCount > 0 ? "bg-amber-500/20 text-amber-500 animate-pulse" : "bg-muted text-muted-foreground"}`}>
+              <UserCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className={`text-2xl font-bold tracking-tight tabular-nums ${kpis.activeHandoffCount > 0 ? "text-amber-500" : ""}`}>
+              {kpis.activeHandoffCount}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {kpis.activeHandoffCount > 0 
+                ? (lang === "ar" ? "بانتظار الرد" : "needs action")
+                : (lang === "ar" ? "لا توجد معلقة" : "all resolved")}
+            </span>
+          </div>
+        </Card>
+
+        {/* Unread Messages */}
+        <Card className="p-4 border border-border bg-card/60 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "ar" ? "رسائل غير مقروءة" : "Unread Messages"}
+            </span>
+            <div className={`p-2 rounded-lg ${kpis.unreadCount > 0 ? "bg-blue-500/20 text-blue-500" : "bg-muted text-muted-foreground"}`}>
+              <Inbox className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className={`text-2xl font-bold tracking-tight tabular-nums ${kpis.unreadCount > 0 ? "text-blue-500" : ""}`}>
+              {kpis.unreadCount}
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {lang === "ar" ? "رسالة جديدة" : "new messages"}
+            </span>
+          </div>
+        </Card>
+
+        {/* AI Automation Rate */}
+        <Card className="p-4 border border-border bg-card/60 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "ar" ? "أتمتة الذكاء الاصطناعي" : "AI Resolution Rate"}
+            </span>
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <Sparkles className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl font-bold tracking-tight tabular-nums text-emerald-500">
+              {kpis.aiAutomatedRate}%
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              {lang === "ar" ? "مكتملة آلياً" : "automated"}
+            </span>
+          </div>
+        </Card>
+      </div>
+
+      {/* Filter Tabs & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <Button
+            size="sm"
+            variant={channelFilter === "all" ? "default" : "outline"}
+            className="h-8 text-xs rounded-full px-3"
+            onClick={() => setChannelFilter("all")}
+          >
+            {lang === "ar" ? "الكل" : "All"} ({sessions.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "handoff" ? "default" : "outline"}
+            className={`h-8 text-xs rounded-full px-3 ${kpis.activeHandoffCount > 0 && channelFilter !== "handoff" ? "border-amber-500/50 text-amber-500 font-medium" : ""}`}
+            onClick={() => setChannelFilter("handoff")}
+          >
+            <UserCheck className="w-3.5 h-3.5 mr-1" />
+            {lang === "ar" ? "تدخل بشري" : "Handoff"} ({kpis.activeHandoffCount})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "whatsapp" ? "default" : "outline"}
+            className="h-8 text-xs rounded-full px-3"
+            onClick={() => setChannelFilter("whatsapp")}
+          >
+            <MessageSquare className="w-3.5 h-3.5 mr-1 text-emerald-500" />
+            WhatsApp ({kpis.channelCounts.whatsapp || 0})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "telegram" ? "default" : "outline"}
+            className="h-8 text-xs rounded-full px-3"
+            onClick={() => setChannelFilter("telegram")}
+          >
+            <MessageCircle className="w-3.5 h-3.5 mr-1 text-sky-500" />
+            Telegram ({kpis.channelCounts.telegram || 0})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "messenger" ? "default" : "outline"}
+            className="h-8 text-xs rounded-full px-3"
+            onClick={() => setChannelFilter("messenger")}
+          >
+            <MessageCircle className="w-3.5 h-3.5 mr-1 text-blue-500" />
+            Messenger ({kpis.channelCounts.messenger || 0})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "website" ? "default" : "outline"}
+            className="h-8 text-xs rounded-full px-3"
+            onClick={() => setChannelFilter("website")}
+          >
+            <Globe className="w-3.5 h-3.5 mr-1 text-purple-500" />
+            Website ({kpis.channelCounts.website || 0})
+          </Button>
+        </div>
+
+        <div className="sm:w-72 flex items-center bg-card px-2.5 py-1 rounded-lg border border-border">
+          <Search className="w-4 h-4 ml-1.5 text-muted-foreground shrink-0" />
           <Input 
             placeholder={lang === "ar" ? "ابحث في المحادثات..." : "Search conversations..."} 
-            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="border-0 bg-transparent h-7 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -258,12 +468,12 @@ export default function ClientUniversalChat() {
                Array.from({ length: 5 }).map((_, i) => (
                  <div key={i} className="p-4 border-b border-border"><Skeleton className="w-full h-10" /></div>
                ))
-            ) : sessions.length === 0 ? (
+            ) : filteredSessions.length === 0 ? (
                <div className="p-8 text-center text-muted-foreground text-sm">
                  {lang === "ar" ? "لا توجد محادثات" : "No conversations found"}
                </div>
             ) : (
-              sessions.map((session) => {
+              filteredSessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
                 const userName = extractUserName(session.messages);
                 return (
