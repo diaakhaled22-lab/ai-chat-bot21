@@ -270,6 +270,7 @@ function NotificationBell() {
 // â”€â”€ Client Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ClientNotificationBell() {
   const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
 
