@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap } from 'lucide-react';
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2 } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -73,6 +74,36 @@ export default function ClientUniversalChat() {
   };
 
   const markLogAsRead = useMarkClientLogAsRead();
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await fetch(`/api/client/chat-logs/session/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete conversation");
+      return res.json();
+    },
+    onSuccess: (_, deletedSessionId) => {
+      if (selectedSessionId === deletedSessionId) {
+        setSelectedSessionId(null);
+      }
+      queryClient.invalidateQueries({ queryKey: getListClientChatLogsQueryKey() });
+      toast({
+        title: lang === "ar" ? "تم حذف المحادثة بنجاح" : "Conversation deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: lang === "ar" ? "خطأ" : "Error",
+        description: lang === "ar" ? "فشل حذف المحادثة" : "Failed to delete conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteSession = (sessionId: string) => {
+    deleteSessionMutation.mutate(sessionId);
+  };
 
   // ── MUTATION FOR REPLY / RESOLVE ───────────────────────────────────────────
   const useReplyMutation = useMutation({
@@ -253,9 +284,25 @@ export default function ClientUniversalChat() {
                         <span className="text-sm font-semibold truncate capitalize">
                           {userName ? userName : `${session.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
                         </span>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <ConfirmDeleteDialog
+                            title={lang === "ar" ? "حذف المحادثة" : "Delete Conversation"}
+                            description={lang === "ar" ? "هل أنت متأكد من حذف هذه المحادثة بالكامل؟" : "Are you sure you want to delete this conversation?"}
+                            onConfirm={() => handleDeleteSession(session.id)}
+                          >
+                            <button
+                              type="button"
+                              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title={lang === "ar" ? "حذف المحادثة" : "Delete conversation"}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </ConfirmDeleteDialog>
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                         {session.lastMessage}

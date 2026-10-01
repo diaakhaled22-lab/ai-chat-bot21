@@ -796,6 +796,49 @@ router.patch("/client/chat-logs/session/:sessionId/read", async (req, res) => {
 });
 
 // PATCH /client/chat-logs/:id/read
+// DELETE /client/chat-logs/session/:sessionId
+router.delete("/client/chat-logs/session/:sessionId", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const [myCompany] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!myCompany) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    if (sessionId.startsWith("msg_")) {
+      const logId = parseInt(sessionId.replace("msg_", ""), 10);
+      await db
+        .delete(chatLogsTable)
+        .where(
+          and(
+            eq(chatLogsTable.companyId, myCompany.id),
+            eq(chatLogsTable.id, logId)
+          )
+        );
+    } else {
+      await db
+        .delete(chatLogsTable)
+        .where(
+          and(
+            eq(chatLogsTable.companyId, myCompany.id),
+            eq(chatLogsTable.sessionId, sessionId)
+          )
+        );
+    }
+
+    res.json({ ok: true, success: true });
+  } catch (err) {
+    logger.error({ err }, "Delete session error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/client/chat-logs/:id/read", async (req, res) => {
   try {
     const logId = parseInt(req.params.id, 10);
