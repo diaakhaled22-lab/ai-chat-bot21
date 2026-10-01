@@ -228,36 +228,20 @@ export default function ClientUniversalChat() {
   }, [logs, sessions]);
 
   const dateOptions = useMemo(() => {
-    const datesSet = new Set<string>();
+    const options = [];
     const today = new Date();
-    const daysToShow = Math.max(currentRetention || 3, 7);
-    for (let i = 0; i < daysToShow; i++) {
+    for (let i = 0; i < currentRetention; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      datesSet.add(d.toISOString().split("T")[0]);
-    }
-    if (sessions) {
-      sessions.forEach(s => {
-        if (s.updatedAt) {
-          const dStr = s.updatedAt.split("T")[0];
-          if (dStr) datesSet.add(dStr);
-        }
-      });
-    }
-
-    const sortedDates = Array.from(datesSet).sort((a, b) => b.localeCompare(a));
-    const todayIso = today.toISOString().split("T")[0];
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayIso = yesterday.toISOString().split("T")[0];
-
-    return sortedDates.map(iso => {
+      const iso = d.toISOString().split("T")[0];
       let label = iso;
-      if (iso === todayIso) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
-      else if (iso === yesterdayIso) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
-      return { value: iso, label };
-    });
-  }, [currentRetention, lang, sessions]);
+      if (i === 0) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
+      else if (i === 1) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
+      
+      options.push({ value: iso, label });
+    }
+    return options;
+  }, [currentRetention, lang]);
 
   const getChannelFilterIcon = (ch: string) => {
     switch (ch) {
