@@ -155,9 +155,8 @@ export default function ClientUniversalChat() {
     queryKey: ["canned-responses"],
     queryFn: async () => {
       const { customFetch } = await import("@workspace/api-client-react");
-      const res = await customFetch("/client/canned-responses");
-      if (!res.ok) return [];
-      return (await res.json()) as CannedResponse[];
+      const res = await customFetch<CannedResponse[]>("/client/canned-responses");
+      return Array.isArray(res) ? res : [];
     }
   });
 
@@ -165,9 +164,8 @@ export default function ClientUniversalChat() {
     queryKey: ["client-leads"],
     queryFn: async () => {
       const { customFetch } = await import("@workspace/api-client-react");
-      const res = await customFetch("/client/leads");
-      if (!res.ok) return [];
-      return (await res.json()) as Array<{ id: number; sessionId: string; name: string | null; phone: string | null; email: string | null }>;
+      const res = await customFetch<Array<{ id: number; sessionId: string; name: string | null; phone: string | null; email: string | null }>>("/client/leads");
+      return Array.isArray(res) ? res : [];
     }
   });
 
@@ -314,7 +312,7 @@ export default function ClientUniversalChat() {
       }
       for (let i = s.messages.length - 1; i >= 0; i--) {
         if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
-        if (s.messages[i].isHandoff) {
+        if ((s.messages[i] as any).isHandoff) {
           handoffCount++;
           break;
         }
@@ -368,7 +366,7 @@ export default function ClientUniversalChat() {
         let hasHandoff = false;
         for (let i = s.messages.length - 1; i >= 0; i--) {
           if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
-          if (s.messages[i].isHandoff) {
+          if ((s.messages[i] as any).isHandoff) {
             hasHandoff = true;
             break;
           }
@@ -409,7 +407,7 @@ export default function ClientUniversalChat() {
     if (!selectedSession) return false;
     for (let i = selectedSession.messages.length - 1; i >= 0; i--) {
       if (selectedSession.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
-      if (selectedSession.messages[i].isHandoff) return true;
+      if ((selectedSession.messages[i] as any).isHandoff) return true;
     }
     return false;
   }, [selectedSession]);
@@ -780,7 +778,7 @@ export default function ClientUniversalChat() {
                             <Bot className="w-4 h-4 text-primary" />
                           </div>
                           <div className="flex flex-col gap-1 items-end max-w-[75%]">
-                            <div className={`text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${log.isHandoff ? 'bg-orange-500' : 'bg-primary'}`}>
+                            <div className={`text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${(log as any).isHandoff ? 'bg-orange-500' : 'bg-primary'}`}>
                               {cleanDisplayMessage(log.botResponse)}
                             </div>
                             <span className="text-[10px] text-muted-foreground mr-2">

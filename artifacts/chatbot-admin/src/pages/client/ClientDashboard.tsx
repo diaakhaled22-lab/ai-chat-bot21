@@ -110,6 +110,8 @@ export default function ClientDashboard() {
     { name: lang === "ar" ? "مخرجات (البوت)" : "Output (Bot)", value: data?.estimatedOutputTokens ?? 0 },
   ];
 
+  const sentiments = data?.sentiments;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -350,7 +352,7 @@ export default function ClientDashboard() {
           )}
 
           {/* Sentiment Analysis Card */}
-          {data.sentiments && (
+          {sentiments && (
             <div className="grid gap-4 md:grid-cols-2 mt-4">
               <Card>
                 <CardHeader>
@@ -360,7 +362,7 @@ export default function ClientDashboard() {
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center h-[300px]">
                   
-                  {(data.sentiments.positive + data.sentiments.neutral + data.sentiments.negative + data.sentiments.angry) === 0 ? (
+                  {(sentiments.positive + sentiments.neutral + sentiments.negative + sentiments.angry) === 0 ? (
                     <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
                       <BarChart2 className="w-8 h-8 opacity-20" />
                       <p className="text-sm">{lang === "ar" ? "لا توجد بيانات مشاعر بعد. تحدث مع البوت لتبدأ!" : "No sentiment data yet. Chat with the bot!"}</p>
@@ -370,10 +372,10 @@ export default function ClientDashboard() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: lang === "ar" ? "إيجابي" : "Positive", value: data.sentiments.positive, color: "#10b981" },
-                          { name: lang === "ar" ? "محايد" : "Neutral", value: data.sentiments.neutral, color: "#94a3b8" },
-                          { name: lang === "ar" ? "سلبي" : "Negative", value: data.sentiments.negative, color: "#f59e0b" },
-                          { name: lang === "ar" ? "غاضب" : "Angry", value: data.sentiments.angry, color: "#ef4444" },
+                          { name: lang === "ar" ? "إيجابي" : "Positive", value: sentiments.positive, color: "#10b981" },
+                          { name: lang === "ar" ? "محايد" : "Neutral", value: sentiments.neutral, color: "#94a3b8" },
+                          { name: lang === "ar" ? "سلبي" : "Negative", value: sentiments.negative, color: "#f59e0b" },
+                          { name: lang === "ar" ? "غاضب" : "Angry", value: sentiments.angry, color: "#ef4444" },
                         ].filter(d => d.value > 0)}
                         dataKey="value"
                         nameKey="name"
@@ -384,10 +386,10 @@ export default function ClientDashboard() {
                       >
                         {
                           [
-                            { name: "Positive", value: data.sentiments.positive, color: "#10b981" },
-                            { name: "Neutral", value: data.sentiments.neutral, color: "#94a3b8" },
-                            { name: "Negative", value: data.sentiments.negative, color: "#f59e0b" },
-                            { name: "Angry", value: data.sentiments.angry, color: "#ef4444" }
+                            { name: "Positive", value: sentiments.positive, color: "#10b981" },
+                            { name: "Neutral", value: sentiments.neutral, color: "#94a3b8" },
+                            { name: "Negative", value: sentiments.negative, color: "#f59e0b" },
+                            { name: "Angry", value: sentiments.angry, color: "#ef4444" }
                           ].filter(d => d.value > 0).map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))

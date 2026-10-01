@@ -174,7 +174,7 @@ export default function ClientChatLogs() {
     if (!selectedSession) return false;
     for (let i = selectedSession.messages.length - 1; i >= 0; i--) {
       if (selectedSession.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
-      if (selectedSession.messages[i].isHandoff) return true;
+      if ((selectedSession.messages[i] as any).isHandoff) return true;
     }
     return false;
   }, [selectedSession]);

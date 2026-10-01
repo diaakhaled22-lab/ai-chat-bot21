@@ -24,24 +24,21 @@ export default function ClientQuickReplies() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-  const { data: responses = [], isLoading } = useQuery({
+  const { data: responses = [], isLoading } = useQuery<CannedResponse[]>({
     queryKey: ["canned-responses"],
     queryFn: async () => {
-      const res = await customFetch("/client/canned-responses");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return (await res.json()) as CannedResponse[];
+      const res = await customFetch<CannedResponse[]>("/client/canned-responses");
+      return Array.isArray(res) ? res : [];
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const res = await customFetch("/client/canned-responses", {
+      return customFetch("/client/canned-responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       });
-      if (!res.ok) throw new Error("Failed to create");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["canned-responses"] });
@@ -53,8 +50,7 @@ export default function ClientQuickReplies() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await customFetch(`/client/canned-responses/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await customFetch(`/client/canned-responses/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["canned-responses"] });
