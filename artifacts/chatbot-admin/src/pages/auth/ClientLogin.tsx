@@ -41,7 +41,7 @@ export default function ClientLogin() {
           title: "Welcome back",
           description: "Successfully logged in to client portal.",
         });
-        setLocation("/client/company");
+        setLocation("/client/dashboard");
       },
       onError: (error: any) => {
         toast({

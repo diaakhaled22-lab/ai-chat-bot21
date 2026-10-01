@@ -158,7 +158,10 @@ function Router() {
       </Route>
 
       {/* Client Routes */}
-              <Route path="/client/dashboard">
+              <Route path="/client">
+          {() => <ProtectedRoute component={ClientDashboard} allowedRole="client" />}
+        </Route>
+        <Route path="/client/dashboard">
           {() => <ProtectedRoute component={ClientDashboard} allowedRole="client" />}
         </Route>
               <Route path="/client/company">
