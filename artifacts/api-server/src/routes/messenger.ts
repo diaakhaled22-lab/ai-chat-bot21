@@ -306,7 +306,7 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
         sentiment: metrics?.sentiment || null,
         intent: metrics?.intent || null,
       });
-    
+      triggerNewMessageNotification(company, sessionId, "messenger", userText);
 
         await sendMessengerMessage(company.messengerApiKey, senderId, aiReply);
 
@@ -525,6 +525,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
           sentiment: metrics?.sentiment || null,
           intent: metrics?.intent || null
         });
+        triggerNewMessageNotification(company, sessionId, "messenger", userText);
 
         await sendMessengerMessage(company.messengerApiKey, senderId, aiReply);
 

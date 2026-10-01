@@ -309,6 +309,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         sentiment: metrics?.sentiment || null,
         intent: metrics?.intent || null,
       });
+      triggerNewMessageNotification(company, sessionId, "website", message.trim());
     }
 
     void syncConversationToSheet(company, [

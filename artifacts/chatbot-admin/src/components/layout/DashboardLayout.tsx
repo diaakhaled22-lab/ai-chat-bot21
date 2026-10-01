@@ -526,7 +526,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
       { href: "/client/leads",            label: lang === "ar" ? "العملاء المحتملين" : "Leads CRM", icon: Users },
     { href: "/client/usage",            label: t("nav_api_tokens"),      icon: KeyRound },
-    { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles },
+    { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles, clientChatBadge: true },
     { href: "/client/widget-preview",   label: t("nav_widget_preview"),  icon: Bot },
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },
     { href: "/client/malfunctions",     label: t("nav_malfunctions") || "Malfunctions", icon: AlertTriangle },

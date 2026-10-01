@@ -345,7 +345,7 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
         sentiment: metrics?.sentiment || null,
         intent: metrics?.intent || null,
       });
-    
+      triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 
@@ -595,6 +595,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             sentiment: metrics?.sentiment || null,
             intent: metrics?.intent || null
           });
+          triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 

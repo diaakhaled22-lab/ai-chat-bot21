@@ -116,8 +116,16 @@ export async function triggerHandoffNotification(company: { id: number, clientId
 export async function triggerNewMessageNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string, customerMessage: string) {
   if (!company.clientId) return;
   try {
-    const title = `New message (${channel})`;
-    const snippet = customerMessage.length > 40 ? customerMessage.substring(0, 40) + '...' : customerMessage;
+    const channelNames: Record<string, string> = {
+      whatsapp: "WhatsApp",
+      telegram: "Telegram",
+      messenger: "Messenger",
+      website: "Website Widget",
+    };
+    const channelDisplay = channelNames[channel] || channel;
+    const title = `New message (${channelDisplay})`;
+    const snippet = customerMessage.length > 50 ? customerMessage.substring(0, 50) + "..." : customerMessage;
+    const sessionTag = sessionId ? sessionId.substring(0, 8) : "";
     
     // Check if an unread notification for this exact session exists
     const [existing] = await db
@@ -128,14 +136,20 @@ export async function triggerNewMessageNotification(company: { id: number, clien
           eq(notificationsTable.companyId, company.id),
           eq(notificationsTable.type, 'new_message'),
           eq(notificationsTable.isRead, false),
-          // We can use a simple LIKE to check if it contains the sessionId
-          sql`${notificationsTable.message} LIKE ${'%' + sessionId + '%'}`
+          sql`${notificationsTable.message} LIKE ${'%' + sessionTag + '%'}`
         )
       )
       .limit(1);
 
     if (existing) {
-      // Do not spam
+      await db
+        .update(notificationsTable)
+        .set({
+          title,
+          message: `[${sessionTag}] ${snippet}`,
+          createdAt: new Date(),
+        })
+        .where(eq(notificationsTable.id, existing.id));
       return;
     }
 
@@ -143,7 +157,7 @@ export async function triggerNewMessageNotification(company: { id: number, clien
       userId: company.clientId,
       type: 'new_message',
       title,
-      message: `[${sessionId.substring(0,8)}] ${snippet}`,
+      message: `[${sessionTag}] ${snippet}`,
       companyId: company.id,
       isRead: false
     });

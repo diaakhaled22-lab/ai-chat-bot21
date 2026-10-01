@@ -278,6 +278,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
         sentiment: metrics?.sentiment || null,
         intent: metrics?.intent || null,
       });
+    triggerNewMessageNotification(company, sessionId, "telegram", userText);
 
     await sendTelegramMessage(company.telegramBotApiKey!, chatId, aiReply);
 
