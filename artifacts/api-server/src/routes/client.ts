@@ -8,7 +8,7 @@ import { sendMessengerMessage } from "./messenger";
 
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable, leadsTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable, leadsTable, cannedResponsesTable } from "@workspace/db";
 import { eq, and, or, sql, gte, lte, desc, inArray } from "drizzle-orm";
 import {
   CreateClientCompanyBody,
@@ -1155,9 +1155,15 @@ router.post("/client/tickets", async (req, res) => {
       .returning();
 
     const [user] = await db
-      .select({ name: usersTable.name, companyId: usersTable.companyId })
+      .select({ name: usersTable.name })
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId!));
+
+    const [company] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
 
     // Create notifications for all admins
     const admins = await db
@@ -1172,7 +1178,7 @@ router.post("/client/tickets", async (req, res) => {
           type: "ticket",
           title: `New Problem: ${ticket.title}`,
           message: `Client ${user?.name ?? "Unknown"} reported a problem.`,
-          companyId: user?.companyId ?? null,
+          companyId: company?.id ?? null,
         }))
       );
     }
@@ -1303,7 +1309,7 @@ router.put("/client/settings", async (req, res) => {
       if (notificationEmail && notificationEmail !== user.notificationEmail) {
         changes.push(`notification email set to "${notificationEmail}"`);
         const { sendClientNotification } = require('../lib/email');
-        sendClientNotification(notificationEmail, 'Email Notifications Enabled', 'Your email has been successfully linked to your Bot Manager account. You will now receive alerts here.').catch(e => logger.error({err: e}, 'Failed to send confirmation email'));
+        sendClientNotification(notificationEmail, 'Email Notifications Enabled', 'Your email has been successfully linked to your Bot Manager account. You will now receive alerts here.').catch((e: any) => logger.error({err: e}, 'Failed to send confirmation email'));
       }
     }
 
@@ -1699,7 +1705,7 @@ router.post("/client/multi-ai/chat", async (req, res) => {
 router.post("/client/test-messenger", async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: "Client access required" });
   try {
-    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId!));
     if (!company?.messengerApiKey) return res.status(400).json({ ok: false, error: "No Messenger Page Access Token saved." });
 
     const url = `https://graph.facebook.com/me?access_token=${encodeURIComponent(company.messengerApiKey)}&fields=id,name`;
@@ -1831,7 +1837,7 @@ router.post("/client/chat/reply", async (req, res) => {
     const [myCompany] = await db
       .select()
       .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId))
+      .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
 
     if (!myCompany) {
