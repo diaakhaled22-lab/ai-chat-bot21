@@ -1449,6 +1449,37 @@ router.patch("/client/notifications/mark-read", async (req, res) => {
   }
 });
 
+// DELETE /client/notifications/:id
+router.delete("/client/notifications/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    await db
+      .delete(notificationsTable)
+      .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, req.session.userId!)));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Delete client notification error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /client/notifications
+router.delete("/client/notifications", async (req, res) => {
+  try {
+    await db
+      .delete(notificationsTable)
+      .where(eq(notificationsTable.userId, req.session.userId!));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Clear client notifications error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // POST /client/chatbot-trial ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â try the client's chatbot using platform AI key
 router.post("/client/chatbot-trial", async (req, res) => {
   try {

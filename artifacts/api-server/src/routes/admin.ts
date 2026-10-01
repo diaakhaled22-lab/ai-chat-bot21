@@ -1888,6 +1888,37 @@ router.patch("/admin/notifications/mark-read", async (req, res) => {
   }
 });
 
+// DELETE /admin/notifications/:id
+router.delete("/admin/notifications/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    await db
+      .delete(notificationsTable)
+      .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, req.session.userId!)));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Delete admin notification error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /admin/notifications
+router.delete("/admin/notifications", async (req, res) => {
+  try {
+    await db
+      .delete(notificationsTable)
+      .where(eq(notificationsTable.userId, req.session.userId!));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Clear admin notifications error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /admin/telegram-webhook â€” return platform Telegram webhook base URL
 router.get("/admin/telegram-webhook", async (req, res) => {
   try {

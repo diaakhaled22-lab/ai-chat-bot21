@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey } from "@workspace/api-client-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Users,
@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   Database,
   Cpu,
-  PenTool, Menu, type LucideIcon,
+  PenTool, Menu, Trash2, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,23 @@ function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/admin/notifications/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: () =>
+      customFetch("/api/admin/notifications", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
 
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
@@ -156,6 +172,18 @@ function NotificationBell() {
               </span>
             )}
           </div>
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              title={lang === "ar" ? "مسح كل الإشعارات" : "Clear all notifications"}
+              onClick={() => clearAllMutation.mutate()}
+              disabled={clearAllMutation.isPending}
+              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "مسح الكل" : "Clear all"}</span>
+            </button>
+          )}
         </div>
 
         <div className="max-h-[360px] overflow-y-auto divide-y divide-border/40">
@@ -168,7 +196,7 @@ function NotificationBell() {
                 </span>
               </div>
               {reminders.slice(0, 5).map((n) => (
-                <div key={n.id} className={`px-4 py-3 flex items-start gap-3 ${!n.isRead ? "bg-amber-500/5" : ""}`}>
+                <div key={n.id} className={`px-4 py-3 flex items-start gap-3 group ${!n.isRead ? "bg-amber-500/5" : ""}`}>
                   <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium leading-tight">{n.title}</p>
@@ -176,6 +204,17 @@ function NotificationBell() {
                     <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
                   {!n.isRead && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />}
+                  <button
+                    type="button"
+                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMutation.mutate(n.id);
+                    }}
+                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -190,10 +229,10 @@ function NotificationBell() {
                 </span>
               </div>
               {securityAlerts.slice(0, 5).map((n) => (
-                <button
+                <div
                   key={n.id}
                   onClick={() => { setOpen(false); setLocation("/admin/attack-monitoring"); }}
-                  className={`w-full text-left px-4 py-3 hover:bg-red-500/10 transition-colors flex items-start gap-3 ${!n.isRead ? "bg-red-500/5" : ""}`}
+                  className={`w-full text-left px-4 py-3 hover:bg-red-500/10 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-red-500/5" : ""}`}
                 >
                   <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
@@ -202,7 +241,18 @@ function NotificationBell() {
                     <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
                   {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 mt-1.5" />}
-                </button>
+                  <button
+                    type="button"
+                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMutation.mutate(n.id);
+                    }}
+                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -272,7 +322,23 @@ function ClientNotificationBell() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/client/notifications/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+    },
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: () =>
+      customFetch("/api/client/notifications", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+    },
+  });
 
   const { data: notifications = [], refetch } = useQuery<AppNotification[]>({
     queryKey: ["client-notifications"],
@@ -318,13 +384,27 @@ function ClientNotificationBell() {
       </PopoverTrigger>
 
       <PopoverContent align="end" sideOffset={8} className="w-80 p-0 bg-card border-border shadow-xl">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-          <Bell className="w-4 h-4 text-amber-400" />
-          <span className="font-semibold text-sm">{t("notif_title")}</span>
-          {unread > 0 && (
-            <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">
-              {unread} {t("notif_new")}
-            </span>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-amber-400" />
+            <span className="font-semibold text-sm">{t("notif_title")}</span>
+            {unread > 0 && (
+              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {unread} {t("notif_new")}
+              </span>
+            )}
+          </div>
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              title={lang === "ar" ? "مسح كل الإشعارات" : "Clear all notifications"}
+              onClick={() => clearAllMutation.mutate()}
+              disabled={clearAllMutation.isPending}
+              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "مسح الكل" : "Clear all"}</span>
+            </button>
           )}
         </div>
 
@@ -339,7 +419,7 @@ function ClientNotificationBell() {
               {notifications.map((n) => (
                 <li 
                   key={n.id} 
-                  className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors ${!n.isRead ? "bg-amber-500/5" : ""}`}
+                  className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors group ${!n.isRead ? "bg-amber-500/5" : ""}`}
                   onClick={() => {
                     setOpen(false);
                     if (n.type === "new_message" || n.type === "handoff_request") {
@@ -354,6 +434,17 @@ function ClientNotificationBell() {
                     <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
                   {!n.isRead && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />}
+                  <button
+                    type="button"
+                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMutation.mutate(n.id);
+                    }}
+                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </li>
               ))}
             </ul>
