@@ -120,8 +120,8 @@ export default function ClientDashboard() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {lang === "ar"
-              ? `استهلاك الذكاء الاصطناعي لشهر ${data?.periodLabel ?? ""}`
-              : `AI usage overview for ${data?.periodLabel ?? "this month"}`}
+              ? "نظرة عامة على استهلاك الذكاء الاصطناعي والإحصائيات"
+              : "AI usage overview and conversation statistics"}
           </p>
         </div>
         {data && (
@@ -213,7 +213,7 @@ export default function ClientDashboard() {
               icon={MessageSquare}
               label={lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}
               value={(data?.totalMessages ?? 0).toLocaleString()}
-              sub={lang === "ar" ? "هذا الشهر" : "this month"}
+              sub={lang === "ar" ? "إجمالي السجلات" : "all time"}
               color="bg-blue-500/10 text-blue-400"
             />
             <StatCard

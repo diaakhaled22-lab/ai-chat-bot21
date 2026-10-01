@@ -948,21 +948,18 @@ router.get("/client/dashboard", async (req, res) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
+    // Query all logs for the company so dashboard always displays the customer's full activity and stats
     const logs = await db
       .select({
         customerMessage: chatLogsTable.customerMessage,
         botResponse: chatLogsTable.botResponse,
         channel: chatLogsTable.channel,
         createdAt: chatLogsTable.createdAt,
+        sentiment: chatLogsTable.sentiment,
+        intent: chatLogsTable.intent,
       })
       .from(chatLogsTable)
-      .where(
-        and(
-          eq(chatLogsTable.companyId, company.id),
-          gte(chatLogsTable.createdAt, monthStart),
-          lte(chatLogsTable.createdAt, monthEnd),
-        )
-      );
+      .where(eq(chatLogsTable.companyId, company.id));
 
     const CHARS_PER_TOKEN = 4;
     let totalInputTokens = 0;
@@ -970,7 +967,6 @@ router.get("/client/dashboard", async (req, res) => {
     const byChannelMap: Record<string, { messages: number; inputTokens: number; outputTokens: number }> = {};
     const sentiments = { positive: 0, neutral: 0, negative: 0, angry: 0 };
     const intents: Record<string, number> = {};
-
 
     for (const log of logs) {
       const it = Math.ceil((log.customerMessage?.length ?? 0) / CHARS_PER_TOKEN);
@@ -982,6 +978,13 @@ router.get("/client/dashboard", async (req, res) => {
       byChannelMap[ch].messages += 1;
       byChannelMap[ch].inputTokens += it;
       byChannelMap[ch].outputTokens += ot;
+
+      if (log.sentiment && (sentiments as any)[log.sentiment] !== undefined) {
+        (sentiments as any)[log.sentiment] += 1;
+      }
+      if (log.intent) {
+        intents[log.intent] = (intents[log.intent] || 0) + 1;
+      }
     }
 
     const pricing: Record<string, { input: number; output: number }> = {
