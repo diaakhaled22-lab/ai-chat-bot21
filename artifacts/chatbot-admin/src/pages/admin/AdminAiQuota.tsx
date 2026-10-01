@@ -905,16 +905,7 @@ export default function AdminAiQuota() {
                     {p.label}
                   </Button>
                 ))}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs h-7 text-muted-foreground"
-                  onClick={() => setQuotaInput("")}
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  {lang === "ar" ? "تعطيل الحصة" : "Clear — Disable Quota"}
-                </Button>
+                
               </div>
             </div>
 
