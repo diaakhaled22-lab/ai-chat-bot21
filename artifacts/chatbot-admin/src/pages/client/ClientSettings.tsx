@@ -32,9 +32,15 @@ export default function ClientSettings() {
       newUsername: "",
       currentPassword: "",
       newPassword: "",
-      notificationEmail: (me as any)?.notificationEmail || "",
+      notificationEmail: "",
     },
   });
+
+  useEffect(() => {
+    if (me && (me as any).notificationEmail !== undefined) {
+      form.setValue("notificationEmail", (me as any).notificationEmail || "");
+    }
+  }, [me, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const data: any = { currentPassword: values.currentPassword };
