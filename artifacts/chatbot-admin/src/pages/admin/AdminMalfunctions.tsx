@@ -5,9 +5,11 @@ import { useLanguage } from "@/hooks/use-language";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminMalfunctions() {
   const { lang } = useLanguage();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: malfunctions, isLoading, isError } = useQuery<any[]>({
@@ -25,6 +27,17 @@ export default function AdminMalfunctions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-malfunctions"] });
       queryClient.invalidateQueries({ queryKey: ["admin-malfunctions-status"] });
+      toast({
+        title: lang === "ar" ? "تم الحذف" : "Deleted",
+        description: lang === "ar" ? "تم حذف العطل بنجاح" : "Malfunction deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: lang === "ar" ? "خطأ" : "Error",
+        description: lang === "ar" ? "فشل حذف العطل" : "Failed to delete malfunction",
+      });
     },
   });
 
@@ -36,6 +49,17 @@ export default function AdminMalfunctions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-malfunctions"] });
       queryClient.invalidateQueries({ queryKey: ["admin-malfunctions-status"] });
+      toast({
+        title: lang === "ar" ? "تم التحديث" : "Updated",
+        description: lang === "ar" ? "تم تحديد العطل كـ محلول بنجاح" : "Malfunction marked as resolved",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: lang === "ar" ? "خطأ" : "Error",
+        description: lang === "ar" ? "فشل تحديث حالة العطل" : "Failed to update malfunction",
+      });
     },
   });
 

@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte } from "drizzle-orm";
@@ -2220,6 +2220,27 @@ router.patch("/admin/malfunctions/:id/resolve", async (req, res) => {
     res.json(result[0]);
   } catch (err) {
     logger.error({ err }, "Failed to resolve malfunction");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+router.delete("/admin/malfunctions/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    const result = await db.delete(malfunctionsTable)
+      .where(eq(malfunctionsTable.id, id))
+      .returning();
+    if (result.length === 0) {
+      res.status(404).json({ error: "Malfunction not found" });
+      return;
+    }
+    res.json({ success: true, deleted: result[0] });
+  } catch (err) {
+    logger.error({ err }, "Failed to delete malfunction");
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
