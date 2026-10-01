@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead } from "@workspace/api-client-react";
+import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead, useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles } from 'lucide-react';
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles, Clock } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,8 @@ export default function ClientUniversalChat() {
 
   
   const { data: logs, isLoading } = useListClientChatLogs();
+  const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
+  const currentRetention = retentionData?.retentionDays ?? 3;
   const { data: cannedResponses = [] } = useQuery({
     queryKey: ["canned-responses"],
     queryFn: async () => {
@@ -296,6 +298,44 @@ export default function ClientUniversalChat() {
           <p className="text-muted-foreground mt-2">{lang === "ar" ? "إدارة المحادثات الحية والتدخل البشري" : "Manage live conversations and human handoff"}</p>
         </div>
       </div>
+
+      {/* Retention Policy Banner */}
+      <Card className="bg-card border-border shrink-0">
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold">{t("chat_logs_retention_title")}</p>
+                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">
+                  {t("chat_logs_retention_admin_managed")}
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {retentionLoading ? (
+                  <Skeleton className="h-3 w-48 mt-1" />
+                ) : lang === "ar" ? (
+                  `يتم حذف سجلات الدردشة تلقائياً بعد ${currentRetention} ${currentRetention === 1 ? "يوم" : currentRetention === 2 ? "يومين" : "أيام"} وفقاً لما حدده مسؤول النظام.`
+                ) : (
+                  `Chat logs are automatically deleted after ${currentRetention} day${currentRetention === 1 ? "" : "s"} as set by your administrator.`
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 bg-muted/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <div className="text-sm font-bold tabular-nums">
+              {retentionLoading ? (
+                <Skeleton className="h-4 w-12" />
+              ) : (
+                `${currentRetention} ${lang === "ar" ? "أيام" : currentRetention === 1 ? "day" : "days"}`
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* KPI Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 shrink-0">
