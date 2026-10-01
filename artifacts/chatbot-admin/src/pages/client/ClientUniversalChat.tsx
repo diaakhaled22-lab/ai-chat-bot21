@@ -23,17 +23,107 @@ function cleanDisplayMessage(text: string | null | undefined): string {
     .trim();
 }
 
-function extractUserName(messages: any[]): string | null {
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i];
-    if (!msg.customerMessage) continue;
-    const text = msg.customerMessage.trim();
-    if (text.startsWith("/")) continue;
-    if (/^\d+$/.test(text)) continue;
-    const match = text.match(/(?:my name is|i am|i'm|name:|username:|اسمي هو|اسمي|انا|أنا|الاسم:|الاسم)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
-    if (match) return match[1] + (match[2] ? " " + match[2] : "");
+const STOPWORDS = new Set([
+  "بك", "بكم", "فيك", "وسهلا", "وسهلاً", "الخير", "النور", "عزيزي", "عزيزتي", 
+  "أخي", "اخي", "اختي", "أختي", "الجميع", "الكل", "يا", "تمام", "شكرا", "شكراً", 
+  "نعم", "لا", "أهلاً", "اهلا", "مرحبا", "مرحباً", "السلام", "عليكم", "صباح", 
+  "مساء", "خدمة", "العملاء", "دعم", "فني", "مشكلة", "استفسار", "سؤال", "طلب", 
+  "حجز", "شراء", "تفاصيل", "hello", "there", "you", "friend", "sir", "hi", "hey"
+]);
+
+function cleanNameCandidate(raw: string): string | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[،,\.!\?؟\(\)\[\]"':\/-]/g, " ").replace(/\s+/g, " ").trim();
+  const words = cleaned.split(" ").filter(w => w.length > 1);
+  if (words.length === 0 || words.length > 4) return null;
+  const validWords = words.filter(w => !STOPWORDS.has(w.toLowerCase()));
+  if (validWords.length === 0) return null;
+  const finalName = validWords.join(" ");
+  return finalName.length >= 2 ? finalName : null;
+}
+
+function extractUserName(messages: any[], leadName?: string | null): string | null {
+  if (leadName && leadName.trim()) return leadName.trim();
+  if (!messages || messages.length === 0) return null;
+
+  // 1. Check for secret [LEAD_DATA:] block in any botResponse
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const resp = messages[i]?.botResponse;
+    if (resp && resp.includes("[LEAD_DATA:")) {
+      try {
+        const match = resp.match(/\[LEAD_DATA:\s*([\s\S]*?)\s*\]/);
+        if (match) {
+          const parsed = JSON.parse(match[1].replace(/```json/g, "").replace(/```/g, "").trim());
+          if (parsed.name && typeof parsed.name === "string" && parsed.name.trim()) {
+            const cleaned = cleanNameCandidate(parsed.name);
+            if (cleaned) return cleaned;
+          }
+        }
+      } catch (e) {}
+    }
   }
+
+  // 2. Check customer messages for explicit name statements
+  const explicitRegex = /(?:انا\s+اسمي|أنا\s+اسمي|اسمي\s+هو|اسمي\s*[:/-]?|الاسم\s*[:/-]?|الاسم\s+الكامل\s*[:/-]?|معك(?:\s+أخوك|\s+اخوك)?|معاك(?:\s+أخوك|\s+اخوك)?|معكم|أنا(?:\s+العميل)?|انا(?:\s+العميل)?|أخوك|اخوك|اسم\s+العميل\s*[:/-]?|my\s+name\s+is|name\s+is|name\s*[:/-]?|i\s*m|i\s+am|this\s+is)\s+([A-Za-z\u0600-\u06FF]{2,20}(?:\s+[A-Za-z\u0600-\u06FF]{2,20}){0,3})/i;
+
+  for (let i = 0; i < messages.length; i++) {
+    const text = messages[i]?.customerMessage?.trim();
+    if (!text || text.startsWith("/")) continue;
+    
+    const match = text.match(explicitRegex);
+    if (match && match[1]) {
+      const cleaned = cleanNameCandidate(match[1]);
+      if (cleaned) return cleaned;
+    }
+  }
+
+  // 3. Check if the bot asked for the name and customer replied with just their name
+  const botAskedNameRegex = /(?:ما\s+هو\s+اسمك|ما\s+اسمك|الاسم\s+الكريم|ممكن\s+الاسم|تفضل\s+بالاسم|من\s+معي|من\s+معايا|مين\s+معي|مين\s+حضرتك|اسم\s+حضرتك|your\s+name|what\s+is\s+your\s+name|may\s+i\s+have\s+your\s+name)/i;
+
+  for (let i = 0; i < messages.length - 1; i++) {
+    const botMsg = messages[i]?.botResponse;
+    const nextUserMsg = messages[i + 1]?.customerMessage?.trim();
+    if (botMsg && botAskedNameRegex.test(botMsg) && nextUserMsg) {
+      if (!/^\d+$/.test(nextUserMsg) && !nextUserMsg.includes("http")) {
+        const cleaned = cleanNameCandidate(nextUserMsg);
+        if (cleaned) return cleaned;
+      }
+    }
+  }
+
+  // 4. Check if bot addressed the customer by name in any response
+  const botGreetRegex = /(?:أهلاً\s+(?:بك\s+)?(?:يا\s+)?|مرحباً\s+(?:يا\s+)?|مرحبا\s+(?:يا\s+)?|حياك\s+الله\s+(?:يا\s+)?|تشرفت\s+بك\s+(?:يا\s+)?|أهلاً\s+(?:أستاذ|استاذ|دكتور|مهندس)\s+|Hello\s+|Welcome\s+)\s*([A-Za-z\u0600-\u06FF]{2,20}(?:\s+[A-Za-z\u0600-\u06FF]{2,20})?)/i;
+
+  for (let i = 0; i < messages.length; i++) {
+    const botMsg = messages[i]?.botResponse;
+    if (botMsg) {
+      const match = botMsg.match(botGreetRegex);
+      if (match && match[1]) {
+        const cleaned = cleanNameCandidate(match[1]);
+        if (cleaned) return cleaned;
+      }
+    }
+  }
+
   return null;
+}
+
+function formatFallbackUser(session: { id: string; channel: string }, lang: string): string {
+  const isAr = lang === "ar";
+  const id = session.id || "";
+  
+  const cleanPhone = id.replace(/^(whatsapp:|telegram:|web:)/, "");
+  if (/^\+?\d{8,15}$/.test(cleanPhone)) {
+    return cleanPhone.startsWith("+") ? cleanPhone : `+${cleanPhone}`;
+  }
+  
+  switch (session.channel) {
+    case "whatsapp": return isAr ? "مستخدم واتساب" : "WhatsApp User";
+    case "telegram": return isAr ? "مستخدم تيليجرام" : "Telegram User";
+    case "messenger": return isAr ? "مستخدم ماسنجر" : "Messenger User";
+    case "website": return isAr ? "زائر الموقع" : "Website Visitor";
+    default: return isAr ? "مستخدم" : "User";
+  }
 }
 
 
@@ -70,6 +160,26 @@ export default function ClientUniversalChat() {
       return (await res.json()) as CannedResponse[];
     }
   });
+
+  const { data: leads = [] } = useQuery({
+    queryKey: ["client-leads"],
+    queryFn: async () => {
+      const { customFetch } = await import("@workspace/api-client-react");
+      const res = await customFetch("/client/leads");
+      if (!res.ok) return [];
+      return (await res.json()) as Array<{ id: number; sessionId: string; name: string | null; phone: string | null; email: string | null }>;
+    }
+  });
+
+  const leadsBySession = useMemo(() => {
+    const map = new Map<string, string>();
+    leads.forEach(l => {
+      if (l.sessionId && l.name?.trim()) {
+        map.set(l.sessionId, l.name.trim());
+      }
+    });
+    return map;
+  }, [leads]);
   
   const showQuickReplies = replyText.startsWith("/");
   const filteredQuickReplies = showQuickReplies ? cannedResponses.filter(r => r.title.toLowerCase().includes(replyText.slice(1).toLowerCase())) : [];
@@ -150,33 +260,31 @@ export default function ClientUniversalChat() {
   // ── SESSIONS PROCESSING ────────────────────────────────────────────────────
   const sessions = useMemo(() => {
     if (!logs) return [];
-    const filteredLogs = logs.filter(log => {
-      if (!search) return true;
-      const searchLower = search.toLowerCase();
-      const msgMatch = log.customerMessage ? log.customerMessage.toLowerCase().includes(searchLower) : false;
-      const botMatch = log.botResponse ? log.botResponse.toLowerCase().includes(searchLower) : false;
-      return msgMatch || botMatch;
-    });
 
     const map = new Map<string, typeof logs>();
-    filteredLogs.forEach(log => {
-       const key = log.sessionId || `msg_${log.id}`;
-       if (!map.has(key)) map.set(key, []);
-       map.get(key)!.push(log);
+    logs.forEach(log => {
+      const key = log.sessionId || `msg_${log.id}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(log);
     });
 
     return Array.from(map.values()).map(sessionLogs => {
-        const sorted = [...sessionLogs].sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        const lastMsg = sorted[sorted.length - 1];
-        return {
-            id: lastMsg.sessionId || `msg_${lastMsg.id}`,
-            channel: lastMsg.channel,
-            lastMessage: lastMsg.customerMessage || lastMsg.botResponse,
-            updatedAt: lastMsg.createdAt,
-            messages: sorted,
-        }
+      const sorted = [...sessionLogs].sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      const lastMsg = sorted[sorted.length - 1];
+      const sessionId = lastMsg.sessionId || `msg_${lastMsg.id}`;
+      const leadName = leadsBySession.get(sessionId) || null;
+      const userName = extractUserName(sorted, leadName);
+
+      return {
+        id: sessionId,
+        channel: lastMsg.channel,
+        userName,
+        lastMessage: lastMsg.customerMessage || lastMsg.botResponse,
+        updatedAt: lastMsg.createdAt,
+        messages: sorted,
+      };
     }).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [logs, search]);
+  }, [logs, leadsBySession]);
 
   
   // ── KPI Calculations ───────────────────────────────────────────────────────
@@ -278,9 +386,20 @@ export default function ClientUniversalChat() {
         if (!matchesDate) return false;
       }
 
+      if (search.trim()) {
+        const query = search.trim().toLowerCase();
+        const matchesName = s.userName ? s.userName.toLowerCase().includes(query) : false;
+        const matchesId = s.id ? s.id.toLowerCase().includes(query) : false;
+        const matchesMsg = s.messages.some(m => 
+          (m.customerMessage && m.customerMessage.toLowerCase().includes(query)) ||
+          (m.botResponse && m.botResponse.toLowerCase().includes(query))
+        );
+        if (!matchesName && !matchesId && !matchesMsg) return false;
+      }
+
       return true;
     });
-  }, [sessions, channelFilter, dateFilter]);
+  }, [sessions, channelFilter, dateFilter, search]);
 
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || null;
@@ -550,7 +669,7 @@ export default function ClientUniversalChat() {
             ) : (
               filteredSessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
-                const userName = extractUserName(session.messages);
+                const displayName = session.userName || formatFallbackUser(session, lang);
                 return (
                   <div
                     key={session.id}
@@ -566,8 +685,8 @@ export default function ClientUniversalChat() {
                     </div>
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-semibold truncate capitalize">
-                          {userName ? userName : `${session.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
+                        <span className="text-sm font-semibold truncate capitalize" title={displayName}>
+                          {displayName}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[10px] text-muted-foreground">
@@ -623,7 +742,7 @@ export default function ClientUniversalChat() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm capitalize">
-                        {extractUserName(selectedSession.messages) || `${selectedSession.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
+                        {selectedSession.userName || formatFallbackUser(selectedSession, lang)}
                       </h3>
                       <p className="text-xs text-muted-foreground">{selectedSession.messages.length} {lang === "ar" ? "رسالة" : "messages"}</p>
                     </div>
