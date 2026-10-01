@@ -1,10 +1,29 @@
 
-import { eq } from "drizzle-orm";
+import { eq, and, sql, type InferSelectModel } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "./logger";
 import { sendClientNotification } from "./email";
 import { chatLogsTable, notificationsTable, usersTable } from "@workspace/db";
-import { type InferSelectModel } from "drizzle-orm";
+
+export function isHandoffRequested(userMessage: string, rawAiReply?: string, cleanAiReply?: string): boolean {
+  if (rawAiReply && rawAiReply.includes("[HANDOFF_REQUESTED]")) return true;
+  if (cleanAiReply && cleanAiReply.includes("[HANDOFF_REQUESTED]")) return true;
+
+  const text = (userMessage || "").toLowerCase().trim();
+  const keywords = [
+    "خدمة العملاء", "خدمه العملاء", "خدمة عملاء", "خدمه عملاء",
+    "الدعم الفني", "الدعم", "دعم فني", "موظف الدعم",
+    "تحدث مع موظف", "تحدث مع شخص", "اريد موظف", "عايز موظف", "تكلم موظف", 
+    "كلمني حد", "بني ادم", "شخص بشري", "انسان بشري", "اريد انسان", 
+    "تحدث مع ممثل", "التحدث مع ممثل", "مسؤول الدعم", "خدمة الدعم", 
+    "تواصل مع شخص", "تواصل مع موظف", "تحويل لموظف", "تحويل لممثل",
+    "customer service", "customer support", "human agent", "talk to human", 
+    "speak to human", "live agent", "support agent", "representative", 
+    "talk to agent", "speak to agent", "real person", "talk to someone"
+  ];
+
+  return keywords.some(k => text.includes(k));
+}
 
 type ChatLog = InferSelectModel<typeof chatLogsTable>;
 
@@ -80,16 +99,13 @@ export async function triggerHandoffNotification(company: { id: number, clientId
     });
 
     const [user] = await db
-      .select({ email: usersTable.notificationEmail, fallback: usersTable.email })
+      .select({ email: usersTable.notificationEmail })
       .from(usersTable)
       .where(eq(usersTable.id, company.clientId))
       .limit(1);
     
-    if (user) {
-      const emailToUse = user.email || user.fallback;
-      if (emailToUse) {
-        await sendClientNotification(emailToUse, title, message).catch(e => logger.warn({ err: e }, "Handoff email failed"));
-      }
+    if (user && user.email) {
+      await sendClientNotification(user.email, title, message).catch(e => logger.warn({ err: e }, "Handoff email failed"));
     }
   } catch (err) {
     logger.error({ err, companyId: company.id }, "Failed to trigger handoff notification");

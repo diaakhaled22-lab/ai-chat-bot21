@@ -1,4 +1,4 @@
-﻿import nodemailer from "nodemailer";
+import nodemailer from "nodemailer";
 import { db, adminConfigTable, notificationsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { escapeHtml } from "./security";
@@ -26,6 +26,10 @@ export async function getEmailConfig() {
     smtpPass: map.get("notif_smtp_pass") ?? "",
     smtpEncryption: (map.get("notif_smtp_encryption") ?? "tls") as SmtpEncryption,
   };
+}
+
+export function isSmtpConfigured(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
+  return !!(cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
 }
 
 export function isEmailConfigured(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
@@ -167,7 +171,10 @@ export async function sendClientNotification(clientEmail: string, title: string,
   `;
 
   const cfg = await getEmailConfig();
-  if (!isEmailConfigured(cfg)) return;
+  if (!isSmtpConfigured(cfg)) {
+    logger.warn({ clientEmail }, "Cannot send client notification email: SMTP host, user, or pass are not configured in admin settings.");
+    return;
+  }
   const transporter = buildTransporter(cfg);
   await transporter.sendMail({
     from: `"Bot Manager" <${cfg.smtpUser}>`,
@@ -175,6 +182,7 @@ export async function sendClientNotification(clientEmail: string, title: string,
     subject: `[Notification] ${title}`,
     html
   });
+  logger.info({ clientEmail, title }, "Client notification email sent successfully");
 }
 
 export async function sendAttackSpikeNotification(input: {

@@ -1,4 +1,4 @@
-import { isSessionInHandoff, triggerHandoffNotification, triggerNewMessageNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
+import { isSessionInHandoff, triggerHandoffNotification, triggerNewMessageNotification, isHandoffRequested, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -140,6 +140,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
           botResponse: null,
           isHandoff: true
         });
+        triggerNewMessageNotification(company, sessionId, "website", message.trim());
       }
       res.json({ reply: "" });
       return;
@@ -223,6 +224,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       const completion = await openai.chat.completions.create({ model, messages: msgs });
       aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
+    const rawReply = aiReply;
 
         const { cleanResponse: tempResponse, leadData } = extractLeadData(aiReply);
     const { cleanResponse, metrics } = extractMetrics(tempResponse);
@@ -290,11 +292,11 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       }
     }
 
-    if (aiReply.includes("[HANDOFF_REQUESTED]")) {
-      aiReply = localizedChannelMessage(message.trim(), "???? ?????? ??? ???? ?????? ???? ????????.", "You are being transferred to a human agent. They will reply to you shortly.");
+    if (isHandoffRequested(message.trim(), typeof rawReply !== "undefined" ? rawReply : aiReply, aiReply)) {
+      aiReply = localizedChannelMessage(message.trim(), "جاري تحويلك إلى خدمة العملاء وسيقوم أحد ممثلينا بالرد عليك في أقرب وقت.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
-        triggerHandoffNotification(company, sessionId, "website");
-      }
+      triggerHandoffNotification(company, sessionId, "website");
+    }
 
     if (sessionId && typeof sessionId === "string") {
       await db.insert(chatLogsTable).values({

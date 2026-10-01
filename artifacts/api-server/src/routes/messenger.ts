@@ -1,4 +1,4 @@
-import { isSessionInHandoff, triggerHandoffNotification, triggerNewMessageNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
+import { isSessionInHandoff, isHandoffRequested, triggerHandoffNotification, triggerNewMessageNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
@@ -229,11 +229,11 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
     let aiReply = enforceResponseLanguage(cleanResponse, userText);
     let isHandoff = false;
 
-    if (aiReply.includes("[HANDOFF_REQUESTED]") || rawReply.includes("[HANDOFF_REQUESTED]")) {
-      aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
+    if (isHandoffRequested(userText, rawReply, aiReply)) {
+      aiReply = localizedChannelMessage(userText, "جاري تحويلك إلى خدمة العملاء وسيقوم أحد ممثلينا بالرد عليك في أقرب وقت.", "You are being transferred to a human agent. They will reply to you shortly.");
       isHandoff = true;
-        triggerHandoffNotification(company, sessionId, "messenger");
-      }
+      triggerHandoffNotification(company, sessionId, "messenger");
+    }
 
     if (leadData && sessionId && typeof sessionId === "string") {
       let existingLead = null;
@@ -448,11 +448,11 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
         let aiReply = enforceResponseLanguage(cleanResponse, userText);
         let isHandoff = false;
 
-        if (aiReply.includes("[HANDOFF_REQUESTED]") || rawReply.includes("[HANDOFF_REQUESTED]")) {
-          aiReply = localizedChannelMessage(userText, "سيتم تحويلك إلى موظف الدعم، يرجى الانتظار.", "You are being transferred to a human agent. They will reply to you shortly.");
-          isHandoff = true;
-        triggerHandoffNotification(company, sessionId, "messenger");
-      }
+        if (isHandoffRequested(userText, rawReply, aiReply)) {
+      aiReply = localizedChannelMessage(userText, "جاري تحويلك إلى خدمة العملاء وسيقوم أحد ممثلينا بالرد عليك في أقرب وقت.", "You are being transferred to a human agent. They will reply to you shortly.");
+      isHandoff = true;
+      triggerHandoffNotification(company, sessionId, "messenger");
+    }
 
         if (leadData && sessionId && typeof sessionId === "string") {
       let existingLead = null;

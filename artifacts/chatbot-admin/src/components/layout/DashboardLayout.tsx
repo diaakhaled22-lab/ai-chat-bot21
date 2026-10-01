@@ -276,7 +276,7 @@ function ClientNotificationBell() {
   const { data: notifications = [], refetch } = useQuery<AppNotification[]>({
     queryKey: ["client-notifications"],
     queryFn: () => customFetch("/api/client/notifications"),
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 
   const unread = notifications.filter((n) => !n.isRead).length;
