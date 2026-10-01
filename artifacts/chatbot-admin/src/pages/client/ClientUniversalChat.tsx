@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead, useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles, Clock } from 'lucide-react';
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles, Clock, CalendarRange } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -51,6 +52,7 @@ export default function ClientUniversalChat() {
   const [search, setSearch] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   const [localReadSessions, setLocalReadSessions] = useState<Set<string>>(new Set());
   const [replyText, setReplyText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -225,19 +227,76 @@ export default function ClientUniversalChat() {
     };
   }, [logs, sessions]);
 
+  const dateOptions = useMemo(() => {
+    const datesSet = new Set<string>();
+    const today = new Date();
+    const daysToShow = Math.max(currentRetention || 3, 7);
+    for (let i = 0; i < daysToShow; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      datesSet.add(d.toISOString().split("T")[0]);
+    }
+    if (sessions) {
+      sessions.forEach(s => {
+        if (s.updatedAt) {
+          const dStr = s.updatedAt.split("T")[0];
+          if (dStr) datesSet.add(dStr);
+        }
+      });
+    }
+
+    const sortedDates = Array.from(datesSet).sort((a, b) => b.localeCompare(a));
+    const todayIso = today.toISOString().split("T")[0];
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayIso = yesterday.toISOString().split("T")[0];
+
+    return sortedDates.map(iso => {
+      let label = iso;
+      if (iso === todayIso) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
+      else if (iso === yesterdayIso) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
+      return { value: iso, label };
+    });
+  }, [currentRetention, lang, sessions]);
+
+  const getChannelFilterIcon = (ch: string) => {
+    switch (ch) {
+      case "whatsapp": return <MessageSquare className="w-4 h-4 text-emerald-500 shrink-0" />;
+      case "telegram": return <MessageCircle className="w-4 h-4 text-sky-500 shrink-0" />;
+      case "messenger": return <MessageCircle className="w-4 h-4 text-blue-500 shrink-0" />;
+      case "website": return <Globe className="w-4 h-4 text-purple-500 shrink-0" />;
+      case "handoff": return <UserCheck className="w-4 h-4 text-amber-500 shrink-0" />;
+      default: return <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />;
+    }
+  };
+
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
-      if (channelFilter === "all") return true;
       if (channelFilter === "handoff") {
+        let hasHandoff = false;
         for (let i = s.messages.length - 1; i >= 0; i--) {
-          if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
-          if (s.messages[i].isHandoff) return true;
+          if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
+          if (s.messages[i].isHandoff) {
+            hasHandoff = true;
+            break;
+          }
         }
+        if (!hasHandoff) return false;
+      } else if (channelFilter !== "all" && s.channel !== channelFilter) {
         return false;
       }
-      return s.channel === channelFilter;
+
+      if (dateFilter !== "all") {
+        const matchesDate = (
+          (s.updatedAt && s.updatedAt.startsWith(dateFilter)) ||
+          s.messages.some(m => m.createdAt && m.createdAt.startsWith(dateFilter))
+        );
+        if (!matchesDate) return false;
+      }
+
+      return true;
     });
-  }, [sessions, channelFilter]);
+  }, [sessions, channelFilter, dateFilter]);
 
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || null;
@@ -426,73 +485,65 @@ export default function ClientUniversalChat() {
         </Card>
       </div>
 
-      {/* Filter Tabs & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <Button
-            size="sm"
-            variant={channelFilter === "all" ? "default" : "outline"}
-            className="h-8 text-xs rounded-full px-3"
-            onClick={() => setChannelFilter("all")}
-          >
-            {lang === "ar" ? "الكل" : "All"} ({sessions.length})
-          </Button>
-          <Button
-            size="sm"
-            variant={channelFilter === "handoff" ? "default" : "outline"}
-            className={`h-8 text-xs rounded-full px-3 ${kpis.activeHandoffCount > 0 && channelFilter !== "handoff" ? "border-amber-500/50 text-amber-500 font-medium" : ""}`}
-            onClick={() => setChannelFilter("handoff")}
-          >
-            <UserCheck className="w-3.5 h-3.5 mr-1" />
-            {lang === "ar" ? "تدخل بشري" : "Handoff"} ({kpis.activeHandoffCount})
-          </Button>
-          <Button
-            size="sm"
-            variant={channelFilter === "whatsapp" ? "default" : "outline"}
-            className="h-8 text-xs rounded-full px-3"
-            onClick={() => setChannelFilter("whatsapp")}
-          >
-            <MessageSquare className="w-3.5 h-3.5 mr-1 text-emerald-500" />
-            WhatsApp ({kpis.channelCounts.whatsapp || 0})
-          </Button>
-          <Button
-            size="sm"
-            variant={channelFilter === "telegram" ? "default" : "outline"}
-            className="h-8 text-xs rounded-full px-3"
-            onClick={() => setChannelFilter("telegram")}
-          >
-            <MessageCircle className="w-3.5 h-3.5 mr-1 text-sky-500" />
-            Telegram ({kpis.channelCounts.telegram || 0})
-          </Button>
-          <Button
-            size="sm"
-            variant={channelFilter === "messenger" ? "default" : "outline"}
-            className="h-8 text-xs rounded-full px-3"
-            onClick={() => setChannelFilter("messenger")}
-          >
-            <MessageCircle className="w-3.5 h-3.5 mr-1 text-blue-500" />
-            Messenger ({kpis.channelCounts.messenger || 0})
-          </Button>
-          <Button
-            size="sm"
-            variant={channelFilter === "website" ? "default" : "outline"}
-            className="h-8 text-xs rounded-full px-3"
-            onClick={() => setChannelFilter("website")}
-          >
-            <Globe className="w-3.5 h-3.5 mr-1 text-purple-500" />
-            Website ({kpis.channelCounts.website || 0})
-          </Button>
-        </div>
-
-        <div className="sm:w-72 flex items-center bg-card px-2.5 py-1 rounded-lg border border-border">
+      {/* Search and Filters: Search Input, Channel Dropdown & Date Filter Dropdown */}
+      <div className="flex flex-col md:flex-row gap-3 shrink-0">
+        <div className="flex-1 flex items-center bg-card px-3 py-1.5 rounded-lg border border-border">
           <Search className="w-4 h-4 ml-1.5 text-muted-foreground shrink-0" />
           <Input 
-            placeholder={lang === "ar" ? "ابحث في المحادثات..." : "Search conversations..."} 
+            placeholder={lang === "ar" ? "ابحث في المحادثات بالاسم أو الرسالة..." : "Search conversations by name or message..."} 
             className="border-0 bg-transparent h-7 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <div className="w-full md:w-[200px]">
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger className="h-10 bg-card">
+              <div className="flex items-center gap-2 truncate">
+                {getChannelFilterIcon(channelFilter)}
+                <SelectValue placeholder={lang === "ar" ? "كل القنوات" : "All Channels"} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{lang === "ar" ? "كل القنوات" : "All Channels"} ({sessions.length})</SelectItem>
+              <SelectItem value="handoff">{lang === "ar" ? "تدخل بشري" : "Human Handoff"} ({kpis.activeHandoffCount})</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp ({kpis.channelCounts.whatsapp || 0})</SelectItem>
+              <SelectItem value="telegram">Telegram ({kpis.channelCounts.telegram || 0})</SelectItem>
+              <SelectItem value="messenger">Messenger ({kpis.channelCounts.messenger || 0})</SelectItem>
+              <SelectItem value="website">{lang === "ar" ? "الموقع الإلكتروني" : "Website"} ({kpis.channelCounts.website || 0})</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full md:w-[220px]">
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="h-10 bg-card">
+              <div className="flex items-center gap-2 truncate">
+                <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
+                <SelectValue placeholder={lang === "ar" ? "كل الأيام" : "All Days"} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{lang === "ar" ? "كل الأيام" : "All Days"}</SelectItem>
+              {dateOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {(channelFilter !== "all" || dateFilter !== "all" || search) && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-10 text-xs text-muted-foreground hover:text-foreground shrink-0"
+            onClick={() => {
+              setChannelFilter("all");
+              setDateFilter("all");
+              setSearch("");
+            }}
+          >
+            {lang === "ar" ? "إعادة ضبط" : "Reset"}
+          </Button>
+        )}
       </div>
 
       {/* Inbox View Layout */}
