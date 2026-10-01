@@ -230,7 +230,7 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
     let isHandoff = false;
 
     if (isHandoffRequested(userText, rawReply, aiReply)) {
-      aiReply = localizedChannelMessage(userText, "جاري تحويلك إلى خدمة العملاء وسيقوم أحد ممثلينا بالرد عليك في أقرب وقت.", "You are being transferred to a human agent. They will reply to you shortly.");
+      aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
       triggerHandoffNotification(company, sessionId, "messenger");
     }
@@ -449,7 +449,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
         let isHandoff = false;
 
         if (isHandoffRequested(userText, rawReply, aiReply)) {
-      aiReply = localizedChannelMessage(userText, "جاري تحويلك إلى خدمة العملاء وسيقوم أحد ممثلينا بالرد عليك في أقرب وقت.", "You are being transferred to a human agent. They will reply to you shortly.");
+      aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
       triggerHandoffNotification(company, sessionId, "messenger");
     }

@@ -5,6 +5,9 @@ import { logger } from "./logger";
 import { sendClientNotification } from "./email";
 import { chatLogsTable, notificationsTable, usersTable } from "@workspace/db";
 
+export const WAITING_LIST_RESPONSE_AR = "سيتم وضعك في قائمة الانتظار.";
+export const WAITING_LIST_RESPONSE_EN = "You will be placed on the waiting list.";
+
 export function isHandoffRequested(userMessage: string, rawAiReply?: string, cleanAiReply?: string): boolean {
   if (rawAiReply && rawAiReply.includes("[HANDOFF_REQUESTED]")) return true;
   if (cleanAiReply && cleanAiReply.includes("[HANDOFF_REQUESTED]")) return true;
@@ -17,9 +20,15 @@ export function isHandoffRequested(userMessage: string, rawAiReply?: string, cle
     "كلمني حد", "بني ادم", "شخص بشري", "انسان بشري", "اريد انسان", 
     "تحدث مع ممثل", "التحدث مع ممثل", "مسؤول الدعم", "خدمة الدعم", 
     "تواصل مع شخص", "تواصل مع موظف", "تحويل لموظف", "تحويل لممثل",
+    "التواصل مع خدمة العملاء", "تواصل مع خدمة العملاء", "الاتصال بخدمة العملاء",
+    "اتصال بخدمة العملاء", "تواصل مع الدعم", "تواصل مع مسؤول", "محادثة موظف",
+    "مندوب", "مسؤول", "كلم موظف", "كلم خدمة العملاء", "اريد التحدث مع خدمة العملاء",
+    "أريد التحدث مع خدمة العملاء", "تحويل الى خدمة العملاء", "تحويل إلى خدمة العملاء",
     "customer service", "customer support", "human agent", "talk to human", 
     "speak to human", "live agent", "support agent", "representative", 
-    "talk to agent", "speak to agent", "real person", "talk to someone"
+    "talk to agent", "speak to agent", "real person", "talk to someone",
+    "contact customer service", "contact support", "call customer service",
+    "contact someone", "reach an agent", "connect me with", "transfer to agent"
   ];
 
   return keywords.some(k => text.includes(k));
@@ -36,7 +45,7 @@ export function isSessionInHandoff(logs: ChatLog[]): boolean {
   return false;
 }
 
-export const HANDOFF_SYSTEM_PROMPT = `\n\nCRITICAL INSTRUCTION: If the user explicitly asks to speak to a human, customer service, or is extremely angry and the AI cannot resolve the issue, YOU MUST reply EXACTLY with "[HANDOFF_REQUESTED]" and nothing else. Do not apologize, do not explain. Just output "[HANDOFF_REQUESTED]".`;
+export const HANDOFF_SYSTEM_PROMPT = `\n\nCRITICAL INSTRUCTION: If the user explicitly asks to speak to a human, customer service, or attempts to contact them, or is extremely angry and the AI cannot resolve the issue, YOU MUST reply EXACTLY with "[HANDOFF_REQUESTED]" and nothing else. Do not apologize, do not explain. Just output "[HANDOFF_REQUESTED]".`;
 
 export const LEAD_GEN_SYSTEM_PROMPT = `\nCRITICAL INSTRUCTION: If the user provides their contact information (email, phone number, etc.) or explicitly expresses interest in a product/service, you MUST extract this data and append a secret JSON block to the END of your response EXACTLY in this format:
 [LEAD_DATA: {"name": "...", "email": "...", "phone": "...", "interest": "..."}]

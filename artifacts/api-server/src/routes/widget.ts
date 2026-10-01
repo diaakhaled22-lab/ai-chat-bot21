@@ -293,7 +293,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     }
 
     if (isHandoffRequested(message.trim(), typeof rawReply !== "undefined" ? rawReply : aiReply, aiReply)) {
-      aiReply = localizedChannelMessage(message.trim(), "جاري تحويلك إلى خدمة العملاء وسيقوم أحد ممثلينا بالرد عليك في أقرب وقت.", "You are being transferred to a human agent. They will reply to you shortly.");
+      aiReply = localizedChannelMessage(message.trim(), "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
       triggerHandoffNotification(company, sessionId, "website");
     }
