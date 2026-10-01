@@ -1386,6 +1386,8 @@ components:
           type: ["string", "null"]
         newUsername:
           type: ["string", "null"]
+        notificationEmail:
+          type: ["string", "null"]
 
     WebhookMessageInput:
       type: object

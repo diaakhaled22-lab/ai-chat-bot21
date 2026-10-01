@@ -897,7 +897,8 @@ export const UpdateClientChatLogRetentionResponse = zod.unknown()
 export const UpdateClientSettingsBody = zod.object({
   "currentPassword": zod.string().optional(),
   "newPassword": zod.string().nullish(),
-  "newUsername": zod.string().nullish()
+  "newUsername": zod.string().nullish(),
+  "notificationEmail": zod.string().nullish()
 })
 
 export const UpdateClientSettingsResponse = zod.unknown()
