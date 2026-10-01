@@ -32,11 +32,12 @@ export default function AdminMalfunctions() {
         description: lang === "ar" ? "تم حذف العطل بنجاح" : "Malfunction deleted successfully",
       });
     },
-    onError: () => {
+    onError: (err: any) => {
+      console.error("Delete malfunction error:", err);
       toast({
         variant: "destructive",
         title: lang === "ar" ? "خطأ" : "Error",
-        description: lang === "ar" ? "فشل حذف العطل" : "Failed to delete malfunction",
+        description: err?.message || (lang === "ar" ? "فشل حذف العطل" : "Failed to delete malfunction"),
       });
     },
   });
@@ -54,11 +55,12 @@ export default function AdminMalfunctions() {
         description: lang === "ar" ? "تم تحديد العطل كـ محلول بنجاح" : "Malfunction marked as resolved",
       });
     },
-    onError: () => {
+    onError: (err: any) => {
+      console.error("Resolve malfunction error:", err);
       toast({
         variant: "destructive",
         title: lang === "ar" ? "خطأ" : "Error",
-        description: lang === "ar" ? "فشل تحديث حالة العطل" : "Failed to update malfunction",
+        description: err?.message || (lang === "ar" ? "فشل تحديث حالة العطل" : "Failed to update malfunction"),
       });
     },
   });

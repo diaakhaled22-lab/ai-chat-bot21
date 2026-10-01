@@ -2158,7 +2158,6 @@ router.delete("/admin/audit-logs/:id", requireAdmin, async (req, res) => {
   }
 });
 
-export default router;
 // â”€â”€ Malfunctions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get("/admin/malfunctions", async (req, res) => {
   try {
@@ -2244,5 +2243,7 @@ router.delete("/admin/malfunctions/:id", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+export default router;
 
 
