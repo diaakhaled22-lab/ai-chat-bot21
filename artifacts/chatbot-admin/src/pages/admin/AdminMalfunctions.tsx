@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { AlertTriangle, CheckCircle2, Check, User, Monitor, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Check, User, Monitor, ShieldAlert, Trash2 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 
 export default function AdminMalfunctions() {
   const { lang } = useLanguage();
@@ -13,6 +14,18 @@ export default function AdminMalfunctions() {
     queryKey: ["admin-malfunctions"],
     queryFn: () => customFetch("/api/admin/malfunctions"),
     refetchInterval: 15_000,
+  });
+
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/admin/malfunctions/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-malfunctions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-malfunctions-status"] });
+    },
   });
 
   const resolveMutation = useMutation({
@@ -93,6 +106,11 @@ export default function AdminMalfunctions() {
                     {lang === "ar" ? "تحديد كـ محلول" : "Mark as Resolved"}
                   </Button>
                 )}
+                <ConfirmDeleteDialog onConfirm={() => deleteMutation.mutate(m.id)}>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0 ml-2">
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </ConfirmDeleteDialog>
               </div>
             </Alert>
           ))}
