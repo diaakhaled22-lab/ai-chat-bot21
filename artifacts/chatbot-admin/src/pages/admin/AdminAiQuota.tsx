@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -123,6 +124,7 @@ export default function AdminAiQuota() {
 
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
   const [quotaInput, setQuotaInput] = useState("");
+  const [isQuotaEnabled, setIsQuotaEnabled] = useState(false);
   const [showModelCostModal, setShowModelCostModal] = useState(false);
 
   const [isAssignNewOpen, setIsAssignNewOpen] = useState(false);
@@ -187,12 +189,13 @@ export default function AdminAiQuota() {
   const openQuotaDialog = (company: Company) => {
     setQuotaTarget(company);
     setQuotaInput(company.monthlyTokenQuota ? String(company.monthlyTokenQuota) : "");
+    setIsQuotaEnabled(company.monthlyTokenQuota !== null);
   };
 
   const handleSaveQuota = () => {
     if (!quotaTarget) return;
     const val = quotaInput.trim();
-    const quota = val === "" ? null : Number(val.replace(/,/g, ""));
+    const quota = !isQuotaEnabled ? null : (val === "" ? null : Number(val.replace(/,/g, "")));
     if (quota !== null && (isNaN(quota) || quota < 0)) {
       toast({
         title: lang === "ar" ? "قيمة غير صالحة" : "Invalid value",
@@ -207,7 +210,7 @@ export default function AdminAiQuota() {
   const handleAssignNewQuota = () => {
     if (!newAssignCompanyId) return;
     const val = newAssignQuota.trim();
-    const quota = val === "" ? null : Number(val.replace(/,/g, ""));
+    const quota = !isQuotaEnabled ? null : (val === "" ? null : Number(val.replace(/,/g, "")));
     if (quota === null || isNaN(quota) || quota <= 0) {
       toast({
         title: lang === "ar" ? "قيمة غير صالحة" : "Invalid value",
@@ -846,6 +849,24 @@ export default function AdminAiQuota() {
           </DialogHeader>
 
           <div className="space-y-4 py-3">
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                <Label htmlFor="quota-toggle" className="flex flex-col space-y-1 cursor-pointer">
+                  <span className="font-medium">{lang === "ar" ? "تفعيل حصة التوكنز" : "Enable Token Quota"}</span>
+                  <span className="font-normal text-xs text-muted-foreground">
+                    {lang === "ar" ? "إذا تم التعطيل، لن يتم سحب أي رصيد من مفتاحك لطلبات هذا العميل" : "If disabled, no quota is allocated to this company."}
+                  </span>
+                </Label>
+                <Switch 
+                  id="quota-toggle" 
+                  checked={isQuotaEnabled}
+                  onCheckedChange={(checked) => {
+                    setIsQuotaEnabled(checked);
+                    if (!checked) setQuotaInput("");
+                  }}
+                />
+              </div>
+              {isQuotaEnabled && (
+                <>
             <div className="space-y-1.5">
               <Label htmlFor="quota-input-ai">
                 {lang === "ar" ? "الحصة الشهرية (رموز / Tokens)" : "Monthly Token Quota"}
@@ -902,6 +923,8 @@ export default function AdminAiQuota() {
                 <span>{lang === "ar" ? "الحصة الحالية:" : "Current Quota:"}</span>
                 <span className="font-semibold text-foreground">{formatQuota(quotaTarget.monthlyTokenQuota)} tokens / month</span>
               </div>
+            )}
+              </>
             )}
           </div>
 
