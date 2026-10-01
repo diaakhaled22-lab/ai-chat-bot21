@@ -1,4 +1,8 @@
-import { triggerHandoffNotification, isHandoffRequested } from "../lib/handoff";
+import {
+  triggerHandoffNotification,
+  triggerNewMessageNotification,
+  isHandoffRequested,
+} from "../lib/handoff";
 import {
   isSessionInHandoff,
   HANDOFF_SYSTEM_PROMPT,
