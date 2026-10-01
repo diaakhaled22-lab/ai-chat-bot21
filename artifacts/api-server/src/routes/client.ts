@@ -1256,6 +1256,8 @@ router.put("/client/settings", async (req, res) => {
       updates.notificationEmail = notificationEmail === "" ? null : notificationEmail;
       if (notificationEmail && notificationEmail !== user.notificationEmail) {
         changes.push(`notification email set to "${notificationEmail}"`);
+        const { sendClientNotification } = require('../lib/email');
+        sendClientNotification(notificationEmail, 'Email Notifications Enabled', 'Your email has been successfully linked to your Bot Manager account. You will now receive alerts here.').catch(e => logger.error({err: e}, 'Failed to send confirmation email'));
       }
     }
 
