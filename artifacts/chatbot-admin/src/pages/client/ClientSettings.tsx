@@ -1,9 +1,9 @@
 import { useUpdateClientSettings, useGetMe } from "@workspace/api-client-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, User, Lock, ShieldCheck, Mail, Key } from "lucide-react";
+import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -26,6 +26,7 @@ export default function ClientSettings() {
   const { data: me } = useGetMe();
   const { toast } = useToast();
   const { lang, setLang, t } = useLanguage();
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -75,6 +76,57 @@ export default function ClientSettings() {
         });
       }
     });
+  };
+
+  const handleSendTestEmail = async () => {
+    const email = form.getValues("notificationEmail")?.trim();
+    const resendApiKey = form.getValues("resendApiKey")?.trim();
+
+    if (!email) {
+      toast({
+        title: lang === "ar" ? "البريد الإلكتروني مطلوب" : "Email Required",
+        description: lang === "ar" ? "يرجى كتابة بريد Gmail أولاً لإرسال بريد تجريبي إليه." : "Please enter a Gmail address first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingTest(true);
+    try {
+      const res = await fetch("/api/client/send-test-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email,
+          resendApiKey: resendApiKey || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast({
+          title: lang === "ar" ? "✅ تم إرسال البريد التجريبي بنجاح" : "✅ Test Email Sent Successfully",
+          description: lang === "ar"
+            ? `تم إرسال إشعار تجريبي إلى ${email}. يرجى التحقق من صندوق الوارد أو مجلد الرسائل غير المرغوب فيها (Spam).`
+            : `Test email sent to ${email}. Please check your inbox or spam folder.`,
+        });
+      } else {
+        toast({
+          title: lang === "ar" ? "❌ تعذر إرسال البريد التجريبي" : "❌ Test Email Failed",
+          description: data.error || (lang === "ar" ? "فشل إرسال البريد التجريبي عبر Resend" : "Failed to send test email via Resend"),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في الشبكة" : "Network Error",
+        description: err.message || (lang === "ar" ? "تعذر إرسال الطلب إلى الخادم" : "Could not connect to server"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   return (
@@ -202,6 +254,43 @@ export default function ClientSettings() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Test Email Action Card */}
+              <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-primary" />
+                      {lang === "ar" ? "اختبار وصول رسائل البريد (Gmail)" : "Test Email Notification Delivery"}
+                    </p>
+                    <p>
+                      {lang === "ar"
+                        ? "أرسل بريداً تجريبياً فورياً للتحقق من صحة مفتاح Resend والتأكد من استلام الإشعارات في صندوق الوارد."
+                        : "Send an instant test email via Resend to verify your API Key and ensure notifications arrive."}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSendingTest}
+                    onClick={handleSendTestEmail}
+                    className="shrink-0 flex items-center gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+                  >
+                    {isSendingTest ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {lang === "ar" ? "جارٍ الإرسال..." : "Sending..."}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        {lang === "ar" ? "إرسال بريد تجريبي" : "Send Test Email"}
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <div className="border-t border-border pt-4 space-y-4">

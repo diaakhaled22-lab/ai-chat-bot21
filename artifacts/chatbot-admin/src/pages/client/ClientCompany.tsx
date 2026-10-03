@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail } from "lucide-react";
 
 /** Compute the same SHA-256 based webhook secret as the backend (first 32 hex chars). */
 async function telegramWebhookSecret(token: string): Promise<string> {
@@ -682,6 +682,59 @@ export default function ClientCompany() {
     }
   };
 
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+
+  const handleSendTestEmail = async () => {
+    const email = form.getValues("notificationEmail")?.trim();
+    const resendApiKey = (form.getValues() as any).resendApiKey?.trim();
+
+    if (!email) {
+      toast({
+        title: lang === "ar" ? "البريد الإلكتروني مطلوب" : "Email Required",
+        description: lang === "ar" ? "يرجى كتابة بريد Gmail أولاً في الخانة المخصصة." : "Please enter a notification email first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingTestEmail(true);
+    try {
+      const res = await fetch("/api/client/send-test-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email,
+          resendApiKey: resendApiKey || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast({
+          title: lang === "ar" ? "✅ تم إرسال البريد التجريبي بنجاح" : "✅ Test Email Sent Successfully",
+          description: lang === "ar"
+            ? `تم إرسال إشعار تجريبي إلى ${email}. تفقد صندوق الوارد أو البريد غير المرغوب فيه (Spam).`
+            : `Test email sent to ${email}. Please check your inbox or spam folder.`,
+        });
+      } else {
+        toast({
+          title: lang === "ar" ? "❌ خطأ في إرسال البريد" : "❌ Email Delivery Failed",
+          description: data.error || (lang === "ar" ? "فشل إرسال البريد التجريبي عبر Resend" : "Failed to send test email via Resend"),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في الاتصال" : "Network Error",
+        description: err.message || (lang === "ar" ? "تعذر إرسال الطلب إلى الخادم" : "Could not connect to server"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
   const showQuotaBanner = quotaData && quotaData.warning !== "none" && quotaData.warning !== "ok";
 
   return (
@@ -912,6 +965,44 @@ export default function ClientCompany() {
                   )}
                 />
               </div>
+
+              {/* Test Email Action Card */}
+              <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-primary" />
+                      {lang === "ar" ? "اختبار وصول رسائل البريد (Gmail)" : "Test Email Notification Delivery"}
+                    </p>
+                    <p>
+                      {lang === "ar"
+                        ? "أرسل بريداً تجريبياً فورياً للتحقق من صحة مفتاح Resend والتأكد من استلام الإشعارات في صندوق الوارد."
+                        : "Send an instant test email via Resend to verify your API Key and ensure notifications arrive."}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSendingTestEmail}
+                    onClick={handleSendTestEmail}
+                    className="shrink-0 flex items-center gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+                  >
+                    {isSendingTestEmail ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {lang === "ar" ? "جارٍ الإرسال..." : "Sending..."}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        {lang === "ar" ? "إرسال بريد تجريبي" : "Send Test Email"}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
               <FormField
                 control={form.control}
                 name="generalInfo"

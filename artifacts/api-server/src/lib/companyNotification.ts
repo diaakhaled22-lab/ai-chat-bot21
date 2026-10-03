@@ -37,7 +37,7 @@ export async function ensureEmailNotificationSchema(): Promise<void> {
  * Retrieves the Resend API key and sender email address.
  * Prioritizes company/client-provided secret, then process.env, then adminConfigTable.
  */
-async function getResendConfig(companyResendKey?: string | null): Promise<{ apiKey: string; fromEmail: string }> {
+export async function getResendConfig(companyResendKey?: string | null): Promise<{ apiKey: string; fromEmail: string }> {
   let apiKey = companyResendKey?.trim() || process.env.RESEND_API_KEY || "";
   let fromEmail = process.env.RESEND_FROM_EMAIL || "";
 

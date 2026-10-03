@@ -27,6 +27,7 @@ import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
+import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
 
 function telegramWebhookSecret(token: string): string {
@@ -1326,8 +1327,27 @@ router.put("/client/settings", async (req, res) => {
 
       if (trimmedEmail && trimmedEmail !== user.notificationEmail) {
         changes.push(`notification email set to "${trimmedEmail}"`);
-        const { sendClientNotification } = require('../lib/email');
-        sendClientNotification(trimmedEmail, 'Email Notifications Enabled', 'Your email has been successfully linked to your Bot Manager account. You will now receive alerts here.').catch((e: any) => logger.error({err: e}, 'Failed to send confirmation email'));
+        const [comp] = await db
+          .select({ id: companiesTable.id, name: companiesTable.name })
+          .from(companiesTable)
+          .where(eq(companiesTable.clientId, req.session.userId!))
+          .limit(1);
+
+        if (comp) {
+          sendCompanyNotification(
+            comp.id,
+            "Email Notifications Enabled",
+            buildNotificationHtml({
+              companyName: comp.name,
+              eventType: "Notifications Enabled",
+              title: "Email Notifications Enabled",
+              dateTime: new Date(),
+              customerDetails: { "Notification Email": trimmedEmail },
+              eventDetails: "Your email has been successfully linked to your Bot Manager account. You will now receive automatic notifications for conversations, leads, orders, and malfunctions here.",
+            }),
+            { eventType: "Email Notifications Enabled" }
+          ).catch((e: any) => logger.error({ err: e }, "Failed to send confirmation email via Resend"));
+        }
       }
     }
 
@@ -1367,6 +1387,120 @@ router.put("/client/settings", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Update client settings error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /client/send-test-notification
+router.post("/client/send-test-notification", async (req, res) => {
+  try {
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId!))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    const recipient =
+      (typeof req.body?.email === "string" && req.body.email.trim()) ||
+      user.notificationEmail?.trim() ||
+      company?.notificationEmail?.trim();
+
+    if (!recipient) {
+      res.status(400).json({
+        error: "No notification email provided. Please enter a Gmail address to test.",
+      });
+      return;
+    }
+
+    const customKey =
+      typeof req.body?.resendApiKey === "string" && req.body.resendApiKey.trim() !== ""
+        ? req.body.resendApiKey.trim()
+        : user.resendApiKey?.trim() || company?.resendApiKey?.trim();
+
+    const { apiKey, fromEmail } = await getResendConfig(customKey);
+
+    if (!apiKey) {
+      res.status(400).json({
+        error: "RESEND_API_KEY is missing. Please enter your Resend API Key (re_...) in Client Settings or set the RESEND_API_KEY environment variable.",
+      });
+      return;
+    }
+
+    const companyName = company?.name || user.name || "My Company";
+    const testHtml = buildNotificationHtml({
+      companyName,
+      eventType: "Test Email Notification",
+      title: "Test Email Notification",
+      dateTime: new Date(),
+      customerDetails: {
+        "Recipient Email": recipient,
+        "Sender Address": fromEmail,
+        "Delivery Status": "Verified via Resend API",
+      },
+      eventDetails:
+        "Congratulations! Your Resend API Key and notification settings are properly configured. Live alerts (such as new conversations, captured leads, customer handoffs, orders, and malfunctions) will now be delivered to this email address.",
+    });
+
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [recipient],
+        subject: `[Test] Email Notification Verified - ${companyName}`,
+        html: testHtml,
+      }),
+    });
+
+    if (resendRes.ok) {
+      const data = (await resendRes.json()) as { id?: string };
+      logger.info({ recipient, fromEmail, resendId: data.id }, "Test notification email sent successfully");
+      res.json({
+        ok: true,
+        id: data.id,
+        recipient,
+        from: fromEmail,
+        message: `Test email sent successfully to ${recipient}!`,
+      });
+    } else {
+      const errorText = await resendRes.text();
+      let parsedMsg = errorText;
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.message) parsedMsg = parsed.message;
+      } catch {}
+
+      logger.warn({ status: resendRes.status, parsedMsg }, "Resend test notification email failed");
+
+      let userFriendlyAdvice = parsedMsg;
+      if (resendRes.status === 403 && parsedMsg.toLowerCase().includes("only send testing emails to your own email address")) {
+        userFriendlyAdvice = `Resend Free Tier Restriction: In Resend free tier, onboarding@resend.dev can only send emails to the email address registered with your Resend account (${parsedMsg}). To send to other Gmail addresses, either set your notification email to your Resend account email, or verify a custom domain in Resend Dashboard (resend.com/domains).`;
+      } else if (resendRes.status === 401) {
+        userFriendlyAdvice = "Invalid RESEND_API_KEY. Please make sure you copied the correct API Key starting with 're_' from your Resend Dashboard (resend.com/api-keys).";
+      }
+
+      res.status(400).json({
+        error: userFriendlyAdvice,
+        resendStatus: resendRes.status,
+        rawError: parsedMsg,
+      });
+    }
+  } catch (err: any) {
+    logger.error({ err }, "Error sending test notification email");
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 
