@@ -19,6 +19,8 @@ export interface Company {
   myId?: string | null;
   name: string;
   /** @nullable */
+  notificationEmail?: string | null;
+  /** @nullable */
   generalInfo?: string | null;
   isActive: boolean;
   /**

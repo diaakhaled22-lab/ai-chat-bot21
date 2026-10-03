@@ -129,6 +129,7 @@ type AiProvider = keyof typeof AI_PROVIDERS;
 
 const formSchema = z.object({
   name: z.string().min(2, "Company name is required"),
+  notificationEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   generalInfo: z.string().optional(),
   systemPrompt: z.string().optional(),
     
@@ -471,6 +472,7 @@ export default function ClientCompany() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      notificationEmail: "",
       generalInfo: "",
       systemPrompt: "",
         
@@ -491,6 +493,7 @@ export default function ClientCompany() {
     if (company && !initialized.current) {
       form.reset({
         name: company.name || "",
+        notificationEmail: company.notificationEmail || "",
         generalInfo: company.generalInfo || "",
         systemPrompt: company.systemPrompt || "",
           
@@ -543,6 +546,7 @@ export default function ClientCompany() {
     // Transform empty strings to nulls for API
     const data = {
       ...values,
+      notificationEmail: values.notificationEmail?.trim() || null,
       googleSheetsLink: values.googleSheetsLink || null,
       googleSheetsName: values.googleSheetsName || null,
       googleSheetsPage: values.googleSheetsPage || null,
@@ -848,6 +852,31 @@ export default function ClientCompany() {
                     <FormControl>
                       <Input {...field} className="bg-background" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="notificationEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {lang === "ar" ? "بريد إشعارات الشركة" : "Company Notification Email"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="notifications@company.com"
+                        {...field}
+                        className="bg-background"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {lang === "ar"
+                        ? "البريد الإلكتروني المخصص للشركة لاستلام تنبيهات الأحداث الفورية (الرسائل الجديدة، المحادثات، الطلبات، العملاء المحتملين، نماذج التواصل، تنبيهات الحصة والاشتراك)."
+                        : "Company's dedicated email address for instant event alerts (new messages, conversations, orders, leads, contact forms, quota & subscription alerts)."}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

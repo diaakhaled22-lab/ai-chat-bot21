@@ -67,6 +67,7 @@ router.get("/client/company", async (req, res) => {
       clientName: null,
       myId: company.myId ?? null,
       name: company.name,
+      notificationEmail: company.notificationEmail ?? null,
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
@@ -308,6 +309,7 @@ router.post("/client/company", async (req, res) => {
       .values({
         clientId: req.session.userId!,
         name: data.name,
+        notificationEmail: (data as any).notificationEmail ? (data as any).notificationEmail.trim() : null,
         generalInfo: data.generalInfo ?? null,
         isActive: false,
         systemPrompt: data.systemPrompt ?? null,
@@ -352,6 +354,7 @@ router.post("/client/company", async (req, res) => {
       clientName: null,
       myId: company.myId ?? null,
       name: company.name,
+      notificationEmail: company.notificationEmail ?? null,
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
@@ -419,6 +422,9 @@ router.put("/client/company", async (req, res) => {
 
     const updates: Record<string, unknown> = {};
     if (data.name !== undefined) updates.name = data.name;
+    if ((data as any).notificationEmail !== undefined) {
+      updates.notificationEmail = (data as any).notificationEmail ? (data as any).notificationEmail.trim() : null;
+    }
     if (data.generalInfo !== undefined) updates.generalInfo = data.generalInfo;
     if (data.systemPrompt !== undefined) updates.systemPrompt = data.systemPrompt;
     if (data.googleSheetsEnabled !== undefined) updates.googleSheetsEnabled = data.googleSheetsEnabled;

@@ -43,6 +43,7 @@ type Company = {
   name: string;
   clientName?: string | null;
   clientId: number;
+  notificationEmail?: string | null;
   isActive: boolean;
   activationStart?: string | null;
   activationEnd?: string | null;
@@ -1419,6 +1420,23 @@ export default function AdminCompanies() {
                 >
                   <Clock className="w-3 h-3 text-amber-500" /> Adjust
                 </Button>
+              </div>
+
+              {/* Company Notification Email */}
+              <div className="bg-muted/30 rounded-xl p-4 border border-border flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Notification Email (Client Alerts)</p>
+                  <p className="text-sm font-semibold">
+                    {viewCompany.notificationEmail ? (
+                      <span className="text-primary font-mono">{viewCompany.notificationEmail}</span>
+                    ) : (
+                      <span className="text-muted-foreground italic font-normal">Not configured</span>
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Receives all 13 critical client events: messages, leads, orders, forms, support requests, malfunctions, subscription & quota alerts.
+                  </p>
+                </div>
               </div>
 
               {/* Active integrations */}

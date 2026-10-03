@@ -1,4 +1,10 @@
 import { isSessionInHandoff, triggerHandoffNotification, triggerNewMessageNotification, isHandoffRequested, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
+import {
+  notifyNewConversation,
+  notifyNewLead,
+  notifyContactFormSubmission,
+  notifyNewOrder,
+} from "../lib/companyNotification";
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -127,24 +133,34 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     }
 
     let conversationHistory: { role: "user" | "assistant"; content: string }[] = [];
+    let isNewConversation = false;
     if (sessionId && typeof sessionId === "string") {
       const priorLogs = await db.select().from(chatLogsTable).where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId))).orderBy(asc(chatLogsTable.createdAt)).limit(20);
 
-    if (isSessionInHandoff(priorLogs)) {
-      if (sessionId && typeof sessionId === "string") {
-        await db.insert(chatLogsTable).values({
-          companyId: company.id,
-          channel: "website",
-          sessionId,
-          customerMessage: message.trim(),
-          botResponse: null,
-          isHandoff: true
-        });
-        triggerNewMessageNotification(company, sessionId, "website", message.trim());
+      if (!priorLogs || priorLogs.length === 0) {
+        isNewConversation = true;
+        // Event 2: New conversation
+        notifyNewConversation(
+          { id: company.id, name: company.name },
+          { channel: "website", sessionId, initialMessage: message.trim() }
+        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "New conversation email notification failed"));
       }
-      res.json({ reply: "" });
-      return;
-    }
+
+      if (isSessionInHandoff(priorLogs)) {
+        if (sessionId && typeof sessionId === "string") {
+          await db.insert(chatLogsTable).values({
+            companyId: company.id,
+            channel: "website",
+            sessionId,
+            customerMessage: message.trim(),
+            botResponse: null,
+            isHandoff: true
+          });
+          triggerNewMessageNotification(company, sessionId, "website", message.trim());
+        }
+        res.json({ reply: "" });
+        return;
+      }
 
       for (const log of priorLogs) {
         conversationHistory.push({ role: "user", content: log.customerMessage });
@@ -289,6 +305,19 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
           phone: leadData.phone || null,
           interest: leadData.interest || null,
         });
+
+        // Event 3: New lead
+        notifyNewLead(
+          { id: company.id, name: company.name },
+          {
+            name: leadData.name || null,
+            email: leadData.email || null,
+            phone: leadData.phone || null,
+            interest: leadData.interest || null,
+            channel: "website",
+            sessionId,
+          }
+        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "New lead email notification failed"));
       }
     }
 
@@ -296,6 +325,27 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = localizedChannelMessage(message.trim(), "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
       triggerHandoffNotification(company, sessionId, "website");
+    }
+
+    // Event 5: New order (detected via chat intent or keywords)
+    const orderKeywords = ["طلب جديد", "شراء", "اشتريت", "طلبية", "order", "purchase"];
+    const isOrderDetected =
+      metrics?.intent === "purchase" ||
+      (metrics?.intent as string) === "order" ||
+      orderKeywords.some(k => message.toLowerCase().includes(k) || (leadData?.interest && leadData.interest.toLowerCase().includes(k)));
+
+    if (isOrderDetected) {
+      notifyNewOrder(
+        { id: company.id, name: company.name },
+        {
+          customerName: leadData?.name || null,
+          customerEmail: leadData?.email || null,
+          customerPhone: leadData?.phone || null,
+          items: leadData?.interest || message.trim(),
+          notes: `Detected via website chat (${sessionId})`,
+          channel: "website",
+        }
+      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "New order email notification failed"));
     }
 
     if (sessionId && typeof sessionId === "string") {
@@ -329,6 +379,86 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         "Failed to generate response. Please try again.",
       ),
     });
+  }
+});
+
+// Event 4: Contact form submission endpoint
+router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { name, email, phone, subject, message, channel } = req.body;
+
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.websiteChatbotKey, key as string))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Widget not found" });
+      return;
+    }
+
+    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+      res.status(403).json({ error: "Origin not allowed for this widget" });
+      return;
+    }
+
+    // Save as lead
+    await db.insert(leadsTable).values({
+      companyId: company.id,
+      channel: channel || "website_contact_form",
+      name: name || null,
+      email: email || null,
+      phone: phone || null,
+      interest: subject ? `${subject}: ${message || ""}` : (message || null),
+    }).catch(e => logger.warn({ err: e }, "Failed to save contact lead"));
+
+    // Event 4: Contact form submission notification
+    notifyContactFormSubmission(
+      { id: company.id, name: company.name },
+      { name, email, phone, subject, message, channel: channel || "website_contact_form" }
+    ).catch(e => logger.warn({ err: e, companyId: company.id }, "Contact form notification failed"));
+
+    res.json({ success: true, message: "Contact form submitted successfully" });
+  } catch (err) {
+    logger.error({ err }, "Contact form submission error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Event 5: Direct order submission endpoint
+router.post("/widget/:key/order", WIDGET_CORS, chatLimiter, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { customerName, customerEmail, customerPhone, items, total, notes, channel } = req.body;
+
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.websiteChatbotKey, key as string))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Widget not found" });
+      return;
+    }
+
+    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+      res.status(403).json({ error: "Origin not allowed for this widget" });
+      return;
+    }
+
+    // Event 5: New order notification
+    notifyNewOrder(
+      { id: company.id, name: company.name },
+      { customerName, customerEmail, customerPhone, items, total, notes, channel: channel || "website_order" }
+    ).catch(e => logger.warn({ err: e, companyId: company.id }, "New order notification failed"));
+
+    res.json({ success: true, message: "Order notification processed successfully" });
+  } catch (err) {
+    logger.error({ err }, "Order submission error");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

@@ -18,3 +18,4 @@ export * from "./malfunctions";
 export * from './leads';
 
 export * from "./cannedResponses";
+export * from "./emailLogs";

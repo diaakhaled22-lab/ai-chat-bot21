@@ -10,6 +10,7 @@ export const companiesTable = pgTable("companies", {
   name: text("name").notNull(),
   myId: text("my_id"),
   generalInfo: text("general_info"),
+  notificationEmail: text("notification_email"),
   isActive: boolean("is_active").notNull().default(false),
   activationStart: timestamp("activation_start", { withTimezone: true }),
   activationEnd: timestamp("activation_end", { withTimezone: true }),

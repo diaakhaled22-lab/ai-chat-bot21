@@ -55,6 +55,37 @@ export async function reportSystemMalfunction(title: string, description: string
     });
     
     logger.info({ title, companyId }, "Auto-reported system malfunction");
+
+    // Send email notification to company.notificationEmail
+    const { notifySystemMalfunction } = await import("./companyNotification");
+    const { companiesTable } = await import("@workspace/db");
+    if (companyId) {
+      const [company] = await db
+        .select({ id: companiesTable.id, name: companiesTable.name })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, companyId))
+        .limit(1);
+
+      if (company) {
+        notifySystemMalfunction(
+          { id: company.id, name: company.name },
+          { title, description: finalDescription, rawError }
+        ).catch((err) => logger.error({ err, companyId }, "Failed to send malfunction notification email"));
+      }
+    } else {
+      // Global malfunction: notify active companies
+      const activeCompanies = await db
+        .select({ id: companiesTable.id, name: companiesTable.name })
+        .from(companiesTable)
+        .where(eq(companiesTable.isActive, true));
+
+      for (const comp of activeCompanies) {
+        notifySystemMalfunction(
+          { id: comp.id, name: comp.name },
+          { title, description: finalDescription, rawError }
+        ).catch(() => {});
+      }
+    }
   } catch (err) {
     logger.error({ err }, "Failed to auto-report malfunction");
   }

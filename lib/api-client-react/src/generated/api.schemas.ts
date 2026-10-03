@@ -115,6 +115,8 @@ export interface Company {
   myId?: string | null;
   name: string;
   /** @nullable */
+  notificationEmail?: string | null;
+  /** @nullable */
   generalInfo?: string | null;
   isActive: boolean;
   /**
@@ -239,6 +241,8 @@ export const CompanyInputAiProvider = {
 
 export interface CompanyInput {
   name: string;
+  /** @nullable */
+  notificationEmail?: string | null;
   /**
      * Custom identifier set by the admin (e.g. an internal reference code).
      * @nullable

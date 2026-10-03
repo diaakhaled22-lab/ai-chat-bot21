@@ -3,6 +3,8 @@ import { db, companiesTable, chatLogsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { IngestChatMessageBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { triggerNewMessageNotification } from "../lib/handoff";
+import { notifyNewConversation } from "../lib/companyNotification";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -84,6 +86,13 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
         )
         .orderBy(asc(chatLogsTable.createdAt))
         .limit(20);
+
+      if (!priorLogs || priorLogs.length === 0) {
+        notifyNewConversation(
+          { id: company.id, name: company.name },
+          { channel, sessionId, initialMessage: customerMessage }
+        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Webhook new conversation email failed"));
+      }
 
       for (const log of priorLogs) {
         conversationHistory.push({ role: "user", content: log.customerMessage });
@@ -213,6 +222,8 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
           { role: "assistant", content: aiReply },
         ]);
 
+        triggerNewMessageNotification(company, sessionId ?? "webhook", channel, customerMessage);
+
         req.log.info({ companyId: company.id, channel, sessionId, provider, model }, "AI response generated and stored");
 
         res.status(201).json({
@@ -275,6 +286,8 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
       { role: "user", content: customerMessage },
       { role: "assistant", content: normalizedBotResponse },
     ]);
+
+    triggerNewMessageNotification(company, sessionId ?? "webhook", channel, customerMessage);
 
     req.log.info({ companyId: company.id, channel, sessionId }, "Chat log stored via webhook");
 

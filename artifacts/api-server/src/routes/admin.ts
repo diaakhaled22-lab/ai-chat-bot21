@@ -21,6 +21,7 @@ import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { getAttackMonitoringSnapshot, maskApiKey, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
+import { notifySubscriptionActivated } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
@@ -458,6 +459,7 @@ router.get("/admin/companies", async (req, res) => {
         clientName: clientName ?? null,
         myId: company.myId ?? null,
         name: company.name,
+        notificationEmail: company.notificationEmail ?? null,
         generalInfo: company.generalInfo,
         isActive: company.isActive,
         activationStart: company.activationStart?.toISOString() ?? null,
@@ -570,6 +572,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       clientName: clientName ?? null,
       myId: company.myId ?? null,
       name: company.name,
+      notificationEmail: company.notificationEmail ?? null,
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       activationStart: company.activationStart?.toISOString() ?? null,
@@ -611,7 +614,12 @@ router.patch("/admin/companies/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-    const { myId, securityPrompt, systemPrompt } = req.body as { myId?: string | null; securityPrompt?: string | null; systemPrompt?: string | null; };
+    const { myId, securityPrompt, systemPrompt, notificationEmail } = req.body as {
+      myId?: string | null;
+      securityPrompt?: string | null;
+      systemPrompt?: string | null;
+      notificationEmail?: string | null;
+    };
     // Basic length validation
     if (myId && typeof myId === 'string' && myId.length > 255) {
       res.status(400).json({ error: "myId is too long (max 255 characters)" });
@@ -625,9 +633,15 @@ router.patch("/admin/companies/:id", async (req, res) => {
       res.status(400).json({ error: "securityPrompt is too long (max 50000 characters)" });
       return;
     }
+    const updateValues: Record<string, any> = {};
+    if (myId !== undefined) updateValues.myId = myId;
+    if (securityPrompt !== undefined) updateValues.securityPrompt = securityPrompt;
+    if (systemPrompt !== undefined) updateValues.systemPrompt = systemPrompt;
+    if (notificationEmail !== undefined) updateValues.notificationEmail = notificationEmail ? notificationEmail.trim() : null;
+
     const [row] = await db
       .update(companiesTable)
-      .set({ myId: myId !== undefined ? myId : undefined, securityPrompt: securityPrompt !== undefined ? securityPrompt : undefined, systemPrompt: systemPrompt !== undefined ? systemPrompt : undefined })
+      .set(updateValues)
       .where(eq(companiesTable.id, id))
       .returning();
     if (!row) { res.status(404).json({ error: "Company not found" }); return; }
@@ -638,6 +652,7 @@ router.patch("/admin/companies/:id", async (req, res) => {
       clientName: clientRow?.name ?? null,
       myId: row.myId ?? null,
       name: row.name,
+      notificationEmail: row.notificationEmail ?? null,
       isActive: row.isActive,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
@@ -712,6 +727,16 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
         action: body.data.isActive ? "activated" : "deactivated",
         performedBy,
       });
+
+      if (body.data.isActive) {
+        notifySubscriptionActivated(
+          { id: row.id, name: row.name, clientId: row.clientId },
+          {
+            activationStart: row.activationStart,
+            activationEnd: row.activationEnd,
+          }
+        ).catch((err) => logger.error({ err, companyId: row.id }, "Failed to send subscription activated email"));
+      }
     }
 
     const startStr = body.data.activationStart
@@ -724,7 +749,7 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
     if ("activationStart" in body.data || "activationEnd" in body.data) {
       let note: string;
       if (startStr || endStr) {
-        note = `Set activation window: ${startStr ?? "â€”"} â†’ ${endStr ?? "â€”"}`;
+        note = `Set activation window: ${startStr ?? "—"} → ${endStr ?? "—"}`;
       } else {
         note = "Cleared activation window";
       }
@@ -741,6 +766,7 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
       clientName: clientRow?.name ?? null,
       myId: row.myId ?? null,
       name: row.name,
+      notificationEmail: row.notificationEmail ?? null,
       generalInfo: row.generalInfo,
       isActive: row.isActive,
       activationStart: row.activationStart?.toISOString() ?? null,

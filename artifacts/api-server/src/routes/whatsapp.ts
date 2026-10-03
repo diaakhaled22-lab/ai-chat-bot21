@@ -1,4 +1,9 @@
 import { isSessionInHandoff, isHandoffRequested, triggerHandoffNotification, triggerNewMessageNotification, HANDOFF_SYSTEM_PROMPT, LEAD_GEN_SYSTEM_PROMPT, extractLeadData, METRICS_SYSTEM_PROMPT, extractMetrics } from '../lib/handoff';
+import {
+  notifyNewConversation,
+  notifyNewLead,
+  notifyNewOrder,
+} from "../lib/companyNotification";
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
@@ -239,6 +244,13 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
             .orderBy(asc(chatLogsTable.createdAt))
             .limit(20);
 
+          if (!priorLogs || priorLogs.length === 0) {
+            notifyNewConversation(
+              { id: company.id, name: company.name },
+              { channel: "whatsapp", sessionId, initialMessage: userText }
+            ).catch((e) => logger.warn({ err: e, companyId: company.id }, "WhatsApp new conversation email failed"));
+          }
+
           const history: { role: "user" | "assistant"; content: string }[] = [];
           for (const log of priorLogs) {
             history.push({ role: "user", content: log.customerMessage });
@@ -332,7 +344,41 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
           phone: leadData.phone || null,
           interest: leadData.interest || null,
         });
+
+        // Event 3: New lead
+        notifyNewLead(
+          { id: company.id, name: company.name },
+          {
+            name: leadData.name || null,
+            email: leadData.email || null,
+            phone: leadData.phone || null,
+            interest: leadData.interest || null,
+            channel: "whatsapp",
+            sessionId,
+          }
+        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "WhatsApp new lead email failed"));
       }
+    }
+
+    // Event 5: New order
+    const orderKeywords = ["طلب جديد", "شراء", "اشتريت", "طلبية", "order", "purchase"];
+    const isOrderDetected =
+      metrics?.intent === "purchase" ||
+      (metrics?.intent as string) === "order" ||
+      orderKeywords.some(k => userText.toLowerCase().includes(k) || (leadData?.interest && leadData.interest.toLowerCase().includes(k)));
+
+    if (isOrderDetected) {
+      notifyNewOrder(
+        { id: company.id, name: company.name },
+        {
+          customerName: leadData?.name || null,
+          customerEmail: leadData?.email || null,
+          customerPhone: leadData?.phone || null,
+          items: leadData?.interest || userText.trim(),
+          notes: `Detected via WhatsApp chat (${sessionId})`,
+          channel: "whatsapp",
+        }
+      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "WhatsApp new order email failed"));
     }
 
     await db.insert(chatLogsTable).values({
@@ -342,9 +388,9 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
       customerMessage: userText,
       botResponse: aiReply,
       isHandoff,
-        sentiment: metrics?.sentiment || null,
-        intent: metrics?.intent || null,
-      });
+      sentiment: metrics?.sentiment || null,
+      intent: metrics?.intent || null,
+    });
       triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
 
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
@@ -494,6 +540,13 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             .orderBy(asc(chatLogsTable.createdAt))
             .limit(20);
 
+          if (!priorLogs || priorLogs.length === 0) {
+            notifyNewConversation(
+              { id: company.id, name: company.name },
+              { channel: "whatsapp", sessionId, initialMessage: userText }
+            ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom WhatsApp new conversation email failed"));
+          }
+
           const history: { role: "user" | "assistant"; content: string }[] = [];
           for (const log of priorLogs) {
             history.push({ role: "user", content: log.customerMessage });
@@ -582,7 +635,41 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           phone: leadData.phone || null,
           interest: leadData.interest || null,
         });
+
+        // Event 3: New lead
+        notifyNewLead(
+          { id: company.id, name: company.name },
+          {
+            name: leadData.name || null,
+            email: leadData.email || null,
+            phone: leadData.phone || null,
+            interest: leadData.interest || null,
+            channel: "whatsapp",
+            sessionId,
+          }
+        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom WhatsApp new lead email failed"));
       }
+    }
+
+    // Event 5: New order
+    const orderKeywords = ["طلب جديد", "شراء", "اشتريت", "طلبية", "order", "purchase"];
+    const isOrderDetected =
+      metrics?.intent === "purchase" ||
+      (metrics?.intent as string) === "order" ||
+      orderKeywords.some(k => userText.toLowerCase().includes(k) || (leadData?.interest && leadData.interest.toLowerCase().includes(k)));
+
+    if (isOrderDetected) {
+      notifyNewOrder(
+        { id: company.id, name: company.name },
+        {
+          customerName: leadData?.name || null,
+          customerEmail: leadData?.email || null,
+          customerPhone: leadData?.phone || null,
+          items: leadData?.interest || userText.trim(),
+          notes: `Detected via Custom WhatsApp chat (${sessionId})`,
+          channel: "whatsapp",
+        }
+      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom WhatsApp new order email failed"));
     }
 
           await db.insert(chatLogsTable).values({

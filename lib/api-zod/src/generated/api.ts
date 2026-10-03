@@ -160,6 +160,7 @@ export const ListCompaniesResponseItem = zod.object({
   "clientName": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "generalInfo": zod.string().nullish(),
   "isActive": zod.boolean(),
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start.'),
@@ -222,6 +223,7 @@ export const GetCompanyResponse = zod.object({
   "clientName": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "generalInfo": zod.string().nullish(),
   "isActive": zod.boolean(),
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start.'),
@@ -288,6 +290,7 @@ export const UpdateCompanyMyIdResponse = zod.object({
   "clientName": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "generalInfo": zod.string().nullish(),
   "isActive": zod.boolean(),
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start.'),
@@ -558,6 +561,7 @@ export const GetClientCompanyResponse = zod.object({
   "clientName": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "generalInfo": zod.string().nullish(),
   "isActive": zod.boolean(),
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start.'),
@@ -611,6 +615,7 @@ export const createClientCompanyBodyFabPositionYMax = 100;
 
 export const CreateClientCompanyBody = zod.object({
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "generalInfo": zod.string().nullish(),
   "systemPrompt": zod.string().nullish(),
@@ -657,6 +662,7 @@ export const CreateClientCompanyResponse = zod.object({
   "clientName": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "generalInfo": zod.string().nullish(),
   "isActive": zod.boolean(),
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start.'),
@@ -710,6 +716,7 @@ export const updateClientCompanyBodyFabPositionYMax = 100;
 
 export const UpdateClientCompanyBody = zod.object({
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "generalInfo": zod.string().nullish(),
   "systemPrompt": zod.string().nullish(),
@@ -756,6 +763,7 @@ export const UpdateClientCompanyResponse = zod.object({
   "clientName": zod.string().nullish(),
   "myId": zod.string().nullish().describe('Custom identifier set by the admin (e.g. an internal reference code).'),
   "name": zod.string(),
+  "notificationEmail": zod.string().nullish(),
   "generalInfo": zod.string().nullish(),
   "isActive": zod.boolean(),
   "activationStart": zod.string().nullish().describe('ISO 8601 timestamp for subscription start.'),

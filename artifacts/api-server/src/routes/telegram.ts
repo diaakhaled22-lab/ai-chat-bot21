@@ -4,6 +4,11 @@ import {
   isHandoffRequested,
 } from "../lib/handoff";
 import {
+  notifyNewConversation,
+  notifyNewLead,
+  notifyNewOrder,
+} from "../lib/companyNotification";
+import {
   isSessionInHandoff,
   HANDOFF_SYSTEM_PROMPT,
   LEAD_GEN_SYSTEM_PROMPT,
@@ -178,6 +183,13 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       .orderBy(asc(chatLogsTable.createdAt))
       .limit(20);
 
+    if (!priorLogs || priorLogs.length === 0) {
+      notifyNewConversation(
+        { id: company.id, name: company.name },
+        { channel: "telegram", sessionId, initialMessage: userText }
+      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Telegram new conversation email failed"));
+    }
+
     const history: { role: "user" | "assistant"; content: string }[] = [];
     for (const log of priorLogs) {
       history.push({ role: "user", content: log.customerMessage });
@@ -263,6 +275,19 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
           phone: leadData.phone || null,
           interest: leadData.interest || null,
         });
+
+        // Event 3: New lead
+        notifyNewLead(
+          { id: company.id, name: company.name },
+          {
+            name: leadData.name || null,
+            email: leadData.email || null,
+            phone: leadData.phone || null,
+            interest: leadData.interest || null,
+            channel: "telegram",
+            sessionId,
+          }
+        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Telegram new lead email failed"));
       }
     }
 
@@ -270,6 +295,27 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
       triggerHandoffNotification(company, sessionId, "telegram");
+    }
+
+    // Event 5: New order (detected via intent or keywords)
+    const orderKeywords = ["طلب جديد", "شراء", "اشتريت", "طلبية", "order", "purchase"];
+    const isOrderDetected =
+      metrics?.intent === "purchase" ||
+      (metrics?.intent as string) === "order" ||
+      orderKeywords.some(k => userText.toLowerCase().includes(k) || (leadData?.interest && leadData.interest.toLowerCase().includes(k)));
+
+    if (isOrderDetected) {
+      notifyNewOrder(
+        { id: company.id, name: company.name },
+        {
+          customerName: leadData?.name || null,
+          customerEmail: leadData?.email || null,
+          customerPhone: leadData?.phone || null,
+          items: leadData?.interest || userText.trim(),
+          notes: `Detected via Telegram chat (${sessionId})`,
+          channel: "telegram",
+        }
+      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Telegram new order email failed"));
     }
 
     await db.insert(chatLogsTable).values({

@@ -9,6 +9,8 @@ import type { CompanyInputAiProvider } from './companyInputAiProvider';
 
 export interface CompanyInput {
   name: string;
+  /** @nullable */
+  notificationEmail?: string | null;
   /**
      * Custom identifier set by the admin (e.g. an internal reference code).
      * @nullable

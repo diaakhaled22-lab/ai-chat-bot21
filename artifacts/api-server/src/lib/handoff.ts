@@ -91,31 +91,29 @@ export function extractMetrics(botResponse: string): { cleanResponse: string, me
 }
 
 
+import { notifyCustomerServiceRequest, notifyNewChatMessage } from "./companyNotification";
+
 export async function triggerHandoffNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string) {
-  if (!company.clientId) return;
-  
   try {
     const title = `New Human Handoff Request (${channel})`;
     const message = `A customer on ${channel} wants to speak with a human agent. Please check the Universal Chat.\nSession: ${sessionId}`;
 
-    await db.insert(notificationsTable).values({
-      userId: company.clientId,
-      type: "handoff_request",
-      title,
-      message,
-      companyId: company.id,
-      isRead: false
-    });
-
-    const [user] = await db
-      .select({ email: usersTable.notificationEmail })
-      .from(usersTable)
-      .where(eq(usersTable.id, company.clientId))
-      .limit(1);
-    
-    if (user && user.email) {
-      await sendClientNotification(user.email, title, message).catch(e => logger.warn({ err: e }, "Handoff email failed"));
+    if (company.clientId) {
+      await db.insert(notificationsTable).values({
+        userId: company.clientId,
+        type: "handoff_request",
+        title,
+        message,
+        companyId: company.id,
+        isRead: false
+      });
     }
+
+    // Send email notification to the company's notification email (company.notificationEmail)
+    notifyCustomerServiceRequest(
+      { id: company.id, name: company.name },
+      { channel, sessionId }
+    ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Handoff email failed"));
   } catch (err) {
     logger.error({ err, companyId: company.id }, "Failed to trigger handoff notification");
   }
@@ -123,7 +121,6 @@ export async function triggerHandoffNotification(company: { id: number, clientId
 
 
 export async function triggerNewMessageNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string, customerMessage: string) {
-  if (!company.clientId) return;
   try {
     const channelNames: Record<string, string> = {
       whatsapp: "WhatsApp",
@@ -136,40 +133,47 @@ export async function triggerNewMessageNotification(company: { id: number, clien
     const snippet = customerMessage.length > 50 ? customerMessage.substring(0, 50) + "..." : customerMessage;
     const sessionTag = sessionId ? sessionId.substring(0, 8) : "";
     
-    // Check if an unread notification for this exact session exists
-    const [existing] = await db
-      .select({ id: notificationsTable.id })
-      .from(notificationsTable)
-      .where(
-        and(
-          eq(notificationsTable.companyId, company.id),
-          eq(notificationsTable.type, 'new_message'),
-          eq(notificationsTable.isRead, false),
-          sql`${notificationsTable.message} LIKE ${'%' + sessionTag + '%'}`
+    if (company.clientId) {
+      // Check if an unread notification for this exact session exists
+      const [existing] = await db
+        .select({ id: notificationsTable.id })
+        .from(notificationsTable)
+        .where(
+          and(
+            eq(notificationsTable.companyId, company.id),
+            eq(notificationsTable.type, 'new_message'),
+            eq(notificationsTable.isRead, false),
+            sql`${notificationsTable.message} LIKE ${'%' + sessionTag + '%'}`
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (existing) {
-      await db
-        .update(notificationsTable)
-        .set({
+      if (existing) {
+        await db
+          .update(notificationsTable)
+          .set({
+            title,
+            message: `[${sessionTag}] ${snippet}`,
+            createdAt: new Date(),
+          })
+          .where(eq(notificationsTable.id, existing.id));
+      } else {
+        await db.insert(notificationsTable).values({
+          userId: company.clientId,
+          type: 'new_message',
           title,
           message: `[${sessionTag}] ${snippet}`,
-          createdAt: new Date(),
-        })
-        .where(eq(notificationsTable.id, existing.id));
-      return;
+          companyId: company.id,
+          isRead: false
+        });
+      }
     }
 
-    await db.insert(notificationsTable).values({
-      userId: company.clientId,
-      type: 'new_message',
-      title,
-      message: `[${sessionTag}] ${snippet}`,
-      companyId: company.id,
-      isRead: false
-    });
+    // Send email notification for New chatbot message to company.notificationEmail
+    notifyNewChatMessage(
+      { id: company.id, name: company.name },
+      { customerMessage, channel, sessionId }
+    ).catch((e) => logger.warn({ err: e, companyId: company.id }, "New message notification email failed"));
   } catch (err) {
     logger.error({ err }, 'Error triggering new message notification');
   }

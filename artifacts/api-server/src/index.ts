@@ -9,6 +9,7 @@ import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { refreshAiModels } from "./lib/aiModels";
 import { ensureAdminExists } from "./lib/adminBootstrap";
 import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
+import { ensureEmailNotificationSchema, notifySubscriptionExpiringSoon, notifySubscriptionExpired } from "./lib/companyNotification";
 
 const rawPort = process.env["API_PORT"] || (process.env["PORT"] && process.env["PORT"] !== "3000" && process.env["PORT"] !== "5173" ? process.env["PORT"] : "8080");
 const port = Number(rawPort) || 8080;
@@ -38,6 +39,13 @@ async function expireCompanies() {
           note: `Auto-deactivated: activation end date passed`,
         }))
       );
+
+      // Notify each expired company via Resend to company.notificationEmail
+      for (const r of expired) {
+        notifySubscriptionExpired({ id: r.id, name: r.name }, now).catch((err) => {
+          logger.error({ err, companyId: r.id }, "Failed to send subscription expired email");
+        });
+      }
     }
   } catch (err) {
     logger.error({ err }, "Error auto-expiring companies");
@@ -50,8 +58,7 @@ expireCompanies();
 async function sendRenewalReminders() {
   try {
     const now = new Date();
-    const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const eightDaysFromNow = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
 
     const expiring = await db
       .select({
@@ -59,77 +66,73 @@ async function sendRenewalReminders() {
         name: companiesTable.name,
         clientId: companiesTable.clientId,
         activationEnd: companiesTable.activationEnd,
-        notificationEmail: usersTable.notificationEmail,
+        notificationEmail: companiesTable.notificationEmail,
       })
       .from(companiesTable)
-      .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id))
       .where(
         and(
           eq(companiesTable.isActive, true),
           isNotNull(companiesTable.activationEnd),
           gte(companiesTable.activationEnd, now),
-          lte(companiesTable.activationEnd, twoDaysFromNow)
+          lte(companiesTable.activationEnd, eightDaysFromNow)
         )
       );
 
     if (expiring.length === 0) return;
 
-    const adminUsers = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(eq(usersTable.role, "admin"));
-
-    const { sendClientNotification } = await import("./lib/email");
-
     for (const company of expiring) {
-      const existing = await db
+      if (!company.activationEnd) continue;
+      const diffMs = company.activationEnd.getTime() - now.getTime();
+      const daysRemaining = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+
+      let milestone: (7 | 3 | 1) | null = null;
+      if (daysRemaining <= 7 && daysRemaining > 3) {
+        milestone = 7;
+      } else if (daysRemaining <= 3 && daysRemaining > 1) {
+        milestone = 3;
+      } else if (daysRemaining <= 1 && daysRemaining >= 0) {
+        milestone = 1;
+      }
+
+      if (!milestone) continue;
+
+      const reminderType = `renewal_reminder_${milestone}d`;
+      // Check if reminder for this specific milestone was already sent
+      const [existing] = await db
         .select({ id: notificationsTable.id })
         .from(notificationsTable)
         .where(
           and(
-            eq(notificationsTable.userId, company.clientId),
-            eq(notificationsTable.type, "renewal_reminder"),
             eq(notificationsTable.companyId, company.id),
-            gte(notificationsTable.createdAt, threeDaysAgo)
+            eq(notificationsTable.type, reminderType)
           )
         )
         .limit(1);
 
-      if (existing.length > 0) continue;
+      if (existing) continue;
 
-      const endDate = company.activationEnd!.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const endDate = company.activationEnd.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
-      const toInsert = [
-        {
+      if (company.clientId) {
+        await db.insert(notificationsTable).values({
           userId: company.clientId,
-          type: "renewal_reminder" as const,
-          title: "Subscription expiring soon | اقترب موعد انتهاء الاشتراك",
-          message: `Your subscription expires on ${endDate}. Please contact your administrator to renew. | ينتهي اشتراكك في ${endDate}. يرجى التواصل مع الإدارة للتجديد.`,
+          type: reminderType,
+          title: `${milestone} day${milestone > 1 ? "s" : ""} left on subscription | بقي ${milestone} أيام على انتهاء الاشتراك`,
+          message: `Your subscription expires on ${endDate}. Please contact your administrator to renew.`,
           companyId: company.id,
-        },
-        ...adminUsers.map((admin) => ({
-          userId: admin.id,
-          type: "renewal_reminder" as const,
-          title: `Renewal reminder: ${company.name}`,
-          message: `${company.name}'s subscription expires on ${endDate}.`,
-          companyId: company.id,
-        })),
-      ];
-
-      await db.insert(notificationsTable).values(toInsert);
-
-      // ✅ Send email to client's notification email (from users table)
-      if (company.notificationEmail) {
-        sendClientNotification(
-          company.notificationEmail,
-          "Subscription expiring soon | اقترب موعد انتهاء الاشتراك",
-          `Your subscription for "${company.name}" expires on ${endDate}.\nPlease contact your administrator to renew.\n\nينتهي اشتراكك لـ "${company.name}" في ${endDate}. يرجى التواصل مع الإدارة للتجديد.`
-        ).catch(e => {
-          logger.error({ err: e, email: company.notificationEmail }, "Failed to send renewal reminder email");
         });
       }
 
-      logger.info({ companyId: company.id, companyName: company.name }, "Sent renewal reminder notifications");
+      // Send email ONLY to the company that owns the data (company.notificationEmail)
+      notifySubscriptionExpiringSoon(
+        { id: company.id, name: company.name },
+        milestone,
+        company.activationEnd
+      ).catch((err) => {
+        logger.error({ err, companyId: company.id, milestone }, "Failed to send subscription renewal reminder email");
+      });
+
+      logger.info({ companyId: company.id, companyName: company.name, milestone }, "Sent milestone renewal reminder");
     }
   } catch (err) {
     logger.error({ err }, "Error sending renewal reminders");
@@ -229,6 +232,7 @@ refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog 
 // against fresh database resets and avoids a login race during startup.
 async function startServer() {
   await ensureAdminExists();
+  await ensureEmailNotificationSchema();
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 

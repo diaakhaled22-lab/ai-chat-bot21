@@ -1,6 +1,7 @@
 import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/db";
 import { eq, sql, and, gte, or } from "drizzle-orm";
 import { logger } from "./logger";
+import { notifyQuota75PercentConsumed } from "./companyNotification";
 
 export interface ResolvedAiConfig {
   apiKey: string;
@@ -166,6 +167,37 @@ export async function assertCompanyQuotaNotExceeded(
 
   if (usedTokens >= company.monthlyTokenQuota!) {
     throw new Error(`تم تجاوز حصة الرموز الشهرية المحددة للشركة (${company.monthlyTokenQuota!.toLocaleString()} رمز). يرجى ترقية الحصة.`);
+  }
+
+  // Event 9: Upon consuming 75% of API.AI
+  if (company.monthlyTokenQuota && (usedTokens / company.monthlyTokenQuota) >= 0.75) {
+    const cycleKey = `quota_75_alert_${company.id}_${effectiveStart.toISOString().slice(0, 7)}`;
+    void (async () => {
+      try {
+        const [existingAlert] = await db
+          .select({ key: adminConfigTable.key })
+          .from(adminConfigTable)
+          .where(eq(adminConfigTable.key, cycleKey))
+          .limit(1);
+
+        if (!existingAlert) {
+          await db.insert(adminConfigTable).values({
+            key: cycleKey,
+            value: new Date().toISOString(),
+          }).onConflictDoNothing().catch(() => {});
+
+          const percentUsed = Math.round((usedTokens / company.monthlyTokenQuota!) * 100);
+          notifyQuota75PercentConsumed(
+            { id: company.id, name: company.name },
+            { usedTokens, monthlyQuota: company.monthlyTokenQuota!, percentUsed }
+          ).catch((err) => {
+            logger.warn({ err, companyId: company.id }, "Failed to send 75% quota notification email");
+          });
+        }
+      } catch (err) {
+        logger.warn({ err, companyId: company.id }, "Error checking 75% quota notification status");
+      }
+    })();
   }
 
   return { usedTokens, quota: company.monthlyTokenQuota };
