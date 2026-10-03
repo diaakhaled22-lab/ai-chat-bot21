@@ -29,7 +29,7 @@ import {
   AlertTriangle,
   Database,
   Cpu,
-  PenTool, Menu, Trash2, type LucideIcon,
+  PenTool, Menu, Trash2, Mail, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -449,6 +449,21 @@ function ClientNotificationBell() {
               ))}
             </ul>
           )}
+        </div>
+
+        <div className="px-3 py-2 border-t border-border bg-muted/30 flex items-center justify-between text-xs">
+          <a
+            href="https://mail.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-primary hover:underline font-medium transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5 text-red-500" />
+            <span>{lang === "ar" ? "فتح بريد Gmail ↗" : "Open Gmail ↗"}</span>
+          </a>
+          <span className="text-[10px] text-muted-foreground">
+            {lang === "ar" ? "إشعارات البريد متزامنة" : "Email alerts synced"}
+          </span>
         </div>
       </PopoverContent>
     </Popover>

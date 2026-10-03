@@ -1,4 +1,4 @@
-import { db, companiesTable, emailLogsTable, adminConfigTable, pool } from "@workspace/db";
+import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, pool } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -251,6 +251,7 @@ export async function sendCompanyNotification(
       .select({
         id: companiesTable.id,
         name: companiesTable.name,
+        clientId: companiesTable.clientId,
         notificationEmail: companiesTable.notificationEmail,
       })
       .from(companiesTable)
@@ -260,6 +261,26 @@ export async function sendCompanyNotification(
     if (!company) {
       logger.warn({ companyId }, "sendCompanyNotification: Company not found");
       return { ok: false, error: "Company not found" };
+    }
+
+    // Link with in-app Notification Bell:
+    // Synchronize event with notificationsTable so the notification bell icon pulses and counts it in the dashboard!
+    if (company.clientId && options?.eventType) {
+      const skipDuplicates = ["New chatbot message", "Customer Service Request"];
+      if (!skipDuplicates.includes(options.eventType)) {
+        try {
+          await db.insert(notificationsTable).values({
+            userId: company.clientId,
+            type: options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+            title: `[${options.eventType}] ${company.name}`,
+            message: subject,
+            companyId: company.id,
+            isRead: false,
+          });
+        } catch (notifErr) {
+          logger.warn({ notifErr }, "Failed to create synced in-app notification in notificationsTable");
+        }
+      }
     }
 
     const recipient = company.notificationEmail?.trim();
