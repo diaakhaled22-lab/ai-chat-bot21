@@ -62,7 +62,10 @@ export const LogoutResponse = zod.unknown()
 export const GetMeResponse = zod.object({
   "role": zod.enum(['admin', 'client']),
   "name": zod.string(),
-  "id": zod.number().nullish()
+  "id": zod.number().nullish(),
+  "username": zod.string().optional(),
+  "notificationEmail": zod.string().nullish(),
+  "resendApiKey": zod.string().nullish()
 })
 
 
@@ -906,7 +909,8 @@ export const UpdateClientSettingsBody = zod.object({
   "currentPassword": zod.string().optional(),
   "newPassword": zod.string().nullish(),
   "newUsername": zod.string().nullish(),
-  "notificationEmail": zod.string().nullish()
+  "notificationEmail": zod.string().nullish(),
+  "resendApiKey": zod.string().nullish()
 })
 
 export const UpdateClientSettingsResponse = zod.unknown()

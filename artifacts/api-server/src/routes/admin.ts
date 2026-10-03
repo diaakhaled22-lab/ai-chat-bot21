@@ -19,7 +19,7 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
-import { getAttackMonitoringSnapshot, maskApiKey, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification } from "../lib/email";
 import { notifySubscriptionActivated } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
@@ -460,6 +460,7 @@ router.get("/admin/companies", async (req, res) => {
         myId: company.myId ?? null,
         name: company.name,
         notificationEmail: company.notificationEmail ?? null,
+        resendApiKey: maskApiKey(company.resendApiKey),
         generalInfo: company.generalInfo,
         isActive: company.isActive,
         activationStart: company.activationStart?.toISOString() ?? null,
@@ -573,6 +574,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       myId: company.myId ?? null,
       name: company.name,
       notificationEmail: company.notificationEmail ?? null,
+      resendApiKey: maskApiKey(company.resendApiKey),
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       activationStart: company.activationStart?.toISOString() ?? null,
@@ -614,11 +616,12 @@ router.patch("/admin/companies/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-    const { myId, securityPrompt, systemPrompt, notificationEmail } = req.body as {
+    const { myId, securityPrompt, systemPrompt, notificationEmail, resendApiKey } = req.body as {
       myId?: string | null;
       securityPrompt?: string | null;
       systemPrompt?: string | null;
       notificationEmail?: string | null;
+      resendApiKey?: string | null;
     };
     // Basic length validation
     if (myId && typeof myId === 'string' && myId.length > 255) {
@@ -638,6 +641,10 @@ router.patch("/admin/companies/:id", async (req, res) => {
     if (securityPrompt !== undefined) updateValues.securityPrompt = securityPrompt;
     if (systemPrompt !== undefined) updateValues.systemPrompt = systemPrompt;
     if (notificationEmail !== undefined) updateValues.notificationEmail = notificationEmail ? notificationEmail.trim() : null;
+    if (resendApiKey !== undefined) {
+      const [existing] = await db.select({ resendApiKey: companiesTable.resendApiKey }).from(companiesTable).where(eq(companiesTable.id, id)).limit(1);
+      updateValues.resendApiKey = preserveMaskedSecret(resendApiKey, existing?.resendApiKey);
+    }
 
     const [row] = await db
       .update(companiesTable)
@@ -653,6 +660,7 @@ router.patch("/admin/companies/:id", async (req, res) => {
       myId: row.myId ?? null,
       name: row.name,
       notificationEmail: row.notificationEmail ?? null,
+      resendApiKey: maskApiKey(row.resendApiKey),
       isActive: row.isActive,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
@@ -767,6 +775,7 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
       myId: row.myId ?? null,
       name: row.name,
       notificationEmail: row.notificationEmail ?? null,
+      resendApiKey: maskApiKey(row.resendApiKey),
       generalInfo: row.generalInfo,
       isActive: row.isActive,
       activationStart: row.activationStart?.toISOString() ?? null,

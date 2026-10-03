@@ -68,6 +68,7 @@ router.get("/client/company", async (req, res) => {
       myId: company.myId ?? null,
       name: company.name,
       notificationEmail: company.notificationEmail ?? null,
+      resendApiKey: maskApiKey(company.resendApiKey),
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
@@ -310,6 +311,7 @@ router.post("/client/company", async (req, res) => {
         clientId: req.session.userId!,
         name: data.name,
         notificationEmail: (data as any).notificationEmail ? (data as any).notificationEmail.trim() : null,
+        resendApiKey: (data as any).resendApiKey ? (data as any).resendApiKey.trim() : null,
         generalInfo: data.generalInfo ?? null,
         isActive: false,
         systemPrompt: data.systemPrompt ?? null,
@@ -355,6 +357,7 @@ router.post("/client/company", async (req, res) => {
       myId: company.myId ?? null,
       name: company.name,
       notificationEmail: company.notificationEmail ?? null,
+      resendApiKey: maskApiKey(company.resendApiKey),
       generalInfo: company.generalInfo,
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
@@ -424,6 +427,9 @@ router.put("/client/company", async (req, res) => {
     if (data.name !== undefined) updates.name = data.name;
     if ((data as any).notificationEmail !== undefined) {
       updates.notificationEmail = (data as any).notificationEmail ? (data as any).notificationEmail.trim() : null;
+    }
+    if ((data as any).resendApiKey !== undefined) {
+      updates.resendApiKey = preserveMaskedSecret((data as any).resendApiKey, existingCompany.resendApiKey);
     }
     if (data.generalInfo !== undefined) updates.generalInfo = data.generalInfo;
     if (data.systemPrompt !== undefined) updates.systemPrompt = data.systemPrompt;
@@ -1275,7 +1281,7 @@ router.put("/client/settings", async (req, res) => {
       res.status(400).json({ error: "Invalid input" });
       return;
     }
-    const { currentPassword, newPassword, newUsername, notificationEmail } = parsed.data as any;
+    const { currentPassword, newPassword, newUsername, notificationEmail, resendApiKey } = parsed.data as any;
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!));
     if (!user) {
@@ -1309,14 +1315,31 @@ router.put("/client/settings", async (req, res) => {
       changes.push("password changed");
     }
 
-    // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Save notification email if provided
+    // Save notification email if provided
     if (notificationEmail !== undefined) {
-      updates.notificationEmail = notificationEmail === "" ? null : notificationEmail;
-      if (notificationEmail && notificationEmail !== user.notificationEmail) {
-        changes.push(`notification email set to "${notificationEmail}"`);
+      const trimmedEmail = notificationEmail === "" ? null : notificationEmail.trim();
+      updates.notificationEmail = trimmedEmail;
+      await db
+        .update(companiesTable)
+        .set({ notificationEmail: trimmedEmail })
+        .where(eq(companiesTable.clientId, req.session.userId!));
+
+      if (trimmedEmail && trimmedEmail !== user.notificationEmail) {
+        changes.push(`notification email set to "${trimmedEmail}"`);
         const { sendClientNotification } = require('../lib/email');
-        sendClientNotification(notificationEmail, 'Email Notifications Enabled', 'Your email has been successfully linked to your Bot Manager account. You will now receive alerts here.').catch((e: any) => logger.error({err: e}, 'Failed to send confirmation email'));
+        sendClientNotification(trimmedEmail, 'Email Notifications Enabled', 'Your email has been successfully linked to your Bot Manager account. You will now receive alerts here.').catch((e: any) => logger.error({err: e}, 'Failed to send confirmation email'));
       }
+    }
+
+    // Save RESEND_API_KEY secret if provided
+    if (resendApiKey !== undefined) {
+      const trimmedKey = resendApiKey === "" ? null : resendApiKey.trim();
+      updates.resendApiKey = trimmedKey;
+      changes.push(`Resend API key ${trimmedKey ? "updated" : "removed"}`);
+      await db
+        .update(companiesTable)
+        .set({ resendApiKey: trimmedKey })
+        .where(eq(companiesTable.clientId, req.session.userId!));
     }
 
     if (Object.keys(updates).length > 0) {

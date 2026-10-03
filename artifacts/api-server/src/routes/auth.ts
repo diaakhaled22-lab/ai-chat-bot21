@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db, usersTable, passwordResetTokensTable } from "@workspace/db";
+import { db, usersTable, passwordResetTokensTable, companiesTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
@@ -347,6 +347,7 @@ router.get("/auth/me", async (req, res) => {
         username: usersTable.username,
         role: usersTable.role,
         notificationEmail: usersTable.notificationEmail,
+        resendApiKey: usersTable.resendApiKey,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId))
@@ -357,12 +358,36 @@ router.get("/auth/me", async (req, res) => {
       return;
     }
 
+    let notificationEmail = user.notificationEmail ?? "";
+    let resendApiKey = user.resendApiKey ?? "";
+
+    if (user.role === "client") {
+      const [comp] = await db
+        .select({
+          notificationEmail: companiesTable.notificationEmail,
+          resendApiKey: companiesTable.resendApiKey,
+        })
+        .from(companiesTable)
+        .where(eq(companiesTable.clientId, user.id))
+        .limit(1);
+
+      if (comp) {
+        if (!notificationEmail && comp.notificationEmail) {
+          notificationEmail = comp.notificationEmail;
+        }
+        if (!resendApiKey && comp.resendApiKey) {
+          resendApiKey = comp.resendApiKey;
+        }
+      }
+    }
+
     res.json({
       role: user.role,
       name: user.name,
       username: user.username,
       id: user.id,
-      notificationEmail: user.notificationEmail ?? "",
+      notificationEmail,
+      resendApiKey,
     });
   } catch (err) {
     logger.error({ err }, "Get me error");

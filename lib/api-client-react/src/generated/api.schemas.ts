@@ -54,6 +54,9 @@ export interface SessionUser {
   name: string;
   /** @nullable */
   id?: number | null;
+  username?: string;
+  notificationEmail?: string | null;
+  resendApiKey?: string | null;
 }
 
 export interface AdminStats {
@@ -495,6 +498,8 @@ export interface ClientSettingsInput {
   newUsername?: string | null;
   /** @nullable */
   notificationEmail?: string | null;
+  /** @nullable */
+  resendApiKey?: string | null;
 }
 
 export type WebhookMessageInputChannel = typeof WebhookMessageInputChannel[keyof typeof WebhookMessageInputChannel];

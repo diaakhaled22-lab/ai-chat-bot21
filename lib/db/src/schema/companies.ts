@@ -11,6 +11,7 @@ export const companiesTable = pgTable("companies", {
   myId: text("my_id"),
   generalInfo: text("general_info"),
   notificationEmail: text("notification_email"),
+  resendApiKey: encryptedText("resend_api_key"),
   isActive: boolean("is_active").notNull().default(false),
   activationStart: timestamp("activation_start", { withTimezone: true }),
   activationEnd: timestamp("activation_end", { withTimezone: true }),

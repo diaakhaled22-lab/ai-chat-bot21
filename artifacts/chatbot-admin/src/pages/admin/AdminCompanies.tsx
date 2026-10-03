@@ -44,6 +44,7 @@ type Company = {
   clientName?: string | null;
   clientId: number;
   notificationEmail?: string | null;
+  resendApiKey?: string | null;
   isActive: boolean;
   activationStart?: string | null;
   activationEnd?: string | null;
@@ -1422,9 +1423,9 @@ export default function AdminCompanies() {
                 </Button>
               </div>
 
-              {/* Company Notification Email */}
-              <div className="bg-muted/30 rounded-xl p-4 border border-border flex items-center justify-between">
-                <div>
+              {/* Company Notification Email & Secret Resend Key */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-muted/30 rounded-xl p-4 border border-border">
                   <p className="text-xs text-muted-foreground mb-0.5">Notification Email (Client Alerts)</p>
                   <p className="text-sm font-semibold">
                     {viewCompany.notificationEmail ? (
@@ -1434,7 +1435,20 @@ export default function AdminCompanies() {
                     )}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Receives all 13 critical client events: messages, leads, orders, forms, support requests, malfunctions, subscription & quota alerts.
+                    Receives all 13 critical client event alerts.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-xl p-4 border border-border">
+                  <p className="text-xs text-muted-foreground mb-0.5">Secret Resend API Key</p>
+                  <p className="text-sm font-semibold">
+                    {viewCompany.resendApiKey ? (
+                      <span className="text-emerald-500 font-mono">Configured (Encrypted)</span>
+                    ) : (
+                      <span className="text-muted-foreground italic font-normal">Using Platform Default</span>
+                    )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Dedicated API key for company emails.
                   </p>
                 </div>
               </div>

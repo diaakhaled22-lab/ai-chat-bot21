@@ -178,6 +178,16 @@ export function maskApiKey(key: string | null | undefined): string {
   return `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}`;
 }
 
+export function preserveMaskedSecret(
+  nextValue: string | null | undefined,
+  existingValue: string | null | undefined,
+): string | null | undefined {
+  if (nextValue !== undefined && existingValue && nextValue === maskApiKey(existingValue)) {
+    return existingValue;
+  }
+  return nextValue;
+}
+
 /**
  * Given a company row, returns a sanitized version with all sensitive keys masked.
  */
@@ -188,6 +198,7 @@ export function maskCompanySecrets(company: Record<string, unknown>): Record<str
     "telegramBotApiKey",
     "whatsappApiToken",
     "messengerApiKey",
+    "resendApiKey",
   ];
 
   const result = { ...company };

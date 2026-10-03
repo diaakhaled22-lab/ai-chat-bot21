@@ -130,6 +130,7 @@ type AiProvider = keyof typeof AI_PROVIDERS;
 const formSchema = z.object({
   name: z.string().min(2, "Company name is required"),
   notificationEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  resendApiKey: z.string().optional().or(z.literal("")),
   generalInfo: z.string().optional(),
   systemPrompt: z.string().optional(),
     
@@ -473,6 +474,7 @@ export default function ClientCompany() {
     defaultValues: {
       name: "",
       notificationEmail: "",
+      resendApiKey: "",
       generalInfo: "",
       systemPrompt: "",
         
@@ -494,6 +496,7 @@ export default function ClientCompany() {
       form.reset({
         name: company.name || "",
         notificationEmail: company.notificationEmail || "",
+        resendApiKey: (company as any).resendApiKey || "",
         generalInfo: company.generalInfo || "",
         systemPrompt: company.systemPrompt || "",
           
@@ -547,6 +550,7 @@ export default function ClientCompany() {
     const data = {
       ...values,
       notificationEmail: values.notificationEmail?.trim() || null,
+      resendApiKey: (values as any).resendApiKey?.trim() || null,
       googleSheetsLink: values.googleSheetsLink || null,
       googleSheetsName: values.googleSheetsName || null,
       googleSheetsPage: values.googleSheetsPage || null,
@@ -856,31 +860,58 @@ export default function ClientCompany() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="notificationEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {lang === "ar" ? "بريد إشعارات الشركة" : "Company Notification Email"}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="notifications@company.com"
-                        {...field}
-                        className="bg-background"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {lang === "ar"
-                        ? "البريد الإلكتروني المخصص للشركة لاستلام تنبيهات الأحداث الفورية (الرسائل الجديدة، المحادثات، الطلبات، العملاء المحتملين، نماذج التواصل، تنبيهات الحصة والاشتراك)."
-                        : "Company's dedicated email address for instant event alerts (new messages, conversations, orders, leads, contact forms, quota & subscription alerts)."}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="notificationEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {lang === "ar" ? "بريد إشعارات الشركة (Gmail)" : "Company Notification Email (Gmail)"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="notifications@company.com"
+                          {...field}
+                          className="bg-background"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {lang === "ar"
+                          ? "استلام تنبيهات الأحداث الفورية (الرسائل، المحادثات، الطلبات، النماذج، إلخ)."
+                          : "Company's dedicated email address for instant event alerts."}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="resendApiKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {lang === "ar" ? "المفتاح السري (RESEND_API_KEY)" : "Secret (RESEND_API_KEY)"}
+                      </FormLabel>
+                      <FormControl>
+                        <PasswordInput
+                          placeholder="re_xxxxxxxxxxxxxxxxx"
+                          {...field}
+                          className="bg-background font-mono text-xs"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {lang === "ar"
+                          ? "مفتاح API الخاص بحساب Resend لإرسال الإشعارات إلى بريدك."
+                          : "Custom Resend API key for sending company email alerts."}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="generalInfo"

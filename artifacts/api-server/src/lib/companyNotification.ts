@@ -11,6 +11,8 @@ export async function ensureEmailNotificationSchema(): Promise<void> {
     if (!pool) return;
     await pool.query(`
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS notification_email text;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS resend_api_key text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key text;
     `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS email_logs (
@@ -33,10 +35,10 @@ export async function ensureEmailNotificationSchema(): Promise<void> {
 
 /**
  * Retrieves the Resend API key and sender email address.
- * Looks in process.env first, then in adminConfigTable.
+ * Prioritizes company/client-provided secret, then process.env, then adminConfigTable.
  */
-async function getResendConfig(): Promise<{ apiKey: string; fromEmail: string }> {
-  let apiKey = process.env.RESEND_API_KEY || "";
+async function getResendConfig(companyResendKey?: string | null): Promise<{ apiKey: string; fromEmail: string }> {
+  let apiKey = companyResendKey?.trim() || process.env.RESEND_API_KEY || "";
   let fromEmail = process.env.RESEND_FROM_EMAIL || "";
 
   if (!apiKey || !fromEmail) {
@@ -246,13 +248,14 @@ export async function sendCompanyNotification(
       return { ok: false, error: "Invalid companyId" };
     }
 
-    // 1. Fetch company and its notificationEmail
+    // 1. Fetch company and its notificationEmail & custom Resend API key
     const [company] = await db
       .select({
         id: companiesTable.id,
         name: companiesTable.name,
         clientId: companiesTable.clientId,
         notificationEmail: companiesTable.notificationEmail,
+        resendApiKey: companiesTable.resendApiKey,
       })
       .from(companiesTable)
       .where(eq(companiesTable.id, companyId))
@@ -307,8 +310,8 @@ export async function sendCompanyNotification(
       return { ok: false, error: "No notification email configured" };
     }
 
-    // 2. Fetch Resend credentials
-    const { apiKey, fromEmail } = await getResendConfig();
+    // 2. Fetch Resend credentials (custom company key prioritized)
+    const { apiKey, fromEmail } = await getResendConfig(company.resendApiKey);
 
     if (!apiKey) {
       const errorMsg = "RESEND_API_KEY is not configured (check environment variables or admin settings)";

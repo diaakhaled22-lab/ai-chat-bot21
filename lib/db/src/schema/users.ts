@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { encryptedText } from "../encryption";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -9,6 +10,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: text("role", { enum: ["admin", "client"] }).notNull().default("client"),
   notificationEmail: text("notification_email"),
+  resendApiKey: encryptedText("resend_api_key"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
