@@ -190,6 +190,12 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
           await assertCompanyQuotaNotExceeded(company);
           aiConfig = await resolveCompanyAi(company);
         } catch (configErr: any) {
+          void reportSystemMalfunction(
+            `AI Unavailable for ${company.name} (Messenger)`,
+            configErr?.message || "AI configuration failed or token quota not allocated",
+            company.id,
+            configErr
+          );
           await sendMessengerMessage(company.messengerApiKey, senderId, localizedChannelMessage(
             userText,
             "نعتذر، المساعد الذكي غير متاح حالياً. يرجى التواصل مع فريق خدمة العملاء مباشرة.",
@@ -234,7 +240,23 @@ router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
             return;
           }
 
-    let rawReply = await callAI(company, userText, history, aiConfig);
+    let rawReply: string;
+    try {
+      rawReply = await callAI(company, userText, history, aiConfig);
+    } catch (aiErr: any) {
+      void reportSystemMalfunction(
+        `Messenger AI Generation Error: ${company.name}`,
+        aiErr?.message || "Failed to generate AI response",
+        company.id,
+        aiErr
+      );
+      await sendMessengerMessage(company.messengerApiKey, senderId, localizedChannelMessage(
+        userText,
+        "نعتذر، حدث خطأ في معالجة الرد الذكي. يرجى المحاولة مرة أخرى لاحقاً.",
+        "We apologize, an error occurred while generating the AI response. Please try again later.",
+      ));
+      continue;
+    }
     const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
     const { cleanResponse, metrics } = extractMetrics(tempResponse);
     
@@ -455,6 +477,12 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
           await assertCompanyQuotaNotExceeded(company);
           aiConfig = await resolveCompanyAi(company);
         } catch (configErr: any) {
+          void reportSystemMalfunction(
+            `AI Unavailable for ${company.name} (Custom Messenger)`,
+            configErr?.message || "AI configuration failed or token quota not allocated",
+            company.id,
+            configErr
+          );
           await sendMessengerMessage(company.messengerApiKey, senderId, localizedChannelMessage(
             userText,
             "نعتذر، المساعد الذكي غير متاح حالياً. يرجى التواصل مع فريق خدمة العملاء مباشرة.",
@@ -495,7 +523,23 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
             return;
           }
 
-        let rawReply = await callAI(company, userText, history, aiConfig);
+        let rawReply: string;
+        try {
+          rawReply = await callAI(company, userText, history, aiConfig);
+        } catch (aiErr: any) {
+          void reportSystemMalfunction(
+            `Custom Messenger AI Generation Error: ${company.name}`,
+            aiErr?.message || "Failed to generate AI response",
+            company.id,
+            aiErr
+          );
+          await sendMessengerMessage(company.messengerApiKey, senderId, localizedChannelMessage(
+            userText,
+            "نعتذر، حدث خطأ في معالجة الرد الذكي. يرجى المحاولة مرة أخرى لاحقاً.",
+            "We apologize, an error occurred while generating the AI response. Please try again later.",
+          ));
+          continue;
+        }
         const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
         const { cleanResponse, metrics } = extractMetrics(tempResponse);
         let aiReply = enforceResponseLanguage(cleanResponse, userText);

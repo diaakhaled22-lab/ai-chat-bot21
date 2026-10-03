@@ -5,6 +5,7 @@ import {
   notifyContactFormSubmission,
   notifyNewOrder,
 } from "../lib/companyNotification";
+import { reportSystemMalfunction } from "../lib/malfunctions";
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
@@ -121,6 +122,13 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       await assertCompanyQuotaNotExceeded(company);
       aiConfig = await resolveCompanyAi(company);
     } catch (configErr: any) {
+      reportSystemMalfunction(
+        `AI Unavailable for ${company.name}`,
+        configErr?.message || "AI configuration failed or token quota not allocated",
+        company.id,
+        configErr
+      ).catch((e) => logger.warn({ err: e }, "Failed to report malfunction"));
+
       res.status(503).json({
         error: localizedChannelMessage(
           message,
@@ -369,8 +377,15 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     ]);
 
     res.json({ response: aiReply });
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err }, "Widget chat error");
+    reportSystemMalfunction(
+      "Widget Chatbot Error",
+      err?.message || "Failed to generate AI chatbot response",
+      undefined,
+      err
+    ).catch((e) => logger.warn({ err: e }, "Failed to report malfunction"));
+
     const message = typeof req.body?.message === "string" ? req.body.message : "";
     res.status(500).json({
       error: localizedChannelMessage(
