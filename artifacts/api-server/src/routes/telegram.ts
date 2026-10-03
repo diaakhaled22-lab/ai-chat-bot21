@@ -131,12 +131,12 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     let isVoice = false;
 
     const [foundCompany] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
-    company = foundCompany;
-
-    if (!company) {
+    if (!foundCompany) {
       logger.warn({ secret: secret.slice(0, 8) }, "Telegram webhook: no company matched");
       return;
     }
+    company = foundCompany;
+    const currentCompany = foundCompany;
 
     if (!userText && (message.voice || message.audio)) {
       try {
@@ -191,9 +191,9 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
 
     if (!priorLogs || priorLogs.length === 0) {
       notifyNewConversation(
-        { id: company.id, name: company.name },
+        { id: currentCompany.id, name: currentCompany.name },
         { channel: "telegram", sessionId, initialMessage: userText }
-      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Telegram new conversation email failed"));
+      ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Telegram new conversation email failed"));
     }
 
     const history: { role: "user" | "assistant"; content: string }[] = [];
@@ -300,7 +300,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
 
         // Event 3: New lead
         notifyNewLead(
-          { id: company.id, name: company.name },
+          { id: currentCompany.id, name: currentCompany.name },
           {
             name: leadData.name || null,
             email: leadData.email || null,
@@ -309,7 +309,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
             channel: "telegram",
             sessionId,
           }
-        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Telegram new lead email failed"));
+        ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Telegram new lead email failed"));
       }
     }
 
@@ -328,7 +328,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
 
     if (isOrderDetected) {
       notifyNewOrder(
-        { id: company.id, name: company.name },
+        { id: currentCompany.id, name: currentCompany.name },
         {
           customerName: leadData?.name || null,
           customerEmail: leadData?.email || null,
@@ -337,7 +337,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
           notes: `Detected via Telegram chat (${sessionId})`,
           channel: "telegram",
         }
-      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Telegram new order email failed"));
+      ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Telegram new order email failed"));
     }
 
     await db.insert(chatLogsTable).values({

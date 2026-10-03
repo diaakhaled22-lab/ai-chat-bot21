@@ -443,12 +443,14 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
     };
 
     const companies = await db.select().from(companiesTable);
-    company = companies.find(c => c.messengerPageId === pageId);
+    const foundCompany = companies.find(c => c.messengerPageId === pageId);
 
-    if (!company) {
+    if (!foundCompany) {
       logger.warn({ pageId }, "Messenger webhook: no company matched page ID");
       return;
     }
+    company = foundCompany;
+    const currentCompany = foundCompany;
 
     if (!company.messengerApiKey) {
       logger.warn({ pageId, companyId: company.id }, "Messenger webhook: company has no Page Access Token");
@@ -500,9 +502,9 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
 
         if (!priorLogs || priorLogs.length === 0) {
           notifyNewConversation(
-            { id: company.id, name: company.name },
+            { id: currentCompany.id, name: currentCompany.name },
             { channel: "messenger", sessionId, initialMessage: userText }
-          ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom Messenger new conversation email failed"));
+          ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom Messenger new conversation email failed"));
         }
 
         const history: { role: "user" | "assistant"; content: string }[] = [];
@@ -612,7 +614,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
 
         // Event 3: New lead
         notifyNewLead(
-          { id: company.id, name: company.name },
+          { id: currentCompany.id, name: currentCompany.name },
           {
             name: leadData.name || null,
             email: leadData.email || null,
@@ -621,7 +623,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
             channel: "messenger",
             sessionId,
           }
-        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom Messenger new lead email failed"));
+        ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom Messenger new lead email failed"));
       }
     }
 
@@ -634,7 +636,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
 
     if (isOrderDetected) {
       notifyNewOrder(
-        { id: company.id, name: company.name },
+        { id: currentCompany.id, name: currentCompany.name },
         {
           customerName: leadData?.name || null,
           customerEmail: leadData?.email || null,
@@ -643,7 +645,7 @@ router.post("/messenger/webhook/:pageId", async (req, res) => {
           notes: `Detected via Custom Messenger chat (${sessionId})`,
           channel: "messenger",
         }
-      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom Messenger new order email failed"));
+      ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom Messenger new order email failed"));
     }
 
         await db.insert(chatLogsTable).values({

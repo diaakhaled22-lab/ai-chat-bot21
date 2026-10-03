@@ -420,9 +420,11 @@ router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) =
     }
 
     // Save as lead
+    const formSessionId = `form_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     await db.insert(leadsTable).values({
       companyId: company.id,
       channel: channel || "website_contact_form",
+      sessionId: formSessionId,
       name: name || null,
       email: email || null,
       phone: phone || null,

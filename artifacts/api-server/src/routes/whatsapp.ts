@@ -495,12 +495,14 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
     };
 
     const companies = await db.select().from(companiesTable);
-    company = companies.find(c => c.whatsappPhoneNumberId === phoneNumberId);
+    const foundCompany = companies.find(c => c.whatsappPhoneNumberId === phoneNumberId);
 
-    if (!company) {
+    if (!foundCompany) {
       logger.warn({ phoneNumberId }, "WhatsApp webhook: no company matched phone number ID");
       return;
     }
+    company = foundCompany;
+    const currentCompany = foundCompany;
 
     if (!company.whatsappApiToken) {
       logger.warn({ phoneNumberId, companyId: company.id }, "WhatsApp webhook: company has no API token");
@@ -570,9 +572,9 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
 
           if (!priorLogs || priorLogs.length === 0) {
             notifyNewConversation(
-              { id: company.id, name: company.name },
+              { id: currentCompany.id, name: currentCompany.name },
               { channel: "whatsapp", sessionId, initialMessage: userText }
-            ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom WhatsApp new conversation email failed"));
+            ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom WhatsApp new conversation email failed"));
           }
 
           const history: { role: "user" | "assistant"; content: string }[] = [];
@@ -682,7 +684,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
 
         // Event 3: New lead
         notifyNewLead(
-          { id: company.id, name: company.name },
+          { id: currentCompany.id, name: currentCompany.name },
           {
             name: leadData.name || null,
             email: leadData.email || null,
@@ -691,7 +693,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
             channel: "whatsapp",
             sessionId,
           }
-        ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom WhatsApp new lead email failed"));
+        ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom WhatsApp new lead email failed"));
       }
     }
 
@@ -704,7 +706,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
 
     if (isOrderDetected) {
       notifyNewOrder(
-        { id: company.id, name: company.name },
+        { id: currentCompany.id, name: currentCompany.name },
         {
           customerName: leadData?.name || null,
           customerEmail: leadData?.email || null,
@@ -713,7 +715,7 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           notes: `Detected via Custom WhatsApp chat (${sessionId})`,
           channel: "whatsapp",
         }
-      ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Custom WhatsApp new order email failed"));
+      ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom WhatsApp new order email failed"));
     }
 
           await db.insert(chatLogsTable).values({
