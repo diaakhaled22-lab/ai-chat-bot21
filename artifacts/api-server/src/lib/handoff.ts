@@ -3,7 +3,7 @@ import { eq, and, sql, type InferSelectModel } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "./logger";
 import { sendClientNotification } from "./email";
-import { chatLogsTable, notificationsTable, usersTable } from "@workspace/db";
+import { chatLogsTable, notificationsTable, usersTable, companiesTable } from "@workspace/db";
 
 export const WAITING_LIST_RESPONSE_AR = "سيتم وضعك في قائمة الانتظار.";
 export const WAITING_LIST_RESPONSE_EN = "You will be placed on the waiting list.";
@@ -98,9 +98,19 @@ export async function triggerHandoffNotification(company: { id: number, clientId
     const title = `New Human Handoff Request (${channel})`;
     const message = `A customer on ${channel} wants to speak with a human agent. Please check the Universal Chat.\nSession: ${sessionId}`;
 
-    if (company.clientId) {
+    let clientId = company.clientId;
+    if (!clientId) {
+      const [comp] = await db
+        .select({ clientId: companiesTable.clientId })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, company.id))
+        .limit(1);
+      clientId = comp?.clientId ?? null;
+    }
+
+    if (clientId) {
       await db.insert(notificationsTable).values({
-        userId: company.clientId,
+        userId: clientId,
         type: "handoff_request",
         title,
         message,
@@ -109,11 +119,16 @@ export async function triggerHandoffNotification(company: { id: number, clientId
       });
     }
 
-    // Send email notification to the company's notification email (company.notificationEmail)
-    notifyCustomerServiceRequest(
+    // Send email notification to the company's notification email (company.notificationEmail / usersTable.notificationEmail)
+    const emailResult = await notifyCustomerServiceRequest(
       { id: company.id, name: company.name },
       { channel, sessionId }
-    ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Handoff email failed"));
+    );
+    if (!emailResult?.ok) {
+      logger.warn({ companyId: company.id, error: emailResult?.error }, "Customer service request email notification was not sent");
+    } else {
+      logger.info({ companyId: company.id, resendId: emailResult.id }, "Customer service request email notification delivered via Resend");
+    }
   } catch (err) {
     logger.error({ err, companyId: company.id }, "Failed to trigger handoff notification");
   }
@@ -133,7 +148,17 @@ export async function triggerNewMessageNotification(company: { id: number, clien
     const snippet = customerMessage.length > 50 ? customerMessage.substring(0, 50) + "..." : customerMessage;
     const sessionTag = sessionId ? sessionId.substring(0, 8) : "";
     
-    if (company.clientId) {
+    let clientId = company.clientId;
+    if (!clientId) {
+      const [comp] = await db
+        .select({ clientId: companiesTable.clientId })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, company.id))
+        .limit(1);
+      clientId = comp?.clientId ?? null;
+    }
+
+    if (clientId) {
       // Check if an unread notification for this exact session exists
       const [existing] = await db
         .select({ id: notificationsTable.id })
@@ -159,7 +184,7 @@ export async function triggerNewMessageNotification(company: { id: number, clien
           .where(eq(notificationsTable.id, existing.id));
       } else {
         await db.insert(notificationsTable).values({
-          userId: company.clientId,
+          userId: clientId,
           type: 'new_message',
           title,
           message: `[${sessionTag}] ${snippet}`,

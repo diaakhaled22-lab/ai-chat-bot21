@@ -1,4 +1,4 @@
-import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, pool } from "@workspace/db";
+import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, usersTable, pool } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -13,6 +13,7 @@ export async function ensureEmailNotificationSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS notification_email text;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS resend_api_key text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email text;
     `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS email_logs (
@@ -286,7 +287,73 @@ export async function sendCompanyNotification(
       }
     }
 
-    const recipient = company.notificationEmail?.trim();
+    let recipient = company.notificationEmail?.trim();
+    let companyResendKey = company.resendApiKey?.trim();
+
+    // 1a. If company lacks notificationEmail or resendApiKey, fall back to owner user in usersTable
+    if ((!recipient || !companyResendKey) && company.clientId) {
+      try {
+        const [owner] = await db
+          .select({
+            notificationEmail: usersTable.notificationEmail,
+            resendApiKey: usersTable.resendApiKey,
+          })
+          .from(usersTable)
+          .where(eq(usersTable.id, company.clientId))
+          .limit(1);
+
+        if (owner) {
+          if (!recipient && owner.notificationEmail?.trim()) {
+            recipient = owner.notificationEmail.trim();
+          }
+          if (!companyResendKey && owner.resendApiKey?.trim()) {
+            companyResendKey = owner.resendApiKey.trim();
+          }
+        }
+      } catch (ownerErr) {
+        logger.warn({ ownerErr, clientId: company.clientId }, "Failed to fetch owner user notification settings");
+      }
+    }
+
+    // 1b. If still missing, check if any client user has configured notification credentials
+    if (!recipient || !companyResendKey) {
+      try {
+        const clientUsers = await db
+          .select({
+            notificationEmail: usersTable.notificationEmail,
+            resendApiKey: usersTable.resendApiKey,
+          })
+          .from(usersTable)
+          .where(eq(usersTable.role, "client"))
+          .limit(5);
+
+        for (const cu of clientUsers) {
+          if (!recipient && cu.notificationEmail?.trim()) {
+            recipient = cu.notificationEmail.trim();
+          }
+          if (!companyResendKey && cu.resendApiKey?.trim()) {
+            companyResendKey = cu.resendApiKey.trim();
+          }
+        }
+      } catch (clientErr) {
+        logger.warn({ clientErr }, "Failed to query client users for notification fallback");
+      }
+    }
+
+    // 1c. Two-way sync: backfill companiesTable so both tables are always in sync
+    if (recipient && !company.notificationEmail) {
+      db.update(companiesTable)
+        .set({ notificationEmail: recipient })
+        .where(eq(companiesTable.id, company.id))
+        .catch((e) => logger.warn({ err: e }, "Failed to backfill company.notificationEmail"));
+    }
+    if (companyResendKey && !company.resendApiKey) {
+      db.update(companiesTable)
+        .set({ resendApiKey: companyResendKey })
+        .where(eq(companiesTable.id, company.id))
+        .catch((e) => logger.warn({ err: e }, "Failed to backfill company.resendApiKey"));
+    }
+
     if (!recipient) {
       logger.info(
         { companyId, companyName: company.name },
@@ -311,7 +378,7 @@ export async function sendCompanyNotification(
     }
 
     // 2. Fetch Resend credentials (custom company key prioritized)
-    const { apiKey, fromEmail } = await getResendConfig(company.resendApiKey);
+    const { apiKey, fromEmail } = await getResendConfig(companyResendKey);
 
     if (!apiKey) {
       const errorMsg = "RESEND_API_KEY is not configured (check environment variables or admin settings)";

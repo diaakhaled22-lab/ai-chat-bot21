@@ -487,6 +487,16 @@ router.put("/client/company", async (req, res) => {
       return;
     }
 
+    // Two-way sync: also update usersTable notificationEmail and resendApiKey
+    if (updates.notificationEmail !== undefined || updates.resendApiKey !== undefined) {
+      const userUpdates: Record<string, unknown> = {};
+      if (updates.notificationEmail !== undefined) userUpdates.notificationEmail = updates.notificationEmail;
+      if (updates.resendApiKey !== undefined) userUpdates.resendApiKey = updates.resendApiKey;
+      if (Object.keys(userUpdates).length > 0 && req.session.userId) {
+        await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, req.session.userId)).catch(() => {});
+      }
+    }
+
     if (company.telegramBotApiKey && data.telegramBotApiKey !== undefined) {
       autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req));
       fetchAndStoreTelegramUsername(company.id, company.telegramBotApiKey);
@@ -1290,7 +1300,17 @@ router.put("/client/settings", async (req, res) => {
       return;
     }
 
-    if (currentPassword) {
+    if (newPassword || (newUsername && newUsername !== user.username)) {
+      if (!currentPassword) {
+        res.status(400).json({ error: "Current password is required to change username or password" });
+        return;
+      }
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) {
+        res.status(400).json({ error: "Current password is incorrect" });
+        return;
+      }
+    } else if (currentPassword) {
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!valid) {
         res.status(400).json({ error: "Current password is incorrect" });
@@ -1354,11 +1374,12 @@ router.put("/client/settings", async (req, res) => {
     // Save RESEND_API_KEY secret if provided
     if (resendApiKey !== undefined) {
       const trimmedKey = resendApiKey === "" ? null : resendApiKey.trim();
-      updates.resendApiKey = trimmedKey;
-      changes.push(`Resend API key ${trimmedKey ? "updated" : "removed"}`);
+      const resolvedKey = preserveMaskedSecret(trimmedKey, user.resendApiKey);
+      updates.resendApiKey = resolvedKey;
+      changes.push(`Resend API key ${resolvedKey ? "updated" : "removed"}`);
       await db
         .update(companiesTable)
-        .set({ resendApiKey: trimmedKey })
+        .set({ resendApiKey: resolvedKey })
         .where(eq(companiesTable.clientId, req.session.userId!));
     }
 
@@ -1468,6 +1489,24 @@ router.post("/client/send-test-notification", async (req, res) => {
     if (resendRes.ok) {
       const data = (await resendRes.json()) as { id?: string };
       logger.info({ recipient, fromEmail, resendId: data.id }, "Test notification email sent successfully");
+
+      // Auto-save verified email and Resend API key so automatic notifications work immediately
+      try {
+        const userUpdates: Record<string, any> = { notificationEmail: recipient };
+        if (customKey) userUpdates.resendApiKey = customKey;
+        await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, user.id));
+
+        const compUpdates: Record<string, any> = { notificationEmail: recipient };
+        if (customKey) compUpdates.resendApiKey = customKey;
+        if (company) {
+          await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.id, company.id));
+        } else {
+          await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.clientId, user.id));
+        }
+      } catch (saveErr) {
+        logger.warn({ err: saveErr }, "Could not auto-save verified notification settings during test");
+      }
+
       res.json({
         ok: true,
         id: data.id,

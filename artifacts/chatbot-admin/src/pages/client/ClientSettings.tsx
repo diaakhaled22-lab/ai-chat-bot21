@@ -15,10 +15,18 @@ import { useLanguage } from "@/hooks/use-language";
 
 const formSchema = z.object({
   newUsername: z.string().min(3, "Username must be at least 3 characters").optional().or(z.literal("")),
-  currentPassword: z.string().min(1, "Current password is required to save changes"),
+  currentPassword: z.string().optional().or(z.literal("")),
   newPassword: z.string().min(6, "New password must be at least 6 characters").optional().or(z.literal("")),
   notificationEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   resendApiKey: z.string().optional().or(z.literal("")),
+}).refine((data) => {
+  if ((data.newPassword || (data.newUsername && data.newUsername.trim())) && !data.currentPassword) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Current password is required to change username or password",
+  path: ["currentPassword"],
 });
 
 export default function ClientSettings() {
@@ -51,7 +59,8 @@ export default function ClientSettings() {
   }, [me, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const data: any = { currentPassword: values.currentPassword };
+    const data: any = {};
+    if (values.currentPassword?.trim()) data.currentPassword = values.currentPassword.trim();
     if (values.newUsername?.trim()) data.newUsername = values.newUsername.trim();
     if (values.newPassword) data.newPassword = values.newPassword;
     if (values.notificationEmail !== undefined) data.notificationEmail = values.notificationEmail.trim();
@@ -300,10 +309,10 @@ export default function ClientSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5" /> {t("label_current_password")} <span className="text-destructive">*</span>
+                        <Lock className="w-3.5 h-3.5" /> {t("label_current_password")}
                       </FormLabel>
                       <FormControl>
-                        <PasswordInput placeholder={lang === "ar" ? "مطلوبة لحفظ أي تغييرات" : "Required to save any change"} {...field} className="bg-background" />
+                        <PasswordInput placeholder={lang === "ar" ? "مطلوبة فقط عند تغيير اسم المستخدم أو كلمة المرور" : "Required only when changing username or password"} {...field} className="bg-background" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
