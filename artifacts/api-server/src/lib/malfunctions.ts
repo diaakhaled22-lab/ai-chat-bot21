@@ -72,6 +72,16 @@ export async function reportSystemMalfunction(title: string, description: string
           { title, description: finalDescription, rawError }
         ).catch((err) => logger.error({ err, companyId }, "Failed to send malfunction notification email"));
       }
+
+      // Also alert Admin notification bell icon and send email to admin recipient
+      const { sendMalfunctionNotification } = await import("./email");
+      sendMalfunctionNotification({
+        title,
+        description: finalDescription,
+        source: "system",
+        companyId,
+        companyName: company?.name,
+      }).catch((err) => logger.error({ err }, "Failed to send admin malfunction notification"));
     } else {
       // Global malfunction: notify active companies
       const activeCompanies = await db
@@ -85,6 +95,14 @@ export async function reportSystemMalfunction(title: string, description: string
           { title, description: finalDescription, rawError }
         ).catch(() => {});
       }
+
+      // Also alert Admin notification bell icon and send email to admin recipient
+      const { sendMalfunctionNotification } = await import("./email");
+      sendMalfunctionNotification({
+        title,
+        description: finalDescription,
+        source: "system",
+      }).catch((err) => logger.error({ err }, "Failed to send admin malfunction notification"));
     }
   } catch (err) {
     logger.error({ err }, "Failed to auto-report malfunction");

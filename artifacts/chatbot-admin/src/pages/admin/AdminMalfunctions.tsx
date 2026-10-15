@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { AlertTriangle, CheckCircle2, Check, User, Monitor, ShieldAlert, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Check, User, Monitor, ShieldAlert, Trash2, Plus } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,12 +16,43 @@ export default function AdminMalfunctions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [openCreate, setOpenCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+
   const { data: malfunctions, isLoading, isError } = useQuery<any[]>({
     queryKey: ["admin-malfunctions"],
     queryFn: () => customFetch("/api/admin/malfunctions"),
     refetchInterval: 15_000,
   });
 
+  const createMutation = useMutation({
+    mutationFn: (body: { title: string; description: string }) =>
+      customFetch("/api/admin/malfunctions", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-malfunctions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      setOpenCreate(false);
+      setNewTitle("");
+      setNewDescription("");
+      toast({
+        title: lang === "ar" ? "تم تسجيل العطل وإرسال الإشعار" : "Malfunction Reported",
+        description: lang === "ar"
+          ? "تم إرسال التنبيه إلى أيقونة الإشعارات وإلى البريد الإلكتروني بنجاح."
+          : "Notification sent to bell icon and admin email successfully.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        variant: "destructive",
+        title: lang === "ar" ? "خطأ" : "Error",
+        description: err?.message || (lang === "ar" ? "فشل تسجيل العطل" : "Failed to report malfunction"),
+      });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) =>
@@ -70,11 +105,61 @@ export default function AdminMalfunctions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
           <p className="text-muted-foreground mt-2">{desc}</p>
         </div>
+        <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+          <DialogTrigger asChild>
+            <Button className="shrink-0 flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              {lang === "ar" ? "تسجيل عطل جديد" : "Report Malfunction"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{lang === "ar" ? "تسجيل عطل جديد" : "Report New Malfunction"}</DialogTitle>
+              <DialogDescription>
+                {lang === "ar"
+                  ? "سيتم إرسال هذا العطل تلقائياً إلى أيقونة الإشعارات وإلى بريد الإشعارات المحدد."
+                  : "This issue will automatically be sent to the notification bell and admin email."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{lang === "ar" ? "عنوان العطل *" : "Title *"}</label>
+                <Input
+                  placeholder={lang === "ar" ? "مثال: توقف خدمة الواتساب مؤقتاً" : "e.g. WhatsApp service degraded"}
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{lang === "ar" ? "تفاصيل العطل *" : "Description *"}</label>
+                <Textarea
+                  placeholder={lang === "ar" ? "اكتب وصف المشكلة والخطوات الجاري اتخاذها..." : "Describe the issue and next steps..."}
+                  rows={4}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpenCreate(false)}>
+                {lang === "ar" ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                disabled={!newTitle.trim() || !newDescription.trim() || createMutation.isPending}
+                onClick={() => createMutation.mutate({ title: newTitle.trim(), description: newDescription.trim() })}
+              >
+                {createMutation.isPending
+                  ? (lang === "ar" ? "جاري الإرسال..." : "Sending...")
+                  : (lang === "ar" ? "تسجيل وإرسال الإشعار" : "Submit & Notify")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {isError && (

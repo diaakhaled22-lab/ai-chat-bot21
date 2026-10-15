@@ -20,7 +20,7 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
-import { sendClientNotification } from "../lib/email";
+import { sendClientNotification, sendMalfunctionNotification } from "../lib/email";
 import { notifySubscriptionActivated } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
 import { authenticator } from "otplib";
@@ -2260,6 +2260,15 @@ router.post("/admin/malfunctions", async (req, res) => {
       source: "admin",
       isActive: true,
     }).returning();
+
+    // Trigger notification icon alert + email notification
+    sendMalfunctionNotification({
+      id: result[0].id,
+      title,
+      description,
+      source: "admin",
+    }).catch((err) => logger.error({ err }, "Failed to send malfunction notification"));
+
     res.json(result[0]);
   } catch (err) {
     logger.error({ err }, "Failed to create malfunction");

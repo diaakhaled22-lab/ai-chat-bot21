@@ -22,7 +22,7 @@ import { requireClient } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
-import { sendNewTicketNotification } from "../lib/email";
+import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded } from "../lib/supportAi";
@@ -2003,7 +2003,12 @@ router.get("/client/malfunctions", async (req, res) => {
 
 router.post("/client/malfunctions", async (req, res) => {
   try {
-    if (!(req.session as any).companyId) {
+    let companyId = (req.session as any).companyId;
+    if (!companyId && req.session.userId) {
+      const [comp] = await db.select({ id: companiesTable.id }).from(companiesTable).where(eq(companiesTable.clientId, req.session.userId)).limit(1);
+      if (comp) companyId = comp.id;
+    }
+    if (!companyId) {
       res.status(400).json({ error: "Company required to report malfunction" });
       return;
     }
@@ -2012,13 +2017,26 @@ router.post("/client/malfunctions", async (req, res) => {
       res.status(400).json({ error: "Missing title or description" });
       return;
     }
+    const [company] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+
     const result = await db.insert(malfunctionsTable).values({
-      companyId: (req.session as any).companyId,
+      companyId,
       title,
       description,
       source: "client",
       isActive: true,
     }).returning();
+
+    // Notify admin bell icon and admin recipient email
+    sendMalfunctionNotification({
+      id: result[0].id,
+      title,
+      description,
+      source: "client",
+      companyId,
+      companyName: company?.name,
+    }).catch((err) => logger.error({ err }, "Failed to send malfunction notification"));
+
     res.json(result[0]);
   } catch (err) {
     logger.error({ err }, "Failed to report malfunction from client");

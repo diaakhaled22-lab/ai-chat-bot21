@@ -295,3 +295,105 @@ export async function sendSecurityEventEmail(event: 'account_locked' | 'ip_block
   }
 }
 
+export async function sendMalfunctionNotification(input: {
+  id?: number;
+  title: string;
+  description: string;
+  source?: string;
+  companyId?: number | null;
+  companyName?: string;
+}) {
+  const notifTitle = input.companyName
+    ? `عطل جديد (${input.companyName}): ${input.title}`
+    : `عطل جديد: ${input.title}`;
+  const notifMessage = input.description;
+
+  // 1. Insert into notificationsTable for all admins so the notification bell icon alerts the admin
+  try {
+    const admins = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+
+    if (admins.length > 0) {
+      await db.insert(notificationsTable).values(
+        admins.map((admin) => ({
+          userId: admin.id,
+          type: "malfunction",
+          title: notifTitle,
+          message: notifMessage,
+          companyId: input.companyId ?? null,
+          isRead: false,
+        })),
+      );
+    }
+    logger.info({ adminCount: admins.length, title: input.title }, "Malfunction alert added to admin notifications bell");
+  } catch (err) {
+    logger.error({ err }, "Failed to add malfunction alert to admin notifications");
+  }
+
+  // 2. Send email via configured SMTP to Recipient Email (diaakhaled22@gmail.com)
+  try {
+    const cfg = await getEmailConfig();
+    if (!isEmailConfigured(cfg)) {
+      logger.warn("Malfunction recorded, but admin email notifications SMTP is not fully configured");
+      return;
+    }
+
+    const transporter = buildTransporter(cfg);
+    await transporter.sendMail({
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
+      to: cfg.recipientEmail,
+      subject: `🚨 [New Malfunction Reported] ${input.title}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:580px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
+          <div style="background:#dc2626;color:#ffffff;padding:16px 20px;border-radius:8px 8px 0 0;">
+            <h2 style="margin:0;font-size:18px;">⚠️ New Malfunction Reported | عطل جديد تم الإبلاغ عنه</h2>
+          </div>
+          <div style="background:#ffffff;padding:20px;border:1px solid #fee2e2;border-top:0;border-radius:0 0 8px 8px;">
+            <table style="width:100%;border-collapse:collapse;">
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">العنوان / Title:</span>
+                  <p style="margin:4px 0 0;font-size:15px;font-weight:600;color:#18181b;">${escapeHtml(input.title)}</p>
+                </td>
+              </tr>
+              ${input.companyName ? `
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">الشركة / Company:</span>
+                  <p style="margin:4px 0 0;font-size:14px;color:#18181b;">${escapeHtml(input.companyName)}</p>
+                </td>
+              </tr>
+              ` : ""}
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">المصدر / Source:</span>
+                  <p style="margin:4px 0 0;font-size:14px;color:#18181b;">${escapeHtml(input.source || "Client / System")}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">التفاصيل / Description:</span>
+                  <p style="margin:6px 0 0;color:#3f3f46;white-space:pre-wrap;line-height:1.6;font-size:14px;background:#f9fafb;padding:12px;border-radius:6px;border:1px solid #f3f4f6;">${escapeHtml(input.description)}</p>
+                </td>
+              </tr>
+            </table>
+
+            <div style="margin-top:24px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#71717a;">
+                Log in to Bot Manager Admin &gt; Malfunctions to review and resolve this issue.
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+
+    logger.info({ title: input.title, recipient: cfg.recipientEmail }, "Malfunction alert email sent to admin recipient successfully");
+  } catch (err) {
+    logger.error({ err }, "Failed to send malfunction alert email to admin recipient");
+  }
+}
+
+

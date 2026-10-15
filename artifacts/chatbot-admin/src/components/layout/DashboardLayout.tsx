@@ -116,6 +116,7 @@ function NotificationBell() {
 
   const reminders = notifications.filter((n) => n.type === "renewal_reminder");
   const securityAlerts = notifications.filter((n) => n.type === "security_alert");
+  const malfunctions = notifications.filter((n) => n.type === "malfunction");
   const unreadNotifications = notifications.filter((n) => !n.isRead).length;
   const totalBadge = openTicketCount + unreadNotifications;
 
@@ -257,12 +258,49 @@ function NotificationBell() {
             </div>
           )}
 
+          {/* Malfunctions section */}
+          {malfunctions.length > 0 && (
+            <div>
+              <div className="px-4 py-1.5 bg-rose-500/10">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">
+                  {lang === "ar" ? "بلاغات الأعطال" : "Reported Malfunctions"}
+                </span>
+              </div>
+              {malfunctions.slice(0, 5).map((n) => (
+                <div
+                  key={n.id}
+                  onClick={() => { setOpen(false); setLocation("/admin/malfunctions"); }}
+                  className={`w-full text-left px-4 py-3 hover:bg-rose-500/10 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-rose-500/5" : ""}`}
+                >
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight">{n.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
+                  </div>
+                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0 mt-1.5" />}
+                  <button
+                    type="button"
+                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMutation.mutate(n.id);
+                    }}
+                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Open tickets section */}
           <div>
             <div className="px-4 py-1.5 bg-muted/30">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("notif_customer_problems")}
-                {openTicketCount > 0 && <span className="ml-1 text-amber-400">Â· {openTicketCount} {t("notif_open")}</span>}
+                {openTicketCount > 0 && <span className="ml-1 text-amber-400">· {openTicketCount} {t("notif_open")}</span>}
               </span>
             </div>
             {ticketsFetching && tickets.length === 0 ? (
@@ -285,7 +323,7 @@ function NotificationBell() {
                         <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-xs text-muted-foreground truncate">{ticket.clientName}</span>
-                          <span className="text-muted-foreground/40 text-xs">Â·</span>
+                          <span className="text-muted-foreground/40 text-xs">·</span>
                           <span className="text-xs text-muted-foreground shrink-0">{timeAgo(ticket.createdAt)}</span>
                         </div>
                       </div>
@@ -296,7 +334,7 @@ function NotificationBell() {
             )}
           </div>
 
-          {reminders.length === 0 && securityAlerts.length === 0 && tickets.length === 0 && !ticketsFetching && (
+          {reminders.length === 0 && securityAlerts.length === 0 && malfunctions.length === 0 && tickets.length === 0 && !ticketsFetching && (
             <div className="flex flex-col items-center justify-center h-24 gap-2 text-muted-foreground">
               <CheckCircle2 className="w-7 h-7 opacity-20" />
               <p className="text-xs">{t("notif_no_notifications")}</p>
