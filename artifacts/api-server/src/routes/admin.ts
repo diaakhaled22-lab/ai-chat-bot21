@@ -20,7 +20,7 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
-import { sendClientNotification, sendMalfunctionNotification } from "../lib/email";
+import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
 import { notifySubscriptionActivated } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
 import { authenticator } from "otplib";
@@ -108,6 +108,19 @@ router.post("/admin/attack-monitoring/unblock", async (req, res) => {
   manualUnblockIp(ip);
   await logAdminActivity(req.session.userId!, "IP Unblocked", `Manually unblocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
+});
+
+// POST /admin/attack-monitoring/test-alert
+router.post("/admin/attack-monitoring/test-alert", async (req, res) => {
+  try {
+    const ip = req.ip || "127.0.0.1";
+    await sendSecurityEventEmail("failed_attempts_warning", ip, "admin_test", 3);
+    await logAdminActivity(req.session.userId!, "Test Security Alert", "Sent test security warning alert to admin bell and email", ip);
+    res.json({ ok: true, message: "Test security alert sent successfully" });
+  } catch (err: any) {
+    logger.error({ err }, "Failed to send test security alert");
+    res.status(500).json({ error: err.message || "Failed to send test alert" });
+  }
 });
 
 // GET /admin/usage-cost

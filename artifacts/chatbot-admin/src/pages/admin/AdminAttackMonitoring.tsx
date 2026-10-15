@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Ban, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff } from "lucide-react";
+import { Activity, AlertTriangle, Ban, Bell, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-type AttackEvent = "failed_attempt" | "account_locked" | "blocked_attempt" | "ip_blocked" | "manual_ip_blocked" | "ip_unblocked";
+type AttackEvent = "failed_attempt" | "warning_triggered" | "account_locked" | "blocked_attempt" | "ip_blocked" | "manual_ip_blocked" | "ip_unblocked";
 
 interface AttackLogEntry {
   id: number;
@@ -35,6 +35,7 @@ interface AttackMonitoringSnapshot {
     };
   };
   policy: {
+    warningThreshold?: number;
     maxFailedAttempts: number;
     failureWindowMinutes: number;
     accountLockoutMinutes: number;
@@ -44,6 +45,7 @@ interface AttackMonitoringSnapshot {
 
 const eventLabels: Record<AttackEvent, string> = {
   failed_attempt: "Failed attempt",
+  warning_triggered: "Warning alert sent",
   account_locked: "Account locked",
   blocked_attempt: "Blocked attempt",
   ip_blocked: "IP blocked",
@@ -60,6 +62,7 @@ function eventStyle(event: AttackEvent): string {
   if (event === "ip_blocked" || event === "manual_ip_blocked") return "text-red-400 border-red-500/30 bg-red-500/10";
   if (event === "ip_unblocked") return "text-green-400 border-green-500/30 bg-green-500/10";
   if (event === "account_locked") return "text-amber-400 border-amber-500/30 bg-amber-500/10";
+  if (event === "warning_triggered") return "text-yellow-400 border-yellow-500/30 bg-yellow-500/10";
   if (event === "blocked_attempt") return "text-orange-400 border-orange-500/30 bg-orange-500/10";
   return "text-muted-foreground border-border bg-muted/40";
 }
@@ -106,7 +109,30 @@ export default function AdminAttackMonitoring() {
     },
   });
 
+  const testAlertMutation = useMutation({
+    mutationFn: () =>
+      customFetch("/api/admin/attack-monitoring/test-alert", {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Test Alert Sent",
+        description: "Warning message sent to notification bell icon and admin recipient email.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to send alert",
+        description: err.message || "Failed to trigger test security alert",
+        variant: "destructive",
+      });
+    },
+  });
+
   const policy = data?.policy ?? {
+    warningThreshold: 3,
     maxFailedAttempts: 5,
     failureWindowMinutes: 5,
     accountLockoutMinutes: 15,
@@ -116,16 +142,28 @@ export default function AdminAttackMonitoring() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-          <ShieldAlert className="w-5 h-5 text-red-400" />
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+            <ShieldAlert className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Attack Monitoring</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Monitor failed login attempts, account lockouts, and suspicious IP activity.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Attack Monitoring</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monitor failed login attempts, account lockouts, and suspicious IP activity.
-          </p>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => testAlertMutation.mutate()}
+          disabled={testAlertMutation.isPending}
+        >
+          {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4 text-amber-500" />}
+          Send Test Security Alert
+        </Button>
       </div>
 
       {analytics?.spikeAlert.active && (
@@ -152,23 +190,12 @@ export default function AdminAttackMonitoring() {
         </Card>
         <Card className="bg-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Recorded failed attempts</CardTitle>
-            <Activity className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium truncate pr-2">Warning trigger</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{analytics?.totalFailedAttempts ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Failed attempts</CardTitle>
-            <Activity className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {policy.maxFailedAttempts}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">within {policy.failureWindowMinutes} minutes</p>
+            <div className="text-3xl font-bold">{policy.warningThreshold ?? 3} fails</div>
+            <p className="text-xs text-muted-foreground mt-1">Alerts bell & email</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border/50">
@@ -177,8 +204,8 @@ export default function AdminAttackMonitoring() {
             <Clock3 className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{policy.accountLockoutMinutes} min</div>
-            <p className="text-xs text-muted-foreground mt-1">Subsequent attempts blocked</p>
+            <div className="text-3xl font-bold">{policy.maxFailedAttempts} fails</div>
+            <p className="text-xs text-muted-foreground mt-1">Locks account for {policy.accountLockoutMinutes} min</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border/50">
@@ -189,6 +216,15 @@ export default function AdminAttackMonitoring() {
           <CardContent>
             <div className="text-3xl font-bold">IP Block</div>
             <p className="text-xs text-muted-foreground mt-1">after {policy.additionalAttemptsBeforeIpBlock} more attempts</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium truncate pr-2">Recorded failed attempts</CardTitle>
+            <Activity className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{analytics?.totalFailedAttempts ?? 0}</div>
           </CardContent>
         </Card>
       </div>

@@ -88,7 +88,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
-    resetLoginAttempts(username);
+    resetLoginAttempts(username, ip);
 
     const totpSecret = getTotpSecret(user.id);
     if (totpSecret) {
@@ -214,7 +214,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       return;
     }
 
-    resetLoginAttempts(username);
+    resetLoginAttempts(username, ip);
 
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);

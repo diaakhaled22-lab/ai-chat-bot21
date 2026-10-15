@@ -241,15 +241,49 @@ export async function sendAttackSpikeNotification(input: {
     logger.error({ err }, "Failed to send security alert email");
   }
 }
-export async function sendSecurityEventEmail(event: 'account_locked' | 'ip_blocked', ip: string, username: string, attempts: number) {
-  const title = event === 'account_locked' 
-    ? `Account Locked: ${username}` 
-    : `IP Blocked: ${ip}`;
-    
-  const message = event === 'account_locked'
-    ? `The account "${username}" was locked after ${attempts} failed login attempts from IP: ${ip}.`
-    : `The IP address ${ip} was automatically blocked after ${attempts} suspicious login attempts targeting "${username}".`;
+export type SecurityEventType = 'failed_attempts_warning' | 'account_locked' | 'ip_blocked';
 
+export async function sendSecurityEventEmail(
+  event: SecurityEventType,
+  ip: string,
+  username: string,
+  attempts: number,
+) {
+  let title: string;
+  let message: string;
+  let subjectBadge: string;
+  let alertHeaderBg: string;
+  let alertHeaderColor: string;
+  let alertTitleAr: string;
+  let alertSubtitleAr: string;
+
+  if (event === "failed_attempts_warning") {
+    title = `تحذير أمني: ${attempts} محاولات دخول فاشلة متتالية (${username})`;
+    message = `تم رصد ${attempts} محاولات تسجيل دخول فاشلة متتالية للحساب "${username}" من عنوان IP: ${ip}. يرجى مراجعة صفحة مراقبة الهجوم.`;
+    subjectBadge = "تحذير أمني";
+    alertHeaderBg = "#fef3c7";
+    alertHeaderColor = "#92400e";
+    alertTitleAr = "تحذير: محاولات تسجيل دخول فاشلة متتالية";
+    alertSubtitleAr = `تم رصد نشاط دخول مشبوه بعد ${attempts} محاولات متتالية`;
+  } else if (event === "account_locked") {
+    title = `تنبيه أمني: تم قفل الحساب (${username})`;
+    message = `تم قفل الحساب "${username}" مؤقتًا بعد وصول محاولات تسجيل الدخول الفاشلة إلى ${attempts} محاولات من عنوان IP: ${ip}.`;
+    subjectBadge = "قفل حساب";
+    alertHeaderBg = "#fee2e2";
+    alertHeaderColor = "#991b1b";
+    alertTitleAr = "تنبيه أمني: تم قفل الحساب مؤقتًا";
+    alertSubtitleAr = `تجاوز الحد الأقصى للمحاولات الفاشلة (${attempts} محاولات)`;
+  } else {
+    title = `تنبيه أمني: تم حظر عنوان IP (${ip})`;
+    message = `تم حظر عنوان IP: ${ip} تلقائيًا بعد ${attempts} محاولات مشبوهة استهدفت الحساب "${username}".`;
+    subjectBadge = "حظر IP";
+    alertHeaderBg = "#fee2e2";
+    alertHeaderColor = "#7f1d1d";
+    alertTitleAr = "تنبيه عاجل: تم حظر عنوان IP تلقائيًا";
+    alertSubtitleAr = "نشاط مشبوه متكرر استهدف خادم النظام";
+  }
+
+  // 1. Insert into notificationsTable for all admins so the notification bell icon pulses and increments
   try {
     const admins = await db
       .select({ id: usersTable.id })
@@ -267,29 +301,75 @@ export async function sendSecurityEventEmail(event: 'account_locked' | 'ip_block
           isRead: false,
         })),
       );
+      logger.info({ event, adminCount: admins.length }, "Security alert added to admin notification bell");
     }
   } catch (err) {
-    logger.error({ err }, "Failed to add specific security alert to admin notifications");
+    logger.error({ err }, "Failed to add security alert to admin notifications table");
   }
 
+  // 2. Dispatch email to configured recipient email (diaakhaled22@gmail.com) via SMTP
   try {
     const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) return;
+    if (!isEmailConfigured(cfg)) {
+      logger.warn({ recipient: cfg.recipientEmail }, "Security event email skipped: SMTP not fully configured");
+      return;
+    }
 
     const transporter = buildTransporter(cfg);
+    const dateStr = new Date().toLocaleString("ar-EG", { timeZone: "Africa/Cairo" });
+
     await transporter.sendMail({
-      from: `"Bot Manager" <${cfg.smtpUser}>`,
+      from: `"Bot Manager Security" <${cfg.smtpUser}>`,
       to: cfg.recipientEmail,
-      subject: `[Security Alert] ${title}`,
+      subject: `[${subjectBadge}] ${title}`,
       html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
-          <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
-          <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
-          <p style="margin:0;color:#450a0a;font-size:13px;">Open Bot Manager → Attack Monitoring to review and manage this incident.</p>
+        <div dir="rtl" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <div style="background-color: ${alertHeaderBg}; padding: 24px 20px; border-bottom: 2px solid ${alertHeaderColor}; text-align: center;">
+            <div style="font-size: 36px; line-height: 1; margin-bottom: 8px;">🛡️</div>
+            <h2 style="margin: 0; color: ${alertHeaderColor}; font-size: 20px; font-weight: 700;">${escapeHtml(alertTitleAr)}</h2>
+            <p style="margin: 6px 0 0; color: ${alertHeaderColor}; opacity: 0.9; font-size: 13px;">${escapeHtml(alertSubtitleAr)}</p>
+          </div>
+
+          <div style="padding: 24px 20px;">
+            <p style="font-size: 15px; color: #1f2937; line-height: 1.6; margin: 0 0 20px; font-weight: 500;">
+              ${escapeHtml(message)}
+            </p>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 14px;">
+              <tbody>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                  <td style="padding: 10px 12px; color: #6b7280; width: 40%; font-weight: 600;">اسم المستخدم المستهدف:</td>
+                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml(username)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                  <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">عنوان IP المصدر:</td>
+                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml(ip)}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                  <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">عدد المحاولات الفاشلة:</td>
+                  <td style="padding: 10px 12px; color: #dc2626; font-weight: bold;">${attempts} محاولات</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">توقيت الرصد:</td>
+                  <td style="padding: 10px 12px; color: #111827;">${escapeHtml(dateStr)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+              <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.5;">
+                ℹ️ <strong>الإجراء المقترح:</strong> يمكنك الدخول إلى لوحة تحكم المسؤول ثم التوجه إلى صفحة <strong>مراقبة الهجوم (Attack Monitoring)</strong> لعرض تفاصيل المحاولات أو حظر عنوان الـ IP يدويًا إذا تطلب الأمر.
+              </p>
+            </div>
+          </div>
+
+          <div style="background-color: #f9fafb; padding: 14px 20px; border-top: 1px solid #f3f4f6; text-align: center;">
+            <p style="margin: 0; font-size: 12px; color: #9ca3af;">نظام الحماية والأمان — Bot Manager</p>
+          </div>
         </div>
       `,
     });
-    logger.info({ event, ip }, "Security event email sent to admin");
+    logger.info({ event, ip, recipient: cfg.recipientEmail }, "Security event email sent successfully to admin");
   } catch (err) {
     logger.error({ err }, "Failed to send security event email");
   }
