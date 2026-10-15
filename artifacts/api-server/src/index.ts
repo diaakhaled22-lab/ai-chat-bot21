@@ -142,7 +142,8 @@ async function sendRenewalReminders() {
 setInterval(sendRenewalReminders, 60 * 60 * 1000);
 sendRenewalReminders();
 
-// Auto-purge chat logs older than each company's retention setting (default 7 days)
+// Auto-purge chat logs: Default is permanent retention (0 = never delete).
+// Chat logs, token metrics, and dashboard statistics are preserved permanently even if subscription is not active.
 async function purgeOldChatLogs() {
   try {
     const [adminRow] = await db
@@ -150,7 +151,8 @@ async function purgeOldChatLogs() {
       .from(adminConfigTable)
       .where(eq(adminConfigTable.key, "chat_log_retention_days"))
       .limit(1);
-    const globalRetentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 7;
+    // Default to 0 (never delete / permanent) unless admin explicitly set a positive retention policy
+    const globalRetentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 0;
 
     const companies = await db
       .select({ id: companiesTable.id, chatLogRetentionDays: companiesTable.chatLogRetentionDays })
@@ -158,7 +160,12 @@ async function purgeOldChatLogs() {
 
     let totalDeleted = 0;
     for (const company of companies) {
+      // If company retention is null or <= 0, and global retention is <= 0, never delete logs
       const retentionDays = company.chatLogRetentionDays ?? globalRetentionDays;
+      if (!retentionDays || retentionDays <= 0) {
+        // Permanent retention: keep all logs forever so dashboard data is never lost
+        continue;
+      }
       const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
       const deleted = await db
         .delete(chatLogsTable)
@@ -168,7 +175,7 @@ async function purgeOldChatLogs() {
     }
 
     if (totalDeleted > 0) {
-      logger.info({ count: totalDeleted }, "Purged old chat logs based on retention policy");
+      logger.info({ count: totalDeleted }, "Purged old chat logs based on explicit retention policy");
     }
   } catch (err) {
     logger.error({ err }, "Error purging old chat logs");
@@ -178,7 +185,7 @@ async function purgeOldChatLogs() {
 setInterval(purgeOldChatLogs, 60 * 60 * 1000); // Run every hour
 purgeOldChatLogs();
 
-// Auto-purge leads older than each company's retention setting (default 7 days)
+// Auto-purge leads: Default is permanent retention (0 = never delete).
 async function purgeOldLeads() {
   try {
     const [adminRow] = await db
@@ -186,7 +193,7 @@ async function purgeOldLeads() {
       .from(adminConfigTable)
       .where(eq(adminConfigTable.key, "chat_log_retention_days"))
       .limit(1);
-    const globalRetentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 7;
+    const globalRetentionDays = adminRow?.value ? parseInt(adminRow.value, 10) : 0;
 
     const companies = await db
       .select({ id: companiesTable.id, chatLogRetentionDays: companiesTable.chatLogRetentionDays })
@@ -195,6 +202,9 @@ async function purgeOldLeads() {
     let totalDeleted = 0;
     for (const company of companies) {
       const retentionDays = company.chatLogRetentionDays ?? globalRetentionDays;
+      if (!retentionDays || retentionDays <= 0) {
+        continue;
+      }
       const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
       const deleted = await db
         .delete(leadsTable)
@@ -204,7 +214,7 @@ async function purgeOldLeads() {
     }
 
     if (totalDeleted > 0) {
-      logger.info({ count: totalDeleted }, "Purged old leads based on retention policy");
+      logger.info({ count: totalDeleted }, "Purged old leads based on explicit retention policy");
     }
   } catch (err) {
     logger.error({ err }, "Error purging old leads");
