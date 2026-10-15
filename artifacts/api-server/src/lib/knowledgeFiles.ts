@@ -71,11 +71,14 @@ function jsonToReadableText(value: unknown, indent = 0): string {
 
 export async function extractTextFromBuffer(fileType: KnowledgeFileType, buffer: Buffer, fileName: string): Promise<string> {
   if (fileType === "pdf") {
-    // pdf-parse@1.x is CJS; the module itself is the function
-    const pdfParseModule = await import("pdf-parse");
+    // Note: importing 'pdf-parse' directly runs its top-level debug block which attempts
+    // to read './test/data/05-versions-space.pdf' and throws ENOENT in ESM environments.
+    // Importing 'pdf-parse/lib/pdf-parse.js' targets the core parser directly.
+    // @ts-ignore - subpath import not explicitly declared in older types
+    const pdfParseModule = await import("pdf-parse/lib/pdf-parse.js");
     const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
     const data = await pdfParse(buffer);
-    return data.text;
+    return data.text || "";
   }
 
   if (fileType === "txt" || (fileType as any) === "text") {
