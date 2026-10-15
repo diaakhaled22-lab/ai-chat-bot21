@@ -464,6 +464,7 @@ export default function ClientCompany() {
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [tgWebhookHash, setTgWebhookHash] = useState<string>("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const testGoogleSheet = useTestClientGoogleSheetConnection();
   const testingConnection = testGoogleSheet.isPending;
   const initialized = useRef(false);
@@ -681,8 +682,6 @@ export default function ClientCompany() {
       setTgRegistering(false);
     }
   };
-
-  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
 
   const handleSendTestEmail = async () => {
     const email = form.getValues("notificationEmail")?.trim();
