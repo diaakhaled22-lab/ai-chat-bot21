@@ -8,6 +8,9 @@ export const malfunctionsTable = pgTable("malfunctions", {
   description: text("description").notNull(),
   source: text("source").default("admin").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  aiAnalysis: text("ai_analysis"),
+  aiProvider: text("ai_provider"),
+  aiModel: text("ai_model"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),
 });

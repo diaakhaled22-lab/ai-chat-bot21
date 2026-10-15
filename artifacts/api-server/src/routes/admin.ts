@@ -2246,6 +2246,9 @@ router.get("/admin/malfunctions", async (req, res) => {
       description: malfunctionsTable.description,
       source: malfunctionsTable.source,
       isActive: malfunctionsTable.isActive,
+      aiAnalysis: malfunctionsTable.aiAnalysis,
+      aiProvider: malfunctionsTable.aiProvider,
+      aiModel: malfunctionsTable.aiModel,
       createdAt: malfunctionsTable.createdAt,
       resolvedAt: malfunctionsTable.resolvedAt,
       companyName: companiesTable.name
@@ -2329,6 +2332,201 @@ router.delete("/admin/malfunctions/:id", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Failed to delete malfunction");
     res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ── Gemini Pro Malfunctions AI Integration ───────────────────────────────────
+
+// GET /admin/malfunctions/ai-config
+router.get("/admin/malfunctions/ai-config", async (_req, res) => {
+  try {
+    const configRows = await db
+      .select()
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+
+    const directKey = cfg["malfunctions_ai_api_key"] || "";
+    const fallbackKey = (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    const activeKey = directKey || fallbackKey;
+    const model = cfg["malfunctions_ai_model"] || (cfg["support_ai_provider"] === "google" && cfg["support_ai_model"] ? cfg["support_ai_model"] : "gemini-1.5-pro");
+
+    res.json({
+      hasKey: Boolean(activeKey),
+      maskedKey: activeKey ? maskApiKey(activeKey) : "",
+      model,
+      isInherited: !directKey && Boolean(fallbackKey),
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to get malfunctions AI config");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// POST /admin/malfunctions/ai-config
+router.post("/admin/malfunctions/ai-config", async (req, res) => {
+  try {
+    const { apiKey, model } = req.body as { apiKey?: string; model?: string };
+    const updates: Array<{ key: string; value: string }> = [];
+
+    if (apiKey !== undefined && apiKey !== "") {
+      updates.push({ key: "malfunctions_ai_api_key", value: apiKey.trim() });
+    }
+    if (model && typeof model === "string") {
+      updates.push({ key: "malfunctions_ai_model", value: model.trim() });
+    }
+
+    for (const u of updates) {
+      const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, u.key));
+      if (existing) {
+        await db.update(adminConfigTable).set({ value: u.value }).where(eq(adminConfigTable.key, u.key));
+      } else {
+        await db.insert(adminConfigTable).values(u);
+      }
+    }
+
+    await logAdminActivity(req.session.userId!, "Updated Malfunctions AI Config", `Configured model: ${model || "default"}`, req.ip || null);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Failed to save malfunctions AI config");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// POST /admin/malfunctions/ai-test
+router.post("/admin/malfunctions/ai-test", async (req, res) => {
+  try {
+    const { apiKey: customKey, model: customModel } = req.body as { apiKey?: string; model?: string };
+
+    let key = customKey?.trim();
+    if (!key) {
+      const configRows = await db
+        .select()
+        .from(adminConfigTable)
+        .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_api_key', 'support_ai_api_key', 'support_ai_provider')`);
+      const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+      key = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    }
+
+    if (!key) {
+      res.status(400).json({ error: "لم يتم العثور على مفتاح Gemini API Key. يرجى إدخال المفتاح أولاً." });
+      return;
+    }
+
+    const selectedModel = customModel || "gemini-1.5-pro";
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(key);
+    const gemini = genAI.getGenerativeModel({ model: selectedModel });
+    const result = await gemini.generateContent("مرحباً! يرجى الرد بجملة واحدة قصيرة تؤكد أن اتصال Gemini Pro يعمل بنجاح.");
+    const responseText = result.response.text();
+
+    res.json({ ok: true, response: responseText });
+  } catch (err: any) {
+    logger.error({ err }, "Gemini test connection failed");
+    res.status(400).json({ error: err.message || "Failed to connect to Gemini API" });
+  }
+});
+
+// POST /admin/malfunctions/:id/ai-analyze
+router.post("/admin/malfunctions/:id/ai-analyze", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid malfunction ID" });
+      return;
+    }
+
+    const [malfunction] = await db
+      .select({
+        id: malfunctionsTable.id,
+        title: malfunctionsTable.title,
+        description: malfunctionsTable.description,
+        source: malfunctionsTable.source,
+        createdAt: malfunctionsTable.createdAt,
+        companyName: companiesTable.name,
+      })
+      .from(malfunctionsTable)
+      .leftJoin(companiesTable, eq(malfunctionsTable.companyId, companiesTable.id))
+      .where(eq(malfunctionsTable.id, id))
+      .limit(1);
+
+    if (!malfunction) {
+      res.status(404).json({ error: "Malfunction not found" });
+      return;
+    }
+
+    // Resolve Gemini credentials
+    const configRows = await db
+      .select()
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+
+    const apiKey = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    const model = cfg["malfunctions_ai_model"] || (cfg["support_ai_provider"] === "google" && cfg["support_ai_model"] ? cfg["support_ai_model"] : "gemini-1.5-pro");
+
+    if (!apiKey) {
+      res.status(400).json({
+        error: "لم يتم ربط مفتاح Gemini API Key بعد. يرجى الضغط على زر 'ربط Gemini Pro' في أعلى الصفحة وإدخال مفتاح الـ API.",
+      });
+      return;
+    }
+
+    const SYSTEM_INSTRUCTION = `أنت مهندس دعم فني أول وخبير موثوقية النظم (Senior Site Reliability Engineer & AI Systems Architect) لمنصة إدارة البوتات الذكية Bot Manager.
+مهمتك: تحليل بلاغ العطل أو المشكلة الفنية بعناية فائقة، وتقديم تشخيص مهني دقيق وخطوات حل عملية.
+
+قم بصياغة الإجابة باللغة العربية بطريقة منظمة جداً باستخدام Markdown بالشكل التالي:
+
+### 🔍 1. تشخيص السبب المحتمل (Root Cause Analysis)
+- تحليل منطقي لسبب حدوث العطل بناءً على الأنظمة ذات الصلة (مثل: صلاحيات مفاتيح API، ويب هوك المنصات، قيود الخوادم، انتهاء التوكنات، أو أخطاء الشبكة).
+
+### 🛠️ 2. خطوات الإصلاح والحل المقترح (Actionable Steps)
+1. الخطوة الأولى المحددة.
+2. الخطوة الثانية المحددة.
+3. الخطوة الثالثة للتأكد من زوال العطل.
+
+### 💬 3. صيغة رسالة موجهة للعملاء (Client Communication)
+(صيغة مهنية ومطمئنة باللغة العربية يمكن للمسؤول نسخها مباشرة وإرسالها للعميل المتأثر لإشعاره بأنه جاري التعامل مع المشكلة أو تم علاجها).`;
+
+    const USER_PROMPT = `عنوان العطل: ${malfunction.title}
+وصف وتفاصيل العطل:
+${malfunction.description}
+
+مصدر البلاغ: ${malfunction.source === "client" ? "عميل" : malfunction.source === "system" ? "نظام آلي" : "مسؤول النظام"}
+الجهة / الشركة المتأثرة: ${malfunction.companyName || "النظام العام (جميع الشركات)"}
+تاريخ وتوقيت الحدوث: ${new Date(malfunction.createdAt).toLocaleString("ar-EG")}`;
+
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const gemini = genAI.getGenerativeModel({
+      model,
+      systemInstruction: SYSTEM_INSTRUCTION,
+    });
+
+    const result = await gemini.generateContent(USER_PROMPT);
+    const aiAnalysis = result.response.text();
+
+    // Save to database
+    await db
+      .update(malfunctionsTable)
+      .set({
+        aiAnalysis,
+        aiProvider: "google",
+        aiModel: model,
+      })
+      .where(eq(malfunctionsTable.id, id));
+
+    await logAdminActivity(req.session.userId!, "AI Malfunction Diagnosis", `Diagnosed malfunction #${id} using ${model}`, req.ip || null);
+
+    res.json({
+      ok: true,
+      aiAnalysis,
+      aiProvider: "google",
+      aiModel: model,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Gemini malfunction analysis error");
+    res.status(500).json({ error: err.message || "Failed to analyze malfunction with Gemini Pro" });
   }
 });
 
