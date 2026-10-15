@@ -34,6 +34,7 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/pr
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { requireAuth } from "../middlewares/requireAuth";
 import { webhookLimiter, apiLimiter } from "../lib/security";
+import { timingSafeCompare } from "../lib/webhookSecurity";
 import crypto from 'crypto';
 
 function telegramWebhookSecret(token: string): string {
@@ -120,6 +121,7 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
   let company: typeof companiesTable.$inferSelect | undefined;
   try {
     const secret = Array.isArray(req.params.secret) ? req.params.secret[0] : String(req.params.secret || "");
+    const headerSecretToken = req.headers["x-telegram-bot-api-secret-token"] as string | undefined;
     const update = req.body;
 
     const message = update.message || update.edited_message;
@@ -131,10 +133,24 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     let isVoice = false;
 
     const [foundCompany] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
-    if (!foundCompany) {
-      logger.warn({ secret: secret.slice(0, 8) }, "Telegram webhook: no company matched");
+    if (!foundCompany || !timingSafeCompare(secret, foundCompany.telegramWebhookSecretHash)) {
+      logger.warn({ secret: secret.slice(0, 8), ip: req.ip }, "SECURITY: Telegram webhook rejected due to invalid secret");
       return;
     }
+
+    // Cryptographic Secret Token verification:
+    // If Telegram sends the X-Telegram-Bot-Api-Secret-Token header, verify it matches
+    // the registered secret hash with 100% mathematical certainty.
+    if (headerSecretToken) {
+      if (!timingSafeCompare(headerSecretToken, foundCompany.telegramWebhookSecretHash)) {
+        logger.warn(
+          { companyId: foundCompany.id, ip: req.ip },
+          "SECURITY: Telegram webhook rejected due to mismatched X-Telegram-Bot-Api-Secret-Token header!"
+        );
+        return;
+      }
+    }
+
     company = foundCompany;
     const currentCompany = foundCompany;
 
@@ -414,13 +430,18 @@ router.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, r
     }
 
     const token = company.telegramBotApiKey;
-    const webhookUrl = getAppBaseUrl(req) + "/api/telegram/webhook/" + telegramWebhookSecret(token);
-    await db.update(companiesTable).set({ telegramWebhookSecretHash: telegramWebhookSecret(token) }).where(eq(companiesTable.id, company.id));
+    const webhookSecret = telegramWebhookSecret(token);
+    const webhookUrl = getAppBaseUrl(req) + "/api/telegram/webhook/" + webhookSecret;
+    await db.update(companiesTable).set({ telegramWebhookSecretHash: webhookSecret }).where(eq(companiesTable.id, company.id));
 
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: webhookUrl, allowed_updates: ["message"] }),
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: ["message"],
+        secret_token: webhookSecret,
+      }),
     });
     const tgData = await tgRes.json() as { ok: boolean; description?: string };
 

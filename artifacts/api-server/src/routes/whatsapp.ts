@@ -7,6 +7,7 @@ import {
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
+import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
 import { Router } from "express";
 import { downloadWhatsAppAudio, transcribeAudio, generateVoiceResponse, sendWhatsAppVoiceNote } from '../lib/audio';
 import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
@@ -150,7 +151,7 @@ router.get("/whatsapp/webhook", webhookLimiter, async (req, res) => {
  * Platform-level incoming WhatsApp events. Extracts the Phone Number ID from
  * entry[].changes[].value.metadata.phone_number_id and routes to the matching company.
  */
-router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
+router.post("/whatsapp/webhook", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
 
   try {
@@ -496,7 +497,7 @@ router.get("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
  * Looks up the company by Phone Number ID, processes the message through the AI pipeline,
  * and sends the reply back to the user via the WhatsApp Cloud API.
  */
-router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
+router.post("/whatsapp/webhook/:phoneNumberId", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
   let company: typeof companiesTable.$inferSelect | undefined;
   try {

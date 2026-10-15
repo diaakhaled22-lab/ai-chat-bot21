@@ -1,13 +1,30 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send } from "lucide-react";
+import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send, ShieldCheck, ShieldAlert, Key, Eye, EyeOff, Lock } from "lucide-react";
 import { ChannelIcon } from "@/components/ChannelIcon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+
+interface MetaAppSecretInfo {
+  configured: boolean;
+  source: "database" | "environment" | "none";
+  maskedSecret: string | null;
+  updatedAt: string | null;
+}
+
+function useMetaAppSecretConfig() {
+  return useQuery<MetaAppSecretInfo>({
+    queryKey: ["admin-meta-app-secret"],
+    queryFn: () => customFetch("/api/admin/meta-app-secret"),
+    staleTime: 30_000,
+  });
+}
 
 function usePlatformWebhookConfig() {
   const messengerQuery = useQuery<{ webhookUrl: string; verifyToken: string | null }>({
@@ -152,19 +169,226 @@ function StaticField({ label, value }: { label: string; value: string }) {
   );
 }
 
+function WebhookCryptographicSecuritySection() {
+  const { data: metaSecretInfo } = useMetaAppSecretConfig();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [inputVal, setInputVal] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+
+  const saveMutation = useMutation({
+    mutationFn: (secret: string) =>
+      customFetch("/api/admin/meta-app-secret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appSecret: secret }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-meta-app-secret"] });
+      setInputVal("");
+      toast({
+        title: "تم حفظ Meta App Secret بنجاح",
+        description: "تم تفعيل التحقق التشفيري HMAC-SHA256 بنسبة 100% لرسائل WhatsApp و Messenger.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "خطأ أثناء الحفظ",
+        description: err.message || "فشل حفظ Meta App Secret",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: () =>
+      customFetch("/api/admin/meta-app-secret", {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-meta-app-secret"] });
+      toast({
+        title: "تم حذف Meta App Secret",
+        description: "تم تعطيل التحقق التشفيري الصارم مؤقتاً.",
+      });
+    },
+  });
+
+  const isConfigured = metaSecretInfo?.configured ?? false;
+
+  return (
+    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/40">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                Webhook Cryptographic Signature Verification 🛡️
+              </CardTitle>
+              <CardDescription className="text-xs">
+                التحقق التشفيري الرياضي (HMAC-SHA256 &amp; Secret Token) لضمان مصدر الرسائل بنسبة 100%
+              </CardDescription>
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className={
+              isConfigured
+                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 gap-1 w-fit"
+                : "bg-amber-500/10 text-amber-500 border-amber-500/30 gap-1 w-fit"
+            }
+          >
+            {isConfigured ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5" /> Meta HMAC-SHA256 Active
+              </>
+            ) : (
+              <>
+                <ShieldAlert className="w-3.5 h-3.5" /> Meta App Secret Missing
+              </>
+            )}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Meta (WhatsApp & Messenger) */}
+          <div className="space-y-3 bg-muted/20 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-medium text-sm">
+                  <ChannelIcon channel="whatsapp" size={16} />
+                  <ChannelIcon channel="messenger" size={16} />
+                  <span>Meta (WhatsApp / Messenger)</span>
+                </div>
+                {isConfigured && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {metaSecretInfo?.source === "environment" ? "ENV" : "DB"}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                يتم فحص التوقيع الرقمي <code className="bg-muted px-1 py-0.5 rounded text-[11px]">X-Hub-Signature-256</code> ومقارنته في وقت ثابت (<code className="bg-muted px-1 py-0.5 rounded text-[11px]">timingSafeEqual</code>) باستخدام Meta App Secret لمنع أي طلبات منتحلة تماماً.
+              </p>
+
+              {isConfigured && (
+                <div className="flex items-center justify-between text-xs bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2.5">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="font-mono text-muted-foreground">
+                      {metaSecretInfo?.maskedSecret}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-destructive hover:text-destructive"
+                    onClick={() => removeMutation.mutate()}
+                    disabled={removeMutation.isPending}
+                  >
+                    حذف
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {isConfigured ? "تحديث Meta App Secret" : "إدخال Meta App Secret"}
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={showSecret ? "text" : "password"}
+                    placeholder="e.g. 7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c"
+                    value={inputVal}
+                    onChange={(e) => setInputVal(e.target.value)}
+                    className="pr-9 font-mono text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!inputVal.trim() || saveMutation.isPending}
+                  onClick={() => saveMutation.mutate(inputVal)}
+                >
+                  {saveMutation.isPending ? "جاري..." : "حفظ"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                احصل عليه من: Meta Developer Portal &rarr; تطبيقك &rarr; App settings &rarr; Basic &rarr; App Secret
+              </p>
+            </div>
+          </div>
+
+          {/* Telegram */}
+          <div className="space-y-3 bg-muted/20 border border-border/50 rounded-xl p-4 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-medium text-sm">
+                  <ChannelIcon channel="telegram" size={16} />
+                  <span>Telegram Cryptographic Secret Token</span>
+                </div>
+                <Badge variant="outline" className="bg-sky-500/10 text-sky-500 border-sky-500/30 text-[10px] gap-1">
+                  <ShieldCheck className="w-3 h-3" /> مفعّل تلقائياً
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                يتم توليد رمز سري تشفيري فريد (<code className="bg-muted px-1 py-0.5 rounded text-[11px]">SHA-256 Secret Token</code>) لكل بوت تيليجرام وتمريره في مسار الـ Webhook وترويسة <code className="bg-muted px-1 py-0.5 rounded text-[11px]">X-Telegram-Bot-Api-Secret-Token</code> الرسمية.
+              </p>
+              <div className="p-3 bg-card border border-border/40 rounded-lg space-y-1.5 text-xs">
+                <div className="flex items-center gap-2 text-foreground font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-500" />
+                  <span>فحص المطابقة في وقت ثابت (Constant-Time Equal)</span>
+                </div>
+                <p className="text-muted-foreground text-[11px]">
+                  مقارنة البايتات تمنع هجمات التوقيت الجانبية (Timing Side-Channel Attacks) وتضمن عدم قبول أي طلب خارج خوادم تيليجرام الرسمية.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 text-[11px] text-muted-foreground border-t border-border/30">
+              💡 عند تسجيل البوت أو تحديثه، يتم تفعيل الترويسة التشفيرية السرية تلقائياً مع خوادم Telegram API.
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function PlatformCredentialsSection() {
   const origin = window.location.origin;
   const { messengerQuery, whatsappQuery } = usePlatformWebhookConfig();
+  const { data: metaSecretInfo } = useMetaAppSecretConfig();
   const messengerToken = messengerQuery.data?.verifyToken;
   const whatsappToken  = whatsappQuery.data?.verifyToken;
+  const isMetaSecured  = metaSecretInfo?.configured ?? false;
+
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {/* Messenger */}
       <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-card">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <span>📨</span> Messenger Webhook
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <span>📨</span> Messenger Webhook
+            </CardTitle>
+            <Badge variant="outline" className={isMetaSecured ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5 text-[10px]" : "text-amber-500 border-amber-500/30 text-[10px]"}>
+              {isMetaSecured ? "HMAC-SHA256" : "Unsigned"}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <StaticField label="Webhook URL" value={`${origin}/api/messenger/webhook`} />
@@ -179,9 +403,14 @@ function PlatformCredentialsSection() {
       {/* Telegram */}
       <Card className="border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-card">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ChannelIcon channel="telegram" size={18} /> Telegram Webhook
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ChannelIcon channel="telegram" size={18} /> Telegram Webhook
+            </CardTitle>
+            <Badge variant="outline" className="text-sky-500 border-sky-500/30 bg-sky-500/5 text-[10px]">
+              Secret Token
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <StaticField label="Webhook URL" value={`${origin}/api/telegram/webhook`} />
@@ -194,9 +423,14 @@ function PlatformCredentialsSection() {
       {/* WhatsApp */}
       <Card className="border-green-500/30 bg-gradient-to-br from-green-500/5 to-card">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ChannelIcon channel="whatsapp" size={18} /> WhatsApp Webhook
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ChannelIcon channel="whatsapp" size={18} /> WhatsApp Webhook
+            </CardTitle>
+            <Badge variant="outline" className={isMetaSecured ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5 text-[10px]" : "text-amber-500 border-amber-500/30 text-[10px]"}>
+              {isMetaSecured ? "HMAC-SHA256" : "Unsigned"}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <StaticField label="Webhook URL" value={`${origin}/api/whatsapp/webhook`} />
@@ -255,6 +489,9 @@ export default function AdminWebhookMessenger() {
           Messenger and WhatsApp webhook configurations across all companies.
         </p>
       </div>
+
+      {/* Cryptographic Webhook Security */}
+      <WebhookCryptographicSecuritySection />
 
       {/* Platform webhook credentials */}
       <PlatformCredentialsSection />

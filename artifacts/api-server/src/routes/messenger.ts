@@ -20,6 +20,7 @@ import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { webhookLimiter } from "../lib/security";
+import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
 
 import crypto from 'crypto';
 
@@ -145,7 +146,7 @@ router.get("/messenger/webhook", webhookLimiter, async (req, res) => {
  * Platform-level incoming Messenger events. Extracts the Page ID from
  * entry[].id in the payload and routes to the matching company.
  */
-router.post("/messenger/webhook", webhookLimiter, async (req, res) => {
+router.post("/messenger/webhook", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
 
   try {
@@ -432,7 +433,7 @@ router.get("/messenger/webhook/:pageId", async (req, res) => {
  * Looks up the company by Page ID, processes the message through the AI pipeline,
  * and sends the reply back to the user via the Graph API.
  */
-router.post("/messenger/webhook/:pageId", async (req, res) => {
+router.post("/messenger/webhook/:pageId", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
 
   let company: typeof companiesTable.$inferSelect | undefined;

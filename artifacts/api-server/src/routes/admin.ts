@@ -23,6 +23,7 @@ import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validate
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
 import { notifySubscriptionActivated } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
+import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
@@ -2193,6 +2194,91 @@ router.post("/admin/messenger-webhook/generate", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// GET /admin/meta-app-secret — return whether Meta App Secret is configured and masked preview
+router.get("/admin/meta-app-secret", async (req, res) => {
+  try {
+    const [row] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "meta_app_secret"))
+      .limit(1);
+
+    const envSecret = process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || process.env.MESSENGER_APP_SECRET;
+    const isConfigured = !!(row?.value || envSecret);
+    const secret = row?.value || envSecret || "";
+
+    const maskedSecret = secret
+      ? (secret.length > 6 ? "•".repeat(Math.min(secret.length - 4, 16)) + secret.slice(-4) : "••••••")
+      : null;
+
+    res.json({
+      configured: isConfigured,
+      source: row?.value ? "database" : (envSecret ? "environment" : "none"),
+      maskedSecret,
+      updatedAt: row?.updatedAt ?? null,
+    });
+  } catch (err) {
+    logger.error({ err }, "Get meta app secret config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/meta-app-secret — save Meta App Secret
+router.post("/admin/meta-app-secret", async (req, res) => {
+  try {
+    const { appSecret } = req.body;
+    if (typeof appSecret !== "string" || !appSecret.trim()) {
+      res.status(400).json({ error: "Meta App Secret is required" });
+      return;
+    }
+
+    const trimmed = appSecret.trim();
+    await db
+      .insert(adminConfigTable)
+      .values({ key: "meta_app_secret", value: trimmed })
+      .onConflictDoUpdate({
+        target: adminConfigTable.key,
+        set: { value: trimmed },
+      });
+
+    clearMetaAppSecretCache();
+    await logAdminActivity(
+      req.session.userId!,
+      "Meta App Secret Updated",
+      "Updated cryptographic Meta App Secret for WhatsApp/Messenger webhook verification",
+      req.ip || null
+    );
+
+    res.json({ success: true, message: "Meta App Secret saved successfully" });
+  } catch (err) {
+    logger.error({ err }, "Save meta app secret config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /admin/meta-app-secret — remove Meta App Secret
+router.delete("/admin/meta-app-secret", async (req, res) => {
+  try {
+    await db
+      .delete(adminConfigTable)
+      .where(eq(adminConfigTable.key, "meta_app_secret"));
+
+    clearMetaAppSecretCache();
+    await logAdminActivity(
+      req.session.userId!,
+      "Meta App Secret Removed",
+      "Removed Meta App Secret",
+      req.ip || null
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "Delete meta app secret error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 
 // GET /admin/audit-logs

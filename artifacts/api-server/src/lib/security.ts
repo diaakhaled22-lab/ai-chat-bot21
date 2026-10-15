@@ -879,12 +879,18 @@ const ATTACK_PATTERNS = [
  * Logs warnings and blocks obviously malicious requests.
  */
 export function suspiciousActivityDetector(req: Request, res: Response, next: NextFunction) {
-  // Skip check for endpoints that intentionally accept URLs with path segments
+  // Skip check for endpoints that intentionally accept URLs with path segments or verified external webhooks
   const urlAcceptingPaths = [
     "/client/wordpress",
     "/client/wordpress/test",
     "/client/company/sync-website",
     "/client/company",
+    "/api/whatsapp/webhook",
+    "/whatsapp/webhook",
+    "/api/messenger/webhook",
+    "/messenger/webhook",
+    "/api/telegram/webhook",
+    "/telegram/webhook",
   ];
   if (urlAcceptingPaths.some((p) => req.path.startsWith(p))) {
     return next();

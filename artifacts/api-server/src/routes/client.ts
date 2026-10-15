@@ -205,12 +205,17 @@ async function autoRegisterWhatsAppWebhook(
 }
 
 async function autoRegisterTelegramWebhook(token: string, baseUrl: string): Promise<void> {
-  const webhookUrl = `${baseUrl}/api/telegram/webhook/${telegramWebhookSecret(token)}`;
+  const secret = telegramWebhookSecret(token);
+  const webhookUrl = `${baseUrl}/api/telegram/webhook/${secret}`;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: webhookUrl, allowed_updates: ["message"] }),
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: ["message"],
+        secret_token: secret,
+      }),
     });
     const data = await res.json() as { ok: boolean; description?: string };
     if (data.ok) {
