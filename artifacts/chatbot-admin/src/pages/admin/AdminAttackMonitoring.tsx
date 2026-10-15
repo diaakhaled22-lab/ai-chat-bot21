@@ -113,6 +113,8 @@ export default function AdminAttackMonitoring() {
     mutationFn: () =>
       customFetch("/api/admin/attack-monitoring/test-alert", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
       }),
     onSuccess: () => {
       toast({
