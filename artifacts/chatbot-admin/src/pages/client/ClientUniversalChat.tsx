@@ -46,7 +46,56 @@ function extractUserName(messages: any[], leadName?: string | null): string | nu
   if (leadName && leadName.trim()) return leadName.trim();
   if (!messages || messages.length === 0) return null;
 
-  // 1. Check for secret [LEAD_DATA:] block in any botResponse
+  // 1. Direct regex match & contextual match across all messages (identical to ClientChatLogs)
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (!msg?.customerMessage) continue;
+
+    const text = msg.customerMessage.trim();
+    if (text.startsWith("/")) continue;
+    if (/^\d+$/.test(text)) continue;
+
+    // 1a. Direct regex match (handles Arabic & English: "My name is X", "Name: X", "اسمي X", "انا X", "أنا X", "الاسم: X", etc.)
+    const directMatch = text.match(/(?:my name is|i am|i'm|name:|username:|اسمي هو|اسمي|انا|أنا|الاسم:|الاسم)\s+([A-Za-z\u0600-\u06FF]{2,15})(?:\s+([A-Za-z\u0600-\u06FF]{2,15}))?/i);
+    if (directMatch) {
+      const p1 = directMatch[1];
+      const p2 = directMatch[2] ? " " + directMatch[2] : "";
+      const forbidden = ["اريد", "أريد", "عايز", "عاوز", "ابغى", "احتاج", "أحتاج", "طلب", "شراء", "سؤال", "استفسار", "العميل", "الخدمة", "هنا", "في", "من", "looking", "want", "need", "here", "help"];
+      if (!forbidden.includes(p1.toLowerCase())) {
+        return (p1 + p2).trim();
+      }
+    }
+
+    // 1b. Contextual match (bot asked for name in previous message, e.g. "ما اسمك", "الاسم الكريم", or any question with "اسم")
+    if (i > 0) {
+      const prevMsg = messages[i - 1];
+      if (prevMsg?.botResponse) {
+        const botText = prevMsg.botResponse.toLowerCase();
+        if ((botText.includes("name") || botText.includes("اسم") || botText.includes("who are you")) && text.split(/\s+/).length <= 3) {
+          if (!text.includes("?") && !text.includes("لا") && !text.includes("no") && !/^\d+$/.test(text)) {
+            return text;
+          }
+        }
+      }
+    }
+
+    // 1c. Short pure text that looks like a 2-word or 3-word name (e.g. "ضياء خالد", "Ahmed Ali")
+    const words = text.split(/\s+/).filter(Boolean);
+    if ((words.length === 2 || words.length === 3) && text.length <= 30) {
+      const isPureAlpha = /^[\u0600-\u06FFA-Za-z\s]+$/.test(text);
+      const commonPhrases = [
+        "السلام عليكم", "صباح الخير", "مساء الخير", "أهلاً وسهلاً", "اهلا وسهلا", "شكراً جزيلاً", "شكرا جزيلا",
+        "يعطيك العافية", "الله يعافيك", "لو سمحت", "من فضلك", "مرحبا بك", "أهلاً بك", "اهلا بك",
+        "good morning", "good evening", "thank you", "hello there"
+      ];
+      const isCommonPhrase = commonPhrases.some(phrase => text.includes(phrase));
+      if (isPureAlpha && !isCommonPhrase) {
+        return text;
+      }
+    }
+  }
+
+  // 2. Check for secret [LEAD_DATA:] block in any botResponse
   for (let i = messages.length - 1; i >= 0; i--) {
     const resp = messages[i]?.botResponse;
     if (resp && resp.includes("[LEAD_DATA:")) {
@@ -63,37 +112,8 @@ function extractUserName(messages: any[], leadName?: string | null): string | nu
     }
   }
 
-  // 2. Check customer messages for explicit name statements
-  const explicitRegex = /(?:انا\s+اسمي|أنا\s+اسمي|اسمي\s+هو|اسمي\s*[:/-]?|الاسم\s*[:/-]?|الاسم\s+الكامل\s*[:/-]?|معك(?:\s+أخوك|\s+اخوك)?|معاك(?:\s+أخوك|\s+اخوك)?|معكم|أنا(?:\s+العميل)?|انا(?:\s+العميل)?|أخوك|اخوك|اسم\s+العميل\s*[:/-]?|my\s+name\s+is|name\s+is|name\s*[:/-]?|i\s*m|i\s+am|this\s+is)\s+([A-Za-z\u0600-\u06FF]{2,20}(?:\s+[A-Za-z\u0600-\u06FF]{2,20}){0,3})/i;
-
-  for (let i = 0; i < messages.length; i++) {
-    const text = messages[i]?.customerMessage?.trim();
-    if (!text || text.startsWith("/")) continue;
-    
-    const match = text.match(explicitRegex);
-    if (match && match[1]) {
-      const cleaned = cleanNameCandidate(match[1]);
-      if (cleaned) return cleaned;
-    }
-  }
-
-  // 3. Check if the bot asked for the name and customer replied with just their name
-  const botAskedNameRegex = /(?:ما\s+هو\s+اسمك|ما\s+اسمك|الاسم\s+الكريم|ممكن\s+الاسم|تفضل\s+بالاسم|من\s+معي|من\s+معايا|مين\s+معي|مين\s+حضرتك|اسم\s+حضرتك|your\s+name|what\s+is\s+your\s+name|may\s+i\s+have\s+your\s+name)/i;
-
-  for (let i = 0; i < messages.length - 1; i++) {
-    const botMsg = messages[i]?.botResponse;
-    const nextUserMsg = messages[i + 1]?.customerMessage?.trim();
-    if (botMsg && botAskedNameRegex.test(botMsg) && nextUserMsg) {
-      if (!/^\d+$/.test(nextUserMsg) && !nextUserMsg.includes("http")) {
-        const cleaned = cleanNameCandidate(nextUserMsg);
-        if (cleaned) return cleaned;
-      }
-    }
-  }
-
-  // 4. Check if bot addressed the customer by name in any response
+  // 3. Check if bot addressed the customer by name in any response (e.g. "مرحباً يا ضياء")
   const botGreetRegex = /(?:أهلاً\s+(?:بك\s+)?(?:يا\s+)?|مرحباً\s+(?:يا\s+)?|مرحبا\s+(?:يا\s+)?|حياك\s+الله\s+(?:يا\s+)?|تشرفت\s+بك\s+(?:يا\s+)?|أهلاً\s+(?:أستاذ|استاذ|دكتور|مهندس)\s+|Hello\s+|Welcome\s+)\s*([A-Za-z\u0600-\u06FF]{2,20}(?:\s+[A-Za-z\u0600-\u06FF]{2,20})?)/i;
-
   for (let i = 0; i < messages.length; i++) {
     const botMsg = messages[i]?.botResponse;
     if (botMsg) {
@@ -679,7 +699,7 @@ export default function ClientUniversalChat() {
             ) : (
               filteredSessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
-                const displayName = session.userName || formatFallbackUser(session, lang);
+                const displayName = session.userName || extractUserName(session.messages, leadsBySession.get(session.id)) || formatFallbackUser(session, lang);
                 return (
                   <div
                     key={session.id}
@@ -752,7 +772,7 @@ export default function ClientUniversalChat() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm capitalize">
-                        {selectedSession.userName || formatFallbackUser(selectedSession, lang)}
+                        {selectedSession.userName || extractUserName(selectedSession.messages, leadsBySession.get(selectedSession.id)) || formatFallbackUser(selectedSession, lang)}
                       </h3>
                       <p className="text-xs text-muted-foreground">{selectedSession.messages.length} {lang === "ar" ? "رسالة" : "messages"}</p>
                     </div>
