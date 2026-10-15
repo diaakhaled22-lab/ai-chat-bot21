@@ -2335,7 +2335,7 @@ router.delete("/admin/malfunctions/:id", async (req, res) => {
   }
 });
 
-// ── Gemini Pro Malfunctions AI Integration ───────────────────────────────────
+// ── Malfunctions AI Integration (Google Gemini & OpenAI) ───────────────────────
 
 // GET /admin/malfunctions/ai-config
 router.get("/admin/malfunctions/ai-config", async (_req, res) => {
@@ -2343,15 +2343,25 @@ router.get("/admin/malfunctions/ai-config", async (_req, res) => {
     const configRows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_provider', 'malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
     const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
 
+    const provider = (cfg["malfunctions_ai_provider"] as "google" | "openai") || (cfg["support_ai_provider"] === "openai" ? "openai" : "google");
     const directKey = cfg["malfunctions_ai_api_key"] || "";
-    const fallbackKey = (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    
+    let fallbackKey = "";
+    if (provider === "openai") {
+      fallbackKey = (cfg["support_ai_provider"] === "openai" ? cfg["support_ai_api_key"] : "") || process.env.OPENAI_API_KEY || "";
+    } else {
+      fallbackKey = (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    }
+
     const activeKey = directKey || fallbackKey;
-    const model = cfg["malfunctions_ai_model"] || (cfg["support_ai_provider"] === "google" && cfg["support_ai_model"] ? cfg["support_ai_model"] : "gemini-1.5-pro");
+    const defaultModel = provider === "openai" ? "gpt-4o" : "gemini-1.5-pro";
+    const model = cfg["malfunctions_ai_model"] || defaultModel;
 
     res.json({
+      provider,
       hasKey: Boolean(activeKey),
       maskedKey: activeKey ? maskApiKey(activeKey) : "",
       model,
@@ -2366,9 +2376,12 @@ router.get("/admin/malfunctions/ai-config", async (_req, res) => {
 // POST /admin/malfunctions/ai-config
 router.post("/admin/malfunctions/ai-config", async (req, res) => {
   try {
-    const { apiKey, model } = req.body as { apiKey?: string; model?: string };
+    const { provider, apiKey, model } = req.body as { provider?: "google" | "openai"; apiKey?: string; model?: string };
     const updates: Array<{ key: string; value: string }> = [];
 
+    if (provider && (provider === "google" || provider === "openai")) {
+      updates.push({ key: "malfunctions_ai_provider", value: provider });
+    }
     if (apiKey !== undefined && apiKey !== "") {
       updates.push({ key: "malfunctions_ai_api_key", value: apiKey.trim() });
     }
@@ -2385,7 +2398,7 @@ router.post("/admin/malfunctions/ai-config", async (req, res) => {
       }
     }
 
-    await logAdminActivity(req.session.userId!, "Updated Malfunctions AI Config", `Configured model: ${model || "default"}`, req.ip || null);
+    await logAdminActivity(req.session.userId!, "Updated Malfunctions AI Config", `Provider: ${provider || "default"}, Model: ${model || "default"}`, req.ip || null);
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Failed to save malfunctions AI config");
@@ -2396,34 +2409,58 @@ router.post("/admin/malfunctions/ai-config", async (req, res) => {
 // POST /admin/malfunctions/ai-test
 router.post("/admin/malfunctions/ai-test", async (req, res) => {
   try {
-    const { apiKey: customKey, model: customModel } = req.body as { apiKey?: string; model?: string };
+    const { provider = "google", apiKey: customKey, model: customModel } = req.body as {
+      provider?: "google" | "openai";
+      apiKey?: string;
+      model?: string;
+    };
 
     let key = customKey?.trim();
     if (!key) {
       const configRows = await db
         .select()
         .from(adminConfigTable)
-        .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_api_key', 'support_ai_api_key', 'support_ai_provider')`);
+        .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_provider', 'malfunctions_ai_api_key', 'support_ai_api_key', 'support_ai_provider')`);
       const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
-      key = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+
+      if (provider === "openai") {
+        key = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "openai" ? cfg["support_ai_api_key"] : "") || process.env.OPENAI_API_KEY || "";
+      } else {
+        key = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      }
     }
 
     if (!key) {
-      res.status(400).json({ error: "لم يتم العثور على مفتاح Gemini API Key. يرجى إدخال المفتاح أولاً." });
+      res.status(400).json({ error: `لم يتم العثور على مفتاح ${provider === "openai" ? "OpenAI" : "Gemini"} API Key. يرجى إدخال المفتاح أولاً.` });
       return;
     }
 
-    const selectedModel = customModel || "gemini-1.5-pro";
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const genAI = new GoogleGenerativeAI(key);
-    const gemini = genAI.getGenerativeModel({ model: selectedModel });
-    const result = await gemini.generateContent("مرحباً! يرجى الرد بجملة واحدة قصيرة تؤكد أن اتصال Gemini Pro يعمل بنجاح.");
-    const responseText = result.response.text();
+    let responseText = "";
+
+    if (provider === "openai") {
+      const selectedModel = customModel || "gpt-4o-mini";
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey: key });
+      const isReasoning = selectedModel.startsWith("o1") || selectedModel.startsWith("o3");
+      const comp = await openai.chat.completions.create({
+        model: selectedModel,
+        messages: [{ role: "user", content: "مرحباً! يرجى الرد بجملة واحدة قصيرة تؤكد أن اتصال OpenAI يعمل بنجاح." }],
+        ...(isReasoning ? {} : { max_tokens: 100 }),
+      });
+      responseText = comp.choices[0]?.message?.content || "OpenAI Connected successfully";
+    } else {
+      const selectedModel = customModel || "gemini-1.5-pro";
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(key);
+      const gemini = genAI.getGenerativeModel({ model: selectedModel });
+      const result = await gemini.generateContent("مرحباً! يرجى الرد بجملة واحدة قصيرة تؤكد أن اتصال Gemini Pro يعمل بنجاح.");
+      responseText = result.response.text();
+    }
 
     res.json({ ok: true, response: responseText });
   } catch (err: any) {
-    logger.error({ err }, "Gemini test connection failed");
-    res.status(400).json({ error: err.message || "Failed to connect to Gemini API" });
+    logger.error({ err }, "AI test connection failed");
+    res.status(400).json({ error: err.message || "فشل الاتصال بالذكاء الاصطناعي. تأكد من صحة المفتاح." });
   }
 });
 
@@ -2455,19 +2492,30 @@ router.post("/admin/malfunctions/:id/ai-analyze", async (req, res) => {
       return;
     }
 
-    // Resolve Gemini credentials
+    // Resolve AI credentials and provider
     const configRows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_provider', 'malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
     const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
 
-    const apiKey = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-    const model = cfg["malfunctions_ai_model"] || (cfg["support_ai_provider"] === "google" && cfg["support_ai_model"] ? cfg["support_ai_model"] : "gemini-1.5-pro");
+    const provider = (cfg["malfunctions_ai_provider"] as "google" | "openai") || (cfg["support_ai_provider"] === "openai" ? "openai" : "google");
+
+    let apiKey = cfg["malfunctions_ai_api_key"] || "";
+    if (!apiKey) {
+      if (provider === "openai") {
+        apiKey = (cfg["support_ai_provider"] === "openai" ? cfg["support_ai_api_key"] : "") || process.env.OPENAI_API_KEY || "";
+      } else {
+        apiKey = (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      }
+    }
+
+    const defaultModel = provider === "openai" ? "gpt-4o" : "gemini-1.5-pro";
+    const model = cfg["malfunctions_ai_model"] || defaultModel;
 
     if (!apiKey) {
       res.status(400).json({
-        error: "لم يتم ربط مفتاح Gemini API Key بعد. يرجى الضغط على زر 'ربط Gemini Pro' في أعلى الصفحة وإدخال مفتاح الـ API.",
+        error: `لم يتم ربط مفتاح ${provider === "openai" ? "OpenAI" : "Gemini"} API Key بعد. يرجى الضغط على زر 'إعدادات الذكاء الاصطناعي' في أعلى الصفحة وتحديد المزود وإدخال المفتاح.`,
       });
       return;
     }
@@ -2496,37 +2544,53 @@ ${malfunction.description}
 الجهة / الشركة المتأثرة: ${malfunction.companyName || "النظام العام (جميع الشركات)"}
 تاريخ وتوقيت الحدوث: ${new Date(malfunction.createdAt).toLocaleString("ar-EG")}`;
 
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const gemini = genAI.getGenerativeModel({
-      model,
-      systemInstruction: SYSTEM_INSTRUCTION,
-    });
+    let aiAnalysis = "";
 
-    const result = await gemini.generateContent(USER_PROMPT);
-    const aiAnalysis = result.response.text();
+    if (provider === "openai") {
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey });
+      const isReasoning = model.startsWith("o1") || model.startsWith("o3");
+      const comp = await openai.chat.completions.create({
+        model,
+        messages: [
+          { role: isReasoning ? "user" : "system", content: SYSTEM_INSTRUCTION },
+          { role: "user", content: USER_PROMPT },
+        ],
+        ...(isReasoning ? {} : { max_tokens: 1500 }),
+      });
+      aiAnalysis = comp.choices[0]?.message?.content || "";
+    } else {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const gemini = genAI.getGenerativeModel({
+        model,
+        systemInstruction: SYSTEM_INSTRUCTION,
+      });
+      const result = await gemini.generateContent(USER_PROMPT);
+      aiAnalysis = result.response.text();
+    }
 
     // Save to database
     await db
       .update(malfunctionsTable)
       .set({
         aiAnalysis,
-        aiProvider: "google",
+        aiProvider: provider,
         aiModel: model,
       })
       .where(eq(malfunctionsTable.id, id));
 
-    await logAdminActivity(req.session.userId!, "AI Malfunction Diagnosis", `Diagnosed malfunction #${id} using ${model}`, req.ip || null);
+    await logAdminActivity(req.session.userId!, "AI Malfunction Diagnosis", `Diagnosed malfunction #${id} using ${provider} (${model})`, req.ip || null);
 
     res.json({
       ok: true,
       aiAnalysis,
-      aiProvider: "google",
+      aiProvider: provider,
       aiModel: model,
     });
   } catch (err: any) {
-    logger.error({ err }, "Gemini malfunction analysis error");
-    res.status(500).json({ error: err.message || "Failed to analyze malfunction with Gemini Pro" });
+    logger.error({ err }, "Malfunction AI analysis error");
+    res.status(500).json({ error: err.message || "Failed to analyze malfunction with AI" });
   }
 });
 

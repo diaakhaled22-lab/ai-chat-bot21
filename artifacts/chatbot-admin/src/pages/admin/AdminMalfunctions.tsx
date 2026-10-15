@@ -44,12 +44,82 @@ import {
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 
-const GEMINI_MODELS = [
-  { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro ⭐ (موصى به - سياق 1M وتحليل منطقي متقدم)" },
-  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro (أعلى دقة للمهام المعقدة)" },
-  { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash (فائق السرعة وحصص مجانية)" },
-  { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash (خفيف ومتوازن)" },
-];
+type AiProvider = "google" | "openai";
+
+interface ProviderConfig {
+  id: AiProvider;
+  name: string;
+  badgeName: string;
+  models: { id: string; label: string }[];
+  defaultModel: string;
+  keyPlaceholder: string;
+  keyHelpText: { ar: string; en: string };
+  keyLink: string;
+  keyLinkLabel: { ar: string; en: string };
+}
+
+const AI_PROVIDERS: Record<AiProvider, ProviderConfig> = {
+  google: {
+    id: "google",
+    name: "Google Gemini",
+    badgeName: "Gemini Pro",
+    models: [
+      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro ⭐ (موصى به - سياق 1M واستدلال متقدم)" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro (أعلى دقة للمهام المعقدة)" },
+      { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash (فائق السرعة)" },
+      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash (خفيف ومتوازن)" },
+    ],
+    defaultModel: "gemini-1.5-pro",
+    keyPlaceholder: "AIzaSy...",
+    keyHelpText: {
+      ar: "يمكنك استخدام مفتاح مجاني أو مدفوع لاشتراكك من منصة Google AI Studio الرسمية.",
+      en: "You can use a free or paid API key from official Google AI Studio.",
+    },
+    keyLink: "https://aistudio.google.com/app/apikey",
+    keyLinkLabel: {
+      ar: "احصل على المفتاح من Google AI Studio",
+      en: "Get key from Google AI Studio",
+    },
+  },
+  openai: {
+    id: "openai",
+    name: "OpenAI",
+    badgeName: "OpenAI",
+    models: [
+      { id: "gpt-4o", label: "GPT-4o ⭐ (موصى به - ذكاء فائق وتحليل شامل وسريع)" },
+      { id: "gpt-4o-mini", label: "GPT-4o Mini (سريع وخفيف واقتصادي)" },
+      { id: "o3-mini", label: "o3-mini (استدلال برمجي عميق)" },
+      { id: "o1", label: "o1 (أقوى قدرات تفكير منطقي)" },
+      { id: "gpt-4-turbo", label: "GPT-4 Turbo (قوي ومعتمد)" },
+      { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (نموذج خفيف)" },
+    ],
+    defaultModel: "gpt-4o",
+    keyPlaceholder: "sk-proj-...",
+    keyHelpText: {
+      ar: "استخدم مفتاح OpenAI API Key الخاص بحسابك على منصة OpenAI.",
+      en: "Use an OpenAI API Key from your OpenAI Platform account.",
+    },
+    keyLink: "https://platform.openai.com/api-keys",
+    keyLinkLabel: {
+      ar: "احصل على المفتاح من OpenAI Platform",
+      en: "Get key from OpenAI Platform",
+    },
+  },
+};
+
+interface MalfunctionItem {
+  id: number;
+  title: string;
+  description: string;
+  source: "client" | "system" | "admin";
+  isActive: boolean;
+  aiAnalysis?: string | null;
+  aiProvider?: "google" | "openai" | null;
+  aiModel?: string | null;
+  createdAt: string;
+  resolvedAt?: string | null;
+  companyName?: string | null;
+}
 
 export default function AdminMalfunctions() {
   const { lang } = useLanguage();
@@ -61,18 +131,20 @@ export default function AdminMalfunctions() {
   const [newDescription, setNewDescription] = useState("");
 
   const [openAiConfig, setOpenAiConfig] = useState(false);
-  const [geminiKey, setGeminiKey] = useState("");
-  const [geminiModel, setGeminiModel] = useState("gemini-1.5-pro");
+  const [selectedProvider, setSelectedProvider] = useState<AiProvider>("google");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState("gemini-1.5-pro");
   const [analyzingId, setAnalyzingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
-  const { data: malfunctions, isLoading, isError } = useQuery<any[]>({
+  const { data: malfunctions, isLoading, isError } = useQuery<MalfunctionItem[]>({
     queryKey: ["admin-malfunctions"],
     queryFn: () => customFetch("/api/admin/malfunctions"),
     refetchInterval: 15_000,
   });
 
   const { data: aiConfig } = useQuery<{
+    provider: AiProvider;
     hasKey: boolean;
     maskedKey: string;
     model: string;
@@ -82,8 +154,27 @@ export default function AdminMalfunctions() {
     queryFn: () => customFetch("/api/admin/malfunctions/ai-config"),
   });
 
+  const currentProviderConfig = AI_PROVIDERS[selectedProvider];
+
+  const handleOpenConfig = () => {
+    const prov = aiConfig?.provider || "google";
+    setSelectedProvider(prov);
+    setSelectedModel(aiConfig?.model || AI_PROVIDERS[prov].defaultModel);
+    setApiKeyInput("");
+    setOpenAiConfig(true);
+  };
+
+  const handleProviderChange = (newProv: AiProvider) => {
+    setSelectedProvider(newProv);
+    const availableModelIds = AI_PROVIDERS[newProv].models.map((m) => m.id);
+    if (!availableModelIds.includes(selectedModel)) {
+      setSelectedModel(AI_PROVIDERS[newProv].defaultModel);
+    }
+    setApiKeyInput("");
+  };
+
   const saveAiConfigMutation = useMutation({
-    mutationFn: (body: { apiKey?: string; model?: string }) =>
+    mutationFn: (body: { provider: AiProvider; apiKey?: string; model?: string }) =>
       customFetch("/api/admin/malfunctions/ai-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,10 +183,14 @@ export default function AdminMalfunctions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-malfunctions-ai-config"] });
       setOpenAiConfig(false);
-      setGeminiKey("");
+      setApiKeyInput("");
+      const provName = currentProviderConfig.name;
       toast({
-        title: lang === "ar" ? "تم حفظ إعدادات Gemini Pro" : "Gemini Settings Saved",
-        description: lang === "ar" ? "تم ربط اشتراك ونموذج Gemini Pro بنجاح." : "Gemini Pro configuration updated successfully.",
+        title: lang === "ar" ? `تم حفظ إعدادات ${provName}` : `${provName} Settings Saved`,
+        description:
+          lang === "ar"
+            ? `تم حفظ المزود (${provName}) والنموذج (${selectedModel}) بنجاح.`
+            : `${provName} provider and model (${selectedModel}) saved successfully.`,
       });
     },
     onError: (err: any) => {
@@ -108,15 +203,16 @@ export default function AdminMalfunctions() {
   });
 
   const testAiConnectionMutation = useMutation({
-    mutationFn: (body: { apiKey?: string; model?: string }) =>
+    mutationFn: (body: { provider: AiProvider; apiKey?: string; model?: string }) =>
       customFetch<{ ok: boolean; response: string }>("/api/admin/malfunctions/ai-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),
     onSuccess: (res) => {
+      const provName = currentProviderConfig.name;
       toast({
-        title: lang === "ar" ? "نجح الاتصال بـ Gemini Pro ✓" : "Gemini Pro Connected ✓",
+        title: lang === "ar" ? `نجح الاتصال بـ ${provName} ✓` : `${provName} Connected ✓`,
         description: res.response || (lang === "ar" ? "تم تأكيد الاتصال بنجاح." : "Connection verified successfully."),
       });
     },
@@ -124,33 +220,40 @@ export default function AdminMalfunctions() {
       toast({
         variant: "destructive",
         title: lang === "ar" ? "فشل الاتصال" : "Connection Failed",
-        description: err?.message || (lang === "ar" ? "تأكد من صحة مفتاح الـ API" : "Verify your Gemini API key"),
+        description: err?.message || (lang === "ar" ? "تأكد من صحة مفتاح الـ API" : "Verify your API key"),
       });
     },
   });
 
   const analyzeMutation = useMutation({
     mutationFn: (id: number) =>
-      customFetch<{ ok: boolean; aiAnalysis: string }>(`/api/admin/malfunctions/${id}/ai-analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      }),
+      customFetch<{ ok: boolean; aiAnalysis: string; aiProvider?: string; aiModel?: string }>(
+        `/api/admin/malfunctions/${id}/ai-analyze`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }
+      ),
     onMutate: (id) => {
       setAnalyzingId(id);
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["admin-malfunctions"] });
+      const provLabel = res.aiProvider === "openai" ? "OpenAI" : "Google Gemini";
       toast({
-        title: lang === "ar" ? "تم تحليل وتشخيص العطل" : "Analysis Complete",
-        description: lang === "ar" ? "قام Gemini Pro بتوليد تشخيص دقيق وخطوات الحل." : "Gemini Pro generated root cause diagnosis and fix steps.",
+        title: lang === "ar" ? "تم تشخيص وتحليل العطل" : "Analysis Complete",
+        description:
+          lang === "ar"
+            ? `قام ${provLabel} بتوليد تقرير تشخيصي دقيق وخطوات الحل المقترحة.`
+            : `${provLabel} generated root cause diagnosis and fix steps.`,
       });
     },
     onError: (err: any) => {
       toast({
         variant: "destructive",
         title: lang === "ar" ? "فشل التحليل" : "Analysis Failed",
-        description: err?.message || (lang === "ar" ? "تأكد من إعداد مفتاح Gemini Pro" : "Ensure Gemini Pro is configured"),
+        description: err?.message || (lang === "ar" ? "تأكد من إعداد مفتاح الذكاء الاصطناعي" : "Ensure AI is configured"),
       });
     },
     onSettled: () => {
@@ -173,9 +276,10 @@ export default function AdminMalfunctions() {
       setNewDescription("");
       toast({
         title: lang === "ar" ? "تم تسجيل العطل وإرسال الإشعار" : "Malfunction Reported",
-        description: lang === "ar"
-          ? "تم إرسال التنبيه إلى أيقونة الإشعارات وإلى البريد الإلكتروني بنجاح."
-          : "Notification sent to bell icon and admin email successfully.",
+        description:
+          lang === "ar"
+            ? "تم إرسال التنبيه إلى أيقونة الإشعارات وإلى البريد الإلكتروني بنجاح."
+            : "Notification sent to bell icon and admin email successfully.",
       });
     },
     onError: (err: any) => {
@@ -234,7 +338,13 @@ export default function AdminMalfunctions() {
   });
 
   const title = lang === "ar" ? "إدارة الأعطال" : "Manage Malfunctions";
-  const desc = lang === "ar" ? "متابعة وحل الأعطال وتشخيصها تلقائياً باستخدام Google Gemini Pro." : "Monitor, diagnose, and resolve active malfunctions with Google Gemini Pro.";
+  const desc =
+    lang === "ar"
+      ? "متابعة وحل الأعطال وتشخيصها تلقائياً بالذكاء الاصطناعي (Google Gemini أو OpenAI)."
+      : "Monitor, diagnose, and resolve active malfunctions with AI (Google Gemini or OpenAI).";
+
+  const activeProvider = aiConfig?.provider || "google";
+  const isOpenAiActive = activeProvider === "openai";
 
   return (
     <div className="space-y-6">
@@ -244,17 +354,24 @@ export default function AdminMalfunctions() {
           <p className="text-muted-foreground mt-2">{desc}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Gemini Pro Config Dialog Trigger */}
+          {/* AI Settings Dialog Trigger */}
           <Button
             variant="outline"
-            className="shrink-0 flex items-center gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-            onClick={() => {
-              setGeminiModel(aiConfig?.model || "gemini-1.5-pro");
-              setOpenAiConfig(true);
-            }}
+            className={`shrink-0 flex items-center gap-2 transition-all ${
+              isOpenAiActive
+                ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+            }`}
+            onClick={handleOpenConfig}
           >
-            <Sparkles className="w-4 h-4 text-blue-400" />
-            {lang === "ar" ? "إعدادات Gemini Pro" : "Gemini Pro Settings"}
+            {isOpenAiActive ? (
+              <Bot className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-blue-400" />
+            )}
+            {lang === "ar"
+              ? `إعدادات الذكاء الاصطناعي (${isOpenAiActive ? "OpenAI" : "Gemini"})`
+              : `AI Settings (${isOpenAiActive ? "OpenAI" : "Gemini"})`}
             {aiConfig?.hasKey && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />
             )}
@@ -314,38 +431,83 @@ export default function AdminMalfunctions() {
         </div>
       </div>
 
-      {/* Gemini Pro Settings Dialog */}
+      {/* AI Settings Dialog (Gemini & OpenAI) */}
       <Dialog open={openAiConfig} onOpenChange={setOpenAiConfig}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-blue-400" />
-              {lang === "ar" ? "ربط اشتراك ونموذج Google Gemini Pro" : "Connect Google Gemini Pro"}
+              {selectedProvider === "openai" ? (
+                <Bot className="w-5 h-5 text-emerald-400" />
+              ) : (
+                <Sparkles className="w-5 h-5 text-blue-400" />
+              )}
+              {lang === "ar" ? "إعدادات محرك الذكاء الاصطناعي لتشخيص الأعطال" : "Malfunction AI Diagnosis Settings"}
             </DialogTitle>
             <DialogDescription>
               {lang === "ar"
-                ? "اربط مفتاح Gemini API Key لتفعيل التشخيص الذكي واقتراح الحلول وصياغة رسائل العملاء فوراً."
-                : "Connect your Gemini API Key to enable AI diagnosis, actionable fixes, and customer notices."}
+                ? "اختر مزود الذكاء الاصطناعي (OpenAI أو Google Gemini) ونموذج العمل المناسب لتشخيص الأعطال واقتراح خطوات الحل."
+                : "Choose your AI provider (OpenAI or Google Gemini) and model to diagnose malfunctions and generate solutions."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-3">
+            {/* Provider Selector Tabs */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-primary" />
+                {lang === "ar" ? "مزود الذكاء الاصطناعي (AI Provider)" : "AI Provider"}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("google")}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
+                    selectedProvider === "google"
+                      ? "border-blue-500 bg-blue-500/10 text-blue-400 ring-2 ring-blue-500/20 shadow-sm"
+                      : "border-border hover:bg-muted/50 text-muted-foreground"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                  Google Gemini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("openai")}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-medium transition-all ${
+                    selectedProvider === "openai"
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 ring-2 ring-emerald-500/20 shadow-sm"
+                      : "border-border hover:bg-muted/50 text-muted-foreground"
+                  }`}
+                >
+                  <Bot className="w-4 h-4 text-emerald-400" />
+                  OpenAI (ChatGPT)
+                </button>
+              </div>
+            </div>
+
             {/* Connection Status Box */}
             <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
               <div className="flex items-center justify-between text-xs font-medium">
-                <span className="text-muted-foreground">{lang === "ar" ? "حالة الربط:" : "Status:"}</span>
-                {aiConfig?.hasKey ? (
+                <span className="text-muted-foreground">{lang === "ar" ? "حالة الربط الحالية:" : "Connection Status:"}</span>
+                {aiConfig?.provider === selectedProvider && aiConfig?.hasKey ? (
                   <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     {lang === "ar" ? "مربوط ونشط" : "Connected & Active"}
                   </span>
                 ) : (
-                  <span className="text-amber-400">{lang === "ar" ? "غير مربوط بعد" : "Not connected"}</span>
+                  <span className="text-amber-400">
+                    {lang === "ar" ? "غير مربوط أو يحتاج حفظ المفتاح" : "Not connected or needs save"}
+                  </span>
                 )}
               </div>
-              {aiConfig?.hasKey && (
+              {aiConfig?.provider === selectedProvider && aiConfig?.hasKey && (
                 <div className="text-xs text-muted-foreground font-mono">
-                  {aiConfig.maskedKey} {aiConfig.isInherited ? (lang === "ar" ? "(مستمد من إعدادات الذكاء الاصطناعي العامة)" : "(from general AI settings)") : ""}
+                  {aiConfig.maskedKey}{" "}
+                  {aiConfig.isInherited
+                    ? lang === "ar"
+                      ? "(مستمد من إعدادات الذكاء الاصطناعي العامة)"
+                      : "(from general AI settings)"
+                    : ""}
                 </div>
               )}
             </div>
@@ -354,43 +516,65 @@ export default function AdminMalfunctions() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium flex items-center gap-1.5">
-                  <Key className="w-4 h-4 text-blue-400" />
-                  {lang === "ar" ? "مفتاح Gemini API Key" : "Gemini API Key"}
+                  <Key
+                    className={`w-4 h-4 ${
+                      selectedProvider === "openai" ? "text-emerald-400" : "text-blue-400"
+                    }`}
+                  />
+                  {selectedProvider === "openai" ? "OpenAI API Key" : "Gemini API Key"}
                 </label>
                 <a
-                  href="https://aistudio.google.com/app/apikey"
+                  href={currentProviderConfig.keyLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                  className={`text-xs hover:underline flex items-center gap-1 ${
+                    selectedProvider === "openai" ? "text-emerald-400" : "text-blue-400"
+                  }`}
                 >
-                  {lang === "ar" ? "احصل على المفتاح من Google AI Studio" : "Get key from Google AI Studio"}
+                  {currentProviderConfig.keyLinkLabel[lang === "ar" ? "ar" : "en"]}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
               <PasswordInput
-                placeholder={aiConfig?.hasKey ? (lang === "ar" ? "اتركه فارغاً للإبقاء على المفتاح الحالي" : "Leave blank to keep existing key") : "AIzaSy..."}
-                value={geminiKey}
-                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder={
+                  aiConfig?.provider === selectedProvider && aiConfig?.hasKey
+                    ? lang === "ar"
+                      ? "اتركه فارغاً للإبقاء على المفتاح الحالي"
+                      : "Leave blank to keep current key"
+                    : currentProviderConfig.keyPlaceholder
+                }
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
               />
               <p className="text-[11px] text-muted-foreground">
-                {lang === "ar"
-                  ? "يمكنك استخدام مفتاح مجاني أو مدفوع لاشتراكك من منصة Google AI Studio الرسمية."
-                  : "You can use a free or paid API key from official Google AI Studio."}
+                {currentProviderConfig.keyHelpText[lang === "ar" ? "ar" : "en"]}
               </p>
             </div>
 
             {/* Model Select */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1.5">
-                <Cpu className="w-4 h-4 text-blue-400" />
-                {lang === "ar" ? "نموذج Gemini المعتمد" : "Gemini Model"}
+                <Cpu
+                  className={`w-4 h-4 ${
+                    selectedProvider === "openai" ? "text-emerald-400" : "text-blue-400"
+                  }`}
+                />
+                {lang === "ar"
+                  ? `نموذج ${currentProviderConfig.name} المعتمد`
+                  : `${currentProviderConfig.name} Model`}
               </label>
-              <Select value={geminiModel} onValueChange={setGeminiModel}>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر نموذج Gemini" />
+                  <SelectValue
+                    placeholder={
+                      lang === "ar"
+                        ? `اختر نموذج ${currentProviderConfig.name}`
+                        : `Select ${currentProviderConfig.name} Model`
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {GEMINI_MODELS.map((m) => (
+                  {currentProviderConfig.models.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.label}
                     </SelectItem>
@@ -405,18 +589,40 @@ export default function AdminMalfunctions() {
               type="button"
               variant="outline"
               disabled={testAiConnectionMutation.isPending}
-              onClick={() => testAiConnectionMutation.mutate({ apiKey: geminiKey || undefined, model: geminiModel })}
+              onClick={() =>
+                testAiConnectionMutation.mutate({
+                  provider: selectedProvider,
+                  apiKey: apiKeyInput || undefined,
+                  model: selectedModel,
+                })
+              }
               className="gap-2"
             >
-              {testAiConnectionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {testAiConnectionMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
               {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
             </Button>
             <Button
               type="button"
               disabled={saveAiConfigMutation.isPending}
-              onClick={() => saveAiConfigMutation.mutate({ apiKey: geminiKey || undefined, model: geminiModel })}
+              onClick={() =>
+                saveAiConfigMutation.mutate({
+                  provider: selectedProvider,
+                  apiKey: apiKeyInput || undefined,
+                  model: selectedModel,
+                })
+              }
             >
-              {saveAiConfigMutation.isPending ? (lang === "ar" ? "جاري الحفظ..." : "Saving...") : (lang === "ar" ? "حفظ الإعدادات" : "Save Settings")}
+              {saveAiConfigMutation.isPending
+                ? lang === "ar"
+                  ? "جاري الحفظ..."
+                  : "Saving..."
+                : lang === "ar"
+                ? "حفظ الإعدادات"
+                : "Save Settings"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -427,8 +633,8 @@ export default function AdminMalfunctions() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>{lang === "ar" ? "خطأ في الاتصال" : "Connection Error"}</AlertTitle>
           <AlertDescription>
-            {lang === "ar" 
-              ? "تعذر الاتصال بالخادم. السيرفر لا يستجيب." 
+            {lang === "ar"
+              ? "تعذر الاتصال بالخادم. السيرفر لا يستجيب."
               : "Failed to connect to the server."}
           </AlertDescription>
         </Alert>
@@ -441,114 +647,206 @@ export default function AdminMalfunctions() {
       ) : !isError && malfunctions && malfunctions.length > 0 ? (
         <div className="space-y-4 mt-6">
           <h2 className="text-xl font-semibold mb-4">{lang === "ar" ? "سجل الأعطال" : "Malfunctions History"}</h2>
-          {malfunctions.map((m) => (
-            <Alert key={m.id} variant={m.isActive ? "destructive" : "default"} className={m.isActive ? "bg-red-500/5" : "bg-muted/50 border-muted"}>
-              {m.isActive ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-              <div className="flex flex-col w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between w-full gap-4">
-                  <div className="flex-1 min-w-0">
-                    <AlertTitle className="text-base mb-2 flex flex-wrap items-center gap-2">
-                      <span className="truncate font-semibold">{m.title}</span>
-                      {m.companyName && <span className="text-xs bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 px-2 py-0.5 rounded-full font-normal whitespace-nowrap">{m.companyName}</span>}
-                      {m.source === 'client' && <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap"><User className="w-3 h-3"/> {lang === "ar" ? "بلاغ عميل" : "Client"}</span>}
-                      {m.source === 'system' && <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap"><Monitor className="w-3 h-3"/> {lang === "ar" ? "نظام" : "System"}</span>}
-                      {m.source === 'admin' && <span className="text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap"><ShieldAlert className="w-3 h-3"/> {lang === "ar" ? "إدارة" : "Admin"}</span>}
-                    </AlertTitle>
-                    <AlertDescription className="mt-2 text-sm opacity-90 leading-relaxed">
-                      {m.description}
-                      <div className="mt-3 text-xs opacity-70 flex flex-wrap items-center gap-x-4 gap-y-2">
-                        <span>{lang === "ar" ? "وقت الحدوث:" : "Occurred:"} {new Date(m.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}</span>
-                        {!m.isActive && m.resolvedAt && (
-                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                            {lang === "ar" ? "تم الحل:" : "Resolved:"} {new Date(m.resolvedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}
-                          </span>
-                        )}
-                      </div>
-                    </AlertDescription>
-                  </div>
-
-                  {/* Actions buttons */}
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    {/* Gemini Pro diagnose button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1.5 text-xs h-8"
-                      onClick={() => analyzeMutation.mutate(m.id)}
-                      disabled={analyzingId === m.id}
-                    >
-                      {analyzingId === m.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                      )}
-                      {m.aiAnalysis
-                        ? (lang === "ar" ? "إعادة التحليل بـ Gemini" : "Re-analyze")
-                        : (lang === "ar" ? "تشخيص بـ Gemini Pro" : "Gemini Diagnosis")}
-                    </Button>
-
-                    {m.isActive && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs bg-background"
-                        onClick={() => resolveMutation.mutate(m.id)}
-                        disabled={resolveMutation.isPending}
-                      >
-                        <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
-                        {lang === "ar" ? "تحديد كـ محلول" : "Mark Resolved"}
-                      </Button>
-                    )}
-
-                    <ConfirmDeleteDialog onConfirm={() => deleteMutation.mutate(m.id)}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </ConfirmDeleteDialog>
-                  </div>
-                </div>
-
-                {/* Gemini Pro Analysis Report Card */}
-                {m.aiAnalysis && (
-                  <div className="mt-4 border border-blue-500/30 bg-blue-500/5 dark:bg-blue-950/20 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-blue-500/20 pb-2 flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center">
-                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                        </div>
-                        <span className="font-semibold text-sm text-blue-400">
-                          {lang === "ar" ? "تقرير وتشخيص Gemini Pro" : "Gemini Pro Diagnostic Report"}
-                        </span>
-                        {m.aiModel && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full border border-blue-500/30 text-blue-300 bg-blue-500/10 font-mono">
-                            {m.aiModel}
-                          </span>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          navigator.clipboard.writeText(m.aiAnalysis);
-                          setCopiedId(m.id);
-                          toast({ title: lang === "ar" ? "تم نسخ التقرير" : "Report copied to clipboard" });
-                          setTimeout(() => setCopiedId(null), 2000);
-                        }}
-                      >
-                        {copiedId === m.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                        {copiedId === m.id ? (lang === "ar" ? "تم النسخ ✓" : "Copied ✓") : (lang === "ar" ? "نسخ التقرير" : "Copy")}
-                      </Button>
-                    </div>
-
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 font-sans" dir="auto">
-                      {m.aiAnalysis}
-                    </div>
-                  </div>
+          {malfunctions.map((m) => {
+            const isDiagnosedByOpenAi = m.aiProvider === "openai";
+            return (
+              <Alert
+                key={m.id}
+                variant={m.isActive ? "destructive" : "default"}
+                className={m.isActive ? "bg-red-500/5" : "bg-muted/50 border-muted"}
+              >
+                {m.isActive ? (
+                  <AlertTriangle className="h-5 w-5" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                 )}
-              </div>
-            </Alert>
-          ))}
+                <div className="flex flex-col w-full">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between w-full gap-4">
+                    <div className="flex-1 min-w-0">
+                      <AlertTitle className="text-base mb-2 flex flex-wrap items-center gap-2">
+                        <span className="truncate font-semibold">{m.title}</span>
+                        {m.companyName && (
+                          <span className="text-xs bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 px-2 py-0.5 rounded-full font-normal whitespace-nowrap">
+                            {m.companyName}
+                          </span>
+                        )}
+                        {m.source === "client" && (
+                          <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap">
+                            <User className="w-3 h-3" /> {lang === "ar" ? "بلاغ عميل" : "Client"}
+                          </span>
+                        )}
+                        {m.source === "system" && (
+                          <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap">
+                            <Monitor className="w-3 h-3" /> {lang === "ar" ? "نظام" : "System"}
+                          </span>
+                        )}
+                        {m.source === "admin" && (
+                          <span className="text-xs bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-normal flex items-center gap-1 whitespace-nowrap">
+                            <ShieldAlert className="w-3 h-3" /> {lang === "ar" ? "إدارة" : "Admin"}
+                          </span>
+                        )}
+                      </AlertTitle>
+                      <AlertDescription className="mt-2 text-sm opacity-90 leading-relaxed">
+                        {m.description}
+                        <div className="mt-3 text-xs opacity-70 flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <span>
+                            {lang === "ar" ? "وقت الحدوث:" : "Occurred:"}{" "}
+                            {new Date(m.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}
+                          </span>
+                          {!m.isActive && m.resolvedAt && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                              {lang === "ar" ? "تم الحل:" : "Resolved:"}{" "}
+                              {new Date(m.resolvedAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}
+                            </span>
+                          )}
+                        </div>
+                      </AlertDescription>
+                    </div>
+
+                    {/* Actions buttons */}
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      {/* AI diagnose button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`gap-1.5 text-xs h-8 ${
+                          isOpenAiActive
+                            ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                            : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                        }`}
+                        onClick={() => analyzeMutation.mutate(m.id)}
+                        disabled={analyzingId === m.id}
+                      >
+                        {analyzingId === m.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : isOpenAiActive ? (
+                          <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                        )}
+                        {m.aiAnalysis
+                          ? lang === "ar"
+                            ? "إعادة التشخيص بالذكاء الاصطناعي"
+                            : "Re-diagnose"
+                          : lang === "ar"
+                          ? `تشخيص بـ ${isOpenAiActive ? "OpenAI" : "Gemini"}`
+                          : `${isOpenAiActive ? "OpenAI" : "Gemini"} Diagnosis`}
+                      </Button>
+
+                      {m.isActive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-background"
+                          onClick={() => resolveMutation.mutate(m.id)}
+                          disabled={resolveMutation.isPending}
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
+                          {lang === "ar" ? "تحديد كـ محلول" : "Mark Resolved"}
+                        </Button>
+                      )}
+
+                      <ConfirmDeleteDialog onConfirm={() => deleteMutation.mutate(m.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </ConfirmDeleteDialog>
+                    </div>
+                  </div>
+
+                  {/* AI Analysis Report Card */}
+                  {m.aiAnalysis && (
+                    <div
+                      className={`mt-4 border rounded-xl p-4 space-y-3 ${
+                        isDiagnosedByOpenAi
+                          ? "border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/20"
+                          : "border-blue-500/30 bg-blue-500/5 dark:bg-blue-950/20"
+                      }`}
+                    >
+                      <div
+                        className={`flex items-center justify-between border-b pb-2 flex-wrap gap-2 ${
+                          isDiagnosedByOpenAi ? "border-emerald-500/20" : "border-blue-500/20"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                              isDiagnosedByOpenAi ? "bg-emerald-500/20" : "bg-blue-500/20"
+                            }`}
+                          >
+                            {isDiagnosedByOpenAi ? (
+                              <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                            )}
+                          </div>
+                          <span
+                            className={`font-semibold text-sm ${
+                              isDiagnosedByOpenAi ? "text-emerald-400" : "text-blue-400"
+                            }`}
+                          >
+                            {isDiagnosedByOpenAi
+                              ? lang === "ar"
+                                ? "تقرير وتشخيص OpenAI"
+                                : "OpenAI Diagnostic Report"
+                              : lang === "ar"
+                              ? "تقرير وتشخيص Google Gemini"
+                              : "Google Gemini Diagnostic Report"}
+                          </span>
+                          {m.aiModel && (
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full border font-mono ${
+                                isDiagnosedByOpenAi
+                                  ? "border-emerald-500/30 text-emerald-300 bg-emerald-500/10"
+                                  : "border-blue-500/30 text-blue-300 bg-blue-500/10"
+                              }`}
+                            >
+                              {m.aiModel}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            if (m.aiAnalysis) {
+                              navigator.clipboard.writeText(m.aiAnalysis);
+                              setCopiedId(m.id);
+                              toast({
+                                title: lang === "ar" ? "تم نسخ التقرير" : "Report copied to clipboard",
+                              });
+                              setTimeout(() => setCopiedId(null), 2000);
+                            }
+                          }}
+                        >
+                          {copiedId === m.id ? (
+                            <Check className="w-3 h-3 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                          {copiedId === m.id
+                            ? lang === "ar"
+                              ? "تم النسخ ✓"
+                              : "Copied ✓"
+                            : lang === "ar"
+                            ? "نسخ التقرير"
+                            : "Copy"}
+                        </Button>
+                      </div>
+
+                      <div
+                        className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 font-sans"
+                        dir="auto"
+                      >
+                        {m.aiAnalysis}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Alert>
+            );
+          })}
         </div>
       ) : null}
     </div>
