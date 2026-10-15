@@ -360,6 +360,10 @@ export default function ClientUniversalChat() {
     }
   };
 
+  const allowedDates = useMemo(() => {
+    return new Set(dateOptions.map((opt) => opt.value));
+  }, [dateOptions]);
+
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
       if (channelFilter === "handoff") {
@@ -376,7 +380,15 @@ export default function ClientUniversalChat() {
         return false;
       }
 
-      if (dateFilter !== "all") {
+      if (dateFilter === "all") {
+        if (allowedDates.size > 0) {
+          const matchesDate = (
+            (s.updatedAt && allowedDates.has(s.updatedAt.slice(0, 10))) ||
+            s.messages.some(m => m.createdAt && allowedDates.has(m.createdAt.slice(0, 10)))
+          );
+          if (!matchesDate) return false;
+        }
+      } else {
         const matchesDate = (
           (s.updatedAt && s.updatedAt.startsWith(dateFilter)) ||
           s.messages.some(m => m.createdAt && m.createdAt.startsWith(dateFilter))
@@ -397,7 +409,7 @@ export default function ClientUniversalChat() {
 
       return true;
     });
-  }, [sessions, channelFilter, dateFilter, search]);
+  }, [sessions, channelFilter, dateFilter, search, allowedDates]);
 
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || null;

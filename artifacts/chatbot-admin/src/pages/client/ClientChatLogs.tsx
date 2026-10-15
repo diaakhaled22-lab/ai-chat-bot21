@@ -103,15 +103,7 @@ export default function ClientChatLogs() {
   };
 
   const { toast } = useToast();
-  const { data: logs, isLoading, isFetching, refetch } = useListClientChatLogs({
-    channel: channelFilter !== "all" ? channelFilter : undefined,
-    fromDate: fromDate || undefined,
-    toDate: toDate || undefined,
-  });
-  const deleteChatLog = useDeleteClientChatLog();
-  const markLogAsRead = useMarkClientLogAsRead();
   const { data: retentionData, isLoading: retentionLoading } = useGetClientChatLogRetention();
-
   const currentRetention = retentionData?.retentionDays ?? 7;
 
   const dateOptions = useMemo(() => {
@@ -129,6 +121,18 @@ export default function ClientChatLogs() {
     }
     return options;
   }, [currentRetention, lang]);
+
+  const defaultFromDate = useMemo(() => {
+    return dateOptions.length > 0 ? dateOptions[dateOptions.length - 1].value : undefined;
+  }, [dateOptions]);
+
+  const { data: logs, isLoading, isFetching, refetch } = useListClientChatLogs({
+    channel: channelFilter !== "all" ? channelFilter : undefined,
+    fromDate: fromDate || defaultFromDate,
+    toDate: toDate || undefined,
+  });
+  const deleteChatLog = useDeleteClientChatLog();
+  const markLogAsRead = useMarkClientLogAsRead();
 
   // Group logs into sessions
   const sessions = useMemo(() => {

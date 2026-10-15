@@ -64,22 +64,35 @@ export default function ClientLeads() {
     return options;
   }, [currentRetention, lang]);
 
+  const allowedDates = useMemo(() => {
+    return new Set(dateOptions.map((opt) => opt.value));
+  }, [dateOptions]);
+
   const filteredLeads = useMemo(() => {
     if (!leads) return [];
-    return leads.filter(l => {
-      const matchesSearch = (l.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    return leads.filter((l) => {
+      const matchesSearch =
+        (l.name || "").toLowerCase().includes(search.toLowerCase()) ||
         (l.email || "").toLowerCase().includes(search.toLowerCase()) ||
         (l.phone || "").toLowerCase().includes(search.toLowerCase()) ||
         (l.interest || "").toLowerCase().includes(search.toLowerCase());
-      
-      let matchesDate = true;
-      if (dateFilter !== "all" && l.createdAt) {
+
+      let matchesDate = false;
+      if (l.createdAt) {
         const leadDate = new Date(l.createdAt).toISOString().split("T")[0];
-        matchesDate = leadDate === dateFilter;
+        if (dateFilter === "all") {
+          // "All Days" displays results based on the number of days specified below it
+          matchesDate = allowedDates.size > 0 ? allowedDates.has(leadDate) : true;
+        } else {
+          matchesDate = leadDate === dateFilter;
+        }
+      } else {
+        matchesDate = dateFilter === "all";
       }
+
       return matchesSearch && matchesDate;
     });
-  }, [leads, search, dateFilter]);
+  }, [leads, search, dateFilter, allowedDates]);
 
   const handleExportCSV = () => {
     if (!filteredLeads.length) return;
