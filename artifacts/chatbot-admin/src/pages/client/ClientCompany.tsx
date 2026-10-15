@@ -129,8 +129,6 @@ type AiProvider = keyof typeof AI_PROVIDERS;
 
 const formSchema = z.object({
   name: z.string().min(2, "Company name is required"),
-  notificationEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
-  resendApiKey: z.string().optional().or(z.literal("")),
   generalInfo: z.string().optional(),
   systemPrompt: z.string().optional(),
     
@@ -464,7 +462,6 @@ export default function ClientCompany() {
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [tgWebhookHash, setTgWebhookHash] = useState<string>("");
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const testGoogleSheet = useTestClientGoogleSheetConnection();
   const testingConnection = testGoogleSheet.isPending;
   const initialized = useRef(false);
@@ -474,8 +471,6 @@ export default function ClientCompany() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      notificationEmail: "",
-      resendApiKey: "",
       generalInfo: "",
       systemPrompt: "",
         
@@ -496,8 +491,6 @@ export default function ClientCompany() {
     if (company && !initialized.current) {
       form.reset({
         name: company.name || "",
-        notificationEmail: company.notificationEmail || "",
-        resendApiKey: (company as any).resendApiKey || "",
         generalInfo: company.generalInfo || "",
         systemPrompt: company.systemPrompt || "",
           
@@ -550,8 +543,6 @@ export default function ClientCompany() {
     // Transform empty strings to nulls for API
     const data = {
       ...values,
-      notificationEmail: values.notificationEmail?.trim() || null,
-      resendApiKey: (values as any).resendApiKey?.trim() || null,
       googleSheetsLink: values.googleSheetsLink || null,
       googleSheetsName: values.googleSheetsName || null,
       googleSheetsPage: values.googleSheetsPage || null,
@@ -680,57 +671,6 @@ export default function ClientCompany() {
       setTgStatus({ ok: false, message: lang === "ar" ? "❌ خطأ في الاتصال. تأكد من رمز البوت." : "❌ Connection error. Check your bot token and try again." });
     } finally {
       setTgRegistering(false);
-    }
-  };
-
-  const handleSendTestEmail = async () => {
-    const email = form.getValues("notificationEmail")?.trim();
-    const resendApiKey = (form.getValues() as any).resendApiKey?.trim();
-
-    if (!email) {
-      toast({
-        title: lang === "ar" ? "البريد الإلكتروني مطلوب" : "Email Required",
-        description: lang === "ar" ? "يرجى كتابة بريد Gmail أولاً في الخانة المخصصة." : "Please enter a notification email first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSendingTestEmail(true);
-    try {
-      const res = await fetch("/api/client/send-test-notification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          email,
-          resendApiKey: resendApiKey || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        toast({
-          title: lang === "ar" ? "✅ تم إرسال البريد التجريبي بنجاح" : "✅ Test Email Sent Successfully",
-          description: lang === "ar"
-            ? `تم إرسال إشعار تجريبي إلى ${email}. تفقد صندوق الوارد أو البريد غير المرغوب فيه (Spam).`
-            : `Test email sent to ${email}. Please check your inbox or spam folder.`,
-        });
-      } else {
-        toast({
-          title: lang === "ar" ? "❌ خطأ في إرسال البريد" : "❌ Email Delivery Failed",
-          description: data.error || (lang === "ar" ? "فشل إرسال البريد التجريبي عبر Resend" : "Failed to send test email via Resend"),
-          variant: "destructive",
-        });
-      }
-    } catch (err: any) {
-      toast({
-        title: lang === "ar" ? "خطأ في الاتصال" : "Network Error",
-        description: err.message || (lang === "ar" ? "تعذر إرسال الطلب إلى الخادم" : "Could not connect to server"),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSendingTestEmail(false);
     }
   };
 
@@ -912,95 +852,6 @@ export default function ClientCompany() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="notificationEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {lang === "ar" ? "بريد إشعارات الشركة (Gmail)" : "Company Notification Email (Gmail)"}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="notifications@company.com"
-                          {...field}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {lang === "ar"
-                          ? "استلام تنبيهات الأحداث الفورية (الرسائل، المحادثات، الطلبات، النماذج، إلخ)."
-                          : "Company's dedicated email address for instant event alerts."}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="resendApiKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {lang === "ar" ? "المفتاح السري (RESEND_API_KEY)" : "Secret (RESEND_API_KEY)"}
-                      </FormLabel>
-                      <FormControl>
-                        <PasswordInput
-                          placeholder="re_xxxxxxxxxxxxxxxxx"
-                          {...field}
-                          className="bg-background font-mono text-xs"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {lang === "ar"
-                          ? "مفتاح API الخاص بحساب Resend لإرسال الإشعارات إلى بريدك."
-                          : "Custom Resend API key for sending company email alerts."}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Test Email Action Card */}
-              <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p className="font-semibold text-foreground text-sm flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-primary" />
-                      {lang === "ar" ? "اختبار وصول رسائل البريد (Gmail)" : "Test Email Notification Delivery"}
-                    </p>
-                    <p>
-                      {lang === "ar"
-                        ? "أرسل بريداً تجريبياً فورياً للتحقق من صحة مفتاح Resend والتأكد من استلام الإشعارات في صندوق الوارد."
-                        : "Send an instant test email via Resend to verify your API Key and ensure notifications arrive."}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isSendingTestEmail}
-                    onClick={handleSendTestEmail}
-                    className="shrink-0 flex items-center gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
-                  >
-                    {isSendingTestEmail ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        {lang === "ar" ? "جارٍ الإرسال..." : "Sending..."}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        {lang === "ar" ? "إرسال بريد تجريبي" : "Send Test Email"}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
 
               <FormField
                 control={form.control}
