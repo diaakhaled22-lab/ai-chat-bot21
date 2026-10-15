@@ -11,6 +11,7 @@ import { ensureAdminExists } from "./lib/adminBootstrap";
 import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
 import { ensureEmailNotificationSchema, notifySubscriptionExpiringSoon, notifySubscriptionExpired } from "./lib/companyNotification";
 import { ensureRagSchema } from "./lib/knowledgeRag";
+import { ensureVoiceSchema } from "./lib/audio";
 
 const rawPort = process.env["API_PORT"] || (process.env["PORT"] && process.env["PORT"] !== "3000" && process.env["PORT"] !== "5173" ? process.env["PORT"] : "8080");
 const port = Number(rawPort) || 8080;
@@ -245,6 +246,7 @@ async function startServer() {
   await ensureAdminExists();
   await ensureEmailNotificationSchema();
   await ensureRagSchema();
+  await ensureVoiceSchema();
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 

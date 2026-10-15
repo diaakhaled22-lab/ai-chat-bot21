@@ -8,7 +8,7 @@ import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { webhookLimiter } from "../lib/security";
 import { Router } from "express";
-import { downloadWhatsAppAudio, transcribeAudio } from '../lib/audio';
+import { downloadWhatsAppAudio, transcribeAudio, generateVoiceResponse, sendWhatsAppVoiceNote } from '../lib/audio';
 import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -197,17 +197,28 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
           for (const message of messages) {
             const senderPhone = message.from;
             let userText = message.type === "text" ? message.text?.body : undefined;
+            let isVoiceNote = false;
 
             if (!userText && (message.type === "audio" || message.type === "voice")) {
                try {
                   const mediaId = message.audio?.id || message.voice?.id;
                   if (mediaId && company.whatsappApiToken) {
                      const buffer = await downloadWhatsAppAudio(company.whatsappApiToken, mediaId);
-                     const transcript = await transcribeAudio(company, buffer, "audio.ogg");
+                     const transcript = await transcribeAudio(company, buffer, "voice.ogg", "audio/ogg");
                      userText = "[رسالة صوتية] " + transcript;
+                     isVoiceNote = true;
                   }
                } catch (err) {
-                  // ignore
+                  logger.warn({ err, senderPhone }, "Failed to transcribe WhatsApp audio note");
+                  if (phoneNumberId && company.whatsappApiToken && senderPhone) {
+                    await sendWhatsAppMessage(
+                      phoneNumberId,
+                      company.whatsappApiToken,
+                      senderPhone,
+                      "🎙️ عذراً، لم أتمكن من الاستماع إلى التسجيل الصوتي بوضوح. هل يمكنك كتابة استفسارك نصياً أو إعادة إرساله؟"
+                    );
+                  }
+                  continue;
                }
             }
 
@@ -415,6 +426,19 @@ router.post("/whatsapp/webhook", webhookLimiter, async (req, res) => {
     });
       triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
 
+          // Voice note response if incoming message was voice or voice replies enabled
+          if (isVoiceNote || company.voiceReplyEnabled) {
+            try {
+              const voiceBuffer = await generateVoiceResponse(company, aiReply);
+              if (voiceBuffer) {
+                await sendWhatsAppVoiceNote(phoneNumberId, company.whatsappApiToken, senderPhone, voiceBuffer);
+              }
+            } catch (voiceErr) {
+              logger.warn({ voiceErr, senderPhone }, "Failed to send WhatsApp voice note, falling back to text only");
+            }
+          }
+
+          // Also send text response so user can both listen and read
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 
           void syncConversationToSheet(company, [
@@ -517,17 +541,28 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           for (const message of messages) {
             const senderPhone = message.from;
             let userText = message.type === "text" ? message.text?.body : undefined;
+            let isVoiceNote = false;
 
             if (!userText && (message.type === "audio" || message.type === "voice")) {
                try {
                   const mediaId = message.audio?.id || message.voice?.id;
                   if (mediaId && company.whatsappApiToken) {
                      const buffer = await downloadWhatsAppAudio(company.whatsappApiToken, mediaId);
-                     const transcript = await transcribeAudio(company, buffer, "audio.ogg");
+                     const transcript = await transcribeAudio(company, buffer, "voice.ogg", "audio/ogg");
                      userText = "[رسالة صوتية] " + transcript;
+                     isVoiceNote = true;
                   }
                } catch (err) {
-                  // ignore
+                  logger.warn({ err, senderPhone }, "Failed to transcribe WhatsApp audio note (webhook 2)");
+                  if (phoneNumberId && company.whatsappApiToken && senderPhone) {
+                    await sendWhatsAppMessage(
+                      phoneNumberId,
+                      company.whatsappApiToken,
+                      senderPhone,
+                      "🎙️ عذراً، لم أتمكن من الاستماع إلى التسجيل الصوتي بوضوح. هل يمكنك كتابة استفسارك نصياً أو إعادة إرساله؟"
+                    );
+                  }
+                  continue;
                }
             }
 
@@ -730,6 +765,19 @@ router.post("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
           });
           triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
 
+          // Voice note response if incoming message was voice or voice replies enabled
+          if (isVoiceNote || company.voiceReplyEnabled) {
+            try {
+              const voiceBuffer = await generateVoiceResponse(company, aiReply);
+              if (voiceBuffer) {
+                await sendWhatsAppVoiceNote(phoneNumberId, company.whatsappApiToken, senderPhone, voiceBuffer);
+              }
+            } catch (voiceErr) {
+              logger.warn({ voiceErr, senderPhone }, "Failed to send WhatsApp voice note, falling back to text only");
+            }
+          }
+
+          // Also send text response so the user can both listen and read
           await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
 
           void syncConversationToSheet(company, [

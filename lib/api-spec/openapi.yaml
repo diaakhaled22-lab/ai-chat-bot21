@@ -1080,6 +1080,12 @@ components:
         messengerEnabled:
           type: ["boolean", "null"]
           description: Whether the Messenger channel is enabled for this company.
+        voiceReplyEnabled:
+          type: boolean
+          description: Whether voice notes (TTS) should be generated when responding to customers on WhatsApp & Telegram.
+        voiceReplyVoice:
+          type: ["string", "null"]
+          description: The OpenAI TTS voice model (e.g. alloy, echo, fable, onyx, nova, shimmer).
         websiteChatbotKey:
           type: ["string", "null"]
         widgetEnabled:
@@ -1165,6 +1171,10 @@ components:
           type: ["string", "null"]
         messengerEnabled:
           type: ["boolean", "null"]
+        voiceReplyEnabled:
+          type: boolean
+        voiceReplyVoice:
+          type: ["string", "null"]
         websiteChatbotKey:
           type: ["string", "null"]
         widgetEnabled:

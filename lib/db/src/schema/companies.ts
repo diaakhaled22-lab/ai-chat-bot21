@@ -50,6 +50,8 @@ export const companiesTable = pgTable("companies", {
   fabPositionX: integer("fab_position_x").notNull().default(96),
   fabPositionY: integer("fab_position_y").notNull().default(92),
   chatLogRetentionDays: integer("chat_log_retention_days"),
+  voiceReplyEnabled: boolean("voice_reply_enabled").notNull().default(false),
+  voiceReplyVoice: text("voice_reply_voice").default("alloy"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

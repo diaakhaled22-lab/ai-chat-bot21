@@ -94,6 +94,8 @@ router.get("/client/company", async (req, res) => {
       messengerApiKey: maskApiKey(company.messengerApiKey),
       messengerPageId: company.messengerPageId,
       messengerEnabled: company.messengerEnabled ?? false,
+      voiceReplyEnabled: company.voiceReplyEnabled ?? false,
+      voiceReplyVoice: company.voiceReplyVoice ?? "alloy",
       websiteChatbotKey: company.websiteChatbotKey,
       widgetEnabled: company.widgetEnabled ?? false,
       websiteDataUrl: company.websiteDataUrl,
@@ -475,6 +477,8 @@ router.put("/client/company", async (req, res) => {
     if (data.fabEnabled !== undefined) updates.fabEnabled = data.fabEnabled;
     if (data.fabPositionX !== undefined) updates.fabPositionX = data.fabPositionX;
     if (data.fabPositionY !== undefined) updates.fabPositionY = data.fabPositionY;
+    if ((data as any).voiceReplyEnabled !== undefined) updates.voiceReplyEnabled = (data as any).voiceReplyEnabled;
+    if ((data as any).voiceReplyVoice !== undefined) updates.voiceReplyVoice = (data as any).voiceReplyVoice;
 
     const [company] = await db
       .update(companiesTable)

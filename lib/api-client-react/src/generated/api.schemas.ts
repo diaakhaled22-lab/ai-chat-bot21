@@ -195,6 +195,10 @@ export interface Company {
      * @nullable
      */
   messengerEnabled?: boolean | null;
+  /** Whether voice notes (TTS) should be generated when responding to customers on WhatsApp & Telegram. */
+  voiceReplyEnabled?: boolean;
+  /** The OpenAI TTS voice model (e.g. alloy, echo, fable, onyx, nova, shimmer). @nullable */
+  voiceReplyVoice?: string | null;
   /** @nullable */
   websiteChatbotKey?: string | null;
   /**
@@ -294,6 +298,8 @@ export interface CompanyInput {
   messengerPageId?: string | null;
   /** @nullable */
   messengerEnabled?: boolean | null;
+  voiceReplyEnabled?: boolean;
+  voiceReplyVoice?: string | null;
   /** @nullable */
   websiteChatbotKey?: string | null;
   /** @nullable */

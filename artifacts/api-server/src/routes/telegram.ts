@@ -19,7 +19,7 @@ import {
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
-import { downloadTelegramAudio, transcribeAudio } from '../lib/audio';
+import { downloadTelegramAudio, transcribeAudio, generateVoiceResponse, sendTelegramVoiceNote } from '../lib/audio';
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -142,12 +142,18 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       try {
         const fileId = message.voice ? message.voice.file_id : message.audio.file_id;
         const buffer = await downloadTelegramAudio(company.telegramBotApiKey!, fileId);
-        const transcript = await transcribeAudio(company, buffer, "audio.ogg");
+        const transcript = await transcribeAudio(company, buffer, "voice.ogg", "audio/ogg");
         userText = "[رسالة صوتية] " + transcript;
         isVoice = true;
       } catch (err) {
         logger.error({ err }, "Error transcribing telegram audio");
-        // We could send a fallback message or just return
+        if (company.telegramBotApiKey && chatId) {
+          await sendTelegramMessage(
+            company.telegramBotApiKey,
+            chatId,
+            "🎙️ عذراً، لم أتمكن من الاستماع إلى التسجيل الصوتي بوضوح. هل يمكنك كتابة استفسارك نصياً أو إعادة إرساله؟"
+          );
+        }
         return;
       }
     }
@@ -352,6 +358,19 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
       });
     triggerNewMessageNotification(company, sessionId, "telegram", userText);
 
+    // Voice response if incoming message was voice or voice replies enabled
+    if (isVoice || company.voiceReplyEnabled) {
+      try {
+        const voiceBuffer = await generateVoiceResponse(company, aiReply);
+        if (voiceBuffer) {
+          await sendTelegramVoiceNote(company.telegramBotApiKey!, chatId, voiceBuffer);
+        }
+      } catch (voiceErr) {
+        logger.warn({ voiceErr, chatId }, "Telegram voice response failed, sending text only");
+      }
+    }
+
+    // Always send text as well so user can both listen and read
     await sendTelegramMessage(company.telegramBotApiKey!, chatId, aiReply);
 
     void syncConversationToSheet(company, [

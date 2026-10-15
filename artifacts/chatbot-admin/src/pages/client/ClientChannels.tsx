@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   MessageCircle, Send, Loader2, Check, AlertTriangle,
-  Zap, Copy, Layers, Code,
+  Zap, Copy, Layers, Code, Mic,
 } from "lucide-react";
 import {
   useGetClientCompany,
@@ -37,6 +37,8 @@ const formSchema = z.object({
   fabEnabled:                z.boolean().optional(),
   fabPositionX:              z.number().min(0).max(100).optional(),
   fabPositionY:              z.number().min(0).max(100).optional(),
+  voiceReplyEnabled:         z.boolean().optional(),
+  voiceReplyVoice:           z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -95,6 +97,7 @@ export default function ClientChannels() {
   const [whatsappOn,  setWhatsappOn]  = useState(false);
   const [messengerOn, setMessengerOn] = useState(false);
   const [widgetOn,    setWidgetOn]    = useState(false);
+  const [voiceReplyOn, setVoiceReplyOn] = useState(false);
   const fabPreviewRef = useRef<HTMLDivElement>(null);
   const [draggingFab, setDraggingFab] = useState(false);
   const [fabPreviewSize, setFabPreviewSize] = useState({ width: 0, height: 0 });
@@ -117,6 +120,8 @@ export default function ClientChannels() {
       fabEnabled:                false,
       fabPositionX:              DEFAULT_FAB_POSITION.x,
       fabPositionY:              DEFAULT_FAB_POSITION.y,
+      voiceReplyEnabled:         false,
+      voiceReplyVoice:           "alloy",
     },
   });
 
@@ -134,6 +139,8 @@ export default function ClientChannels() {
         fabEnabled:                company.fabEnabled                ?? false,
         fabPositionX:              company.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
         fabPositionY:              company.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
+        voiceReplyEnabled:         company.voiceReplyEnabled         ?? false,
+        voiceReplyVoice:           company.voiceReplyVoice           ?? "alloy",
       });
       /*
        * The switch state is independent from whether credentials exist.
@@ -144,6 +151,7 @@ export default function ClientChannels() {
       setWhatsappOn(company.whatsappEnabled ?? false);
       setMessengerOn(company.messengerEnabled ?? false);
       setWidgetOn(company.widgetEnabled ?? false);
+      setVoiceReplyOn(company.voiceReplyEnabled ?? false);
       initialized.current = true;
     }
   }, [company, form]);
@@ -168,6 +176,8 @@ export default function ClientChannels() {
       fabEnabled:                values.fabEnabled                ?? false,
       fabPositionX:              values.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
       fabPositionY:              values.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
+      voiceReplyEnabled:         voiceReplyOn,
+      voiceReplyVoice:           values.voiceReplyVoice           || "alloy",
     };
     updateCompany.mutate({ data }, {
       onSuccess: () => {
@@ -794,6 +804,86 @@ export default function ClientChannels() {
               </div>
             </div>
           )}
+
+          {/* ── Voice Notes & Audio AI (WhatsApp & Telegram) ── */}
+          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <Mic className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-base">
+                      {lang === "ar" ? "دعم الرسائل الصوتية (Voice Notes Support 🎙️)" : "Voice Notes Support 🎙️"}
+                    </h3>
+                    <Badge variant="outline" className="text-[11px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-mono">
+                      OpenAI Whisper & TTS
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "تحويل الرسائل الصوتية للعملاء على واتساب وتليجرام إلى نصوص وفهمها بالذكاء الاصطناعي، والرد عليهم كتابياً وصوتياً."
+                      : "Automatically transcribe incoming voice notes on WhatsApp & Telegram using Whisper, and reply via text & voice."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{lang === "ar" ? "الرد الصوتي:" : "Voice reply:"}</span>
+                <Switch
+                  checked={voiceReplyOn}
+                  onCheckedChange={setVoiceReplyOn}
+                  aria-label="Toggle Voice Reply"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-muted/40 border border-border/40 p-3.5 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="font-medium">{lang === "ar" ? "الاستماع والتحويل (STT):" : "Speech-to-Text (STT):"}</span>
+                  <span className="text-muted-foreground">{lang === "ar" ? "مفعل تلقائياً (OpenAI Whisper + Gemini Fallback)" : "Always Active (Whisper + Fallback)"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${voiceReplyOn ? "bg-emerald-500" : "bg-muted-foreground"}`} />
+                  <span className="font-medium">{lang === "ar" ? "الرد الصوتي (TTS):" : "Voice Response (TTS):"}</span>
+                  <span className="text-muted-foreground">
+                    {voiceReplyOn
+                      ? (lang === "ar" ? "مفعل (يرسل رسالة صوتية + نصية)" : "Enabled (Sends Voice + Text)")
+                      : (lang === "ar" ? "نص فقط (كتابة)" : "Text Only")}
+                  </span>
+                </div>
+              </div>
+
+              {voiceReplyOn && (
+                <div className="pt-2 border-t border-border/40 space-y-2 animate-in fade-in slide-in-from-top-1">
+                  <label className="text-xs font-medium block">
+                    {lang === "ar" ? "نبرة صوت المساعد الذكي (OpenAI TTS Voice):" : "AI Voice Model (OpenAI TTS Voice):"}
+                  </label>
+                  <FormField
+                    control={form.control}
+                    name="voiceReplyVoice"
+                    render={({ field }) => (
+                      <select
+                        value={field.value || "alloy"}
+                        onChange={field.onChange}
+                        className="w-full sm:w-80 text-xs bg-background border border-border rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="alloy">Alloy — {lang === "ar" ? "صوت متوازن وطبيعي (الافتراضي)" : "Neutral and balanced (Default)"}</option>
+                        <option value="echo">Echo — {lang === "ar" ? "صوت ذكوري هادئ وواضح" : "Calm and clear male voice"}</option>
+                        <option value="fable">Fable — {lang === "ar" ? "صوت ديناميكي ومعبر" : "Expressive and warm"}</option>
+                        <option value="onyx">Onyx — {lang === "ar" ? "صوت وقور ورسمي واثق" : "Deep and authoritative"}</option>
+                        <option value="nova">Nova — {lang === "ar" ? "صوت أنثوي حيوي وودود" : "Energetic and friendly female voice"}</option>
+                        <option value="shimmer">Shimmer — {lang === "ar" ? "صوت ناعم ومريح" : "Soft and gentle female voice"}</option>
+                      </select>
+                    )}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* ── Sticky Save ──────────────────────────────────── */}
           <div className="flex justify-end pt-2 sticky bottom-6 z-10">
