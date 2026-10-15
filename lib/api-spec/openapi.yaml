@@ -1210,7 +1210,7 @@ components:
           type: string
         fileType:
           type: string
-          enum: ["pdf", "excel", "csv", "json", "google_sheet"]
+          enum: ["pdf", "excel", "csv", "json", "google_sheet", "txt"]
         objectPath:
           type: ["string", "null"]
         sourceUrl:
@@ -1222,6 +1222,8 @@ components:
           enum: ["processing", "ready", "error"]
         errorMessage:
           type: ["string", "null"]
+        chunkCount:
+          type: integer
         createdAt:
           type: string
 
@@ -1229,7 +1231,7 @@ components:
       type: object
       required: [fileName, fileType]
       description: >
-        For uploaded files (pdf/excel/csv/json), provide objectPath (from
+        For uploaded files (pdf/excel/csv/json/txt), provide objectPath (from
         /storage/uploads/request-url) and fileSize. For Google Sheets,
         provide sourceUrl with fileType "google_sheet" instead.
       properties:
@@ -1237,7 +1239,7 @@ components:
           type: string
         fileType:
           type: string
-          enum: ["pdf", "excel", "csv", "json", "google_sheet"]
+          enum: ["pdf", "excel", "csv", "json", "google_sheet", "txt"]
         objectPath:
           type: ["string", "null"]
         sourceUrl:

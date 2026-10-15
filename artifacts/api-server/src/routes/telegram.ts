@@ -59,7 +59,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
 
   sysContent += await getWebsiteKnowledgeSection(company);
   sysContent += await getWordPressKnowledgeSection(company.id);
-  sysContent += await getKnowledgeFilesPromptSection(company.id);
+  sysContent += await getKnowledgeFilesPromptSection(company.id, userMessage);
 
   
 

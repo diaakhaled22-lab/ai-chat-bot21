@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink } from "lucide-react";
+import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers } from "lucide-react";
 import { Link } from "wouter";
 import {
   useGetClientCompany, useUpdateClientCompany,
@@ -29,14 +29,16 @@ const FILE_TYPE_ICON: Record<string, typeof FileText> = {
   csv: FileSpreadsheet,
   json: FileJson,
   google_sheet: SheetIcon,
+  txt: FileText,
 };
 
 const FILE_TYPE_LABEL: Record<string, string> = {
-  pdf: "PDF",
+  pdf: "PDF (كتاب / مستند)",
   excel: "Excel",
   csv: "CSV",
   json: "JSON",
   google_sheet: "Google Sheet",
+  txt: "TXT (نص)",
 };
 
 
@@ -86,6 +88,18 @@ function KnowledgeFilesCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sheetLink, setSheetLink] = useState("");
   const [uploadingCount, setUploadingCount] = useState(0);
+
+  // Semantic Search Tester State
+  const [testerQuery, setTesterQuery] = useState("");
+  const [testerLoading, setTesterLoading] = useState(false);
+  const [testerResults, setTesterResults] = useState<Array<{
+    id: number;
+    fileId: number;
+    fileName: string;
+    chunkIndex: number;
+    content: string;
+    score: number;
+  }> | null>(null);
 
   const { data: files, isLoading } = useListClientKnowledgeFiles({
     query: { queryKey: getListClientKnowledgeFilesQueryKey(), refetchInterval: (query) => (query.state.data?.some((f) => f.status === "processing") ? 3000 : false) },
@@ -144,6 +158,40 @@ function KnowledgeFilesCard() {
     }
   };
 
+  const handleRunSemanticSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const q = testerQuery.trim();
+    if (!q) return;
+
+    setTesterLoading(true);
+    try {
+      const res = await customFetch<{
+        query: string;
+        count: number;
+        results: Array<{
+          id: number;
+          fileId: number;
+          fileName: string;
+          chunkIndex: number;
+          content: string;
+          score: number;
+        }>;
+      }>("/api/client/company/knowledge-files/semantic-search", {
+        method: "POST",
+        body: JSON.stringify({ query: q }),
+      });
+      setTesterResults(res.results || []);
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "تعذر إجراء البحث الدلالي" : "Semantic search failed",
+        description: err?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTesterLoading(false);
+    }
+  };
+
   return (
     <Card className="bg-card border-border/50">
       <CardHeader>
@@ -158,7 +206,7 @@ function KnowledgeFilesCard() {
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".xlsx,.xls,.csv,.json"
+            accept=".pdf,.xlsx,.xls,.csv,.json,.txt"
             className="hidden"
             onChange={(e) => {
               handleFilesSelected(e.target.files);
@@ -172,9 +220,9 @@ function KnowledgeFilesCard() {
             disabled={uploadingCount > 0}
           >
             {uploadingCount > 0 ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {lang === "ar" ? "جاري الرفع..." : "Uploading…"}</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {lang === "ar" ? "جاري الرفع والفهرسة..." : "Uploading & Indexing…"}</>
             ) : (
-              <><Upload className="w-4 h-4 mr-2" /> {lang === "ar" ? "رفع ملفات" : "Upload Files"}</>
+              <><Upload className="w-4 h-4 mr-2" /> {lang === "ar" ? "رفع ملفات / كتب" : "Upload Files / Books"}</>
             )}
           </Button>
           <span className="text-xs text-muted-foreground">{t("company_allowed_files")}</span>
@@ -202,28 +250,35 @@ function KnowledgeFilesCard() {
           {isLoading ? (
             <div className="p-4"><Skeleton className="h-10 w-full" /></div>
           ) : !files || files.length === 0 ? (
-            <div className="p-4 text-sm text-muted-foreground text-center">{lang === "ar" ? "لا توجد ملفات معرفة مضافة بعد." : "No knowledge files yet."}</div>
+            <div className="p-4 text-sm text-muted-foreground text-center">{lang === "ar" ? "لا توجد ملفات أو كتب مضافة بعد." : "No knowledge files or books yet."}</div>
           ) : (
             files.map((file) => {
               const Icon = FILE_TYPE_ICON[file.fileType] ?? FileText;
+              const chunkCount = (file as any).chunkCount ?? 0;
               return (
                 <div key={file.id} className="flex items-center justify-between gap-3 px-4 py-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{file.fileName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {FILE_TYPE_LABEL[file.fileType] ?? file.fileType}
-                        {file.sourceUrl ? ` · ${file.sourceUrl}` : ""}
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span>{FILE_TYPE_LABEL[file.fileType] ?? file.fileType}</span>
+                        {file.sourceUrl ? <span className="truncate">· {file.sourceUrl}</span> : null}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {chunkCount > 0 && (
+                      <span className="text-[11px] bg-primary/10 text-primary font-medium px-2 py-0.5 rounded-full border border-primary/20 flex items-center gap-1">
+                        <Layers className="w-3 h-3" />
+                        {chunkCount} {lang === "ar" ? "مقطع دلالي (RAG)" : "chunks"}
+                      </span>
+                    )}
                     {file.status === "processing" && (
-                      <span className="text-xs flex items-center gap-1 text-amber-600"><Loader2 className="w-3 h-3 animate-spin" /> {lang === "ar" ? "جاري المعالجة" : "Processing"}</span>
+                      <span className="text-xs flex items-center gap-1 text-amber-600"><Loader2 className="w-3 h-3 animate-spin" /> {lang === "ar" ? "جاري الفهرسة" : "Indexing"}</span>
                     )}
                     {file.status === "ready" && (
-                      <span className="text-xs text-emerald-600">✓ {lang === "ar" ? "جاهز" : "Ready"}</span>
+                      <span className="text-xs text-emerald-600 font-medium">✓ {lang === "ar" ? "جاهز" : "Ready"}</span>
                     )}
                     {file.status === "error" && (
                       <span className="text-xs text-red-600">✗ {lang === "ar" ? "خطأ" : "Error"}</span>
@@ -237,6 +292,79 @@ function KnowledgeFilesCard() {
                 </div>
               );
             })
+          )}
+        </div>
+
+        {/* Semantic Search & RAG Tester */}
+        <div className="pt-4 mt-6 border-t border-border/50 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold">
+                {lang === "ar" ? "مختبر البحث الدلالي والاسترجاع (Semantic Search & RAG Tester)" : "Semantic Search & RAG Tester"}
+              </h4>
+            </div>
+            <span className="text-[11px] text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full border border-border/40 font-mono">
+              pgvector / Hybrid Vector
+            </span>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {lang === "ar"
+              ? "اكتب أي سؤال لاختبار كيفية استرجاع النظام لأدق الفقرات من كتبك وملفاتك تلقائياً وبأقل استهلاك ممكن للتوكنز."
+              : "Test any query to see how the system dynamically retrieves the most relevant paragraphs from your documents and books."}
+          </p>
+
+          <form onSubmit={handleRunSemanticSearch} className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                value={testerQuery}
+                onChange={(e) => setTesterQuery(e.target.value)}
+                placeholder={lang === "ar" ? "مثال: ما هي شروط الاستبدال والاسترجاع؟ أو سياسة الدفع..." : "e.g., What is your return policy or warranty terms?"}
+                className="bg-background"
+              />
+            </div>
+            <Button type="submit" disabled={!testerQuery.trim() || testerLoading} className="gap-2">
+              {testerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {lang === "ar" ? "بحث دلالي" : "Search"}
+            </Button>
+          </form>
+
+          {testerResults !== null && (
+            <div className="space-y-2 mt-3 pt-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{lang === "ar" ? `الفقرات الأكثر صلة (${testerResults.length})` : `Retrieved chunks (${testerResults.length})`}</span>
+                {testerResults.length > 0 && (
+                  <span className="text-emerald-600 font-medium">{lang === "ar" ? "مرتبة حسب درجة التشابه الرياضي" : "Ranked by semantic cosine similarity"}</span>
+                )}
+              </div>
+
+              {testerResults.length === 0 ? (
+                <div className="p-4 rounded-lg bg-muted/30 border border-border/40 text-center text-xs text-muted-foreground">
+                  {lang === "ar" ? "لم يتم العثور على مقاطع مطابقة. تأكد من رفع ملفات أو كتب جاهزة أولاً." : "No matching semantic chunks found. Ensure you have ready knowledge files uploaded."}
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {testerResults.map((item, idx) => (
+                    <div key={item.id || idx} className="p-3 rounded-lg border border-border/60 bg-muted/20 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between font-medium">
+                        <div className="flex items-center gap-1.5 text-foreground truncate max-w-[70%]">
+                          <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="truncate">{item.fileName}</span>
+                          <span className="text-[10px] text-muted-foreground">#{item.chunkIndex + 1}</span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                          {Math.round(item.score * 100)}% {lang === "ar" ? "تطابق دلالي" : "match"}
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-[11px] font-mono bg-background/60 p-2 rounded border border-border/30">
+                        {item.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </CardContent>

@@ -2,17 +2,18 @@ import { db, companyKnowledgeFilesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "./logger";
 import { ObjectStorageService } from "./objectStorage";
+import { indexKnowledgeFileChunks, retrieveRelevantKnowledgeChunks, formatRagPromptSection } from "./knowledgeRag";
 
 const objectStorageService = new ObjectStorageService();
 
-// Cap how much text we keep per file in the DB (parsed content can be huge for large sheets/PDFs).
-const MAX_STORED_CHARS_PER_FILE = 20_000;
-// Cap how much of each file's text we inject into a single AI prompt.
+// Cap how much text we keep per file in the DB (supports full-length books, manuals, and large sheets up to 2 million chars).
+const MAX_STORED_CHARS_PER_FILE = 2_000_000;
+// Cap how much of each file's text we inject into a fallback AI prompt if no RAG query is present.
 const MAX_PROMPT_CHARS_PER_FILE = 2_500;
-// Cap the combined size of the whole "Uploaded Files Knowledge Base" section.
+// Cap the combined size of the fallback section.
 const MAX_PROMPT_CHARS_TOTAL = 9_000;
 
-export type KnowledgeFileType = "pdf" | "excel" | "csv" | "json" | "google_sheet";
+export type KnowledgeFileType = "pdf" | "excel" | "csv" | "json" | "google_sheet" | "txt";
 
 function extractGoogleSheetId(link: string): string | null {
   const match = link.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -77,6 +78,10 @@ export async function extractTextFromBuffer(fileType: KnowledgeFileType, buffer:
     return data.text;
   }
 
+  if (fileType === "txt" || (fileType as any) === "text") {
+    return buffer.toString("utf-8");
+  }
+
   if (fileType === "excel") {
     const XLSX = await import("xlsx");
     const workbook = XLSX.read(buffer, { type: "buffer" });
@@ -99,9 +104,6 @@ export async function extractTextFromBuffer(fileType: KnowledgeFileType, buffer:
     const raw = buffer.toString("utf-8");
     try {
       const parsed = JSON.parse(raw);
-      // Render as plain "label: value" text instead of raw JSON syntax, so the AI
-      // works with readable data and isn't tempted to echo braces/brackets/quotes
-      // back to the customer.
       return jsonToReadableText(parsed);
     } catch {
       throw new Error(`"${fileName}" is not valid JSON`);
@@ -127,8 +129,8 @@ async function extractTextFromGoogleSheetLink(link: string): Promise<string> {
 }
 
 /**
- * Parses an uploaded/linked knowledge file and stores the extracted text on the row.
- * Runs after the DB row is created (status starts as "processing").
+ * Parses an uploaded/linked knowledge file, stores the full text,
+ * and partitions it into semantic RAG vector chunks for instant retrieval.
  */
 export async function processKnowledgeFile(fileId: number): Promise<void> {
   const [file] = await db
@@ -165,6 +167,9 @@ export async function processKnowledgeFile(fileId: number): Promise<void> {
         errorMessage: null,
       })
       .where(eq(companyKnowledgeFilesTable.id, fileId));
+
+    // Index all chunks into RAG vector repository
+    await indexKnowledgeFileChunks(fileId, file.companyId, trimmed);
   } catch (err) {
     logger.error({ err, fileId }, "Failed to process knowledge file");
     await db
@@ -178,10 +183,19 @@ export async function processKnowledgeFile(fileId: number): Promise<void> {
 }
 
 /**
- * Builds the "Uploaded Files Knowledge Base" system prompt section from all
- * successfully-parsed knowledge files belonging to a company.
+ * Builds the Knowledge Base system prompt section.
+ * When `userQuery` is provided, performs Semantic Search (RAG) to retrieve only
+ * the most relevant paragraphs/chunks, reducing token cost and boosting accuracy.
  */
-export async function getKnowledgeFilesPromptSection(companyId: number): Promise<string> {
+export async function getKnowledgeFilesPromptSection(companyId: number, userQuery?: string): Promise<string> {
+  if (userQuery && userQuery.trim()) {
+    const relevantChunks = await retrieveRelevantKnowledgeChunks(companyId, userQuery.trim(), 4);
+    if (relevantChunks.length > 0) {
+      return formatRagPromptSection(relevantChunks);
+    }
+  }
+
+  // Fallback: If no query provided or no chunks matched, provide top summary
   const files = await db
     .select()
     .from(companyKnowledgeFilesTable)

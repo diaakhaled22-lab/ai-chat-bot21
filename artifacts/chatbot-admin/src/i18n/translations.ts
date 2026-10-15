@@ -1,4 +1,4 @@
-﻿export type Lang = "en" | "ar";
+export type Lang = "en" | "ar";
 
 const translations = {
   en: {
@@ -152,9 +152,9 @@ const translations = {
     company_system_prompt_placeholder: "Enter custom instructions for how the AI assistant should behave...",
     company_security_prompt_placeholder: "Enter security instructions...",
     company_knowledge_files: "Uploaded Knowledge Files",
-    company_knowledge_files_desc: "Upload Excel sheets, CSVs, or JSON files to feed your AI with custom knowledge.",
+    company_knowledge_files_desc: "Upload PDF books, documents, Excel sheets, CSVs, or JSON files to feed your AI with semantic vector knowledge (RAG).",
     company_drop_files: "Drag & drop files here or click to browse",
-    company_allowed_files: "Supported formats: XLSX, XLS, CSV, JSON (max 50MB)",
+    company_allowed_files: "Supported formats: PDF, TXT, XLSX, XLS, CSV, JSON (max 50MB)",
     company_google_sheets: "Google Sheets Integration",
     company_google_sheets_desc: "Connect a Google Sheet to record customer leads and conversation data automatically.",
     company_gs_enable: "Enable Google Sheets Integration",
@@ -547,10 +547,10 @@ const translations = {
     company_security_prompt_desc: "حدد قواعد الأمان والقيود للمساعد الذكي.",
     company_system_prompt_placeholder: "اكتب التعليمات التي تحدد شخصية وأسلوب إجابات المساعد الذكي...",
     company_security_prompt_placeholder: "اكتب تعليمات الأمان...",
-    company_knowledge_files: "ملفات المعرفة",
-    company_knowledge_files_desc: "ارفع جداول Excel أو CSV أو JSON ليتعلم منها المساعد الذكي.",
+    company_knowledge_files: "ملفات المعرفة والبحث الدلالي (RAG)",
+    company_knowledge_files_desc: "ارفع الكتب ومستندات PDF، أو ملفات Excel و CSV و JSON لتغذية الذكاء الاصطناعي بالبحث الدلالي المتقدم.",
     company_drop_files: "اسحب وأفلت الملفات هنا أو اضغط للاستعراض",
-    company_allowed_files: "الملفات المدعومة: XLSX, XLS, CSV, JSON (بحد أقصى 50 ميجابايت)",
+    company_allowed_files: "الملفات المدعومة: PDF, TXT, XLSX, XLS, CSV, JSON (بحد أقصى 50 ميجابايت للملف)",
     company_google_sheets: "تكامل جداول بيانات جوجل (Google Sheets)",
     company_google_sheets_desc: "ربط جدول بيانات لحفظ بيانات العملاء وطلباتهم تلقائياً من المحادثة.",
     company_gs_enable: "تفعيل التكامل مع جداول جوجل",

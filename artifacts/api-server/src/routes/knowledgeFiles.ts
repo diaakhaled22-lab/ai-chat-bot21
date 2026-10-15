@@ -6,12 +6,18 @@ import { CreateClientKnowledgeFileBody } from "@workspace/api-zod";
 import { requireClient } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { processKnowledgeFile, extractTextFromBuffer, KnowledgeFileType } from "../lib/knowledgeFiles";
+import { indexKnowledgeFileChunks, retrieveRelevantKnowledgeChunks } from "../lib/knowledgeRag";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const FILE_TYPE_BY_EXTENSION: Record<string, KnowledgeFileType> = {
-  pdf: "pdf", xlsx: "excel", xls: "excel", csv: "csv", json: "json",
+  pdf: "pdf",
+  xlsx: "excel",
+  xls: "excel",
+  csv: "csv",
+  json: "json",
+  txt: "txt",
 };
 
 router.use("/client/company/knowledge-files", requireClient);
@@ -36,11 +42,12 @@ function serialize(file: typeof companyKnowledgeFilesTable.$inferSelect) {
     fileSize: file.fileSize,
     status: file.status,
     errorMessage: file.errorMessage,
+    chunkCount: file.chunkCount ?? 0,
     createdAt: file.createdAt.toISOString(),
   };
 }
 
-// POST /client/company/knowledge-files/upload  (multipart — direct upload, no GCS)
+// POST /client/company/knowledge-files/upload  (multipart — direct upload, support PDF books, Excel, CSV, JSON, TXT)
 router.post(
   "/client/company/knowledge-files/upload",
   requireClient,
@@ -54,7 +61,7 @@ router.post(
     const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
     const fileType = FILE_TYPE_BY_EXTENSION[ext];
     if (!fileType) {
-      res.status(400).json({ error: `Unsupported file type: .${ext}. Use Excel, CSV, or JSON.` });
+      res.status(400).json({ error: `Unsupported file type: .${ext}. Please upload PDF, Excel, CSV, JSON, or TXT.` });
       return;
     }
 
@@ -80,9 +87,13 @@ router.post(
           fileType,
           fileSize: req.file.size,
           status: "ready",
-          extractedText: trimmed.slice(0, 20_000),
+          extractedText: trimmed.slice(0, 2_000_000), // Supports large books and long documents
         })
         .returning();
+
+      // Automatically chunk and index file into semantic vector chunks
+      const chunkCount = await indexKnowledgeFileChunks(file.id, company.id, trimmed);
+      file.chunkCount = chunkCount;
 
       res.status(201).json(serialize(file));
     } catch (err) {
@@ -148,7 +159,7 @@ router.post("/client/company/knowledge-files", async (req, res) => {
       .values({
         companyId: company.id,
         fileName,
-        fileType,
+        fileType: fileType as any,
         objectPath: objectPath ?? null,
         sourceUrl: sourceUrl ?? null,
         fileSize: fileSize ?? null,
@@ -162,6 +173,33 @@ router.post("/client/company/knowledge-files", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Create knowledge file error");
     res.status(500).json({ error: "Failed to register knowledge file" });
+  }
+});
+
+// POST /client/company/knowledge-files/semantic-search (Test RAG search)
+router.post("/client/company/knowledge-files/semantic-search", async (req, res) => {
+  try {
+    const company = await getOwnedCompany(req.session.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const { query } = req.body as { query?: string };
+    if (!query || typeof query !== "string" || !query.trim()) {
+      res.status(400).json({ error: "Query is required" });
+      return;
+    }
+
+    const results = await retrieveRelevantKnowledgeChunks(company.id, query.trim(), 5);
+    res.json({
+      query: query.trim(),
+      count: results.length,
+      results,
+    });
+  } catch (err) {
+    logger.error({ err }, "Semantic search test error");
+    res.status(500).json({ error: "Failed to perform semantic search" });
   }
 });
 

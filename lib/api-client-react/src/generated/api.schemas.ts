@@ -338,6 +338,7 @@ export const KnowledgeFileFileType = {
   csv: 'csv',
   json: 'json',
   google_sheet: 'google_sheet',
+  txt: 'txt',
 } as const;
 
 export type KnowledgeFileStatus = typeof KnowledgeFileStatus[keyof typeof KnowledgeFileStatus];
@@ -363,6 +364,7 @@ export interface KnowledgeFile {
   status: KnowledgeFileStatus;
   /** @nullable */
   errorMessage?: string | null;
+  chunkCount?: number;
   createdAt: string;
 }
 
@@ -375,6 +377,7 @@ export const KnowledgeFileInputFileType = {
   csv: 'csv',
   json: 'json',
   google_sheet: 'google_sheet',
+  txt: 'txt',
 } as const;
 
 /**

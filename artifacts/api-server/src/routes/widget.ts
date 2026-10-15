@@ -192,7 +192,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     sysContent += await getWebsiteKnowledgeSection(company);
     sysContent += await getWordPressKnowledgeSection(company.id);
-    sysContent += await getKnowledgeFilesPromptSection(company.id);
+    sysContent += await getKnowledgeFilesPromptSection(company.id, message);
 
     const provider = aiConfig.provider;
     const model = aiConfig.model;

@@ -46,7 +46,7 @@ async function callAI(
 
   sysContent += await getWebsiteKnowledgeSection(company);
   sysContent += await getWordPressKnowledgeSection(company.id);
-  sysContent += await getKnowledgeFilesPromptSection(company.id);
+  sysContent += await getKnowledgeFilesPromptSection(company.id, userMessage);
 
   if (provider === "anthropic") {
     const client = new Anthropic({ apiKey });

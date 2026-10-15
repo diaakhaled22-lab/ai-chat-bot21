@@ -149,7 +149,7 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
           }
         }
 
-        sysContent += await getKnowledgeFilesPromptSection(company.id);
+        sysContent += await getKnowledgeFilesPromptSection(company.id, customerMessage);
 
         let aiReply = "";
 
