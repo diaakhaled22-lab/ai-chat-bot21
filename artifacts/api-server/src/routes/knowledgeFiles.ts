@@ -9,7 +9,7 @@ import { processKnowledgeFile, extractTextFromBuffer, KnowledgeFileType } from "
 import { indexKnowledgeFileChunks, retrieveRelevantKnowledgeChunks } from "../lib/knowledgeRag";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 const FILE_TYPE_BY_EXTENSION: Record<string, KnowledgeFileType> = {
   pdf: "pdf",
@@ -51,23 +51,38 @@ function serialize(file: typeof companyKnowledgeFilesTable.$inferSelect) {
 router.post(
   "/client/company/knowledge-files/upload",
   requireClient,
-  upload.single("file"),
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          res.status(413).json({ error: "حجم الملف كبير جداً. الحد الأقصى المسموح به هو 100 ميجابايت." });
+          return;
+        }
+        res.status(400).json({ error: `خطأ أثناء رفع الملف: ${err.message}` });
+        return;
+      } else if (err) {
+        res.status(400).json({ error: err.message || "Failed to upload file" });
+        return;
+      }
+      next();
+    });
+  },
   async (req, res) => {
     if (!req.file) {
-      res.status(400).json({ error: "No file provided" });
+      res.status(400).json({ error: "لم يتم اختيار أي ملف للرفع" });
       return;
     }
 
     const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
     const fileType = FILE_TYPE_BY_EXTENSION[ext];
     if (!fileType) {
-      res.status(400).json({ error: `Unsupported file type: .${ext}. Please upload PDF, Excel, CSV, JSON, or TXT.` });
+      res.status(400).json({ error: `صيغة الملف .${ext} غير مدعومة. الصيغ المسموحة: PDF, Excel, CSV, JSON, TXT.` });
       return;
     }
 
     const company = await getOwnedCompany(req.session.userId!);
     if (!company) {
-      res.status(400).json({ error: "Configure your company before adding knowledge files" });
+      res.status(400).json({ error: "يرجى إعداد بيانات شركتك قبل إضافة ملفات المعرفة" });
       return;
     }
 
@@ -75,7 +90,9 @@ router.post(
       const text = await extractTextFromBuffer(fileType, req.file.buffer, req.file.originalname);
       const trimmed = text.trim();
       if (!trimmed) {
-        res.status(422).json({ error: "No readable text or data was found in this file." });
+        res.status(422).json({
+          error: "تعذر استخراج نصوص قابلة للقراءة من هذا الملف. إذا كان ملف الـ PDF عبارة عن صور ممسوحة ضوئياً (Scanned Images)، يرجى التأكد من احتوائه على طبقة نصوص أو رفعه كنسخة نصية.",
+        });
         return;
       }
 

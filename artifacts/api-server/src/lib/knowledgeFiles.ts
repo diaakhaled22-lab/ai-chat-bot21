@@ -71,14 +71,52 @@ function jsonToReadableText(value: unknown, indent = 0): string {
 
 export async function extractTextFromBuffer(fileType: KnowledgeFileType, buffer: Buffer, fileName: string): Promise<string> {
   if (fileType === "pdf") {
-    // Note: importing 'pdf-parse' directly runs its top-level debug block which attempts
-    // to read './test/data/05-versions-space.pdf' and throws ENOENT in ESM environments.
-    // Importing 'pdf-parse/lib/pdf-parse.js' targets the core parser directly.
-    // @ts-ignore - subpath import not explicitly declared in older types
-    const pdfParseModule = await import("pdf-parse/lib/pdf-parse.js");
-    const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
-    const data = await pdfParse(buffer);
-    return data.text || "";
+    let extracted = "";
+    try {
+      // Note: importing 'pdf-parse' directly runs its top-level debug block which attempts
+      // to read './test/data/05-versions-space.pdf' and throws ENOENT in ESM environments.
+      // Importing 'pdf-parse/lib/pdf-parse.js' targets the core parser directly.
+      // @ts-ignore - subpath import not explicitly declared in older types
+      const pdfParseModule = await import("pdf-parse/lib/pdf-parse.js");
+      const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
+      const data = await pdfParse(buffer);
+      extracted = data.text || "";
+    } catch (parseErr) {
+      logger.warn({ parseErr, fileName }, "pdf-parse core failed, attempting fallback");
+    }
+
+    if (extracted.trim().length > 0) {
+      return extracted;
+    }
+
+    // Fallback for Scanned Books / Image-only PDFs: Try Gemini OCR if API key is present
+    try {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      if (apiKey && buffer.length <= 30 * 1024 * 1024) {
+        logger.info({ fileName }, "Attempting Gemini Vision OCR for scanned PDF");
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              data: buffer.toString("base64"),
+              mimeType: "application/pdf",
+            },
+          },
+          "Extract all readable text, titles, questions and answers from this document completely in its original language. Do not summarize, output the full text.",
+        ]);
+        const ocrText = result.response.text();
+        if (ocrText && ocrText.trim().length > 0) {
+          logger.info({ fileName, chars: ocrText.length }, "Successfully extracted text via Gemini OCR fallback");
+          return ocrText;
+        }
+      }
+    } catch (ocrErr) {
+      logger.warn({ ocrErr, fileName }, "Gemini OCR fallback not available or failed");
+    }
+
+    return extracted;
   }
 
   if (fileType === "txt" || (fileType as any) === "text") {
