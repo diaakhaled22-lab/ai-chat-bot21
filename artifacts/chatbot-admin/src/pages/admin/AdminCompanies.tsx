@@ -158,6 +158,7 @@ const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color:
   expired:              { label: "Auto-expired",          icon: <Clock className="w-3.5 h-3.5" />,         color: "text-red-500"    },
   dates_set:            { label: "Window updated",        icon: <CalendarClock className="w-3.5 h-3.5" />, color: "text-blue-500"   },
   retention_policy_set: { label: "Auto-Delete Policy",    icon: <Clock className="w-3.5 h-3.5" />,         color: "text-amber-500"  },
+  data_source_permissions_updated: { label: "Permissions Updated", icon: <Database className="w-3.5 h-3.5" />, color: "text-indigo-500" },
 };
 
 // ── Knowledge Data Sources ──────────────────────────────────────────────────
