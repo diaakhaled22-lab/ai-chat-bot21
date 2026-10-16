@@ -895,6 +895,75 @@ router.put("/admin/companies/:id/retention", async (req, res) => {
   }
 });
 
+// PUT /admin/companies/:id/data-source-permissions
+router.put("/admin/companies/:id/data-source-permissions", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+    const {
+      allowSourceWebsite,
+      allowSourceFiles,
+      allowSourceWordpress,
+      allowSourceRestApi,
+      allowSourceShopify,
+    } = req.body as {
+      allowSourceWebsite?: boolean;
+      allowSourceFiles?: boolean;
+      allowSourceWordpress?: boolean;
+      allowSourceRestApi?: boolean;
+      allowSourceShopify?: boolean;
+    };
+
+    const updates: Record<string, boolean> = {};
+    if (allowSourceWebsite !== undefined) updates.allowSourceWebsite = Boolean(allowSourceWebsite);
+    if (allowSourceFiles !== undefined) updates.allowSourceFiles = Boolean(allowSourceFiles);
+    if (allowSourceWordpress !== undefined) updates.allowSourceWordpress = Boolean(allowSourceWordpress);
+    if (allowSourceRestApi !== undefined) updates.allowSourceRestApi = Boolean(allowSourceRestApi);
+    if (allowSourceShopify !== undefined) updates.allowSourceShopify = Boolean(allowSourceShopify);
+
+    const [updated] = await db
+      .update(companiesTable)
+      .set(updates)
+      .where(eq(companiesTable.id, id))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const [adminUser] = await db
+      .select({ username: usersTable.username })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId!));
+    const performedBy = adminUser?.username ?? "admin";
+
+    await db.insert(companyActivityLogsTable).values({
+      companyId: id,
+      action: "data_source_permissions_updated",
+      performedBy,
+      note: `Updated data source permissions: Website=${updated.allowSourceWebsite}, Files=${updated.allowSourceFiles}, WordPress=${updated.allowSourceWordpress}, REST API=${updated.allowSourceRestApi}, Shopify=${updated.allowSourceShopify}`,
+    });
+
+    res.json({
+      ok: true,
+      permissions: {
+        allowSourceWebsite: updated.allowSourceWebsite,
+        allowSourceFiles: updated.allowSourceFiles,
+        allowSourceWordpress: updated.allowSourceWordpress,
+        allowSourceRestApi: updated.allowSourceRestApi,
+        allowSourceShopify: updated.allowSourceShopify,
+      },
+    });
+  } catch (err) {
+    logger.error({ err }, "Set company data source permissions error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/admin/companies/:id/logs", async (req, res) => {
   try {
     const params = GetCompanyParams.safeParse({ id: Number(req.params.id) });

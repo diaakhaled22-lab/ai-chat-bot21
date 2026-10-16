@@ -360,6 +360,13 @@ const translations = {
     data_source_rest_api_desc: "Connect to your website or server REST API to dynamically extract data, products, or catalogs.",
     data_source_shopify: "Shopify Store",
     data_source_shopify_desc: "Connect your Shopify store to sync product catalog, variants, pricing, and collections.",
+    admin_data_source_permissions: "Data Source Permissions",
+    admin_data_source_permissions_desc: "Configure which knowledge & data source types this client is permitted to use.",
+    admin_data_source_permissions_saved: "Data source permissions updated successfully.",
+    data_source_locked_badge: "Requires Permission",
+    data_source_locked_title: "Data Source Locked",
+    data_source_locked_desc: "This data source is not enabled for your account. Please contact platform support or upgrade your plan to unlock access.",
+    btn_contact_support: "Contact Support",
   },
   ar: {
     btn_sub_settings: "إعدادات الاشتراك",
@@ -690,6 +697,13 @@ const translations = {
     data_source_rest_api_desc: "الربط مع واجهة برمجية REST API خاصة بموقعك لاستخراج وتحديث البيانات والمنتجات تلقائياً.",
     data_source_shopify: "متجر شوبيفاي Shopify",
     data_source_shopify_desc: "ربط متجر شوبيفاي لمزامنة كتالوج المنتجات، الأسعار، والمجموعات تلقائياً.",
+    admin_data_source_permissions: "أذونات مصادر المعرفة",
+    admin_data_source_permissions_desc: "تحديد مصادر البيانات وقواعد المعرفة المسموح لهذا العميل بربطها واستخدامها.",
+    admin_data_source_permissions_saved: "تم تحديث أذونات مصادر المعرفة بنجاح.",
+    data_source_locked_badge: "يتطلب تصريح",
+    data_source_locked_title: "هذا المصدر غير متاح لحسابك",
+    data_source_locked_desc: "لم يتم تفعيل هذا المصدر لحسابك من قِبل إدارة المنصة. يرجى التواصل مع الدعم الفني أو ترقية اشتراكك لطلب التفعيل.",
+    btn_contact_support: "التواصل مع الدعم الفني",
   },
 } as const;
 

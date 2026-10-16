@@ -14,7 +14,7 @@ import {
   Gauge, AlertTriangle, Zap, FlaskConical, Loader2, CheckCircle, Bot,
   MessageSquare, Globe, Send, Phone, Sheet, Activity,
   TrendingUp, Users, ShieldCheck, Timer, X, ChevronRight,
-  Power, RefreshCw, Sparkles, RotateCcw,
+  Power, RefreshCw, Sparkles, RotateCcw, Database, FileText, Plug, Code2, ShoppingBag,
 } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +68,11 @@ type Company = {
   websiteLastSynced?: string | null;
   monthlyTokenQuota?: number | null;
   chatLogRetentionDays?: number | null;
+  allowSourceWebsite?: boolean | null;
+  allowSourceFiles?: boolean | null;
+  allowSourceWordpress?: boolean | null;
+  allowSourceRestApi?: boolean | null;
+  allowSourceShopify?: boolean | null;
   createdAt: string;
 };
 
@@ -444,6 +449,14 @@ export default function AdminCompanies() {
   const [aiTestResult, setAiTestResult] = useState<{
     status: string; provider?: string; model?: string; reply?: string; message?: string;
   } | null>(null);
+  const [permissionsTarget, setPermissionsTarget] = useState<Company | null>(null);
+  const [permissionsForm, setPermissionsForm] = useState({
+    allowSourceWebsite: true,
+    allowSourceFiles: true,
+    allowSourceWordpress: true,
+    allowSourceRestApi: true,
+    allowSourceShopify: true,
+  });
 
   const toggleStatus = useToggleCompanyStatus();
   const deleteCompany = useDeleteCompany();
@@ -571,6 +584,33 @@ export default function AdminCompanies() {
       return;
     }
     setRetentionMutation.mutate({ id: retentionTarget.id, retentionDays: days });
+  };
+
+  const setPermissionsMutation = useMutation({
+    mutationFn: ({ id, permissions }: { id: number; permissions: typeof permissionsForm }) =>
+      customFetch(`/api/admin/companies/${id}/data-source-permissions`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(permissions),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      setPermissionsTarget(null);
+      toast({ title: t("admin_data_source_permissions_saved") });
+    },
+    onError: (err: any) =>
+      toast({ title: "Failed to save permissions", description: err.message, variant: "destructive" }),
+  });
+
+  const openPermissionsDialog = (company: Company) => {
+    setPermissionsTarget(company);
+    setPermissionsForm({
+      allowSourceWebsite: company.allowSourceWebsite ?? true,
+      allowSourceFiles: company.allowSourceFiles ?? true,
+      allowSourceWordpress: company.allowSourceWordpress ?? true,
+      allowSourceRestApi: company.allowSourceRestApi ?? true,
+      allowSourceShopify: company.allowSourceShopify ?? true,
+    });
   };
 
   const openActivationDialog = (company: Company) => {
@@ -909,6 +949,11 @@ export default function AdminCompanies() {
                         <DropdownMenuItem onClick={() => openActivationDialog(company)}>
                           <Power className="w-4 h-4 mr-2" />
                           Subscription Settings
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem onClick={() => openPermissionsDialog(company)}>
+                          <Database className="w-4 h-4 mr-2 text-indigo-500" />
+                          {t("admin_data_source_permissions")}
                         </DropdownMenuItem>
 
                         <DropdownMenuItem onClick={() => openQuotaDialog(company)}>
@@ -1296,6 +1341,126 @@ export default function AdminCompanies() {
               }}
             >
               Save Prompts
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Data Source Permissions Dialog */}
+      <Dialog open={!!permissionsTarget} onOpenChange={(open) => !open && setPermissionsTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-indigo-500" />
+              <DialogTitle>{t("admin_data_source_permissions")}</DialogTitle>
+            </div>
+            <DialogDescription>
+              {permissionsTarget?.name} · {t("admin_data_source_permissions_desc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2.5 py-2">
+            {/* Source 1: Website */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{t("data_source_website")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("data_source_website_desc")}</p>
+                </div>
+              </div>
+              <Switch
+                checked={permissionsForm.allowSourceWebsite}
+                onCheckedChange={(checked) => setPermissionsForm((p) => ({ ...p, allowSourceWebsite: checked }))}
+              />
+            </div>
+
+            {/* Source 2: Files */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{t("data_source_files")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("data_source_files_desc")}</p>
+                </div>
+              </div>
+              <Switch
+                checked={permissionsForm.allowSourceFiles}
+                onCheckedChange={(checked) => setPermissionsForm((p) => ({ ...p, allowSourceFiles: checked }))}
+              />
+            </div>
+
+            {/* Source 3: WordPress */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
+                  <Plug className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{t("data_source_wordpress")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("data_source_wordpress_desc")}</p>
+                </div>
+              </div>
+              <Switch
+                checked={permissionsForm.allowSourceWordpress}
+                onCheckedChange={(checked) => setPermissionsForm((p) => ({ ...p, allowSourceWordpress: checked }))}
+              />
+            </div>
+
+            {/* Source 4: REST API */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                  <Code2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{t("data_source_rest_api")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("data_source_rest_api_desc")}</p>
+                </div>
+              </div>
+              <Switch
+                checked={permissionsForm.allowSourceRestApi}
+                onCheckedChange={(checked) => setPermissionsForm((p) => ({ ...p, allowSourceRestApi: checked }))}
+              />
+            </div>
+
+            {/* Source 5: Shopify */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{t("data_source_shopify")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("data_source_shopify_desc")}</p>
+                </div>
+              </div>
+              <Switch
+                checked={permissionsForm.allowSourceShopify}
+                onCheckedChange={(checked) => setPermissionsForm((p) => ({ ...p, allowSourceShopify: checked }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setPermissionsTarget(null)}>
+              {t("btn_cancel")}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (permissionsTarget) {
+                  setPermissionsMutation.mutate({ id: permissionsTarget.id, permissions: permissionsForm });
+                }
+              }}
+              disabled={setPermissionsMutation.isPending}
+            >
+              {setPermissionsMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {t("btn_save")}
             </Button>
           </DialogFooter>
         </DialogContent>

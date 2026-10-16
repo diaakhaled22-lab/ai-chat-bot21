@@ -9,7 +9,7 @@ import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { syncAllRestApiIntegrations, ensureRestApiSchema } from "./lib/restApiSync";
 import { syncAllShopifyIntegrations, ensureShopifySchema } from "./lib/shopifySync";
 import { refreshAiModels } from "./lib/aiModels";
-import { ensureAdminExists } from "./lib/adminBootstrap";
+import { ensureAdminExists, ensureDataSourcePermissionsSchema } from "./lib/adminBootstrap";
 import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
 import { ensureEmailNotificationSchema, notifySubscriptionExpiringSoon, notifySubscriptionExpired } from "./lib/companyNotification";
 import { ensureRagSchema } from "./lib/knowledgeRag";
@@ -259,6 +259,7 @@ async function startServer() {
   await ensureVoiceSchema();
   await ensureRestApiSchema();
   await ensureShopifySchema();
+  await ensureDataSourcePermissionsSchema();
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 

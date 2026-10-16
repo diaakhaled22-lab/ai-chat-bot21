@@ -52,6 +52,11 @@ export const companiesTable = pgTable("companies", {
   chatLogRetentionDays: integer("chat_log_retention_days"),
   voiceReplyEnabled: boolean("voice_reply_enabled").notNull().default(false),
   voiceReplyVoice: text("voice_reply_voice").default("alloy"),
+  allowSourceWebsite: boolean("allow_source_website").notNull().default(true),
+  allowSourceFiles: boolean("allow_source_files").notNull().default(true),
+  allowSourceWordpress: boolean("allow_source_wordpress").notNull().default(true),
+  allowSourceRestApi: boolean("allow_source_rest_api").notNull().default(true),
+  allowSourceShopify: boolean("allow_source_shopify").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

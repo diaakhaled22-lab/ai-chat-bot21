@@ -86,6 +86,11 @@ router.post(
       return;
     }
 
+    if (company.allowSourceFiles === false) {
+      res.status(403).json({ error: "Knowledge files source is disabled by administrator." });
+      return;
+    }
+
     try {
       const text = await extractTextFromBuffer(fileType, req.file.buffer, req.file.originalname);
       const trimmed = text.trim();
@@ -168,6 +173,11 @@ router.post("/client/company/knowledge-files", async (req, res) => {
     const company = await getOwnedCompany(req.session.userId!);
     if (!company) {
       res.status(400).json({ error: "Configure your company before adding knowledge files" });
+      return;
+    }
+
+    if (company.allowSourceFiles === false) {
+      res.status(403).json({ error: "Knowledge files source is disabled by administrator." });
       return;
     }
 

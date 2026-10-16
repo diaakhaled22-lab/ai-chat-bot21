@@ -12,14 +12,14 @@ const router = Router();
 
 router.use("/client/rest-api", requireClient);
 
-/** Get the company ID for the session user */
-async function getCompanyId(userId: number): Promise<number | null> {
+/** Get the company for the session user */
+async function getCompany(userId: number) {
   const [company] = await db
-    .select({ id: companiesTable.id })
+    .select({ id: companiesTable.id, allowSourceRestApi: companiesTable.allowSourceRestApi })
     .from(companiesTable)
     .where(eq(companiesTable.clientId, userId))
     .limit(1);
-  return company?.id ?? null;
+  return company ?? null;
 }
 
 function serializeIntegration(row: typeof companyRestApiIntegrationsTable.$inferSelect) {
@@ -45,15 +45,15 @@ function serializeIntegration(row: typeof companyRestApiIntegrationsTable.$infer
 // GET /client/rest-api — return current integration (or null)
 router.get("/client/rest-api", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.json(null);
       return;
     }
     const [row] = await db
       .select()
       .from(companyRestApiIntegrationsTable)
-      .where(eq(companyRestApiIntegrationsTable.companyId, companyId))
+      .where(eq(companyRestApiIntegrationsTable.companyId, company.id))
       .limit(1);
     res.json(row ? serializeIntegration(row) : null);
   } catch (err) {
@@ -96,11 +96,17 @@ router.post("/client/rest-api/test", async (req, res) => {
 // PUT /client/rest-api — save or update integration, then kick off sync
 router.put("/client/rest-api", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.status(400).json({ error: "Configure your company profile first" });
       return;
     }
+
+    if (company.allowSourceRestApi === false) {
+      res.status(403).json({ error: "REST API data source is disabled by administrator." });
+      return;
+    }
+    const companyId = company.id;
 
     const { apiUrl, httpMethod, headerName, headerValue, dataExtractionPath, autoSync } = req.body as {
       apiUrl?: string;
@@ -177,11 +183,17 @@ router.put("/client/rest-api", async (req, res) => {
 // POST /client/rest-api/sync — manual sync trigger
 router.post("/client/rest-api/sync", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
-      res.status(400).json({ error: "Company not found" });
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
       return;
     }
+
+    if (company.allowSourceRestApi === false) {
+      res.status(403).json({ error: "REST API data source is disabled by administrator." });
+      return;
+    }
+    const companyId = company.id;
 
     const ok = await syncCompanyRestApi(companyId);
 
@@ -204,11 +216,12 @@ router.post("/client/rest-api/sync", async (req, res) => {
 // DELETE /client/rest-api — remove integration
 router.delete("/client/rest-api", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
-      res.status(400).json({ error: "Company not found" });
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
       return;
     }
+    const companyId = company.id;
 
     await db
       .delete(companyRestApiIntegrationsTable)

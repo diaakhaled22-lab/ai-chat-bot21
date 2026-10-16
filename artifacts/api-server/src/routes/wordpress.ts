@@ -14,14 +14,14 @@ const router = Router();
 
 router.use("/client/wordpress", requireClient);
 
-/** Get the company ID for the session user */
-async function getCompanyId(userId: number): Promise<number | null> {
+/** Get the company for the session user */
+async function getCompany(userId: number) {
   const [company] = await db
-    .select({ id: companiesTable.id })
+    .select({ id: companiesTable.id, allowSourceWordpress: companiesTable.allowSourceWordpress })
     .from(companiesTable)
     .where(eq(companiesTable.clientId, userId))
     .limit(1);
-  return company?.id ?? null;
+  return company ?? null;
 }
 
 function serializeIntegration(row: typeof companyWordPressIntegrationsTable.$inferSelect) {
@@ -45,15 +45,15 @@ function serializeIntegration(row: typeof companyWordPressIntegrationsTable.$inf
 // GET /client/wordpress — return current integration (or null)
 router.get("/client/wordpress", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.json(null);
       return;
     }
     const [row] = await db
       .select()
       .from(companyWordPressIntegrationsTable)
-      .where(eq(companyWordPressIntegrationsTable.companyId, companyId))
+      .where(eq(companyWordPressIntegrationsTable.companyId, company.id))
       .limit(1);
     res.json(row ? serializeIntegration(row) : null);
   } catch (err) {
@@ -87,11 +87,17 @@ router.post("/client/wordpress/test", async (req, res) => {
 // PUT /client/wordpress — create or update integration, then kick off background sync
 router.put("/client/wordpress", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.status(400).json({ error: "Configure your company profile first" });
       return;
     }
+
+    if (company.allowSourceWordpress === false) {
+      res.status(403).json({ error: "WordPress data source is disabled by administrator." });
+      return;
+    }
+    const companyId = company.id;
 
     const { apiUrl, username, appPassword, autoSync } = req.body as {
       apiUrl?: string;
@@ -157,11 +163,17 @@ router.put("/client/wordpress", async (req, res) => {
 // POST /client/wordpress/sync — manual sync trigger
 router.post("/client/wordpress/sync", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.status(404).json({ error: "No company found" });
       return;
     }
+
+    if (company.allowSourceWordpress === false) {
+      res.status(403).json({ error: "WordPress data source is disabled by administrator." });
+      return;
+    }
+    const companyId = company.id;
 
     const [existing] = await db
       .select()
@@ -192,11 +204,12 @@ router.post("/client/wordpress/sync", async (req, res) => {
 // DELETE /client/wordpress — remove integration
 router.delete("/client/wordpress", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.status(404).json({ error: "No company found" });
       return;
     }
+    const companyId = company.id;
 
     await db
       .delete(companyWordPressIntegrationsTable)

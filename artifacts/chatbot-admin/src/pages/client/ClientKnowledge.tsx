@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers, Code2, CheckCircle2, AlertCircle, Eye, EyeOff, ShoppingBag } from "lucide-react";
+import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers, Code2, CheckCircle2, AlertCircle, Eye, EyeOff, ShoppingBag, Lock } from "lucide-react";
 import { Link } from "wouter";
 import {
   useGetClientCompany, useUpdateClientCompany,
@@ -1531,6 +1531,41 @@ function ShopifyInlineCard() {
 }
 
 
+function LockedSourceCard({ title, icon: Icon }: { title: string; icon: React.ElementType }) {
+  const { t } = useLanguage();
+
+  return (
+    <Card className="bg-card border-amber-500/30 shadow-sm relative overflow-hidden">
+      <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-500/40 via-amber-500 to-amber-500/40" />
+      <CardHeader className="pb-4 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-3 shadow-sm">
+          <Lock className="w-7 h-7" />
+        </div>
+        <CardTitle className="text-xl font-bold flex items-center justify-center gap-2">
+          {t("data_source_locked_title")}
+        </CardTitle>
+        <CardDescription className="max-w-md mx-auto text-sm mt-2 leading-relaxed">
+          {t("data_source_locked_desc")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center pb-8 gap-4">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted text-xs text-muted-foreground font-medium">
+          <Icon className="w-4 h-4 text-primary" />
+          <span>{title}</span>
+          <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 text-[10px] ml-1">
+            {t("data_source_locked_badge")}
+          </Badge>
+        </div>
+        <Button asChild className="gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow">
+          <Link href="/client/support">
+            {t("btn_contact_support")}
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 const websiteFormSchema = z.object({
   websiteDataUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   websiteAutoSync: z.boolean().default(false),
@@ -1603,6 +1638,12 @@ export default function ClientKnowledge() {
   });
   const isShopifyConnected = shopifyStatus?.status === "connected";
 
+  const allowWebsite = (company as any)?.allowSourceWebsite ?? true;
+  const allowFiles = (company as any)?.allowSourceFiles ?? true;
+  const allowWordpress = (company as any)?.allowSourceWordpress ?? true;
+  const allowRestApi = (company as any)?.allowSourceRestApi ?? true;
+  const allowShopify = (company as any)?.allowSourceShopify ?? true;
+
   if (companyLoading) {
     return (
       <div className="space-y-4">
@@ -1631,22 +1672,38 @@ export default function ClientKnowledge() {
             onClick={() => setActiveSource("website")}
             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
               activeSource === "website"
-                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                ? !allowWebsite
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
+                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
                 : "border-border/60 bg-card hover:bg-muted/40"
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              activeSource === "website" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              !allowWebsite
+                ? "bg-amber-500/15 text-amber-500"
+                : activeSource === "website"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
             }`}>
-              <Globe className="w-4 h-4" />
+              {!allowWebsite ? <Lock className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_website")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {websiteUrl ? (lang === "ar" ? "تم التكوين" : "Configured") : (lang === "ar" ? "سحب الويب" : "Web scraping")}
+                {!allowWebsite ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                ) : websiteUrl ? (
+                  lang === "ar" ? "تم التكوين" : "Configured"
+                ) : (
+                  lang === "ar" ? "سحب الويب" : "Web scraping"
+                )}
               </p>
             </div>
-            {websiteUrl && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />}
+            {!allowWebsite ? (
+              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : websiteUrl ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+            ) : null}
           </button>
 
           {/* Button 2: Uploaded Knowledge Files */}
@@ -1655,26 +1712,38 @@ export default function ClientKnowledge() {
             onClick={() => setActiveSource("files")}
             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
               activeSource === "files"
-                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                ? !allowFiles
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
+                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
                 : "border-border/60 bg-card hover:bg-muted/40"
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              activeSource === "files" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              !allowFiles
+                ? "bg-amber-500/15 text-amber-500"
+                : activeSource === "files"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
             }`}>
-              <FileText className="w-4 h-4" />
+              {!allowFiles ? <Lock className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_files")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {lang === "ar" ? "Excel, CSV" : "Excel, CSV"}
+                {!allowFiles ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                ) : (
+                  lang === "ar" ? "Excel, CSV" : "Excel, CSV"
+                )}
               </p>
             </div>
-            {readyFilesCount > 0 && (
+            {!allowFiles ? (
+              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : readyFilesCount > 0 ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary shrink-0">
                 {readyFilesCount}
               </span>
-            )}
+            ) : null}
           </button>
 
           {/* Button 3: WordPress */}
@@ -1683,26 +1752,38 @@ export default function ClientKnowledge() {
             onClick={() => setActiveSource("wordpress")}
             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
               activeSource === "wordpress"
-                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                ? !allowWordpress
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
+                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
                 : "border-border/60 bg-card hover:bg-muted/40"
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              activeSource === "wordpress" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              !allowWordpress
+                ? "bg-amber-500/15 text-amber-500"
+                : activeSource === "wordpress"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
             }`}>
-              <Plug className="w-4 h-4" />
+              {!allowWordpress ? <Lock className="w-4 h-4" /> : <Plug className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_wordpress")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {isWordPressConnected
-                  ? (lang === "ar" ? "متصل" : "Connected")
-                  : (lang === "ar" ? "المقالات والمنتجات" : "REST API Sync")}
+                {!allowWordpress ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                ) : isWordPressConnected ? (
+                  lang === "ar" ? "متصل" : "Connected"
+                ) : (
+                  lang === "ar" ? "المقالات والمنتجات" : "REST API Sync"
+                )}
               </p>
             </div>
-            {isWordPressConnected && (
+            {!allowWordpress ? (
+              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : isWordPressConnected ? (
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
-            )}
+            ) : null}
           </button>
 
           {/* Button 4: REST API */}
@@ -1711,26 +1792,38 @@ export default function ClientKnowledge() {
             onClick={() => setActiveSource("restapi")}
             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
               activeSource === "restapi"
-                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                ? !allowRestApi
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
+                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
                 : "border-border/60 bg-card hover:bg-muted/40"
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              activeSource === "restapi" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              !allowRestApi
+                ? "bg-amber-500/15 text-amber-500"
+                : activeSource === "restapi"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
             }`}>
-              <Code2 className="w-4 h-4" />
+              {!allowRestApi ? <Lock className="w-4 h-4" /> : <Code2 className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_rest_api")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {isRestApiConnected
-                  ? (lang === "ar" ? "متصل" : "Connected")
-                  : (lang === "ar" ? "واجهة برمجية JSON" : "Custom JSON API")}
+                {!allowRestApi ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                ) : isRestApiConnected ? (
+                  lang === "ar" ? "متصل" : "Connected"
+                ) : (
+                  lang === "ar" ? "واجهة برمجية JSON" : "Custom JSON API"
+                )}
               </p>
             </div>
-            {isRestApiConnected && (
+            {!allowRestApi ? (
+              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : isRestApiConnected ? (
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
-            )}
+            ) : null}
           </button>
 
           {/* Button 5: Shopify */}
@@ -1739,114 +1832,146 @@ export default function ClientKnowledge() {
             onClick={() => setActiveSource("shopify")}
             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
               activeSource === "shopify"
-                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                ? !allowShopify
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
+                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
                 : "border-border/60 bg-card hover:bg-muted/40"
             }`}
           >
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-              activeSource === "shopify" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              !allowShopify
+                ? "bg-amber-500/15 text-amber-500"
+                : activeSource === "shopify"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
             }`}>
-              <ShoppingBag className="w-4 h-4" />
+              {!allowShopify ? <Lock className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{t("data_source_shopify")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
-                {isShopifyConnected
-                  ? (lang === "ar" ? "متصل" : "Connected")
-                  : (lang === "ar" ? "المنتجات والأسعار" : "Products & Catalog")}
+                {!allowShopify ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                ) : isShopifyConnected ? (
+                  lang === "ar" ? "متصل" : "Connected"
+                ) : (
+                  lang === "ar" ? "المنتجات والأسعار" : "Products & Catalog"
+                )}
               </p>
             </div>
-            {isShopifyConnected && (
+            {!allowShopify ? (
+              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            ) : isShopifyConnected ? (
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
-            )}
+            ) : null}
           </button>
         </div>
 
         {/* Content Area */}
         <div className="md:col-span-3">
           {activeSource === "website" && (
-            <Card className="bg-card border-border/50 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Globe className="w-5 h-5 text-primary" />
-                  {t("data_source_website")}
-                </CardTitle>
-                <CardDescription>{t("data_source_website_desc")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onWebsiteSave)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="websiteDataUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("company_website_url")}</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="bg-background" placeholder="https://yoursite.com" />
-                          </FormControl>
-                          <FormDescription>
-                            {t("company_website_url_desc")}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="websiteAutoSync"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start gap-3 rounded-lg border border-border/50 p-4 bg-muted/20">
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={!form.watch("websiteDataUrl")}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="cursor-pointer">{t("company_website_autosync")}</FormLabel>
+            !allowWebsite ? (
+              <LockedSourceCard title={t("data_source_website")} icon={Globe} />
+            ) : (
+              <Card className="bg-card border-border/50 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Globe className="w-5 h-5 text-primary" />
+                    {t("data_source_website")}
+                  </CardTitle>
+                  <CardDescription>{t("data_source_website_desc")}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onWebsiteSave)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="websiteDataUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("company_website_url")}</FormLabel>
+                            <FormControl>
+                              <Input {...field} className="bg-background" placeholder="https://yoursite.com" />
+                            </FormControl>
                             <FormDescription>
-                              {t("company_website_autosync_desc")}
-                              {company?.websiteLastSynced && (
-                                <span className="block mt-1 text-primary text-[11px]">
-                                  {lang === "ar" ? "آخر مزامنة: " : "Last synced: "} {new Date(company.websiteLastSynced).toLocaleString()}
-                                </span>
-                              )}
+                              {t("company_website_url_desc")}
                             </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
-                      {company?.websiteDataUrl && (
-                        <WebsiteSyncButton companyWebsiteLastSynced={company.websiteLastSynced ?? null} />
-                      )}
-                      <Button type="submit" disabled={updateCompany.isPending} className="ml-auto">
-                        {updateCompany.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                        {lang === "ar" ? "حفظ التغييرات" : "Save Changes"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="websiteAutoSync"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start gap-3 rounded-lg border border-border/50 p-4 bg-muted/20">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={!form.watch("websiteDataUrl")}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="cursor-pointer">{t("company_website_autosync")}</FormLabel>
+                              <FormDescription>
+                                {t("company_website_autosync_desc")}
+                                {company?.websiteLastSynced && (
+                                  <span className="block mt-1 text-primary text-[11px]">
+                                    {lang === "ar" ? "آخر مزامنة: " : "Last synced: "} {new Date(company.websiteLastSynced).toLocaleString()}
+                                  </span>
+                                )}
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+                        {company?.websiteDataUrl && (
+                          <WebsiteSyncButton companyWebsiteLastSynced={company.websiteLastSynced ?? null} />
+                        )}
+                        <Button type="submit" disabled={updateCompany.isPending} className="ml-auto">
+                          {updateCompany.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                          {lang === "ar" ? "حفظ التغييرات" : "Save Changes"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )
           )}
 
           {activeSource === "files" && (
-            <KnowledgeFilesCard />
+            !allowFiles ? (
+              <LockedSourceCard title={t("data_source_files")} icon={FileText} />
+            ) : (
+              <KnowledgeFilesCard />
+            )
           )}
 
           {activeSource === "wordpress" && (
-            <WordPressInlineCard />
+            !allowWordpress ? (
+              <LockedSourceCard title={t("data_source_wordpress")} icon={Plug} />
+            ) : (
+              <WordPressInlineCard />
+            )
           )}
 
           {activeSource === "restapi" && (
-            <RestApiInlineCard />
+            !allowRestApi ? (
+              <LockedSourceCard title={t("data_source_rest_api")} icon={Code2} />
+            ) : (
+              <RestApiInlineCard />
+            )
           )}
 
           {activeSource === "shopify" && (
-            <ShopifyInlineCard />
+            !allowShopify ? (
+              <LockedSourceCard title={t("data_source_shopify")} icon={ShoppingBag} />
+            ) : (
+              <ShopifyInlineCard />
+            )
           )}
         </div>
       </div>

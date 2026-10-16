@@ -36,3 +36,20 @@ export async function ensureAdminExists(database: typeof db = db): Promise<void>
     logger.error({ err }, "Failed to ensure admin user exists");
   }
 }
+
+export async function ensureDataSourcePermissionsSchema(): Promise<void> {
+  try {
+    const { pool } = await import("@workspace/db");
+    if (!pool) return;
+    await pool.query(`
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_website BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_files BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_wordpress BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_rest_api BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_shopify BOOLEAN NOT NULL DEFAULT true;
+    `);
+    logger.info("Data source permissions schema columns ensured successfully");
+  } catch (err) {
+    logger.error({ err }, "Failed to ensure data source permissions schema columns");
+  }
+}

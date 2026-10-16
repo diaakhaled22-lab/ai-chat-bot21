@@ -128,4 +128,9 @@ export interface Company {
   websiteLastSynced?: string | null;
   createdAt: string;
   updatedAt?: string;
+  allowSourceWebsite?: boolean;
+  allowSourceFiles?: boolean;
+  allowSourceWordpress?: boolean;
+  allowSourceRestApi?: boolean;
+  allowSourceShopify?: boolean;
 }

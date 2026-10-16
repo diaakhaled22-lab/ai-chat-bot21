@@ -104,6 +104,11 @@ router.get("/client/company", async (req, res) => {
       fabPositionX: company.fabPositionX,
       fabPositionY: company.fabPositionY,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
+      allowSourceWebsite: company.allowSourceWebsite ?? true,
+      allowSourceFiles: company.allowSourceFiles ?? true,
+      allowSourceWordpress: company.allowSourceWordpress ?? true,
+      allowSourceRestApi: company.allowSourceRestApi ?? true,
+      allowSourceShopify: company.allowSourceShopify ?? true,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -570,6 +575,11 @@ router.put("/client/company", async (req, res) => {
       fabPositionX: company.fabPositionX,
       fabPositionY: company.fabPositionY,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
+      allowSourceWebsite: company.allowSourceWebsite ?? true,
+      allowSourceFiles: company.allowSourceFiles ?? true,
+      allowSourceWordpress: company.allowSourceWordpress ?? true,
+      allowSourceRestApi: company.allowSourceRestApi ?? true,
+      allowSourceShopify: company.allowSourceShopify ?? true,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -579,7 +589,7 @@ router.put("/client/company", async (req, res) => {
   }
 });
 
-// POST /client/company/sync-website ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â manual trigger for website content sync
+// POST /client/company/sync-website — manual trigger for website content sync
 router.post("/client/company/sync-website", async (req, res) => {
   try {
     const [company] = await db
@@ -587,6 +597,7 @@ router.post("/client/company/sync-website", async (req, res) => {
         id: companiesTable.id,
         websiteDataUrl: companiesTable.websiteDataUrl,
         websiteAutoSync: companiesTable.websiteAutoSync,
+        allowSourceWebsite: companiesTable.allowSourceWebsite,
       })
       .from(companiesTable)
       .where(eq(companiesTable.clientId, req.session.userId!))
@@ -594,6 +605,11 @@ router.post("/client/company/sync-website", async (req, res) => {
 
     if (!company) {
       res.status(404).json({ error: "No company found" });
+      return;
+    }
+
+    if (company.allowSourceWebsite === false) {
+      res.status(403).json({ error: "Website data source is disabled by administrator." });
       return;
     }
 

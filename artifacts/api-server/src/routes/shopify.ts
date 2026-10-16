@@ -13,14 +13,14 @@ const router = Router();
 
 router.use("/client/shopify", requireClient);
 
-/** Get the company ID for the session user */
-async function getCompanyId(userId: number): Promise<number | null> {
+/** Get the company for the session user */
+async function getCompany(userId: number) {
   const [company] = await db
-    .select({ id: companiesTable.id })
+    .select({ id: companiesTable.id, allowSourceShopify: companiesTable.allowSourceShopify })
     .from(companiesTable)
     .where(eq(companiesTable.clientId, userId))
     .limit(1);
-  return company?.id ?? null;
+  return company ?? null;
 }
 
 function serializeIntegration(row: typeof companyShopifyIntegrationsTable.$inferSelect) {
@@ -46,15 +46,15 @@ function serializeIntegration(row: typeof companyShopifyIntegrationsTable.$infer
 // GET /client/shopify — return current integration (or null)
 router.get("/client/shopify", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.json(null);
       return;
     }
     const [row] = await db
       .select()
       .from(companyShopifyIntegrationsTable)
-      .where(eq(companyShopifyIntegrationsTable.companyId, companyId))
+      .where(eq(companyShopifyIntegrationsTable.companyId, company.id))
       .limit(1);
     res.json(row ? serializeIntegration(row) : null);
   } catch (err) {
@@ -93,11 +93,17 @@ router.post("/client/shopify/test", async (req, res) => {
 // PUT /client/shopify — save or update integration, then kick off sync
 router.put("/client/shopify", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
       res.status(400).json({ error: "Configure your company profile first" });
       return;
     }
+
+    if (company.allowSourceShopify === false) {
+      res.status(403).json({ error: "Shopify data source is disabled by administrator." });
+      return;
+    }
+    const companyId = company.id;
 
     const { shopDomain, accessToken, apiVersion, autoSync } = req.body as {
       shopDomain?: string;
@@ -170,11 +176,17 @@ router.put("/client/shopify", async (req, res) => {
 // POST /client/shopify/sync — manual sync trigger
 router.post("/client/shopify/sync", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
-      res.status(400).json({ error: "Company not found" });
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
       return;
     }
+
+    if (company.allowSourceShopify === false) {
+      res.status(403).json({ error: "Shopify data source is disabled by administrator." });
+      return;
+    }
+    const companyId = company.id;
 
     const ok = await syncCompanyShopify(companyId);
 
@@ -197,11 +209,12 @@ router.post("/client/shopify/sync", async (req, res) => {
 // DELETE /client/shopify — remove integration
 router.delete("/client/shopify", async (req, res) => {
   try {
-    const companyId = await getCompanyId(req.session.userId!);
-    if (!companyId) {
-      res.status(400).json({ error: "Company not found" });
+    const company = await getCompany(req.session.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
       return;
     }
+    const companyId = company.id;
 
     await db
       .delete(companyShopifyIntegrationsTable)
