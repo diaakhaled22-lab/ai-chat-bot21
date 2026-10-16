@@ -158,7 +158,6 @@ const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color:
   expired:              { label: "Auto-expired",          icon: <Clock className="w-3.5 h-3.5" />,         color: "text-red-500"    },
   dates_set:            { label: "Window updated",        icon: <CalendarClock className="w-3.5 h-3.5" />, color: "text-blue-500"   },
   retention_policy_set: { label: "Auto-Delete Policy",    icon: <Clock className="w-3.5 h-3.5" />,         color: "text-amber-500"  },
-  data_source_permissions_updated: { label: "Permissions Updated", icon: <Database className="w-3.5 h-3.5" />, color: "text-indigo-500" },
 };
 
 // ── Knowledge Data Sources ──────────────────────────────────────────────────
@@ -594,7 +593,13 @@ export default function AdminCompanies() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(permissions),
       }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+        if (!old) return old;
+        return old.map((c) =>
+          c.id === variables.id ? { ...c, ...variables.permissions } : c
+        );
+      });
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
       setPermissionsTarget(null);
       toast({ title: t("admin_data_source_permissions_saved") });
