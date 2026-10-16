@@ -593,11 +593,12 @@ export default function AdminCompanies() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(permissions),
       }),
-    onSuccess: (_, variables) => {
+    onSuccess: (data: any, variables) => {
+      const savedPerms = data?.permissions || variables.permissions;
       queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
         if (!old) return old;
         return old.map((c) =>
-          c.id === variables.id ? { ...c, ...variables.permissions } : c
+          c.id === variables.id ? { ...c, ...savedPerms } : c
         );
       });
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
@@ -611,11 +612,11 @@ export default function AdminCompanies() {
   const openPermissionsDialog = (company: Company) => {
     setPermissionsTarget(company);
     setPermissionsForm({
-      allowSourceWebsite: company.allowSourceWebsite ?? true,
-      allowSourceFiles: company.allowSourceFiles ?? true,
-      allowSourceWordpress: company.allowSourceWordpress ?? true,
-      allowSourceRestApi: company.allowSourceRestApi ?? true,
-      allowSourceShopify: company.allowSourceShopify ?? true,
+      allowSourceWebsite: company.allowSourceWebsite === false ? false : true,
+      allowSourceFiles: company.allowSourceFiles === false ? false : true,
+      allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
+      allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
+      allowSourceShopify: company.allowSourceShopify === false ? false : true,
     });
   };
 

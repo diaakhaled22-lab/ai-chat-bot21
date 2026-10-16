@@ -456,6 +456,9 @@ router.delete("/admin/clients/:id", async (req, res) => {
 
 // GET /admin/companies
 router.get("/admin/companies", async (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   try {
     const rows = await db
       .select({
@@ -506,11 +509,11 @@ router.get("/admin/companies", async (req, res) => {
         websiteDataUrl: company.websiteDataUrl,
         websiteAutoSync: company.websiteAutoSync,
         websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
-        allowSourceWebsite: company.allowSourceWebsite ?? true,
-        allowSourceFiles: company.allowSourceFiles ?? true,
-        allowSourceWordpress: company.allowSourceWordpress ?? true,
-        allowSourceRestApi: company.allowSourceRestApi ?? true,
-        allowSourceShopify: company.allowSourceShopify ?? true,
+        allowSourceWebsite: company.allowSourceWebsite === false ? false : true,
+        allowSourceFiles: company.allowSourceFiles === false ? false : true,
+        allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
+        allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
+        allowSourceShopify: company.allowSourceShopify === false ? false : true,
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString(),
       }))
@@ -569,6 +572,9 @@ router.get("/admin/companies/:id/data-sources", async (req, res) => {
 
 // GET /admin/companies/:id
 router.get("/admin/companies/:id", async (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   try {
     const params = GetCompanyParams.safeParse({ id: Number(req.params.id) });
     if (!params.success) {
@@ -600,7 +606,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       activationEnd: company.activationEnd?.toISOString() ?? null,
       systemPrompt: company.systemPrompt,
           securityPrompt: company.securityPrompt,
-      googleSheetsEnabled: company.googleSheetsEnabled,
+        googleSheetsEnabled: company.googleSheetsEnabled,
       googleSheetsLink: company.googleSheetsLink,
       googleSheetsName: company.googleSheetsName,
       googleSheetsPage: company.googleSheetsPage,
@@ -621,11 +627,11 @@ router.get("/admin/companies/:id", async (req, res) => {
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
-      allowSourceWebsite: company.allowSourceWebsite ?? true,
-      allowSourceFiles: company.allowSourceFiles ?? true,
-      allowSourceWordpress: company.allowSourceWordpress ?? true,
-      allowSourceRestApi: company.allowSourceRestApi ?? true,
-      allowSourceShopify: company.allowSourceShopify ?? true,
+      allowSourceWebsite: company.allowSourceWebsite === false ? false : true,
+      allowSourceFiles: company.allowSourceFiles === false ? false : true,
+      allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
+      allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
+      allowSourceShopify: company.allowSourceShopify === false ? false : true,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -962,6 +968,21 @@ router.put("/admin/companies/:id/data-source-permissions", async (req, res) => {
       performedBy,
       note: `Updated data source permissions: Website=${updated.allowSourceWebsite}, Files=${updated.allowSourceFiles}, WordPress=${updated.allowSourceWordpress}, REST API=${updated.allowSourceRestApi}, Shopify=${updated.allowSourceShopify}`,
     });
+
+    logger.info(
+      {
+        companyId: id,
+        updates,
+        result: {
+          allowSourceWebsite: updated.allowSourceWebsite,
+          allowSourceFiles: updated.allowSourceFiles,
+          allowSourceWordpress: updated.allowSourceWordpress,
+          allowSourceRestApi: updated.allowSourceRestApi,
+          allowSourceShopify: updated.allowSourceShopify,
+        },
+      },
+      "Data source permissions updated successfully"
+    );
 
     res.json({
       ok: true,

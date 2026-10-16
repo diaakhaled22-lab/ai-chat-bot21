@@ -1638,11 +1638,11 @@ export default function ClientKnowledge() {
   });
   const isShopifyConnected = shopifyStatus?.status === "connected";
 
-  const allowWebsite = (company as any)?.allowSourceWebsite ?? true;
-  const allowFiles = (company as any)?.allowSourceFiles ?? true;
-  const allowWordpress = (company as any)?.allowSourceWordpress ?? true;
-  const allowRestApi = (company as any)?.allowSourceRestApi ?? true;
-  const allowShopify = (company as any)?.allowSourceShopify ?? true;
+  const allowWebsite = (company as any)?.allowSourceWebsite === false ? false : true;
+  const allowFiles = (company as any)?.allowSourceFiles === false ? false : true;
+  const allowWordpress = (company as any)?.allowSourceWordpress === false ? false : true;
+  const allowRestApi = (company as any)?.allowSourceRestApi === false ? false : true;
+  const allowShopify = (company as any)?.allowSourceShopify === false ? false : true;
 
   if (companyLoading) {
     return (
