@@ -34,18 +34,26 @@ export default defineConfig({
           const origSetHeader = res.setHeader.bind(res);
           res.setHeader = (name: string, value: any) => {
             if (name.toLowerCase() === "cache-control") {
-              return origSetHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+              return origSetHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
             }
             return origSetHeader(name, value);
           };
-          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-          res.setHeader("Pragma", "no-cache");
-          res.setHeader("Expires", "0");
+          const origWriteHead = res.writeHead.bind(res);
+          (res as any).writeHead = (statusCode: number, ...args: any[]) => {
+            origSetHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+            origSetHeader("Pragma", "no-cache");
+            origSetHeader("Expires", "0");
+            return (origWriteHead as any)(statusCode, ...args);
+          };
+          origSetHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+          origSetHeader("Pragma", "no-cache");
+          origSetHeader("Expires", "0");
           next();
         });
       },
     },
   ],
+  cacheDir: path.resolve(import.meta.dirname, "node_modules/.vite_clean"),
   optimizeDeps: {
     force: true,
   },
