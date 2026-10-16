@@ -17,6 +17,7 @@ import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
+import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
@@ -192,6 +193,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     sysContent += await getWebsiteKnowledgeSection(company);
     sysContent += await getWordPressKnowledgeSection(company.id);
+    sysContent += await getRestApiKnowledgeSection(company.id);
     sysContent += await getKnowledgeFilesPromptSection(company.id, message);
 
     const provider = aiConfig.provider;

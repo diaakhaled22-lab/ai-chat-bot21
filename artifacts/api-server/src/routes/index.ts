@@ -12,6 +12,7 @@ import openaiRouter from "./openai";
 import storageRouter from "./storage";
 import knowledgeFilesRouter from "./knowledgeFiles";
 import wordpressRouter from "./wordpress";
+import restApiRouter from "./restApi";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(openaiRouter);
 router.use(storageRouter);
 router.use(knowledgeFilesRouter);
 router.use(wordpressRouter);
+router.use(restApiRouter);
 
 export default router;

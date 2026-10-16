@@ -20,6 +20,7 @@ import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
+import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 
@@ -47,6 +48,7 @@ async function callAI(
 
   sysContent += await getWebsiteKnowledgeSection(company);
   sysContent += await getWordPressKnowledgeSection(company.id);
+  sysContent += await getRestApiKnowledgeSection(company.id);
   sysContent += await getKnowledgeFilesPromptSection(company.id, userMessage);
 
   if (provider === "anthropic") {

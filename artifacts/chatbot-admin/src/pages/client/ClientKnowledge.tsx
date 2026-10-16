@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers } from "lucide-react";
+import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers, Code2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import {
   useGetClientCompany, useUpdateClientCompany,
@@ -21,6 +21,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const FILE_TYPE_ICON: Record<string, typeof FileText> = {
@@ -583,6 +585,498 @@ function WordPressInlineCard() {
   );
 }
 
+function RestApiInlineCard() {
+  const { t, lang } = useLanguage();
+  const { toast } = useToast();
+  const [apiData, setApiData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Form inputs
+  const [apiUrl, setApiUrl] = useState("");
+  const [httpMethod, setHttpMethod] = useState<"GET" | "POST">("GET");
+  const [headerName, setHeaderName] = useState("");
+  const [headerValue, setHeaderValue] = useState("");
+  const [dataExtractionPath, setDataExtractionPath] = useState("");
+  const [autoSync, setAutoSync] = useState(true);
+
+  // Live test preview
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    error?: string;
+    totalItems?: number;
+    samplePreview?: string;
+  } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const loadApi = async () => {
+    try {
+      setLoading(true);
+      const data = await customFetch<any>("/api/client/rest-api");
+      setApiData(data);
+      if (data) {
+        setApiUrl(data.apiUrl || "");
+        setHttpMethod((data.httpMethod as "GET" | "POST") || "GET");
+        setHeaderName(data.headerName || "");
+        setDataExtractionPath(data.dataExtractionPath || "");
+        setAutoSync(data.autoSync ?? true);
+      }
+    } catch {
+      // not configured
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadApi();
+  }, []);
+
+  const handleTest = async () => {
+    if (!apiUrl.trim()) {
+      toast({
+        title: lang === "ar" ? "يرجى إدخال الرابط" : "Enter API URL",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await customFetch<{
+        ok: boolean;
+        error?: string;
+        totalItems?: number;
+        samplePreview?: string;
+      }>("/api/client/rest-api/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiUrl: apiUrl.trim(),
+          httpMethod,
+          headerName: headerName.trim() || undefined,
+          headerValue: headerValue.trim() || undefined,
+          dataExtractionPath: dataExtractionPath.trim() || undefined,
+        }),
+      });
+
+      setTestResult(res);
+
+      if (res.ok) {
+        setShowPreview(true);
+        toast({
+          title: lang === "ar" ? "الاتصال ناجح ✓" : "Connection successful ✓",
+          description:
+            lang === "ar"
+              ? `تم استخراج ${res.totalItems ?? 0} عنصر بنجاح.`
+              : `Successfully extracted ${res.totalItems ?? 0} items.`,
+        });
+      } else {
+        toast({
+          title: lang === "ar" ? "فشل الاتصال" : "Connection failed",
+          description: res.error || (lang === "ar" ? "تعذر جلب البيانات" : "Could not fetch data"),
+          variant: "destructive",
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: lang === "ar" ? "فشل الاختبار" : "Test failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!apiUrl.trim()) {
+      toast({
+        title: lang === "ar" ? "يرجى إدخال رابط الـ API" : "Enter REST API URL",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await customFetch<any>("/api/client/rest-api", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiUrl: apiUrl.trim(),
+          httpMethod,
+          headerName: headerName.trim() || undefined,
+          headerValue: headerValue.trim() || undefined,
+          dataExtractionPath: dataExtractionPath.trim() || undefined,
+          autoSync,
+        }),
+      });
+      setApiData(saved);
+      setHeaderValue("");
+      toast({
+        title: lang === "ar" ? "تم حفظ إعدادات REST API ✓" : "REST API settings saved ✓",
+        description: lang === "ar" ? "جاري المزامنة في الخلفية..." : "Background sync started...",
+      });
+      setTimeout(() => loadApi(), 4000);
+    } catch (e: any) {
+      toast({
+        title: lang === "ar" ? "فشل الحفظ" : "Save failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await customFetch<{ ok: boolean; integration: any }>("/api/client/rest-api/sync", {
+        method: "POST",
+      });
+      if (res.integration) setApiData(res.integration);
+      toast({
+        title: res.ok ? (lang === "ar" ? "اكتملت المزامنة" : "Sync complete") : (lang === "ar" ? "فشلت المزامنة" : "Sync failed"),
+        description: res.ok
+          ? (lang === "ar" ? `تمت مزامنة ${res.integration?.totalItems ?? 0} عنصر.` : `Synced ${res.integration?.totalItems ?? 0} items.`)
+          : res.integration?.errorMessage,
+        variant: res.ok ? "default" : "destructive",
+      });
+    } catch {
+      toast({
+        title: lang === "ar" ? "فشلت المزامنة" : "Sync failed",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف تكوين REST API؟" : "Are you sure you want to delete this REST API integration?")) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await customFetch("/api/client/rest-api", { method: "DELETE" });
+      setApiData(null);
+      setApiUrl("");
+      setHeaderName("");
+      setHeaderValue("");
+      setDataExtractionPath("");
+      setTestResult(null);
+      toast({
+        title: lang === "ar" ? "تم حذف الربط بنجاح" : "Integration removed",
+      });
+    } catch (e: any) {
+      toast({
+        title: lang === "ar" ? "فشل الحذف" : "Delete failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Card className="bg-card border-border/50 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Code2 className="w-5 h-5 text-indigo-500" />
+            {t("data_source_rest_api")}
+          </CardTitle>
+          {apiData && (
+            <Badge
+              variant="outline"
+              className={
+                apiData.status === "connected"
+                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                  : apiData.status === "error"
+                  ? "bg-destructive/10 text-destructive border-destructive/20"
+                  : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+              }
+            >
+              {apiData.status === "connected"
+                ? (lang === "ar" ? "متصل ومفعل" : "Connected")
+                : apiData.status === "error"
+                ? (lang === "ar" ? "خطأ في المزامنة" : "Sync Error")
+                : (lang === "ar" ? "قيد المزامنة" : "Pending")}
+            </Badge>
+          )}
+        </div>
+        <CardDescription>{t("data_source_rest_api_desc")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ) : (
+          <>
+            {/* API Endpoint & Method */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium">
+                {lang === "ar" ? "رابط واجهة الـ API (REST Endpoint)" : "REST API Endpoint URL"}
+              </label>
+              <div className="flex gap-2">
+                <div className="w-28 shrink-0">
+                  <Select value={httpMethod} onValueChange={(v) => setHttpMethod(v as "GET" | "POST")}>
+                    <SelectTrigger className="bg-background font-mono text-xs font-bold">
+                      <SelectValue placeholder="GET" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GET">GET</SelectItem>
+                      <SelectItem value="POST">POST</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Input
+                  value={apiUrl}
+                  onChange={(e) => setApiUrl(e.target.value)}
+                  placeholder="https://example.com/api/v1/products"
+                  className="bg-background font-mono text-sm flex-1"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "أدخل رابط الـ REST API الذي يعيد بيانات JSON (مثل قائمة المنتجات، الخدمات، أو المقالات)."
+                  : "Enter the REST API endpoint that returns JSON data (e.g., product catalog, services, or articles)."}
+              </p>
+            </div>
+
+            {/* Optional Authentication Headers */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">
+                  {lang === "ar" ? "اسم ترويسة التوثيق (اختياري)" : "Auth Header Name (Optional)"}
+                </label>
+                <Input
+                  value={headerName}
+                  onChange={(e) => setHeaderName(e.target.value)}
+                  placeholder="Authorization أو X-API-Key"
+                  className="bg-background font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">
+                  {lang === "ar" ? "قيمة الترويسة / التوكن (اختياري)" : "Header Value / Token (Optional)"}
+                </label>
+                <PasswordInput
+                  value={headerValue}
+                  onChange={(e) => setHeaderValue(e.target.value)}
+                  placeholder={apiData?.hasHeaderValue ? (lang === "ar" ? "•••••••••••• (محفوظ)" : "•••••••••••• (Saved)") : "Bearer my_secret_token..."}
+                  className="bg-background text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Nested Data Path */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">
+                {lang === "ar" ? "مسار استخراج المصفوفة داخل الـ JSON (اختياري)" : "Target Data Extraction Path (Optional)"}
+              </label>
+              <Input
+                value={dataExtractionPath}
+                onChange={(e) => setDataExtractionPath(e.target.value)}
+                placeholder="data.items أو products أو result"
+                className="bg-background font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "إذا كان رد الـ API يحتوي على مصفوفة متداخلة (مثل { data: { items: [...] } })، حدد المسار هنا. اتركه فارغاً إذا كان الرد مصفوفة مباشرة أو ترغب باستكشافه تلقائياً."
+                  : "If items are inside a nested object (e.g. { data: { items: [...] } }), specify the path. Leave blank to auto-detect."}
+              </p>
+            </div>
+
+            {/* Auto-Sync Switch */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
+              <div>
+                <p className="text-xs font-medium">
+                  {lang === "ar" ? "المزامنة التلقائية الدورية" : "Auto-Sync API Content"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {lang === "ar" ? "تحديث المعرفة من الـ API تلقائياً كل 6 ساعات" : "Re-fetch and update knowledge every 6 hours"}
+                </p>
+              </div>
+              <Switch checked={autoSync} onCheckedChange={setAutoSync} />
+            </div>
+
+            {/* Live Test Result Banner */}
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg border text-xs space-y-2 ${
+                  testResult.ok
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-950 dark:text-emerald-100"
+                    : "bg-destructive/10 border-destructive/20 text-destructive"
+                }`}
+              >
+                <div className="flex items-center justify-between font-medium">
+                  <div className="flex items-center gap-1.5">
+                    {testResult.ok ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                    )}
+                    <span>
+                      {testResult.ok
+                        ? (lang === "ar"
+                            ? `تم الاتصال بنجاح! تم استخراج ${testResult.totalItems ?? 0} عنصر.`
+                            : `Connection successful! Extracted ${testResult.totalItems ?? 0} items.`)
+                        : testResult.error || (lang === "ar" ? "فشل الاتصال" : "Connection failed")}
+                    </span>
+                  </div>
+                  {testResult.samplePreview && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPreview((p) => !p)}
+                      className="h-6 text-[11px] gap-1 px-2"
+                    >
+                      {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {showPreview ? (lang === "ar" ? "إخفاء" : "Hide") : (lang === "ar" ? "معاينة" : "Preview")}
+                    </Button>
+                  )}
+                </div>
+
+                {showPreview && testResult.samplePreview && (
+                  <pre className="p-2.5 rounded bg-background/80 border border-border/40 font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap text-foreground">
+                    {testResult.samplePreview}
+                  </pre>
+                )}
+              </div>
+            )}
+
+            {/* Persistent Integration Status Summary */}
+            {apiData && !testResult && (
+              <div className="flex flex-col gap-2 bg-muted/30 p-3 rounded-lg border border-border/50 text-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? "الحالة: " : "Status: "}
+                    <strong
+                      className={
+                        apiData.status === "connected"
+                          ? "text-emerald-500"
+                          : apiData.status === "error"
+                          ? "text-destructive"
+                          : "text-amber-500"
+                      }
+                    >
+                      {apiData.status === "connected"
+                        ? (lang === "ar" ? "متصل بنجاح" : "Connected")
+                        : apiData.status === "error"
+                        ? (lang === "ar" ? "خطأ في الجلب" : "Sync error")
+                        : (lang === "ar" ? "قيد المزامنة" : "Pending")}
+                    </strong>
+                  </span>
+                  {apiData.totalItems > 0 && (
+                    <span className="text-muted-foreground">
+                      {lang === "ar" ? `العناصر المستخرجة: ${apiData.totalItems}` : `Extracted Items: ${apiData.totalItems}`}
+                    </span>
+                  )}
+                  {apiData.lastSynced && (
+                    <span className="text-muted-foreground text-[11px]">
+                      {lang === "ar" ? "آخر مزامنة: " : "Last sync: "}
+                      {new Date(apiData.lastSynced).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {apiData.errorMessage && (
+                  <p className="text-destructive text-[11px] mt-1 font-mono">{apiData.errorMessage}</p>
+                )}
+
+                {apiData.samplePreview && (
+                  <div className="pt-2 border-t border-border/30">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPreview((p) => !p)}
+                      className="h-6 text-[11px] gap-1 px-1 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {lang === "ar" ? "معاينة البيانات المحفوظة للذكاء الاصطناعي" : "Preview Synced Knowledge"}
+                    </Button>
+                    {showPreview && (
+                      <pre className="p-2.5 mt-2 rounded bg-background/80 border border-border/40 font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap text-foreground">
+                        {apiData.samplePreview}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Actions Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTest}
+                  disabled={testing || !apiUrl}
+                  className="text-xs"
+                >
+                  {testing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plug className="w-3.5 h-3.5 mr-1" />}
+                  {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
+                </Button>
+
+                {apiData && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className="text-xs"
+                    >
+                      {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 mr-1" />}
+                      {lang === "ar" ? "مزامنة الآن" : "Sync Now"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      {deleting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+                      {lang === "ar" ? "حذف الربط" : "Disconnect"}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || !apiUrl}
+                className="text-xs ml-auto"
+              >
+                {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                {lang === "ar" ? "حفظ وربط" : "Save & Connect"}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 const websiteFormSchema = z.object({
   websiteDataUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
@@ -591,7 +1085,7 @@ const websiteFormSchema = z.object({
 
 export default function ClientKnowledge() {
   const { t, lang } = useLanguage();
-  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress">("website");
+  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress" | "restapi">("website");
   
   const { data: company, isLoading: companyLoading } = useGetClientCompany({
     query: { queryKey: getGetClientCompanyQueryKey() },
@@ -639,6 +1133,14 @@ export default function ClientKnowledge() {
     refetchInterval: 10_000, // re-check every 10s in case background sync finishes
   });
   const isWordPressConnected = wpStatus?.status === "connected";
+
+  // Fetch REST API status to show green dot indicator in sidebar
+  const { data: restApiStatus } = useQuery({
+    queryKey: ["rest-api-status"],
+    queryFn: () => customFetch<{ status?: string } | null>("/api/client/rest-api"),
+    refetchInterval: 10_000,
+  });
+  const isRestApiConnected = restApiStatus?.status === "connected";
 
   if (companyLoading) {
     return (
@@ -741,6 +1243,34 @@ export default function ClientKnowledge() {
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
             )}
           </button>
+
+          {/* Button 4: REST API */}
+          <button
+            type="button"
+            onClick={() => setActiveSource("restapi")}
+            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+              activeSource === "restapi"
+                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                : "border-border/60 bg-card hover:bg-muted/40"
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+              activeSource === "restapi" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            }`}>
+              <Code2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate">{t("data_source_rest_api")}</p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {isRestApiConnected
+                  ? (lang === "ar" ? "متصل" : "Connected")
+                  : (lang === "ar" ? "واجهة برمجية JSON" : "Custom JSON API")}
+              </p>
+            </div>
+            {isRestApiConnected && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+            )}
+          </button>
         </div>
 
         {/* Content Area */}
@@ -820,6 +1350,10 @@ export default function ClientKnowledge() {
 
           {activeSource === "wordpress" && (
             <WordPressInlineCard />
+          )}
+
+          {activeSource === "restapi" && (
+            <RestApiInlineCard />
           )}
         </div>
       </div>

@@ -6,6 +6,7 @@ import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTab
 import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
+import { syncAllRestApiIntegrations, ensureRestApiSchema } from "./lib/restApiSync";
 import { refreshAiModels } from "./lib/aiModels";
 import { ensureAdminExists } from "./lib/adminBootstrap";
 import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
@@ -234,6 +235,10 @@ syncAllAutoSyncCompanies();
 setInterval(syncAllWordPressIntegrations, 6 * 60 * 60 * 1000);
 syncAllWordPressIntegrations();
 
+// AutoSync: re-sync custom REST API integrations every 6 hours
+setInterval(syncAllRestApiIntegrations, 6 * 60 * 60 * 1000);
+syncAllRestApiIntegrations();
+
 // Refresh provider model catalogs hourly so new API models appear automatically.
 setInterval(() => {
   refreshAiModels().catch((err) => logger.warn({ err }, "Scheduled AI model catalog sync failed"));
@@ -247,6 +252,7 @@ async function startServer() {
   await ensureEmailNotificationSchema();
   await ensureRagSchema();
   await ensureVoiceSchema();
+  await ensureRestApiSchema();
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 

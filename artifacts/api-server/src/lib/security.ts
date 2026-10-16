@@ -883,6 +883,8 @@ export function suspiciousActivityDetector(req: Request, res: Response, next: Ne
   const urlAcceptingPaths = [
     "/client/wordpress",
     "/client/wordpress/test",
+    "/client/rest-api",
+    "/client/rest-api/test",
     "/client/company/sync-website",
     "/client/company",
     "/api/whatsapp/webhook",

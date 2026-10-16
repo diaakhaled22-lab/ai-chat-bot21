@@ -356,6 +356,8 @@ const translations = {
     data_source_files_desc: "Upload Excel, CSV, or JSON documents for instant AI knowledge.",
     data_source_wordpress: "WordPress",
     data_source_wordpress_desc: "Connect via WordPress REST API to sync posts, pages, and products.",
+    data_source_rest_api: "REST API Endpoint",
+    data_source_rest_api_desc: "Connect to your website or server REST API to dynamically extract data, products, or catalogs.",
   },
   ar: {
     btn_sub_settings: "إعدادات الاشتراك",
@@ -682,6 +684,8 @@ const translations = {
     data_source_files_desc: "رفع مستندات Excel أو CSV أو JSON لتغذية قاعدة بيانات البوت فوراً.",
     data_source_wordpress: "ووردبريس WordPress",
     data_source_wordpress_desc: "الربط عبر واجهة ووردبريس البرمجية لمزامنة المقالات والصفحات والمنتجات.",
+    data_source_rest_api: "واجهة برمجية REST API",
+    data_source_rest_api_desc: "الربط مع واجهة برمجية REST API خاصة بموقعك لاستخراج وتحديث البيانات والمنتجات تلقائياً.",
   },
 } as const;
 
