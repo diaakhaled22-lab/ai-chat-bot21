@@ -1,3 +1,5 @@
+import http from "http";
+import { exec, execSync } from "child_process";
 import { initWebSocket } from "./lib/ws";
 import app from "./app";
 import { logger } from "./lib/logger";
@@ -250,6 +252,30 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog sync failed"));
 
+function freePortIfBusy(targetPort: number): Promise<void> {
+  return new Promise((resolve) => {
+    if (process.platform === "win32") {
+      try {
+        const out = execSync(`netstat -ano | findstr :${targetPort}`, { encoding: "utf8" });
+        const lines = out.trim().split("\n");
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && pid !== String(process.pid) && pid !== "0") {
+            execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" });
+          }
+        }
+      } catch {}
+      setTimeout(resolve, 500);
+    } else {
+      // Linux / Replit: terminate stale zombie process holding this port
+      exec(`fuser -k ${targetPort}/tcp 2>/dev/null || (lsof -ti:${targetPort} | xargs kill -9 2>/dev/null) || true`, () => {
+        setTimeout(resolve, 800);
+      });
+    }
+  });
+}
+
 // Ensure the default admin is ready before accepting requests. This guards
 // against fresh database resets and avoids a login race during startup.
 async function startServer() {
@@ -263,16 +289,52 @@ async function startServer() {
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 
-  const server = app.listen(port, "0.0.0.0", (err?: Error) => {
-    if (err) {
+  let attempts = 0;
+  const maxRetries = 3;
+
+  function attemptListen() {
+    attempts++;
+    const server = http.createServer(app);
+
+    server.on("error", async (err: any) => {
+      if (err.code === "EADDRINUSE" && attempts <= maxRetries) {
+        logger.warn(
+          { port, attempt: attempts, maxRetries },
+          "Port is in use (EADDRINUSE). Automatically releasing port from lingering process and retrying..."
+        );
+        await freePortIfBusy(port);
+        setTimeout(() => {
+          attemptListen();
+        }, 1000);
+        return;
+      }
+
       logger.error({ err }, "Error listening on port");
       process.exit(1);
-    }
+    });
 
-    logger.info({ port }, "Server listening");
-  });
+    server.listen(port, "0.0.0.0", () => {
+      logger.info({ port }, "Server listening");
+      initWebSocket(server);
+    });
 
-  initWebSocket(server);
+    // Gracefully handle SIGTERM and SIGINT to close the socket cleanly on restart
+    const shutdown = (signal: string) => {
+      logger.info({ signal }, "Received signal, shutting down server cleanly...");
+      server.close(() => {
+        logger.info("Server closed successfully.");
+        process.exit(0);
+      });
+      setTimeout(() => {
+        process.exit(0);
+      }, 3000).unref();
+    };
+
+    process.once("SIGTERM", () => shutdown("SIGTERM"));
+    process.once("SIGINT", () => shutdown("SIGINT"));
+  }
+
+  attemptListen();
 }
 
 void startServer();

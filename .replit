@@ -33,7 +33,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=8080 pnpm --filter @workspace/api-server run dev"
+args = "fuser -k 8080/tcp 2>/dev/null || true; PORT=8080 pnpm --filter @workspace/api-server run dev"
 waitForPort = 8080
 
 [[workflows.workflow]]
@@ -45,7 +45,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=21662 BASE_PATH=/ pnpm --filter @workspace/chatbot-admin run dev"
+args = "fuser -k 21662/tcp 2>/dev/null || true; PORT=21662 BASE_PATH=/ pnpm --filter @workspace/chatbot-admin run dev"
 waitForPort = 21662
 
 [agent]
