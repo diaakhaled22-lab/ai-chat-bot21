@@ -27,7 +27,28 @@ export default defineConfig({
           ),
         ]
       : []),
+    {
+      name: "prevent-browser-cache",
+      configureServer(server) {
+        server.middlewares.use((_req, res, next) => {
+          const origSetHeader = res.setHeader.bind(res);
+          res.setHeader = (name: string, value: any) => {
+            if (name.toLowerCase() === "cache-control") {
+              return origSetHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+            }
+            return origSetHeader(name, value);
+          };
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+          next();
+        });
+      },
+    },
   ],
+  optimizeDeps: {
+    force: true,
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
