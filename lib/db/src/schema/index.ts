@@ -11,6 +11,7 @@ export * from "./messages";
 export * from "./companyKnowledgeFiles";
 export * from "./companyWordPressIntegrations";
 export * from "./companyRestApiIntegrations";
+export * from "./companyShopifyIntegrations";
 export * from "./adminActivityLogs";
 export * from "./session";
 

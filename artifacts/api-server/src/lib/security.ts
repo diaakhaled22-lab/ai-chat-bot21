@@ -885,6 +885,8 @@ export function suspiciousActivityDetector(req: Request, res: Response, next: Ne
     "/client/wordpress/test",
     "/client/rest-api",
     "/client/rest-api/test",
+    "/client/shopify",
+    "/client/shopify/test",
     "/client/company/sync-website",
     "/client/company",
     "/api/whatsapp/webhook",

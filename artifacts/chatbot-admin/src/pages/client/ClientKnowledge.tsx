@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers, Code2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Globe, FileText, Plug, Database, Sparkles, ChevronDown, Loader2, RotateCcw, Upload, Trash2, Link2, FileSpreadsheet, FileJson, Sheet as SheetIcon, ExternalLink, Search, BookOpen, Layers, Code2, CheckCircle2, AlertCircle, Eye, EyeOff, ShoppingBag } from "lucide-react";
 import { Link } from "wouter";
 import {
   useGetClientCompany, useUpdateClientCompany,
@@ -1077,6 +1077,459 @@ function RestApiInlineCard() {
   );
 }
 
+function ShopifyInlineCard() {
+  const { t, lang } = useLanguage();
+  const { toast } = useToast();
+  const [shopifyData, setShopifyData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Form inputs
+  const [shopDomain, setShopDomain] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [autoSync, setAutoSync] = useState(true);
+
+  // Live test preview
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    error?: string;
+    totalItems?: number;
+    shopName?: string;
+    shopCurrency?: string;
+    samplePreview?: string;
+  } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const loadShopify = async () => {
+    try {
+      setLoading(true);
+      const data = await customFetch<any>("/api/client/shopify");
+      setShopifyData(data);
+      if (data) {
+        setShopDomain(data.shopDomain || "");
+        setAutoSync(data.autoSync ?? true);
+      }
+    } catch {
+      // not configured
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadShopify();
+  }, []);
+
+  const handleTest = async () => {
+    if (!shopDomain.trim()) {
+      toast({
+        title: lang === "ar" ? "يرجى إدخال نطاق متجر شوبيفاي" : "Enter Shopify Store Domain",
+        variant: "destructive",
+      });
+      return;
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await customFetch<{
+        ok: boolean;
+        error?: string;
+        totalItems?: number;
+        shopName?: string;
+        shopCurrency?: string;
+        samplePreview?: string;
+      }>("/api/client/shopify/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopDomain: shopDomain.trim(),
+          accessToken: accessToken.trim() || undefined,
+        }),
+      });
+
+      setTestResult(res);
+
+      if (res.ok) {
+        setShowPreview(true);
+        toast({
+          title: lang === "ar" ? "الاتصال ناجح ✓" : "Connection successful ✓",
+          description:
+            lang === "ar"
+              ? `تم استخراج ${res.totalItems ?? 0} منتج بنجاح من متجر ${res.shopName || shopDomain}.`
+              : `Successfully extracted ${res.totalItems ?? 0} products from ${res.shopName || shopDomain}.`,
+        });
+      } else {
+        toast({
+          title: lang === "ar" ? "فشل الاتصال" : "Connection failed",
+          description: res.error || (lang === "ar" ? "تعذر الاتصال بمتجر شوبيفاي" : "Could not connect to Shopify store"),
+          variant: "destructive",
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: lang === "ar" ? "فشل الاختبار" : "Test failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!shopDomain.trim()) {
+      toast({
+        title: lang === "ar" ? "يرجى إدخال نطاق المتجر" : "Enter Shopify Store Domain",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await customFetch<any>("/api/client/shopify", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopDomain: shopDomain.trim(),
+          accessToken: accessToken.trim() || undefined,
+          autoSync,
+        }),
+      });
+      setShopifyData(saved);
+      setAccessToken("");
+      toast({
+        title: lang === "ar" ? "تم حفظ إعدادات شوبيفاي ✓" : "Shopify settings saved ✓",
+        description: lang === "ar" ? "جاري سحب المنتجات والمزامنة في الخلفية..." : "Background product sync started...",
+      });
+      setTimeout(() => loadShopify(), 4000);
+    } catch (e: any) {
+      toast({
+        title: lang === "ar" ? "فشل الحفظ" : "Save failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await customFetch<{ ok: boolean; integration: any }>("/api/client/shopify/sync", {
+        method: "POST",
+      });
+      if (res.integration) setShopifyData(res.integration);
+      toast({
+        title: res.ok ? (lang === "ar" ? "اكتملت المزامنة" : "Sync complete") : (lang === "ar" ? "فشلت المزامنة" : "Sync failed"),
+        description: res.ok
+          ? (lang === "ar" ? `تمت مزامنة ${res.integration?.totalItems ?? 0} منتج بنجاح.` : `Synced ${res.integration?.totalItems ?? 0} products.`)
+          : res.integration?.errorMessage,
+        variant: res.ok ? "default" : "destructive",
+      });
+    } catch {
+      toast({
+        title: lang === "ar" ? "فشلت المزامنة" : "Sync failed",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف ربط متجر شوبيفاي؟" : "Are you sure you want to remove the Shopify integration?")) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await customFetch("/api/client/shopify", { method: "DELETE" });
+      setShopifyData(null);
+      setShopDomain("");
+      setAccessToken("");
+      setTestResult(null);
+      toast({
+        title: lang === "ar" ? "تم حذف الربط بنجاح" : "Integration removed",
+      });
+    } catch (e: any) {
+      toast({
+        title: lang === "ar" ? "فشل الحذف" : "Delete failed",
+        description: e.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Card className="bg-card border-border/50 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShoppingBag className="w-5 h-5 text-emerald-600" />
+            {t("data_source_shopify")}
+          </CardTitle>
+          {shopifyData && (
+            <Badge
+              variant="outline"
+              className={
+                shopifyData.status === "connected"
+                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                  : shopifyData.status === "error"
+                  ? "bg-destructive/10 text-destructive border-destructive/20"
+                  : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+              }
+            >
+              {shopifyData.status === "connected"
+                ? (lang === "ar" ? "متصل ومفعل" : "Connected")
+                : shopifyData.status === "error"
+                ? (lang === "ar" ? "خطأ في المزامنة" : "Sync Error")
+                : (lang === "ar" ? "قيد المزامنة" : "Pending")}
+            </Badge>
+          )}
+        </div>
+        <CardDescription>{t("data_source_shopify_desc")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ) : (
+          <>
+            {/* Shopify Store Domain */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium">
+                {lang === "ar" ? "نطاق متجر شوبيفاي (Shopify Store Domain)" : "Shopify Store Domain"}
+              </label>
+              <Input
+                value={shopDomain}
+                onChange={(e) => setShopDomain(e.target.value)}
+                placeholder="your-brand.myshopify.com أو yourstore.com"
+                className="bg-background font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "أدخل نطاق متجرك الأساسي مثال: mybrand.myshopify.com أو رابط المتجر المخصص."
+                  : "Enter your myshopify domain (e.g. your-store.myshopify.com) or custom domain."}
+              </p>
+            </div>
+
+            {/* Admin API Access Token */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium">
+                  {lang === "ar" ? "رمز الوصول الإداري (Admin API Access Token - اختياري)" : "Admin API Access Token (Optional)"}
+                </label>
+                <span className="text-[10px] text-muted-foreground">
+                  {lang === "ar" ? "يبدأ بـ shpat_..." : "Starts with shpat_..."}
+                </span>
+              </div>
+              <PasswordInput
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                placeholder={shopifyData?.hasAccessToken ? (lang === "ar" ? "•••••••••••• (محفوظ)" : "•••••••••••• (Saved)") : "shpat_xxxxxxxxxxxxxxxxxxxx"}
+                className="bg-background font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "اختياري إذا كان متجرك متاحاً للعامة، وموصى به لمزامنة المنتجات المخفية والأسعار بدقة. يمكنك استخراجه من لوحة تحكم شوبيفاي > Apps > Develop Apps بتصريح read_products."
+                  : "Optional for public storefronts. Recommended for full catalog access. Create a Custom App in Shopify Admin > Develop Apps with 'read_products' scope."}
+              </p>
+            </div>
+
+            {/* Auto-Sync Switch */}
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-3 bg-muted/20">
+              <div>
+                <p className="text-xs font-medium">
+                  {lang === "ar" ? "المزامنة التلقائية الدورية لمنتجات المتجر" : "Auto-Sync Shopify Products"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {lang === "ar" ? "تحديث المنتجات والأسعار والمخزون تلقائياً كل 6 ساعات" : "Re-sync products, pricing, and stock automatically every 6 hours"}
+                </p>
+              </div>
+              <Switch checked={autoSync} onCheckedChange={setAutoSync} />
+            </div>
+
+            {/* Live Test Result Banner */}
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg border text-xs space-y-2 ${
+                  testResult.ok
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-950 dark:text-emerald-100"
+                    : "bg-destructive/10 border-destructive/20 text-destructive"
+                }`}
+              >
+                <div className="flex items-center justify-between font-medium">
+                  <div className="flex items-center gap-1.5">
+                    {testResult.ok ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                    )}
+                    <span>
+                      {testResult.ok
+                        ? (lang === "ar"
+                            ? `تم الاتصال بنجاح بمتجر ${testResult.shopName || shopDomain}! تم العثور على ${testResult.totalItems ?? 0} منتج.`
+                            : `Connected to ${testResult.shopName || shopDomain}! Extracted ${testResult.totalItems ?? 0} products.`)
+                        : testResult.error || (lang === "ar" ? "فشل الاتصال" : "Connection failed")}
+                    </span>
+                  </div>
+                  {testResult.samplePreview && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPreview((p) => !p)}
+                      className="h-6 text-[11px] gap-1 px-2"
+                    >
+                      {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {showPreview ? (lang === "ar" ? "إخفاء" : "Hide") : (lang === "ar" ? "معاينة" : "Preview")}
+                    </Button>
+                  )}
+                </div>
+
+                {showPreview && testResult.samplePreview && (
+                  <pre className="p-2.5 rounded bg-background/80 border border-border/40 font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap text-foreground">
+                    {testResult.samplePreview}
+                  </pre>
+                )}
+              </div>
+            )}
+
+            {/* Persistent Integration Status Summary */}
+            {shopifyData && !testResult && (
+              <div className="flex flex-col gap-2 bg-muted/30 p-3 rounded-lg border border-border/50 text-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-muted-foreground">
+                    {lang === "ar" ? "الحالة: " : "Status: "}
+                    <strong
+                      className={
+                        shopifyData.status === "connected"
+                          ? "text-emerald-500"
+                          : shopifyData.status === "error"
+                          ? "text-destructive"
+                          : "text-amber-500"
+                      }
+                    >
+                      {shopifyData.status === "connected"
+                        ? (lang === "ar" ? "متصل بنجاح" : "Connected")
+                        : shopifyData.status === "error"
+                        ? (lang === "ar" ? "خطأ في الجلب" : "Sync error")
+                        : (lang === "ar" ? "قيد المزامنة" : "Pending")}
+                    </strong>
+                  </span>
+                  {shopifyData.shopName && (
+                    <span className="text-muted-foreground font-medium">
+                      {lang === "ar" ? "المتجر: " : "Store: "} {shopifyData.shopName}
+                    </span>
+                  )}
+                  {shopifyData.totalItems > 0 && (
+                    <span className="text-muted-foreground">
+                      {lang === "ar" ? `المنتجات المتزامنة: ${shopifyData.totalItems}` : `Synced Products: ${shopifyData.totalItems}`}
+                    </span>
+                  )}
+                  {shopifyData.lastSynced && (
+                    <span className="text-muted-foreground text-[11px]">
+                      {lang === "ar" ? "آخر مزامنة: " : "Last sync: "}
+                      {new Date(shopifyData.lastSynced).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {shopifyData.errorMessage && (
+                  <p className="text-destructive text-[11px] mt-1 font-mono">{shopifyData.errorMessage}</p>
+                )}
+
+                {shopifyData.samplePreview && (
+                  <div className="pt-2 border-t border-border/30">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPreview((p) => !p)}
+                      className="h-6 text-[11px] gap-1 px-1 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {lang === "ar" ? "معاينة كتالوج المنتجات المحفوظة للذكاء الاصطناعي" : "Preview Synced Products"}
+                    </Button>
+                    {showPreview && (
+                      <pre className="p-2.5 mt-2 rounded bg-background/80 border border-border/40 font-mono text-[11px] max-h-48 overflow-y-auto whitespace-pre-wrap text-foreground">
+                        {shopifyData.samplePreview}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Actions Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTest}
+                  disabled={testing || !shopDomain}
+                  className="text-xs"
+                >
+                  {testing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plug className="w-3.5 h-3.5 mr-1" />}
+                  {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
+                </Button>
+
+                {shopifyData && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className="text-xs"
+                    >
+                      {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 mr-1" />}
+                      {lang === "ar" ? "مزامنة الآن" : "Sync Now"}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      {deleting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+                      {lang === "ar" ? "حذف الربط" : "Disconnect"}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || !shopDomain}
+                className="text-xs ml-auto"
+              >
+                {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                {lang === "ar" ? "حفظ وربط" : "Save & Connect"}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 const websiteFormSchema = z.object({
   websiteDataUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
@@ -1085,7 +1538,7 @@ const websiteFormSchema = z.object({
 
 export default function ClientKnowledge() {
   const { t, lang } = useLanguage();
-  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress" | "restapi">("website");
+  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress" | "restapi" | "shopify">("website");
   
   const { data: company, isLoading: companyLoading } = useGetClientCompany({
     query: { queryKey: getGetClientCompanyQueryKey() },
@@ -1141,6 +1594,14 @@ export default function ClientKnowledge() {
     refetchInterval: 10_000,
   });
   const isRestApiConnected = restApiStatus?.status === "connected";
+
+  // Fetch Shopify status to show green dot indicator in sidebar
+  const { data: shopifyStatus } = useQuery({
+    queryKey: ["shopify-status"],
+    queryFn: () => customFetch<{ status?: string } | null>("/api/client/shopify"),
+    refetchInterval: 10_000,
+  });
+  const isShopifyConnected = shopifyStatus?.status === "connected";
 
   if (companyLoading) {
     return (
@@ -1271,6 +1732,34 @@ export default function ClientKnowledge() {
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
             )}
           </button>
+
+          {/* Button 5: Shopify */}
+          <button
+            type="button"
+            onClick={() => setActiveSource("shopify")}
+            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+              activeSource === "shopify"
+                ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
+                : "border-border/60 bg-card hover:bg-muted/40"
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+              activeSource === "shopify" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            }`}>
+              <ShoppingBag className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate">{t("data_source_shopify")}</p>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {isShopifyConnected
+                  ? (lang === "ar" ? "متصل" : "Connected")
+                  : (lang === "ar" ? "المنتجات والأسعار" : "Products & Catalog")}
+              </p>
+            </div>
+            {isShopifyConnected && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+            )}
+          </button>
         </div>
 
         {/* Content Area */}
@@ -1354,6 +1843,10 @@ export default function ClientKnowledge() {
 
           {activeSource === "restapi" && (
             <RestApiInlineCard />
+          )}
+
+          {activeSource === "shopify" && (
+            <ShopifyInlineCard />
           )}
         </div>
       </div>

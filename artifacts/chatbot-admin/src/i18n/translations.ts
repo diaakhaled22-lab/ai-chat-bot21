@@ -358,6 +358,8 @@ const translations = {
     data_source_wordpress_desc: "Connect via WordPress REST API to sync posts, pages, and products.",
     data_source_rest_api: "REST API Endpoint",
     data_source_rest_api_desc: "Connect to your website or server REST API to dynamically extract data, products, or catalogs.",
+    data_source_shopify: "Shopify Store",
+    data_source_shopify_desc: "Connect your Shopify store to sync product catalog, variants, pricing, and collections.",
   },
   ar: {
     btn_sub_settings: "إعدادات الاشتراك",
@@ -686,6 +688,8 @@ const translations = {
     data_source_wordpress_desc: "الربط عبر واجهة ووردبريس البرمجية لمزامنة المقالات والصفحات والمنتجات.",
     data_source_rest_api: "واجهة برمجية REST API",
     data_source_rest_api_desc: "الربط مع واجهة برمجية REST API خاصة بموقعك لاستخراج وتحديث البيانات والمنتجات تلقائياً.",
+    data_source_shopify: "متجر شوبيفاي Shopify",
+    data_source_shopify_desc: "ربط متجر شوبيفاي لمزامنة كتالوج المنتجات، الأسعار، والمجموعات تلقائياً.",
   },
 } as const;
 

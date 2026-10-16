@@ -7,6 +7,7 @@ import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { syncAllRestApiIntegrations, ensureRestApiSchema } from "./lib/restApiSync";
+import { syncAllShopifyIntegrations, ensureShopifySchema } from "./lib/shopifySync";
 import { refreshAiModels } from "./lib/aiModels";
 import { ensureAdminExists } from "./lib/adminBootstrap";
 import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
@@ -239,6 +240,10 @@ syncAllWordPressIntegrations();
 setInterval(syncAllRestApiIntegrations, 6 * 60 * 60 * 1000);
 syncAllRestApiIntegrations();
 
+// AutoSync: re-sync Shopify store integrations every 6 hours
+setInterval(syncAllShopifyIntegrations, 6 * 60 * 60 * 1000);
+syncAllShopifyIntegrations();
+
 // Refresh provider model catalogs hourly so new API models appear automatically.
 setInterval(() => {
   refreshAiModels().catch((err) => logger.warn({ err }, "Scheduled AI model catalog sync failed"));
@@ -253,6 +258,7 @@ async function startServer() {
   await ensureRagSchema();
   await ensureVoiceSchema();
   await ensureRestApiSchema();
+  await ensureShopifySchema();
   await loadBlockedIpsFromDb();
   await loadTotpSecretsFromDb();
 

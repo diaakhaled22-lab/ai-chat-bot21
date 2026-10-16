@@ -13,6 +13,7 @@ import storageRouter from "./storage";
 import knowledgeFilesRouter from "./knowledgeFiles";
 import wordpressRouter from "./wordpress";
 import restApiRouter from "./restApi";
+import shopifyRouter from "./shopify";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(storageRouter);
 router.use(knowledgeFilesRouter);
 router.use(wordpressRouter);
 router.use(restApiRouter);
+router.use(shopifyRouter);
 
 export default router;
