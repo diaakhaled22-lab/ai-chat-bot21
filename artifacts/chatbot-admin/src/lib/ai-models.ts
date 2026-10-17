@@ -9,6 +9,97 @@ export type AiModelCatalogResponse = {
   syncedAt: string | null;
 };
 
+export const AI_PROVIDERS = {
+  openai: {
+    label: "OpenAI",
+    icon: "🟢",
+    keyLabel: "OPENAI_API_KEY",
+    keyPlaceholder: "sk-...",
+    keyLink: "https://platform.openai.com/api-keys",
+    freeTier: "Free trial credits available on sign-up",
+    hasFreeTier: true,
+    models: [
+      { value: "gpt-4o-mini", label: "GPT-4o mini ⭐ Recommended (fast & affordable)", free: true },
+      { value: "gpt-4o", label: "GPT-4o (most capable)", free: false },
+      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (legacy, cheapest)", free: true },
+      { value: "gpt-4-turbo", label: "GPT-4 Turbo", free: false },
+    ],
+  },
+  anthropic: {
+    label: "Anthropic",
+    icon: "🟠",
+    keyLabel: "ANTHROPIC_API_KEY",
+    keyPlaceholder: "sk-ant-...",
+    keyLink: "https://console.anthropic.com/settings/keys",
+    freeTier: "Free tier: $5 credit on sign-up",
+    hasFreeTier: true,
+    models: [
+      { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku ⭐ Recommended (fast & affordable)", free: true },
+      { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (balanced)", free: false },
+      { value: "claude-3-opus-20240229", label: "Claude 3 Opus (most capable)", free: false },
+      { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku (cheapest)", free: true },
+    ],
+  },
+  google: {
+    label: "Google Gemini",
+    icon: "🔵",
+    keyLabel: "GOOGLE_AI_API_KEY",
+    keyPlaceholder: "AIza...",
+    keyLink: "https://aistudio.google.com/app/apikey",
+    freeTier: "Free tier: Generous free quota (no credit card needed)",
+    hasFreeTier: true,
+    models: [
+      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash ⭐ Recommended (free tier, fast)", free: true },
+      { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (free tier)", free: true },
+      { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (higher limits)", free: false },
+      { value: "gemini-pro", label: "Gemini Pro (legacy)", free: false },
+      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", free: false },
+      { value: "gemini-3.7-flash", label: "Gemini 3.7 Flash", free: false },
+      { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash", free: false },
+      { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash", free: false },
+      { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro", free: false },
+      { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite", free: false },
+      { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", free: false },
+    ],
+  },
+  openrouter: {
+    label: "OpenRouter",
+    icon: "🟣",
+    keyLabel: "OPENROUTER_API_KEY",
+    keyPlaceholder: "sk-or-v1-...",
+    keyLink: "https://openrouter.ai/keys",
+    freeTier: "Free models available — no credit card required for free tier",
+    hasFreeTier: true,
+    models: [
+      // ── Free models ─────────────────────────────────────────────────────────
+      { value: "google/gemma-4-31b-it:free",           label: "Google Gemma 4 31B ⭐ Recommended",     free: true  },
+      { value: "nvidia/nemotron-3.5-lightning:free",    label: "NVIDIA Nemotron 3.5 Lightning (free)", free: true  },
+      { value: "openrouter/free",                       label: "OpenRouter Free Auto (free)",          free: true  },
+      { value: "meta-llama/llama-4-scout:free",         label: "Meta Llama 4 Scout",                   free: true  },
+      { value: "meta-llama/llama-4-maverick:free",      label: "Meta Llama 4 Maverick",                free: true  },
+      { value: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 (reasoning)",              free: true  },
+      { value: "deepseek/deepseek-v3-base:free",        label: "DeepSeek V3 Base",                     free: true  },
+      { value: "qwen/qwen3-8b:free",                    label: "Qwen3 8B",                             free: true  },
+      { value: "mistralai/mistral-7b-instruct:free",    label: "Mistral 7B Instruct",                  free: true  },
+      { value: "meta-llama/llama-3.1-8b-instruct:free", label: "Meta Llama 3.1 8B Instruct",           free: true  },
+      { value: "nvidia/nemotron-3-super-120b-a12b:free", label: "NVIDIA Nemotron Super 120B",          free: true  },
+      { value: "openai/gpt-oss-20b:free",                label: "OpenAI OSS 20B",                     free: true  },
+      // ── Paid models ─────────────────────────────────────────────────────────
+      { value: "deepseek/deepseek-v4-flash",            label: "DeepSeek V4 Flash ⭐ Fast & affordable", free: false },
+      { value: "deepseek/deepseek-r1",                  label: "DeepSeek R1 (paid, higher limits)",    free: false },
+      { value: "deepseek/deepseek-v3",                  label: "DeepSeek V3",                          free: false },
+      { value: "anthropic/claude-3.5-sonnet",           label: "Claude 3.5 Sonnet (via OpenRouter)",   free: false },
+      { value: "openai/gpt-4o",                         label: "GPT-4o (via OpenRouter)",              free: false },
+      { value: "openai/gpt-4o-mini",                    label: "GPT-4o mini (via OpenRouter)",         free: false },
+      { value: "google/gemini-pro-1.5",                 label: "Gemini Pro 1.5 (via OpenRouter)",      free: false },
+      { value: "mistralai/mistral-large",               label: "Mistral Large",                        free: false },
+      { value: "meta-llama/llama-3.3-70b-instruct",     label: "Llama 3.3 70B Instruct",               free: false },
+    ],
+  },
+} as const;
+
+export type AiProvider = keyof typeof AI_PROVIDERS;
+
 export function mergeDynamicModels<T extends { value: string; label: string; free: boolean }>(
   staticModels: readonly T[],
   dynamicModels: DynamicAiModel[] | undefined,

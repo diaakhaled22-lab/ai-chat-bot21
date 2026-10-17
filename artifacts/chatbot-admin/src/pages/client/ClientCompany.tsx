@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Coins, SlidersHorizontal } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Coins, SlidersHorizontal, Cpu } from "lucide-react";
 
 /** Compute the same SHA-256 based webhook secret as the backend (first 32 hex chars). */
 async function telegramWebhookSecret(token: string): Promise<string> {
@@ -18,7 +18,7 @@ import {
   getGetClientCompanyQueryKey, getListClientKnowledgeFilesQueryKey, customFetch,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
+import { AI_PROVIDERS, type AiProvider, mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
 import { Badge } from "@/components/ui/badge";
@@ -36,96 +36,6 @@ import { Switch } from "@/components/ui/switch";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/hooks/use-language";
-
-const AI_PROVIDERS = {
-  openai: {
-    label: "OpenAI",
-    icon: "🟢",
-    keyLabel: "OPENAI_API_KEY",
-    keyPlaceholder: "sk-...",
-    keyLink: "https://platform.openai.com/api-keys",
-    freeTier: "Free trial credits available on sign-up",
-    hasFreeTier: true,
-    models: [
-      { value: "gpt-4o-mini", label: "GPT-4o mini ⭐ Recommended (fast & affordable)", free: true },
-      { value: "gpt-4o", label: "GPT-4o (most capable)", free: false },
-      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (legacy, cheapest)", free: true },
-      { value: "gpt-4-turbo", label: "GPT-4 Turbo", free: false },
-    ],
-  },
-  anthropic: {
-    label: "Anthropic",
-    icon: "🟠",
-    keyLabel: "ANTHROPIC_API_KEY",
-    keyPlaceholder: "sk-ant-...",
-    keyLink: "https://console.anthropic.com/settings/keys",
-    freeTier: "Free tier: $5 credit on sign-up",
-    hasFreeTier: true,
-    models: [
-      { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku ⭐ Recommended (fast & affordable)", free: true },
-      { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (balanced)", free: false },
-      { value: "claude-3-opus-20240229", label: "Claude 3 Opus (most capable)", free: false },
-      { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku (cheapest)", free: true },
-    ],
-  },
-  google: {
-    label: "Google Gemini",
-    icon: "🔵",
-    keyLabel: "GOOGLE_AI_API_KEY",
-    keyPlaceholder: "AIza...",
-    keyLink: "https://aistudio.google.com/app/apikey",
-    freeTier: "Free tier: Generous free quota (no credit card needed)",
-    hasFreeTier: true,
-    models: [
-      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash ⭐ Recommended (free tier, fast)", free: true },
-      { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (free tier)", free: true },
-      { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (higher limits)", free: false },
-      { value: "gemini-pro", label: "Gemini Pro (legacy)", free: false },
-      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", free: false },
-      { value: "gemini-3.7-flash", label: "Gemini 3.7 Flash", free: false },
-      { value: "gemini-3.6-flash", label: "Gemini 3.6 Flash", free: false },
-      { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash", free: false },
-      { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro", free: false },
-      { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite", free: false },
-      { value: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", free: false },
-    ],
-  },
-  openrouter: {
-    label: "OpenRouter",
-    icon: "🟣",
-    keyLabel: "OPENROUTER_API_KEY",
-    keyPlaceholder: "sk-or-v1-...",
-    keyLink: "https://openrouter.ai/keys",
-    freeTier: "Free models available — no credit card required for free tier",
-    hasFreeTier: true,
-    models: [
-      // ── Free models ─────────────────────────────────────────────────────────
-      { value: "google/gemma-4-31b-it:free",           label: "Google Gemma 4 31B ⭐ Recommended",     free: true  },
-      { value: "meta-llama/llama-4-scout:free",         label: "Meta Llama 4 Scout",                   free: true  },
-      { value: "meta-llama/llama-4-maverick:free",      label: "Meta Llama 4 Maverick",                free: true  },
-      { value: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 (reasoning)",              free: true  },
-      { value: "deepseek/deepseek-v3-base:free",        label: "DeepSeek V3 Base",                     free: true  },
-      { value: "qwen/qwen3-8b:free",                    label: "Qwen3 8B",                             free: true  },
-      { value: "mistralai/mistral-7b-instruct:free",    label: "Mistral 7B Instruct",                  free: true  },
-      { value: "meta-llama/llama-3.1-8b-instruct:free", label: "Meta Llama 3.1 8B Instruct",           free: true  },
-      { value: "nvidia/nemotron-3-super-120b-a12b:free", label: "NVIDIA Nemotron Super 120B",          free: true  },
-      { value: "openai/gpt-oss-20b:free",                label: "OpenAI OSS 20B",                     free: true  },
-      { value: "nvidia/nemotron-nano-9b-v2:free",        label: "NVIDIA Nemotron Nano 9B",             free: true  },
-      // ── Paid models ─────────────────────────────────────────────────────────
-      { value: "deepseek/deepseek-v4-flash",            label: "DeepSeek V4 Flash ⭐ Fast & affordable", free: false },
-      { value: "deepseek/deepseek-r1",                  label: "DeepSeek R1 (paid, higher limits)",    free: false },
-      { value: "deepseek/deepseek-v3",                  label: "DeepSeek V3",                          free: false },
-      { value: "anthropic/claude-3.5-sonnet",           label: "Claude 3.5 Sonnet (via OpenRouter)",   free: false },
-      { value: "openai/gpt-4o",                         label: "GPT-4o (via OpenRouter)",              free: false },
-      { value: "openai/gpt-4o-mini",                    label: "GPT-4o mini (via OpenRouter)",         free: false },
-      { value: "google/gemini-pro-1.5",                 label: "Gemini Pro 1.5 (via OpenRouter)",      free: false },
-      { value: "mistralai/mistral-large",               label: "Mistral Large",                        free: false },
-      { value: "meta-llama/llama-3.3-70b-instruct",     label: "Llama 3.3 70B Instruct",               free: false },
-    ],
-  },
-} as const;
-
-type AiProvider = keyof typeof AI_PROVIDERS;
 
 const formSchema = z.object({
   name: z.string().min(2, "Company name is required"),
@@ -664,9 +574,9 @@ export default function ClientCompany() {
       googleSheetsName: values.googleSheetsName || null,
       googleSheetsPage: values.googleSheetsPage || null,
       serviceAccountKey: values.serviceAccountKey || null,
-      aiAgentApiKey: values.aiAgentApiKey || null,
-      aiProvider: values.aiProvider || null,
-      aiModel: values.aiModel || null,
+      aiAgentApiKey: values.aiAgentApiKey || company?.aiAgentApiKey || null,
+      aiProvider: values.aiProvider || company?.aiProvider || null,
+      aiModel: values.aiModel || company?.aiModel || null,
       websiteDataUrl: values.websiteDataUrl || null,
       websiteAutoSync: values.websiteAutoSync,
     };
@@ -1178,327 +1088,37 @@ export default function ClientCompany() {
             </CardContent>
           </Card>
 
-          {/* ── Master "Get Data" Section with 3 Data Sources ── */}
-
-          <Accordion type="multiple" className="w-full space-y-4" defaultValue={["integrations"]}>
-            
-            <AccordionItem value="integrations" className="bg-card border border-border/50 rounded-lg px-1">
-              <AccordionTrigger className="hover:no-underline px-4 py-4">
-                <div className="flex items-center gap-2 font-semibold">
-                  <Bot className="w-5 h-5 text-primary" />
-                  {t("company_ai_card")}
+          {/* Dedicated AI Model & Provider Card */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/15 text-primary shrink-0 mt-0.5 sm:mt-0">
+                <Cpu className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-sm text-foreground">
+                    {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
+                  </h3>
+                  <Badge variant="outline" className="text-[11px] font-medium border-primary/30 text-primary">
+                    {lang === "ar" ? "صفحة مخصصة في القائمة" : "Dedicated Page"}
+                  </Badge>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-6 space-y-6">
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "ar"
+                    ? "تم نقل إعدادات مزود ونموذج الذكاء الاصطناعي، مفاتيح API، ونمط التشغيل (حصة المنصة أو المفتاح الخاص) إلى صفحتها المخصصة."
+                    : "AI provider selection, smart model, API key credentials, and execution mode are now managed on the dedicated page."}
+                </p>
+              </div>
+            </div>
+            <Link href="/client/ai-model">
+              <Button size="sm" className="gap-2 shrink-0">
+                <Bot className="w-4 h-4" />
+                {lang === "ar" ? "فتح صفحة الموديل والمزود ←" : "Configure AI Model →"}
+              </Button>
+            </Link>
+          </div>
 
-                {/* AI Provider & Model */}
-                <div className="space-y-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2 border-b border-border/50 pb-2">
-                    <Lock className="w-3.5 h-3.5" /> {lang === "ar" ? "مزود ونموذج الذكاء الاصطناعي" : "AI Provider & Model"}
-                  </h4>
-
-                  {/* Step 1: Choose Provider */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">{lang === "ar" ? "1. اختر مزود الذكاء الاصطناعي" : "1. Choose AI Provider"}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                      {(Object.entries(AI_PROVIDERS) as [AiProvider, typeof AI_PROVIDERS[AiProvider]][]).map(([key, p]) => {
-                        const selected = form.watch("aiProvider") === key;
-                        const models = mergeDynamicModels(
-                          p.models as unknown as Array<{ value: string; label: string; free: boolean }>,
-                          syncedAiModels?.providers?.[key],
-                        );
-                        const freeModels = models.filter((m) => m.free).length;
-                        const paidModels = models.filter((m) => !m.free).length;
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => {
-                              form.setValue("aiProvider", key);
-                              form.setValue("aiModel", "");
-                            }}
-                            className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-medium transition-all ${
-                              selected
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                            }`}
-                          >
-                            <span className="text-lg">{p.icon}</span>
-                            <span>{p.label}</span>
-                            {freeModels > 0 && paidModels === 0 ? (
-                              <span className="text-[10px] text-green-500 font-normal">{lang === "ar" ? "خطة مجانية ✓" : "Free tier ✓"}</span>
-                            ) : freeModels > 0 ? (
-                              <span className="text-[10px] text-green-500 font-normal">{freeModels} {lang === "ar" ? "نماذج مجانية" : "free models"}</span>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground font-normal">{lang === "ar" ? "مدفوع" : "Paid"}</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Free tier notice */}
-                  {form.watch("aiProvider") && (
-                    <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2.5 animate-in fade-in duration-200">
-                      <span className="text-green-500 text-sm shrink-0">✓</span>
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                          {AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.freeTier}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {lang === "ar" ? "احصل على مفتاح الـ API المجاني من: " : "Get your free API key at "}
-                          <a
-                            href={AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.keyLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline hover:no-underline"
-                          >
-                            {AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.keyLink?.replace("https://", "")}
-                          </a>
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Step 2: Choose Model */}
-                  {form.watch("aiProvider") && (() => {
-                    const provider = form.watch("aiProvider") as AiProvider;
-                    const allModels = mergeDynamicModels(
-                      (AI_PROVIDERS[provider]?.models ?? []) as unknown as Array<{ value: string; label: string; free: boolean }>,
-                      syncedAiModels?.providers?.[provider],
-                    );
-                    const freeModels = allModels.filter((m) => m.free);
-                    const paidModels = allModels.filter((m) => !m.free);
-                    const hasBoth = freeModels.length > 0 && paidModels.length > 0;
-                    const currentModel = form.watch("aiModel") || "";
-                    const currentIsFree = freeModels.some((m) => m.value === currentModel);
-                    const currentIsPaid = paidModels.some((m) => m.value === currentModel);
-
-                    if (hasBoth) {
-                      return (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                           <div className="flex items-center justify-between gap-2">
-                             <p className="text-xs font-medium text-muted-foreground">{lang === "ar" ? "2. اختر النموذج الذكي" : "2. Choose Model"}</p>
-                             <span className="text-[10px] text-muted-foreground">
-                               {lang === "ar" ? "تحديث كل ساعة" : "Synced hourly"}{syncedAiModels?.syncedAt ? ` · ${new Date(syncedAiModels.syncedAt).toLocaleString()}` : ""}
-                             </span>
-                           </div>
-
-                          {/* Free models dropdown */}
-                          <div className="space-y-1.5">
-                            <p className="text-[11px] font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
-                              🆓 {lang === "ar" ? "النماذج المجانية" : "Free Models"}
-                            </p>
-                            <div className="flex items-center gap-1.5">
-                              <Select
-                                value={currentIsFree ? currentModel : ""}
-                                onValueChange={(val) => form.setValue("aiModel", val)}
-                              >
-                                <SelectTrigger className="bg-background border-green-500/30 focus:ring-green-500/30 flex-1">
-                                  <SelectValue placeholder={lang === "ar" ? "اختر نموذجاً مجانياً..." : "Select a free model..."} />
-                                </SelectTrigger>
-                                <SelectContent className="model-select-content max-h-[280px]">
-                                  {freeModels.map((m) => (
-                                    <SelectItem key={m.value} value={m.value}>
-                                      <span className="flex items-center gap-2">
-                                        {m.label}
-                                        <span className="text-[10px] font-semibold text-green-600 dark:text-green-400 bg-green-500/10 border border-green-500/30 rounded px-1 py-0.5 leading-none">FREE</span>
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {currentIsFree && (
-                                <button
-                                  type="button"
-                                  onClick={() => form.setValue("aiModel", "")}
-                                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                  aria-label="Clear free model selection"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Paid models dropdown */}
-                          <div className="space-y-1.5">
-                            <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                              💳 {lang === "ar" ? "النماذج المدفوعة" : "Paid Models"}
-                            </p>
-                            <div className="flex items-center gap-1.5">
-                              <Select
-                                value={currentIsPaid ? currentModel : ""}
-                                onValueChange={(val) => form.setValue("aiModel", val)}
-                              >
-                                <SelectTrigger className="bg-background flex-1">
-                                  <SelectValue placeholder={lang === "ar" ? "اختر نموذجاً مدفوعاً..." : "Select a paid model..."} />
-                                </SelectTrigger>
-                                <SelectContent className="model-select-content max-h-[280px]">
-                                  {paidModels.map((m) => (
-                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {currentIsPaid && (
-                                <button
-                                  type="button"
-                                  onClick={() => form.setValue("aiModel", "")}
-                                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                  aria-label="Clear paid model selection"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {form.formState.errors.aiModel && (
-                            <p className="text-sm font-medium text-destructive">{form.formState.errors.aiModel.message}</p>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                         <div className="flex items-center justify-between gap-2">
-                           <p className="text-xs font-medium text-muted-foreground">{lang === "ar" ? "2. اختر النموذج الذكي" : "2. Choose Model"}</p>
-                           <span className="text-[10px] text-muted-foreground">
-                             {lang === "ar" ? "تحديث كل ساعة" : "Synced hourly"}{syncedAiModels?.syncedAt ? ` · ${new Date(syncedAiModels.syncedAt).toLocaleString()}` : ""}
-                           </span>
-                         </div>
-                        <FormField
-                          control={form.control}
-                          name="aiModel"
-                          render={({ field }) => (
-                            <FormItem>
-                              <Select value={field.value || ""} onValueChange={field.onChange}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-background">
-                                    <SelectValue placeholder={lang === "ar" ? "اختر نموذجاً..." : "Select a model..."} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {allModels.map((m) => (
-                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    );
-                  })()}
-
-                  {/* Step 3: API Key */}
-                  {form.watch("aiProvider") && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <p className="text-xs font-medium text-muted-foreground">{lang === "ar" ? "3. مفتاح الـ API" : "3. API Key"}</p>
-                      {!form.watch("aiAgentApiKey") ? (
-                        <div className="rounded-xl border border-border/60 bg-background overflow-hidden">
-                          <div className="p-4 space-y-1.5">
-                            <p className="text-sm font-medium">{lang === "ar" ? "أدخل مفتاح الـ API الخاص بك" : "Enter your API key"}</p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {lang === "ar"
-                                ? `يُستخدم مفتاح ${AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.label} بأمان عبر الخادم ولا يظهر للمستخدمين.`
-                                : `Your ${AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.label} API key is used server-side to generate AI responses. It is stored securely and never exposed to end users.`}
-                            </p>
-                          </div>
-                          <div className="border-t border-border/50 bg-muted/30 px-4 py-3 space-y-2">
-                            <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                              <Lock className="w-3 h-3" /> {lang === "ar" ? "السرية والأمان" : "Secrets"}
-                            </p>
-                            <FormField
-                              control={form.control}
-                              name="aiAgentApiKey"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <div className="flex items-center rounded-lg border border-border bg-background overflow-hidden">
-                                    <div className="px-3 py-2.5 bg-muted/50 border-r border-border shrink-0">
-                                      <span className="font-mono text-xs text-muted-foreground">
-                                        {AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.keyLabel}
-                                      </span>
-                                    </div>
-                                    <FormControl>
-                                      <div className="flex-1 flex items-center pr-2">
-                                        <Input
-                                          type={showApiKey ? "text" : "password"}
-                                          {...field}
-                                          className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-sm h-9"
-                                          placeholder={AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.keyPlaceholder}
-                                        />
-                                        <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="text-muted-foreground hover:text-foreground p-1 shrink-0">
-                                          {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                        </button>
-                                        <div className="ml-1 w-7 h-7 rounded-md bg-muted/50 border border-border flex items-center justify-center shrink-0">
-                                          <UserRound className="w-3.5 h-3.5 text-muted-foreground" />
-                                        </div>
-                                      </div>
-                                    </FormControl>
-                                  </div>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 overflow-hidden">
-                          <div className="border-b border-emerald-500/20 px-4 py-2.5 flex items-center justify-between">
-                            <p className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5">
-                              <Lock className="w-3 h-3" /> {lang === "ar" ? "السرية والأمان" : "Secrets"}
-                            </p>
-                            <span className="text-xs text-emerald-500 font-medium">✓ {lang === "ar" ? "تم الضبط" : "Configured"}</span>
-                          </div>
-                          <div className="px-4 py-3 space-y-2">
-                            <div className="flex items-center rounded-lg border border-emerald-500/20 bg-background overflow-hidden">
-                              <div className="px-3 py-2.5 bg-muted/50 border-r border-border shrink-0">
-                                <span className="font-mono text-xs text-muted-foreground">
-                                  {AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.keyLabel ?? "API_KEY"}
-                                </span>
-                              </div>
-                              <FormField
-                                control={form.control}
-                                name="aiAgentApiKey"
-                                render={({ field }) => (
-                                  <FormItem className="flex-1">
-                                    <FormControl>
-                                      <div className="flex items-center pr-2">
-                                        <Input type={showApiKey ? "text" : "password"} {...field} className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-sm h-9" />
-                                        <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="text-muted-foreground hover:text-foreground p-1 shrink-0">
-                                          {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                        </button>
-                                      </div>
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                              {lang === "ar" ? "✓ الردود التلقائية الذكية نشطة باستخدام " : "✓ AI auto-responses are active using "}
-                              {AI_PROVIDERS[form.watch("aiProvider") as AiProvider]?.label ?? "AI"} — {form.watch("aiModel") || (lang === "ar" ? "النموذج الافتراضي" : "default model")}.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {!form.watch("aiProvider") && (
-                    <p className="text-xs text-muted-foreground">
-                      {lang === "ar" ? "اختر مزوداً في الأعلى لتهيئة الردود الذكية التلقائية عبر الويب هوك." : "Select a provider above to configure AI-powered auto-responses on the webhook."}
-                    </p>
-                  )}
-                </div>
-
-
-              </AccordionContent>
-            </AccordionItem>
-
+          <Accordion type="multiple" className="w-full space-y-4" defaultValue={["sheets"]}>
             <AccordionItem value="sheets" className="bg-card border border-border/50 rounded-lg px-1">
               <AccordionTrigger className="hover:no-underline px-4 py-4">
                 <div className="flex items-center gap-2 font-semibold">
@@ -1974,11 +1594,12 @@ export default function ClientCompany() {
                   : (hasOwnKey && Boolean(ownProvider));
 
                 return (
-                  <div className={`rounded-xl border p-3.5 transition-all ${
-                    isEngineReady
-                      ? (isQuotaMode ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/40 bg-blue-500/5")
-                      : "border-destructive/40 bg-destructive/5"
-                  }`}>
+                  <Link href="/client/ai-model" className="block group">
+                    <div className={`rounded-xl border p-3.5 transition-all group-hover:border-primary/60 cursor-pointer ${
+                      isEngineReady
+                        ? (isQuotaMode ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/40 bg-blue-500/5")
+                        : "border-destructive/40 bg-destructive/5"
+                    }`}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl shrink-0">🤖</span>
                       <div className="flex-1 min-w-0">
@@ -2071,7 +1692,7 @@ export default function ClientCompany() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })()}
 

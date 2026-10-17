@@ -29,6 +29,7 @@ import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
 import AdminAiQuota from "@/pages/admin/AdminAiQuota";
 
 import ClientCompany from "./pages/client/ClientCompany";
+import ClientAiModel from "./pages/client/ClientAiModel";
 import ClientPrompts from "./pages/client/ClientPrompts";
 import ClientKnowledge from "@/pages/client/ClientKnowledge";
 import ClientChatLogs from "@/pages/client/ClientChatLogs";
@@ -167,6 +168,9 @@ function Router() {
         </Route>
               <Route path="/client/company">
           {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}
+        </Route>
+        <Route path="/client/ai-model">
+          {() => <ProtectedRoute component={ClientAiModel} allowedRole="client" />}
         </Route>
         <Route path="/client/prompts">
           {() => <ProtectedRoute component={ClientPrompts} allowedRole="client" />}

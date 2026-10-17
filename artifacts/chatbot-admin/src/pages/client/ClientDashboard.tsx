@@ -276,7 +276,7 @@ export default function ClientDashboard() {
                     : "Company's Own API Key Usage (BYOK)"}
                 </span>
                 <Link
-                  href="/client/company"
+                  href="/client/ai-model"
                   className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-medium"
                 >
                   <span>{lang === "ar" ? "إعدادات المفتاح والمزود" : "Key & Provider Settings"}</span>
@@ -399,13 +399,13 @@ export default function ClientDashboard() {
                           ? `المزود: ${data.aiProvider || "—"} · النموذج: ${data.aiModel || "—"} · فواتير مباشرة حسب الاستهلاك دون سقف حصة`
                           : `Provider: ${data.aiProvider || "—"} · Model: ${data.aiModel || "—"} · Pay-as-you-go with no quota cap`)
                       : (lang === "ar"
-                          ? "أدخل مفتاحك الخاص في بيانات الشركة لتمكين الذكاء الاصطناعي بنموذجك المفضل."
-                          : "Configure your API key in Company Profile to enable AI with your preferred model.")}
+                          ? "أدخل مفتاحك الخاص في صفحة مزود ونموذج الذكاء الاصطناعي لتمكين الردود بنموذجك المفضل."
+                          : "Configure your API key in AI Model & Provider to enable AI with your preferred model.")}
                   </p>
                 </div>
               </div>
               <Link
-                href="/client/company"
+                href="/client/ai-model"
                 className="text-xs px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium flex items-center gap-1.5"
               >
                 <span>{data?.hasOwnApiKey ? (lang === "ar" ? "تعديل الإعدادات" : "Manage Key") : (lang === "ar" ? "إدخال مفتاح API" : "Configure Key")}</span>

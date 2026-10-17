@@ -2058,6 +2058,86 @@ router.get("/client/company/ai-status", async (req, res) => {
   }
 });
 
+// POST /client/company/test-ai
+router.post("/client/company/test-ai", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ ok: false, error: "No company found" });
+      return;
+    }
+
+    const { provider: bodyProvider, model: bodyModel, apiKey: bodyApiKey, mode: bodyMode } = req.body || {};
+    const mode = (bodyMode === "quota" || bodyMode === "tokens")
+      ? bodyMode
+      : ((company as any).aiExecutionMode === "tokens" ? "tokens" : "quota");
+
+    if (mode === "quota") {
+      const quotaModelInfo = await getQuotaAiModelInfo();
+      const quotaAi = await getQuotaAiSettings();
+      if (!quotaAi || !quotaAi.apiKey) {
+        res.status(400).json({ ok: false, error: "لم يقم مسؤول المنصة بتهيئة مفتاح وكيل حصص المنصة بعد." });
+        return;
+      }
+      const t0 = Date.now();
+      await testAiConnection(quotaModelInfo.provider, quotaModelInfo.model, quotaAi.apiKey);
+      const latencyMs = Date.now() - t0;
+      res.json({
+        ok: true,
+        mode: "quota",
+        provider: quotaModelInfo.provider,
+        model: quotaModelInfo.model,
+        latencyMs,
+        message: "تم فحص اتصال حصة المنصة بنجاح!"
+      });
+      return;
+    }
+
+    // Own API Key mode
+    const provider = bodyProvider || company.aiProvider || "openai";
+    const defaultModel =
+      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+      provider === "google" ? "gemini-2.0-flash" :
+      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+    const rawModel = bodyModel || company.aiModel || defaultModel;
+    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+
+    let apiKey = bodyApiKey?.trim();
+    if (!apiKey || apiKey === maskApiKey(company.aiAgentApiKey || "")) {
+      apiKey = company.aiAgentApiKey?.trim();
+    }
+
+    if (!apiKey) {
+      res.status(400).json({ ok: false, error: "يرجى إدخال مفتاح API الخاص بالمزود أولاً." });
+      return;
+    }
+
+    const t0 = Date.now();
+    await testAiConnection(provider, model, apiKey);
+    const latencyMs = Date.now() - t0;
+
+    res.json({
+      ok: true,
+      mode: "tokens",
+      provider,
+      model,
+      latencyMs,
+      message: "تم التحقق من مفتاح الـ API والاتصال بنجاح!"
+    });
+  } catch (err: any) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(400).json({
+      ok: false,
+      error: msg.slice(0, 300)
+    });
+  }
+});
+
 router.patch("/client/notifications/mark-read", async (req, res) => {
   try {
     await db
