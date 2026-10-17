@@ -81,6 +81,8 @@ router.get("/client/company", async (req, res) => {
       "Fetched client company"
     );
 
+    const quotaModelInfo = await getQuotaAiModelInfo();
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -103,6 +105,8 @@ router.get("/client/company", async (req, res) => {
       aiProvider: company.aiProvider,
       aiModel: company.aiProvider === "openrouter" ? sanitizeOpenRouterModel(company.aiModel) : company.aiModel,
       aiExecutionMode: (company as any).aiExecutionMode === "tokens" ? "tokens" : "quota",
+      quotaAiProvider: quotaModelInfo.provider,
+      quotaAiModel: quotaModelInfo.model,
       monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
@@ -193,8 +197,16 @@ router.get("/client/company/quota", async (req, res) => {
     const quota = company.monthlyTokenQuota ?? null;
     const percentUsed = quota ? Math.round((usedTokens / quota) * 100) : null;
     const warning = quota ? (usedTokens >= quota ? "exceeded" : usedTokens >= quota * 0.8 ? "near" : "ok") : "none";
+    const quotaModelInfo = await getQuotaAiModelInfo();
 
-    res.json({ quota, usedTokens, percentUsed, warning });
+    res.json({
+      quota,
+      usedTokens,
+      percentUsed,
+      warning,
+      model: quotaModelInfo.model,
+      provider: quotaModelInfo.provider,
+    });
   } catch (err) {
     logger.error({ err }, "Get company quota error");
     res.status(500).json({ error: "Internal server error" });

@@ -1950,22 +1950,130 @@ export default function ClientCompany() {
               <div className="flex justify-center text-muted-foreground text-lg">↓</div>
 
               {/* AI Engine */}
-              <div className={`rounded-lg border p-3 flex items-center gap-3 ${company.aiAgentApiKey && company.aiProvider ? "border-primary/40 bg-primary/5" : "border-amber-500/40 bg-amber-500/5"}`}>
-                <span className="text-2xl">🤖</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">AI Engine</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {company.aiProvider && company.aiModel
-                      ? `${company.aiProvider.toUpperCase()} · ${company.aiModel}`
-                      : company.aiAgentApiKey
-                      ? "Provider not selected"
-                      : "⚠️ No API key — configure AI Provider above"}
-                  </p>
-                </div>
-                <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${company.aiAgentApiKey && company.aiProvider ? "bg-primary/10 text-primary" : "bg-amber-500/10 text-amber-600"}`}>
-                  {company.aiAgentApiKey && company.aiProvider ? "Active" : "Needs setup"}
-                </span>
-              </div>
+              {(() => {
+                const isQuotaMode = currentExecutionMode === "quota";
+                const quotaProvider = (company as any)?.quotaAiProvider || (aiStatus?.mode === "quota" ? aiStatus?.provider : null) || (quotaData as any)?.provider || "openrouter";
+                let rawQuotaModel = (company as any)?.quotaAiModel || (aiStatus?.mode === "quota" ? aiStatus?.model : null) || (quotaData as any)?.model || "nvidia/nemotron-3.5-lightning:free";
+                if (rawQuotaModel?.includes("nemotron-nano")) {
+                  rawQuotaModel = "nvidia/nemotron-3.5-lightning:free";
+                }
+                const quotaModel = rawQuotaModel;
+
+                const ownProvider = company?.aiProvider || "openai";
+                let rawOwnModel = company?.aiModel || "";
+                if (rawOwnModel?.includes("nemotron-nano")) {
+                  rawOwnModel = "nvidia/nemotron-3.5-lightning:free";
+                }
+                const ownModel = rawOwnModel;
+                const hasOwnKey = Boolean(company?.aiAgentApiKey);
+
+                const activeProvider = isQuotaMode ? quotaProvider : (hasOwnKey ? ownProvider : null);
+                const activeModel = isQuotaMode ? quotaModel : (hasOwnKey ? (ownModel || (lang === "ar" ? "النموذج الافتراضي" : "Default Model")) : null);
+                const isEngineReady = isQuotaMode
+                  ? (aiStatus?.status === "ok" || (quotaData && quotaData.quota > 0))
+                  : (hasOwnKey && Boolean(ownProvider));
+
+                return (
+                  <div className={`rounded-xl border p-3.5 transition-all ${
+                    isEngineReady
+                      ? (isQuotaMode ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/40 bg-blue-500/5")
+                      : "border-destructive/40 bg-destructive/5"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl shrink-0">🤖</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold">
+                            {lang === "ar" ? "محرك الذكاء الاصطناعي" : "AI Engine"}
+                          </p>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
+                            isQuotaMode
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                              : "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
+                          }`}>
+                            {isQuotaMode
+                              ? (lang === "ar" ? "حصة المنصة" : "Platform Quota")
+                              : (lang === "ar" ? "مفتاح خاص" : "Company API Key")}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">
+                          {activeProvider && activeModel
+                            ? `${activeProvider.toUpperCase()} · ${activeModel}`
+                            : !hasOwnKey && !isQuotaMode
+                            ? (lang === "ar" ? "⚠️ لم يتم إدخال مفتاح API — يرجى التهيئة أعلاه" : "⚠️ No API key — configure AI Provider above")
+                            : (lang === "ar" ? "جاري تعيين النموذج..." : "Configuring model...")}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
+                        isEngineReady
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                      }`}>
+                        {isEngineReady
+                          ? (lang === "ar" ? "نشط" : "Active")
+                          : (lang === "ar" ? "بحاجة لإعداد" : "Needs setup")}
+                      </span>
+                    </div>
+
+                    {/* Breakdown of both models: Platform Quota vs Company API Key */}
+                    <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {/* Platform Quota Box */}
+                      <div className={`p-2.5 rounded-lg border transition-all ${
+                        isQuotaMode
+                          ? "bg-amber-500/10 border-amber-500/40 shadow-sm"
+                          : "bg-muted/20 border-border/40 opacity-75"
+                      }`}>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-semibold flex items-center gap-1.5 text-foreground">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                            {lang === "ar" ? "حصة المنصة" : "Platform Quota"}
+                          </span>
+                          {isQuotaMode ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                              {lang === "ar" ? "الوضع الحالي" : "Active Now"}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">
+                              {lang === "ar" ? "وضع بديل" : "Standby"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-mono text-[11px] truncate font-medium text-foreground/90">
+                          {quotaProvider.toUpperCase()} · {quotaModel}
+                        </div>
+                      </div>
+
+                      {/* Company's Own Key Box */}
+                      <div className={`p-2.5 rounded-lg border transition-all ${
+                        !isQuotaMode
+                          ? "bg-blue-500/10 border-blue-500/40 shadow-sm"
+                          : "bg-muted/20 border-border/40 opacity-75"
+                      }`}>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-semibold flex items-center gap-1.5 text-foreground">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                            {lang === "ar" ? "مفتاح الشركة" : "Company API Key"}
+                          </span>
+                          {!isQuotaMode ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                              {lang === "ar" ? "الوضع الحالي" : "Active Now"}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">
+                              {lang === "ar" ? "وضع بديل" : "Standby"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-mono text-[11px] truncate font-medium text-foreground/90">
+                          {hasOwnKey
+                            ? `${ownProvider.toUpperCase()} · ${ownModel || (lang === "ar" ? "النموذج الافتراضي" : "Default Model")}`
+                            : (lang === "ar" ? "لم يُدخل مفتاح خاص" : "No key configured")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Arrow */}
               <div className="flex justify-center text-muted-foreground text-lg">↓</div>
