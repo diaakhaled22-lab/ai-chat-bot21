@@ -1102,7 +1102,7 @@ router.get("/client/dashboard", async (req, res) => {
   }
 });
 
-// GET /client/usage
+// GET /client/usage — displays quota usage only if admin has assigned a quota
 router.get("/client/usage", async (req, res) => {
   try {
     const [company] = await db
@@ -1115,6 +1115,36 @@ router.get("/client/usage", async (req, res) => {
       res.status(404).json({ error: "No company found" });
       return;
     }
+
+    const hasQuota = (company.monthlyTokenQuota ?? 0) > 0;
+
+    // If admin has NOT assigned a quota to this client, do NOT return own API key usage
+    if (!hasQuota) {
+      res.json({
+        hasQuota: false,
+        monthlyTokenQuota: null,
+        quotaAiProvider: null,
+        quotaAiModel: null,
+        aiProvider: null,
+        aiModel: null,
+        totalMessages: 0,
+        estimatedInputTokens: 0,
+        estimatedOutputTokens: 0,
+        estimatedCostUsd: 0,
+        pricingPer1MTokens: { input: 0, output: 0 },
+        byChannel: [],
+        quota: null,
+        usedTokens: 0,
+        percentUsed: 0,
+        warning: "none",
+      });
+      return;
+    }
+
+    const quotaAi = await getQuotaAiSettings();
+    const quotaAiProvider = quotaAi?.provider ?? "openai";
+    const quotaAiModel = quotaAi?.model ?? "gpt-4o-mini";
+    const quota = company.monthlyTokenQuota!;
 
     const fromParam = req.query.from as string | undefined;
     const toParam   = req.query.to   as string | undefined;
@@ -1158,61 +1188,66 @@ router.get("/client/usage", async (req, res) => {
       byChannelMap[ch].outputTokens += outputTokens;
     }
 
-    const pricing: Record<string, { input: number; output: number }> = {
-      // OpenAI
-      "gpt-4o":                              { input: 2.50,  output: 10.00 },
-      "gpt-4o-mini":                         { input: 0.15,  output: 0.60  },
-      "gpt-4-turbo":                         { input: 10.00, output: 30.00 },
-      "gpt-3.5-turbo":                       { input: 0.50,  output: 1.50  },
-      // Anthropic
-      "claude-3-5-sonnet-20241022":          { input: 3.00,  output: 15.00 },
-      "claude-3-5-haiku-20241022":           { input: 0.80,  output: 4.00  },
-      "claude-3-opus-20240229":              { input: 15.00, output: 75.00 },
-      "claude-3-haiku-20240307":             { input: 0.25,  output: 1.25  },
-      // Google
-      "gemini-1.5-pro":                      { input: 1.25,  output: 5.00  },
-      "gemini-1.5-flash":                    { input: 0.075, output: 0.30  },
-      "gemini-2.0-flash":                    { input: 0.10,  output: 0.40  },
-      // OpenRouter ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â free models
-      "google/gemma-4-31b-it:free":          { input: 0,     output: 0     },
-      "meta-llama/llama-4-scout:free":       { input: 0,     output: 0     },
-      "meta-llama/llama-4-maverick:free":    { input: 0,     output: 0     },
-      "deepseek/deepseek-r1:free":           { input: 0,     output: 0     },
-      "deepseek/deepseek-v3-base:free":      { input: 0,     output: 0     },
-      "qwen/qwen3-8b:free":                  { input: 0,     output: 0     },
-      "mistralai/mistral-7b-instruct:free":  { input: 0,     output: 0     },
-      "meta-llama/llama-3.1-8b-instruct:free": { input: 0,  output: 0     },
-      // OpenRouter ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â paid models
-      "deepseek/deepseek-v4-flash":          { input: 0.14,  output: 0.28  },
-      "deepseek/deepseek-r1":                { input: 0.55,  output: 2.19  },
-      "deepseek/deepseek-v3":                { input: 0.27,  output: 1.10  },
-      "anthropic/claude-3.5-sonnet":         { input: 3.00,  output: 15.00 },
-      "openai/gpt-4o":                       { input: 2.50,  output: 10.00 },
-      "openai/gpt-4o-mini":                  { input: 0.15,  output: 0.60  },
-      "google/gemini-pro-1.5":               { input: 1.25,  output: 5.00  },
-      "mistralai/mistral-large":             { input: 2.00,  output: 6.00  },
-      "meta-llama/llama-3.3-70b-instruct":   { input: 0.12,  output: 0.30  },
-    };
+    // Calculate current monthly quota consumption (respecting resets)
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
 
-    const modelKey = company.aiModel ?? "";
-    const modelPricing = pricing[modelKey] ?? { input: 0, output: 0 };
+    const resetConfig = await db
+      .select({ key: adminConfigTable.key, value: adminConfigTable.value })
+      .from(adminConfigTable)
+      .where(or(
+        eq(adminConfigTable.key, `quota_reset_company_${company.id}`),
+        eq(adminConfigTable.key, "quota_reset_all")
+      ));
 
-    const estimatedCostUsd =
-      (totalInputTokens / 1_000_000) * modelPricing.input +
-      (totalOutputTokens / 1_000_000) * modelPricing.output;
+    let effectiveStart = monthStart;
+    for (const r of resetConfig) {
+      if (r.value) {
+        const d = new Date(r.value);
+        if (!isNaN(d.getTime()) && d > effectiveStart) {
+          effectiveStart = d;
+        }
+      }
+    }
+
+    const currentPeriodLogs = await db
+      .select({ customerMessage: chatLogsTable.customerMessage, botResponse: chatLogsTable.botResponse })
+      .from(chatLogsTable)
+      .where(and(
+        eq(chatLogsTable.companyId, company.id),
+        gte(chatLogsTable.createdAt, effectiveStart),
+      ));
+
+    let periodUsedTokens = 0;
+    for (const log of currentPeriodLogs) {
+      periodUsedTokens += Math.ceil((log.customerMessage?.length ?? 0) / CHARS_PER_TOKEN);
+      periodUsedTokens += Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
+    }
+
+    const percentUsed = Math.min(Math.round((periodUsedTokens / quota) * 100), 100);
+    const warning = periodUsedTokens >= quota ? "exceeded" : periodUsedTokens >= quota * 0.8 ? "near" : "ok";
 
     res.json({
-      aiProvider: company.aiProvider,
-      aiModel: company.aiModel,
+      hasQuota: true,
+      monthlyTokenQuota: quota,
+      quotaAiProvider,
+      quotaAiModel,
+      aiProvider: quotaAiProvider,
+      aiModel: quotaAiModel,
       totalMessages: logs.length,
       estimatedInputTokens: totalInputTokens,
       estimatedOutputTokens: totalOutputTokens,
-      estimatedCostUsd: Math.round(estimatedCostUsd * 10000) / 10000,
-      pricingPer1MTokens: modelPricing,
+      estimatedCostUsd: 0,
+      pricingPer1MTokens: { input: 0, output: 0 },
       byChannel: Object.entries(byChannelMap).map(([channel, data]) => ({
         channel,
         ...data,
       })),
+      quota,
+      usedTokens: periodUsedTokens,
+      percentUsed,
+      warning,
     });
   } catch (err) {
     logger.error({ err }, "Get client usage error");
