@@ -5,6 +5,7 @@ import {
   useDeleteCompany,
   useGetCompanyActivityLogs,
   getListCompaniesQueryKey,
+  getGetClientCompanyQueryKey,
   customFetch,
 } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -602,6 +603,11 @@ export default function AdminCompanies() {
         );
       });
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/company"] });
+      queryClient.invalidateQueries({ queryKey: ["wp-status"] });
+      queryClient.invalidateQueries({ queryKey: ["rest-api-status"] });
+      queryClient.invalidateQueries({ queryKey: ["shopify-status"] });
       setPermissionsTarget(null);
       toast({ title: t("admin_data_source_permissions_saved") });
     },

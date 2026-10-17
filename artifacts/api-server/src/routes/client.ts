@@ -65,6 +65,22 @@ router.get("/client/company", async (req, res) => {
       return;
     }
 
+    logger.info(
+      {
+        userId: req.session.userId,
+        companyId: company.id,
+        name: company.name,
+        permissions: {
+          website: company.allowSourceWebsite,
+          files: company.allowSourceFiles,
+          wordpress: company.allowSourceWordpress,
+          restApi: company.allowSourceRestApi,
+          shopify: company.allowSourceShopify,
+        },
+      },
+      "Fetched client company"
+    );
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -578,11 +594,11 @@ router.put("/client/company", async (req, res) => {
       fabPositionX: company.fabPositionX,
       fabPositionY: company.fabPositionY,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
-      allowSourceWebsite: company.allowSourceWebsite ?? true,
-      allowSourceFiles: company.allowSourceFiles ?? true,
-      allowSourceWordpress: company.allowSourceWordpress ?? true,
-      allowSourceRestApi: company.allowSourceRestApi ?? true,
-      allowSourceShopify: company.allowSourceShopify ?? true,
+      allowSourceWebsite: company.allowSourceWebsite === false ? false : true,
+      allowSourceFiles: company.allowSourceFiles === false ? false : true,
+      allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
+      allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
+      allowSourceShopify: company.allowSourceShopify === false ? false : true,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });

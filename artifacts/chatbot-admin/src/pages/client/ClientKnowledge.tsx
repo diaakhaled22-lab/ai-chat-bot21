@@ -1576,7 +1576,14 @@ export default function ClientKnowledge() {
   const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress" | "restapi" | "shopify">("website");
   
   const { data: company, isLoading: companyLoading } = useGetClientCompany({
-    query: { queryKey: getGetClientCompanyQueryKey() },
+    query: {
+      queryKey: getGetClientCompanyQueryKey(),
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+      refetchInterval: 3000,
+    },
   });
   
   const { data: files } = useListClientKnowledgeFiles();
@@ -1614,11 +1621,33 @@ export default function ClientKnowledge() {
 
   const websiteUrl = form.watch("websiteDataUrl");
 
+  const allowWebsite = (company as any)?.allowSourceWebsite === false ? false : true;
+  const allowFiles = (company as any)?.allowSourceFiles === false ? false : true;
+  const allowWordpress = (company as any)?.allowSourceWordpress === false ? false : true;
+  const allowRestApi = (company as any)?.allowSourceRestApi === false ? false : true;
+  const allowShopify = (company as any)?.allowSourceShopify === false ? false : true;
+
+  const hasAutoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (company && !hasAutoSelectedRef.current) {
+      hasAutoSelectedRef.current = true;
+      if (!allowWebsite) {
+        const firstAllowed = (["files", "wordpress", "restapi", "shopify"] as const).find(
+          (k) => (k === "files" ? allowFiles : k === "wordpress" ? allowWordpress : k === "restapi" ? allowRestApi : allowShopify)
+        );
+        if (firstAllowed) {
+          setActiveSource(firstAllowed);
+        }
+      }
+    }
+  }, [company, allowWebsite, allowFiles, allowWordpress, allowRestApi, allowShopify]);
+
   // Fetch WordPress status to show green dot indicator in sidebar
   const { data: wpStatus } = useQuery({
     queryKey: ["wp-status"],
     queryFn: () => customFetch<{ status?: string } | null>("/api/client/wordpress"),
-    refetchInterval: 10_000, // re-check every 10s in case background sync finishes
+    refetchInterval: 10_000,
+    enabled: allowWordpress,
   });
   const isWordPressConnected = wpStatus?.status === "connected";
 
@@ -1627,6 +1656,7 @@ export default function ClientKnowledge() {
     queryKey: ["rest-api-status"],
     queryFn: () => customFetch<{ status?: string } | null>("/api/client/rest-api"),
     refetchInterval: 10_000,
+    enabled: allowRestApi,
   });
   const isRestApiConnected = restApiStatus?.status === "connected";
 
@@ -1635,14 +1665,9 @@ export default function ClientKnowledge() {
     queryKey: ["shopify-status"],
     queryFn: () => customFetch<{ status?: string } | null>("/api/client/shopify"),
     refetchInterval: 10_000,
+    enabled: allowShopify,
   });
   const isShopifyConnected = shopifyStatus?.status === "connected";
-
-  const allowWebsite = (company as any)?.allowSourceWebsite === false ? false : true;
-  const allowFiles = (company as any)?.allowSourceFiles === false ? false : true;
-  const allowWordpress = (company as any)?.allowSourceWordpress === false ? false : true;
-  const allowRestApi = (company as any)?.allowSourceRestApi === false ? false : true;
-  const allowShopify = (company as any)?.allowSourceShopify === false ? false : true;
 
   if (companyLoading) {
     return (
