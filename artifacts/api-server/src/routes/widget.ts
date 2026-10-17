@@ -13,7 +13,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -248,7 +248,9 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
         msgs.push({ role: turn.role, content: turn.content });
       }
       msgs.push({ role: "user", content: message.trim() });
-      const completion = await openai.chat.completions.create({ model, messages: msgs });
+      const completion = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
+      );
       aiReply = completion.choices?.[0]?.message?.content ?? "";
     }
     const rawReply = aiReply;

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { conversations, messages } from "@workspace/db/schema";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { eq, asc, and, like, not } from "drizzle-orm";
+import { buildOpenAiChatParams } from "../lib/aiModels";
 import pino from "pino";
 
 const logger = pino({ name: "openai-routes" });
@@ -118,18 +119,15 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
 
     let fullResponse = "";
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 8192,
-      messages: [
+    const stream = await openai.chat.completions.create(
+      buildOpenAiChatParams("gpt-4o-mini", [
         {
           role: "system",
           content: "You are a helpful AI assistant for a chatbot platform. Answer clearly and concisely.",
         },
         ...chatMessages,
-      ],
-      stream: true,
-    });
+      ], { maxTokens: 8192, stream: true }) as any
+    );
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content;

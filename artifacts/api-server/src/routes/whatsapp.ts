@@ -16,7 +16,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -94,7 +94,9 @@ async function callAI(
     if (sysContent) msgs.push({ role: "system", content: sysContent });
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
-    const completion = await openai.chat.completions.create({ model, messages: msgs });
+    const completion = await openai.chat.completions.create(
+      buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
+    );
     return (completion.choices?.[0]?.message?.content || "") as string;
   }
 }

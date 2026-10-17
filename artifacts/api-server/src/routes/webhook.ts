@@ -8,7 +8,7 @@ import { notifyNewConversation } from "../lib/companyNotification";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
@@ -198,8 +198,10 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
             messages.push({ role: turn.role, content: turn.content });
           }
           messages.push({ role: "user", content: customerMessage });
-          const completion = await openai.chat.completions.create({ model, messages });
-           aiReply = completion.choices[0]?.message?.content ?? "";
+          const completion = await openai.chat.completions.create(
+            buildOpenAiChatParams(model, messages, { maxTokens: 1024 })
+          );
+          aiReply = completion.choices[0]?.message?.content ?? "";
         }
 
         aiReply = enforceResponseLanguage(aiReply, customerMessage);

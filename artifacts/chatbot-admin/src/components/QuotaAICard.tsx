@@ -35,7 +35,7 @@ const PROVIDERS: AIProvider[] = [
       { id: "gpt-4-turbo",    label: "GPT-4 Turbo",    tier: "paid", description: "Powerful with vision, 128K context",       contextWindow: "128K" },
       { id: "gpt-4",          label: "GPT-4",          tier: "paid", description: "High intelligence, deep reasoning",        contextWindow: "8K"   },
       { id: "o1",             label: "o1",             tier: "paid", description: "Advanced reasoning for complex problems",   contextWindow: "200K" },
-      { id: "o1-mini",        label: "o1-mini",        tier: "paid", description: "Faster reasoning, lower cost than o1",     contextWindow: "128K" },
+      { id: "o1-mini",        label: "o1-mini",        tier: "free", description: "Faster reasoning, lightweight model",     contextWindow: "128K" },
       { id: "o3",             label: "o3",             tier: "paid", description: "Latest frontier reasoning model",          contextWindow: "200K" },
     ],
   },

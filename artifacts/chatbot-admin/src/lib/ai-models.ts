@@ -19,10 +19,13 @@ export const AI_PROVIDERS = {
     freeTier: "Free trial credits available on sign-up",
     hasFreeTier: true,
     models: [
-      { value: "gpt-4o-mini", label: "GPT-4o mini ⭐ Recommended (fast & affordable)", free: true },
-      { value: "gpt-4o", label: "GPT-4o (most capable)", free: false },
-      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (legacy, cheapest)", free: true },
-      { value: "gpt-4-turbo", label: "GPT-4 Turbo", free: false },
+      { value: "gpt-4o-mini", label: "GPT-4o mini ⭐ Recommended (Free Tier)", free: true },
+      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (Free Tier, Fast)", free: true },
+      { value: "o3-mini", label: "o3-mini (Free Tier, Reasoning)", free: true },
+      { value: "o1-mini", label: "o1-mini (Free Tier, Reasoning)", free: true },
+      { value: "gpt-4o", label: "GPT-4o (Most Capable)", free: false },
+      { value: "gpt-4-turbo", label: "GPT-4 Turbo (Vision)", free: false },
+      { value: "o1", label: "o1 (Frontier Reasoning)", free: false },
     ],
   },
   anthropic: {

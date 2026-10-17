@@ -14,9 +14,9 @@ export type AiModelCatalog = Record<AiProviderId, SyncedAiModel[]>;
 
 const FALLBACK_MODELS: AiModelCatalog = {
   openai: [
-    "gpt-4o-mini", "gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "gpt-4",
-    "o3-mini", "o1", "o1-mini", "o3",
-  ].map((id) => ({ id, label: id, free: id.includes("mini") || id === "gpt-3.5-turbo" || id === "o3-mini" })),
+    "gpt-4o-mini", "gpt-3.5-turbo", "o3-mini", "o1-mini", "gpt-4o", "gpt-4-turbo", "gpt-4",
+    "o1", "o3",
+  ].map((id) => ({ id, label: displayLabel(id), free: isOpenAiFreeModel(id) })),
   anthropic: [
     "claude-3-haiku-20240307", "claude-3-5-haiku-20241022",
     "claude-3-5-sonnet-20241022", "claude-3-opus-20240229",
@@ -71,6 +71,84 @@ export function isGoogleFreeModel(modelId: string): boolean {
     normalized.startsWith("gemini-2.0") ||
     normalized.startsWith("gemini-1.5")
   );
+}
+
+export function sanitizeOpenAiModel(model?: string | null): string {
+  if (!model || !model.trim()) return "gpt-4o-mini";
+  const trimmed = model.trim().replace(/^openai\//i, "").replace(/^models\//i, "");
+  // Deprecated, discontinued or legacy chat/completion models fallback to recommended free tier model
+  if (
+    trimmed === "gpt-3.5-turbo-16k" ||
+    trimmed === "gpt-3.5-turbo-0301" ||
+    trimmed === "gpt-3.5-turbo-0613" ||
+    trimmed === "text-davinci-003" ||
+    trimmed === "text-davinci-002" ||
+    trimmed === "text-curie-001" ||
+    trimmed === "text-babbage-001" ||
+    trimmed === "text-ada-001" ||
+    trimmed === "code-davinci-002" ||
+    trimmed === "gpt-3.5-turbo-instruct"
+  ) {
+    return "gpt-4o-mini";
+  }
+  return trimmed;
+}
+
+export function isOpenAiFreeModel(modelId: string): boolean {
+  const normalized = modelId.toLowerCase().trim().replace(/^openai\//i, "").replace(/^models\//i, "");
+  return (
+    normalized.includes("mini") ||
+    normalized.includes("3.5-turbo") ||
+    normalized.includes(":free") ||
+    normalized.endsWith("-free")
+  );
+}
+
+export function isOpenAiReasoningModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  const normalized = modelId.toLowerCase().trim().replace(/^openai\//i, "").replace(/^models\//i, "");
+  return normalized.startsWith("o1") || normalized.startsWith("o3") || normalized.startsWith("o4");
+}
+
+export function buildOpenAiChatParams(
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  options?: { maxTokens?: number; stream?: boolean }
+): {
+  model: string;
+  messages: Array<any>;
+  max_tokens?: number;
+  max_completion_tokens?: number;
+  stream?: boolean;
+} {
+  const effectiveModel = sanitizeOpenAiModel(model);
+  const isReasoning = isOpenAiReasoningModel(effectiveModel);
+
+  const formattedMessages = messages.map((m) => {
+    if (isReasoning && m.role === "system") {
+      return { role: "developer", content: m.content };
+    }
+    return { role: m.role, content: m.content };
+  });
+
+  const params: any = {
+    model: effectiveModel,
+    messages: formattedMessages,
+  };
+
+  if (options?.stream !== undefined) {
+    params.stream = options.stream;
+  }
+
+  if (options?.maxTokens !== undefined) {
+    if (isReasoning) {
+      params.max_completion_tokens = options.maxTokens;
+    } else {
+      params.max_tokens = options.maxTokens;
+    }
+  }
+
+  return params;
 }
 
 export interface GeminiChatTurn {
@@ -219,7 +297,7 @@ async function syncOpenAi(apiKey: string): Promise<SyncedAiModel[]> {
     .map((model: any) => ({
       id: String(model.id),
       label: displayLabel(String(model.id)),
-      free: false,
+      free: isOpenAiFreeModel(String(model.id)),
     }));
 }
 

@@ -2,7 +2,7 @@ import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/
 import { eq, sql, and, gte, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyQuota75PercentConsumed } from "./companyNotification";
-import { sanitizeOpenRouterModel, sanitizeGoogleModel } from "./aiModels";
+import { sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel } from "./aiModels";
 
 export interface ResolvedAiConfig {
   apiKey: string;
@@ -26,7 +26,13 @@ export async function getSupportAiSettings(): Promise<{
 
     const provider = (cfg["support_ai_provider"] as any) || "openai";
     const rawModel = cfg["support_ai_model"] || "gpt-4o-mini";
-    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+    const model = provider === "google"
+      ? sanitizeGoogleModel(rawModel)
+      : provider === "openrouter"
+      ? sanitizeOpenRouterModel(rawModel)
+      : provider === "openai"
+      ? sanitizeOpenAiModel(rawModel)
+      : rawModel;
 
     return {
       apiKey: key,
@@ -60,7 +66,13 @@ export async function getQuotaAiModelInfo(): Promise<{
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
     const rawModel = cfg["quota_ai_model"]?.trim() || defaultModel;
-    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+    const model = provider === "google"
+      ? sanitizeGoogleModel(rawModel)
+      : provider === "openrouter"
+      ? sanitizeOpenRouterModel(rawModel)
+      : provider === "openai"
+      ? sanitizeOpenAiModel(rawModel)
+      : rawModel;
 
     return { provider, model };
   } catch (err) {
@@ -87,7 +99,13 @@ export async function getQuotaAiSettings(): Promise<{
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
     const rawModel = cfg["quota_ai_model"]?.trim() || defaultModel;
-    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+    const model = provider === "google"
+      ? sanitizeGoogleModel(rawModel)
+      : provider === "openrouter"
+      ? sanitizeOpenRouterModel(rawModel)
+      : provider === "openai"
+      ? sanitizeOpenAiModel(rawModel)
+      : rawModel;
 
     // Resolve API key
     let key = cfg["quota_ai_api_key"]?.trim();
@@ -140,6 +158,8 @@ export async function resolveCompanyAi(
         ? sanitizeGoogleModel(rawModel)
         : provider === "openrouter"
         ? sanitizeOpenRouterModel(rawModel)
+        : provider === "openai"
+        ? sanitizeOpenAiModel(rawModel)
         : rawModel;
 
       return {

@@ -22,6 +22,8 @@ const PROVIDERS = [
     label: "OpenAI",
     models: [
       { id: "gpt-4o-mini", label: "GPT-4o mini", tier: "free" },
+      { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", tier: "free" },
+      { id: "o3-mini", label: "o3-mini", tier: "free" },
       { id: "gpt-4o", label: "GPT-4o", tier: "paid" },
     ],
   },

@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
@@ -1389,14 +1389,12 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
     } else {
       // openai (default)
       const openai = new OpenAI({ apiKey });
-      const completion = await openai.chat.completions.create({
-        model,
-        messages: [
+      const completion = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user",   content: USER_PROMPT   },
-        ],
-        max_tokens: 600,
-      });
+        ], { maxTokens: 600 })
+      );
       aiResponse = completion.choices[0]?.message?.content ?? "";
     }
 
@@ -1512,7 +1510,9 @@ router.get("/admin/support-ai-status", async (req, res) => {
         } else {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey });
-          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+          await openai.chat.completions.create(
+            buildOpenAiChatParams(model, [{ role: "user", content: "hi" }], { maxTokens: 1 })
+          );
         }
       })();
 
@@ -1658,7 +1658,9 @@ router.get("/admin/quota-ai-status", async (req, res) => {
         } else {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey });
-          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+          await openai.chat.completions.create(
+            buildOpenAiChatParams(model, [{ role: "user", content: "hi" }], { maxTokens: 1 })
+          );
         }
       })();
 
@@ -1956,7 +1958,9 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
       } else {
         const OpenAI = (await import("openai")).default;
         const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
-        const completion = await openai.chat.completions.create({ model, messages: [{ role: "user", content: testPrompt }], max_tokens: 64 });
+        const completion = await openai.chat.completions.create(
+          buildOpenAiChatParams(model, [{ role: "user", content: testPrompt }], { maxTokens: 64 })
+        );
         reply = completion.choices[0]?.message?.content ?? "";
       }
 
@@ -2055,10 +2059,12 @@ router.post("/admin/ai-test", async (req, res) => {
       response = completion.choices[0]?.message?.content ?? "";
     } else {
       const openai = new OpenAI({ apiKey });
-      const completion = await openai.chat.completions.create({
-        model, max_tokens: 100,
-        messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
-      });
+      const completion = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: testMessage }
+        ], { maxTokens: 100 })
+      );
       response = completion.choices[0]?.message?.content ?? "";
     }
 
@@ -2708,15 +2714,14 @@ router.post("/admin/malfunctions/ai-test", async (req, res) => {
     let responseText = "";
 
     if (provider === "openai") {
-      const selectedModel = customModel || "gpt-4o-mini";
+      const selectedModel = sanitizeOpenAiModel(customModel || "gpt-4o-mini");
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({ apiKey: key });
-      const isReasoning = selectedModel.startsWith("o1") || selectedModel.startsWith("o3");
-      const comp = await openai.chat.completions.create({
-        model: selectedModel,
-        messages: [{ role: "user", content: "مرحباً! يرجى الرد بجملة واحدة قصيرة تؤكد أن اتصال OpenAI يعمل بنجاح." }],
-        ...(isReasoning ? {} : { max_tokens: 100 }),
-      });
+      const comp = await openai.chat.completions.create(
+        buildOpenAiChatParams(selectedModel, [
+          { role: "user", content: "مرحباً! يرجى الرد بجملة واحدة قصيرة تؤكد أن اتصال OpenAI يعمل بنجاح." }
+        ], { maxTokens: 100 })
+      );
       responseText = comp.choices[0]?.message?.content || "OpenAI Connected successfully";
     } else {
       const selectedModel = sanitizeGoogleModel(customModel || "gemini-2.0-flash");
@@ -2819,15 +2824,12 @@ ${malfunction.description}
     if (provider === "openai") {
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({ apiKey });
-      const isReasoning = model.startsWith("o1") || model.startsWith("o3");
-      const comp = await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: isReasoning ? "user" : "system", content: SYSTEM_INSTRUCTION },
+      const comp = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, [
+          { role: "system", content: SYSTEM_INSTRUCTION },
           { role: "user", content: USER_PROMPT },
-        ],
-        ...(isReasoning ? {} : { max_tokens: 1500 }),
-      });
+        ], { maxTokens: 1500 })
+      );
       aiAnalysis = comp.choices[0]?.message?.content || "";
     } else {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");

@@ -23,7 +23,7 @@ import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, buildOpenAiChatParams, formatGeminiHistory } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
@@ -103,7 +103,13 @@ router.get("/client/company", async (req, res) => {
       aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
       aiAgentUrl: company.aiAgentUrl,
       aiProvider: company.aiProvider,
-      aiModel: company.aiProvider === "openrouter" ? sanitizeOpenRouterModel(company.aiModel) : company.aiModel,
+      aiModel: company.aiProvider === "openrouter"
+        ? sanitizeOpenRouterModel(company.aiModel)
+        : company.aiProvider === "google"
+        ? sanitizeGoogleModel(company.aiModel)
+        : company.aiProvider === "openai"
+        ? sanitizeOpenAiModel(company.aiModel)
+        : company.aiModel,
       aiExecutionMode: (company as any).aiExecutionMode === "tokens" ? "tokens" : "quota",
       quotaAiProvider: quotaModelInfo.provider,
       quotaAiModel: quotaModelInfo.model,
@@ -1913,7 +1919,9 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
   } else {
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({ apiKey, timeout: timeoutMs });
-    await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+    await openai.chat.completions.create(
+      buildOpenAiChatParams(model, [{ role: "user", content: "hi" }], { maxTokens: 1 })
+    );
   }
 }
 
@@ -1949,6 +1957,8 @@ router.get("/client/company/ai-status", async (req, res) => {
         ? sanitizeGoogleModel(rawModel)
         : provider === "openrouter"
         ? sanitizeOpenRouterModel(rawModel)
+        : provider === "openai"
+        ? sanitizeOpenAiModel(rawModel)
         : rawModel;
 
       const apiKey = company.aiAgentApiKey?.trim();
@@ -2114,6 +2124,8 @@ router.post("/client/company/test-ai", async (req, res) => {
       ? sanitizeGoogleModel(rawModel)
       : provider === "openrouter"
       ? sanitizeOpenRouterModel(rawModel)
+      : provider === "openai"
+      ? sanitizeOpenAiModel(rawModel)
       : rawModel;
 
     let apiKey = bodyApiKey?.trim();
@@ -2255,18 +2267,15 @@ router.post("/client/chatbot-trial", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 1024,
-      messages: [
+    const stream = await openai.chat.completions.create(
+      buildOpenAiChatParams("gpt-4o-mini", [
         { role: "system", content: systemContent },
         ...messages.map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
         })),
-      ],
-      stream: true,
-    });
+      ], { maxTokens: 1024, stream: true }) as any
+    );
 
     let fullResponse = "";
     for await (const chunk of stream) {
@@ -2394,10 +2403,12 @@ router.post("/client/multi-ai/chat", async (req, res) => {
       // openai
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({ apiKey });
-      const stream = await openai.chat.completions.create({
-        model, max_tokens: 2048, stream: true,
-        messages: [{ role: "system", content: SYSTEM }, ...formatted],
-      });
+      const stream = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, [{ role: "system", content: SYSTEM }, ...formatted], {
+          maxTokens: 2048,
+          stream: true,
+        }) as any
+      );
       for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content;
         if (text) res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
