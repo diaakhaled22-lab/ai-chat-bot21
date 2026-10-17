@@ -102,6 +102,8 @@ router.get("/client/company", async (req, res) => {
       aiAgentUrl: company.aiAgentUrl,
       aiProvider: company.aiProvider,
       aiModel: company.aiModel,
+      aiExecutionMode: (company as any).aiExecutionMode || "quota",
+      monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
       telegramEnabled: company.telegramEnabled ?? false,
@@ -478,6 +480,9 @@ router.put("/client/company", async (req, res) => {
     if (data.aiAgentUrl !== undefined) updates.aiAgentUrl = data.aiAgentUrl;
     if (data.aiProvider !== undefined) updates.aiProvider = data.aiProvider;
     if (data.aiModel !== undefined) updates.aiModel = data.aiModel;
+    if ((data as any).aiExecutionMode !== undefined) {
+      updates.aiExecutionMode = (data as any).aiExecutionMode === "tokens" ? "tokens" : "quota";
+    }
     if (data.telegramBotApiKey !== undefined) {
       updates.telegramBotApiKey = preserveMaskedSecret(data.telegramBotApiKey, existingCompany.telegramBotApiKey);
     }
@@ -575,6 +580,8 @@ router.put("/client/company", async (req, res) => {
       aiAgentUrl: company.aiAgentUrl,
       aiProvider: company.aiProvider,
       aiModel: company.aiModel,
+      aiExecutionMode: (company as any).aiExecutionMode || "quota",
+      monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
       telegramEnabled: company.telegramEnabled ?? false,
@@ -604,6 +611,39 @@ router.put("/client/company", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Update client company error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /client/company/execution-mode — quick toggle between quota and API tokens
+router.put("/client/company/execution-mode", async (req, res) => {
+  try {
+    const { mode } = req.body as { mode?: string };
+    if (mode !== "quota" && mode !== "tokens") {
+      res.status(400).json({ error: "Invalid mode. Must be 'quota' or 'tokens'" });
+      return;
+    }
+
+    const [existingCompany] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!existingCompany) {
+      res.status(404).json({ error: "No company found" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(companiesTable)
+      .set({ aiExecutionMode: mode })
+      .where(eq(companiesTable.id, existingCompany.id))
+      .returning({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode });
+
+    res.json({ success: true, aiExecutionMode: updated.aiExecutionMode });
+  } catch (err) {
+    logger.error({ err }, "Update AI execution mode error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1082,7 +1122,10 @@ router.get("/client/dashboard", async (req, res) => {
       monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       hasOwnApiKey: !!company.aiAgentApiKey,
       hasQuota: (company.monthlyTokenQuota ?? 0) > 0,
-      activeExecutionMode: (company.monthlyTokenQuota && company.monthlyTokenQuota > 0) ? "quota" : (company.aiAgentApiKey ? "own_key" : "none"),
+      aiExecutionMode: (company as any).aiExecutionMode || "quota",
+      activeExecutionMode: ((company as any).aiExecutionMode === "tokens")
+        ? "own_key"
+        : ((company.monthlyTokenQuota && company.monthlyTokenQuota > 0) ? "quota" : (company.aiAgentApiKey ? "own_key" : "none")),
       quotaAiProvider: quotaModelInfo.provider,
       quotaAiModel: quotaModelInfo.model,
       totalMessages: logs.length,

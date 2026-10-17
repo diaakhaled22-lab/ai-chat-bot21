@@ -47,6 +47,7 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_wordpress BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_rest_api BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_shopify BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';
     `);
     logger.info("Data source permissions schema columns ensured successfully");
   } catch (err) {

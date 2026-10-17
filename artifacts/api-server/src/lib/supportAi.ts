@@ -108,19 +108,40 @@ export async function getQuotaAiSettings(): Promise<{
 
 /**
  * Resolves the AI credentials for a company.
- * - IF a token quota is set (monthlyTokenQuota > 0):
- *   Usage is drawn from the Company Quota AI Agent credentials (configured on AI / Quota page).
- * - IF NO token quota is set (null or <= 0):
- *   It will NEVER draw from Platform / Quota AI Agent.
- *   It only draws from the company's own configured aiAgentApiKey.
- *   If the company has no personal key, it throws an error.
+ * - IF aiExecutionMode === "tokens":
+ *   Usage is drawn strictly from the company's own configured aiAgentApiKey and model.
+ * - IF aiExecutionMode === "quota" (or default):
+ *   Usage is drawn from the Platform Quota AI Agent credentials (configured on AI / Quota page)
+ *   provided that the company has a valid monthlyTokenQuota assigned.
+ *   If no quota has been assigned by the admin yet, falls back to personal key if configured.
  */
 export async function resolveCompanyAi(
   company: typeof companiesTable.$inferSelect
 ): Promise<ResolvedAiConfig> {
-  const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
+  const mode = (company as any).aiExecutionMode || "quota";
 
-  // Case 1: Company has an assigned quota -> Use Company Quota AI Agent
+  // Case 1: Company explicitly selected "tokens" (Own API key / BYOK mode)
+  if (mode === "tokens") {
+    if (company.aiAgentApiKey) {
+      const provider = (company.aiProvider as any) || "openai";
+      const model = company.aiModel || (
+        provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+        provider === "google" ? "gemini-2.0-flash" :
+        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
+      );
+
+      return {
+        apiKey: company.aiAgentApiKey,
+        provider,
+        model,
+        isSupportAgent: false,
+      };
+    }
+    throw new Error("نمط العمل محدد على رموز API الخاصة، ولكن لم يتم إدخال مفتاح API في قسم إعدادات الذكاء الاصطناعي.");
+  }
+
+  // Case 2: Company selected "quota" (Platform Quota mode)
+  const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
   if (hasQuota) {
     const quotaAi = await getQuotaAiSettings();
     if (quotaAi && quotaAi.apiKey) {
@@ -135,7 +156,7 @@ export async function resolveCompanyAi(
     }
   }
 
-  // Case 2: No quota set -> NEVER use Support AI Agent. Only use company's personal key if configured.
+  // If in quota mode, but no admin quota has been assigned yet:
   if (company.aiAgentApiKey) {
     const provider = (company.aiProvider as any) || "openai";
     const model = company.aiModel || (
@@ -152,27 +173,36 @@ export async function resolveCompanyAi(
     };
   }
 
-  // Case 3: No quota and no personal key -> Blocked
-  throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة، ولا يوجد مفتاح API خاص بها. يرجى مراجعة إدارة المنصة لتحديد حصة.");
+  // No quota and no personal key
+  throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة، ولا يوجد مفتاح API خاص بها. يرجى مراجعة إدارة المنصة لتحديد حصة أو إدخال مفتاحك الخاص.");
 }
 
 /**
  * Checks whether the company has exceeded its monthly token quota or has no quota allocated.
- * Throws an error if exceeded or if no quota is allocated without a personal key.
+ * When in "tokens" mode, platform token quota restrictions do not apply.
  */
 export async function assertCompanyQuotaNotExceeded(
   company: typeof companiesTable.$inferSelect
 ): Promise<{ usedTokens: number; quota: number | null }> {
+  const mode = (company as any).aiExecutionMode || "quota";
+
+  // If company is operating on their own API tokens (BYOK):
+  if (mode === "tokens") {
+    if (company.aiAgentApiKey) {
+      return { usedTokens: 0, quota: null };
+    }
+    throw new Error("نمط العمل محدد على رموز API الخاصة، ولكن لم يتم إدخال مفتاح API خاص بالشركة بعد.");
+  }
+
+  // Otherwise, operating on Admin Quota:
   const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
 
   // If no quota is set:
   if (!hasQuota) {
-    // If company provided their own API key, they can run on their own key
     if (company.aiAgentApiKey) {
       return { usedTokens: 0, quota: null };
     }
-    // Otherwise, blocked completely!
-    throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة. يرجى تحديد حصة من لوحة الإدارة أولاً لتفعيل الردود.");
+    throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة. يرجى تحديد حصة من لوحة الإدارة أولاً لتفعيل الردود أو التبديل إلى نمط رموز API الخاصة.");
   }
 
   const monthStart = new Date();

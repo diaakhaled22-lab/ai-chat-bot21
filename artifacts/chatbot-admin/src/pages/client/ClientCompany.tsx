@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Coins, SlidersHorizontal } from "lucide-react";
 
 /** Compute the same SHA-256 based webhook secret as the backend (first 32 hex chars). */
 async function telegramWebhookSecret(token: string): Promise<string> {
@@ -17,7 +17,7 @@ import {
   useListClientKnowledgeFiles, useCreateClientKnowledgeFile, useDeleteClientKnowledgeFile,
   getGetClientCompanyQueryKey, getListClientKnowledgeFilesQueryKey, customFetch,
 } from "@workspace/api-client-react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
 
 import { ChannelIcon, CHANNEL_SVG_SNIPPETS } from "@/components/ChannelIcon";
@@ -140,6 +140,7 @@ const formSchema = z.object({
   aiAgentApiKey: z.string().optional().or(z.literal("")),
   aiProvider: z.enum(["openai", "anthropic", "google", "openrouter"]).optional(),
   aiModel: z.string().optional().or(z.literal("")),
+  aiExecutionMode: z.enum(["quota", "tokens"]).default("quota"),
   websiteDataUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   websiteAutoSync: z.boolean().default(false),
 });
@@ -487,6 +488,46 @@ export default function ClientCompany() {
   const initialized = useRef(false);
   const fabOverlayRef = useRef<HTMLDivElement>(null);
 
+  const currentExecutionMode = ((company as any)?.aiExecutionMode as "quota" | "tokens") || "quota";
+
+  const toggleExecutionModeMutation = useMutation({
+    mutationFn: async (mode: "quota" | "tokens") => {
+      return await customFetch("/api/client/company/execution-mode", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+    },
+    onSuccess: (_, mode) => {
+      queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["client-ai-status"] });
+      queryClient.invalidateQueries({ queryKey: ["client-company-quota"] });
+      queryClient.invalidateQueries({ queryKey: ["/client/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["client-dashboard"] });
+      form.setValue("aiExecutionMode", mode);
+      toast({
+        title: lang === "ar"
+          ? (mode === "quota" ? "تم تفعيل نمط: حصة الرموز (Quota)" : "تم تفعيل نمط: رموز API الخاصة (API Tokens)")
+          : (mode === "quota" ? "Switched to: Admin Quota Mode" : "Switched to: API Tokens Mode"),
+        description: lang === "ar"
+          ? (mode === "quota"
+              ? "يعتمد المساعد الآن على حصة الرموز المخصصة لشركتك من قِبل الإدارة."
+              : "يعتمد المساعد الآن على مفتاح API الخاص بشركتك دون قيود الحصة.")
+          : (mode === "quota"
+              ? "Your assistant is now using the monthly quota assigned by the platform admin."
+              : "Your assistant is now using your company's own API tokens."),
+      });
+      refetchAiStatus();
+    },
+    onError: (err: any) => {
+      toast({
+        title: lang === "ar" ? "فشل تبديل النمط" : "Failed to switch mode",
+        description: err?.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -502,6 +543,7 @@ export default function ClientCompany() {
       aiAgentApiKey: "",
       aiProvider: undefined,
       aiModel: "",
+      aiExecutionMode: "quota",
       websiteDataUrl: "",
       websiteAutoSync: false,
     },
@@ -522,6 +564,7 @@ export default function ClientCompany() {
         aiAgentApiKey: company.aiAgentApiKey || "",
         aiProvider: (company.aiProvider as AiProvider) || undefined,
         aiModel: company.aiModel || "",
+        aiExecutionMode: ((company as any)?.aiExecutionMode as "quota" | "tokens") || "quota",
         websiteDataUrl: company.websiteDataUrl || "",
         websiteAutoSync: company.websiteAutoSync ?? false,
       });
@@ -694,7 +737,7 @@ export default function ClientCompany() {
     }
   };
 
-  const showQuotaBanner = quotaData && quotaData.warning !== "none" && quotaData.warning !== "ok";
+  const showQuotaBanner = currentExecutionMode === "quota" && quotaData && quotaData.warning !== "none" && quotaData.warning !== "ok";
 
   return (
     <>
@@ -753,9 +796,14 @@ export default function ClientCompany() {
                  (lang === "ar" ? "حالة الذكاء الاصطناعي غير معروفة" : "AI status unknown")}
               </span>
               {!aiStatusLoading && aiStatus?.model && (
-                <span className="block mt-1 text-[11px] text-muted-foreground font-mono break-all leading-relaxed">
-                  {aiStatus.provider} / {aiStatus.model}
-                </span>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed">
+                    {aiStatus.provider} / {aiStatus.model}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-muted text-muted-foreground border border-border/40">
+                    {currentExecutionMode === "quota" ? (lang === "ar" ? "حصة المنصة" : "Platform Quota") : (lang === "ar" ? "مفتاحك الخاص" : "Own Key")}
+                  </span>
+                </div>
               )}
               {aiStatus?.status === "quota_exceeded" && (
                 <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
@@ -809,6 +857,156 @@ export default function ClientCompany() {
             {lang === "ar" ? "حالة غير معروفة" : "Unknown status"}
           </span>
         </div>
+        </div>
+      )}
+
+      {/* AI Execution Mode Toggle Switch (Quota vs API Tokens) */}
+      {company && (
+        <div className="bg-card border border-border/70 rounded-xl p-4 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                <SlidersHorizontal className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm text-foreground">
+                    {lang === "ar" ? "نمط تشغيل الذكاء الاصطناعي (مصدر الرموز)" : "AI Execution Mode (Token Source)"}
+                  </span>
+                  <Badge
+                    variant={currentExecutionMode === "quota" ? "default" : "outline"}
+                    className={currentExecutionMode === "quota"
+                      ? "bg-amber-500/15 text-amber-500 border border-amber-500/30 text-[11px] font-medium"
+                      : "bg-blue-500/15 text-blue-500 border border-blue-500/30 text-[11px] font-medium"}
+                  >
+                    {currentExecutionMode === "quota"
+                      ? (lang === "ar" ? "حصة المنصة (Quota)" : "Admin Quota")
+                      : (lang === "ar" ? "رموز API الخاصة (API Tokens)" : "Own API Tokens")}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "ar"
+                    ? "اختر ما إذا كان المساعد الذكي سيعتمد على حصة الرموز المخصصة من المنصة أم على مفتاح ورموز الـ API الخاصة بشركتك."
+                    : "Choose whether your AI chatbot operates on the admin-assigned token quota or your company's own API tokens."}
+                </p>
+              </div>
+            </div>
+
+            {/* The Switch Control */}
+            <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center bg-muted/40 border border-border/50 rounded-xl px-3 py-1.5">
+              <span
+                role="button"
+                tabIndex={0}
+                className={`text-xs select-none cursor-pointer transition-colors ${
+                  currentExecutionMode === "quota" ? "text-amber-500 font-bold" : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  if (currentExecutionMode !== "quota" && !toggleExecutionModeMutation.isPending) {
+                    toggleExecutionModeMutation.mutate("quota");
+                  }
+                }}
+              >
+                {lang === "ar" ? "حصة الرموز (Quota)" : "Quota"}
+              </span>
+
+              <Switch
+                id="ai-execution-mode-switch"
+                checked={currentExecutionMode === "tokens"}
+                disabled={toggleExecutionModeMutation.isPending}
+                onCheckedChange={(checked) => {
+                  toggleExecutionModeMutation.mutate(checked ? "tokens" : "quota");
+                }}
+              />
+
+              <span
+                role="button"
+                tabIndex={0}
+                className={`text-xs select-none cursor-pointer transition-colors ${
+                  currentExecutionMode === "tokens" ? "text-blue-500 font-bold" : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  if (currentExecutionMode !== "tokens" && !toggleExecutionModeMutation.isPending) {
+                    toggleExecutionModeMutation.mutate("tokens");
+                  }
+                }}
+              >
+                {lang === "ar" ? "رموز الـ API (Tokens)" : "API Tokens"}
+              </span>
+            </div>
+          </div>
+
+          {/* Cards / Status explanation */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {/* Quota Option Card */}
+            <div
+              onClick={() => {
+                if (currentExecutionMode !== "quota" && !toggleExecutionModeMutation.isPending) {
+                  toggleExecutionModeMutation.mutate("quota");
+                }
+              }}
+              className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                currentExecutionMode === "quota"
+                  ? "bg-amber-500/10 border-amber-500/40 text-foreground ring-1 ring-amber-500/30"
+                  : "bg-muted/20 border-border/50 text-muted-foreground hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <Coins className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === "ar" ? "حصة الرموز المخصصة (Quota)" : "Admin Token Quota"}</span>
+                </div>
+                {currentExecutionMode === "quota" && (
+                  <span className="text-[10px] font-bold text-amber-500 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
+                    {lang === "ar" ? "الوضع النشط" : "Active"}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {company.monthlyTokenQuota && company.monthlyTokenQuota > 0
+                  ? (lang === "ar"
+                      ? `تم تعيين حصة شهرية قدرها ${company.monthlyTokenQuota.toLocaleString()} رمز مجاناً لشركتك عبر المنصة.`
+                      : `Assigned ${company.monthlyTokenQuota.toLocaleString()} tokens/mo at $0.00 direct cost to you.`)
+                  : (lang === "ar"
+                      ? "لم يتم تعيين حصة شهرية لشركتك من قِبل المسؤول حتى الآن."
+                      : "No token quota has been allocated by the administrator yet.")}
+              </p>
+            </div>
+
+            {/* API Tokens Option Card */}
+            <div
+              onClick={() => {
+                if (currentExecutionMode !== "tokens" && !toggleExecutionModeMutation.isPending) {
+                  toggleExecutionModeMutation.mutate("tokens");
+                }
+              }}
+              className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
+                currentExecutionMode === "tokens"
+                  ? "bg-blue-500/10 border-blue-500/40 text-foreground ring-1 ring-blue-500/30"
+                  : "bg-muted/20 border-border/50 text-muted-foreground hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                  <span>{lang === "ar" ? "رموز ومفتاح API الخاص (BYOK)" : "Own API Key & Tokens"}</span>
+                </div>
+                {currentExecutionMode === "tokens" && (
+                  <span className="text-[10px] font-bold text-blue-500 bg-blue-500/15 px-1.5 py-0.5 rounded border border-blue-500/30">
+                    {lang === "ar" ? "الوضع النشط" : "Active"}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {company.aiAgentApiKey
+                  ? (lang === "ar"
+                      ? `مفتاح API الخاص بك مسجل (${company.aiProvider || "OpenAI"}). تتم المحادثات بحرية دون التقيد بحصة المنصة.`
+                      : `Your personal key is active (${company.aiProvider || "OpenAI"}). Runs without platform quota limits.`)
+                  : (lang === "ar"
+                      ? "يتطلب إضافة مفتاح API في قسم إعدادات الذكاء الاصطناعي أدناه."
+                      : "Requires adding your API key in the AI Configuration section below.")}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

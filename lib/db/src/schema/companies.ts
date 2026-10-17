@@ -26,6 +26,7 @@ export const companiesTable = pgTable("companies", {
   aiAgentUrl: text("ai_agent_url"),
   aiProvider: text("ai_provider", { enum: ["openai", "anthropic", "google", "openrouter"] }),
   aiModel: text("ai_model"),
+  aiExecutionMode: text("ai_execution_mode", { enum: ["quota", "tokens"] }).notNull().default("quota"),
   monthlyTokenQuota: integer("monthly_token_quota"),
   telegramBotApiKey: encryptedText("telegram_bot_api_key"),
   telegramBotUsername: text("telegram_bot_username"),

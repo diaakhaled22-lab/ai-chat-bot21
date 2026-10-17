@@ -154,6 +154,8 @@ export interface Company {
   /** @nullable */
   aiModel?: string | null;
   /** @nullable */
+  aiExecutionMode?: 'quota' | 'tokens' | null;
+  /** @nullable */
   monthlyTokenQuota?: number | null;
   /** @nullable */
   telegramBotApiKey?: string | null;
@@ -281,6 +283,8 @@ export interface CompanyInput {
   aiProvider?: CompanyInputAiProvider;
   /** @nullable */
   aiModel?: string | null;
+  /** @nullable */
+  aiExecutionMode?: 'quota' | 'tokens' | null;
   /** @nullable */
   monthlyTokenQuota?: number | null;
   /** @nullable */
