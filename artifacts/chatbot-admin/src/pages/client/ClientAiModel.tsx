@@ -357,60 +357,25 @@ export default function ClientAiModel() {
   return (
     <div className="space-y-8 max-w-4xl pb-12">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
-            <Link href="/client/dashboard" className="hover:text-foreground transition-colors">
-              {lang === "ar" ? "الرئيسية" : "Dashboard"}
-            </Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-foreground font-medium">
-              {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
-            </span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2.5">
-            <Cpu className="w-8 h-8 text-primary shrink-0" />
+      <div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
+          <Link href="/client/dashboard" className="hover:text-foreground transition-colors">
+            {lang === "ar" ? "الرئيسية" : "Dashboard"}
+          </Link>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-foreground font-medium">
             {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
-          </h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">
-            {lang === "ar"
-              ? "تحكم في مزود الذكاء الاصطناعي، النموذج الذكي، مفاتيح الـ API، ونمط تشغيل الرموز لشركتك."
-              : "Manage your AI provider, model selection, API credentials, and execution mode."}
-          </p>
+          </span>
         </div>
-
-        {/* Quick Action Buttons */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleTestConnection}
-            disabled={testing}
-            className="gap-1.5"
-          >
-            {testing ? (
-              <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full" />
-            ) : (
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-            )}
-            {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSaveSettings}
-            disabled={updateCompany.isPending}
-            className="gap-1.5"
-          >
-            {updateCompany.isPending ? (
-              <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full" />
-            ) : (
-              <Check className="w-3.5 h-3.5" />
-            )}
-            {lang === "ar" ? "حفظ الإعدادات" : "Save Changes"}
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2.5">
+          <Cpu className="w-8 h-8 text-primary shrink-0" />
+          {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
+        </h1>
+        <p className="text-muted-foreground mt-1.5 text-sm">
+          {lang === "ar"
+            ? "تحكم في مزود الذكاء الاصطناعي، النموذج الذكي، مفاتيح الـ API، ونمط تشغيل الرموز لشركتك."
+            : "Manage your AI provider, model selection, API credentials, and execution mode."}
+        </p>
       </div>
 
       {/* ── 0. Active Operating Engine Hero Card (المحرك الفعلي المشغّل للردود) ── */}
