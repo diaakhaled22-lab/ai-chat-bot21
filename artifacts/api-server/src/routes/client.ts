@@ -514,11 +514,31 @@ router.put("/client/company", async (req, res) => {
     if ((data as any).voiceReplyEnabled !== undefined) updates.voiceReplyEnabled = (data as any).voiceReplyEnabled;
     if ((data as any).voiceReplyVoice !== undefined) updates.voiceReplyVoice = (data as any).voiceReplyVoice;
 
-    const [company] = await db
-      .update(companiesTable)
-      .set(updates)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .returning();
+    let company: typeof companiesTable.$inferSelect | undefined;
+    try {
+      const rows = await db
+        .update(companiesTable)
+        .set(updates)
+        .where(eq(companiesTable.clientId, req.session.userId!))
+        .returning();
+      company = rows[0];
+    } catch (dbErr: any) {
+      if (dbErr?.message?.includes("ai_execution_mode") || dbErr?.code === "42703") {
+        try {
+          const { pool } = await import("@workspace/db");
+          if (pool) {
+            await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`);
+            const rows = await db
+              .update(companiesTable)
+              .set(updates)
+              .where(eq(companiesTable.clientId, req.session.userId!))
+              .returning();
+            company = rows[0];
+          }
+        } catch {}
+      }
+      if (!company) throw dbErr;
+    }
 
     if (!company) {
       res.status(404).json({ error: "No company found" });
@@ -621,8 +641,9 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
     return next();
   }
   try {
-    const { mode } = req.body as { mode?: string };
-    if (mode !== "quota" && mode !== "tokens") {
+    const rawMode = (req.body?.mode ?? req.query?.mode);
+    const mode = rawMode === "tokens" ? "tokens" : rawMode === "quota" ? "quota" : null;
+    if (!mode) {
       res.status(400).json({ error: "Invalid mode. Must be 'quota' or 'tokens'" });
       return;
     }
@@ -638,16 +659,40 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
       return;
     }
 
-    const [updated] = await db
-      .update(companiesTable)
-      .set({ aiExecutionMode: mode })
-      .where(eq(companiesTable.id, existingCompany.id))
-      .returning({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode });
+    let updatedMode = mode;
+    try {
+      const [updated] = await db
+        .update(companiesTable)
+        .set({ aiExecutionMode: mode })
+        .where(eq(companiesTable.id, existingCompany.id))
+        .returning({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode });
 
-    res.json({ success: true, aiExecutionMode: updated.aiExecutionMode });
-  } catch (err) {
+      if (updated) updatedMode = updated.aiExecutionMode as "quota" | "tokens";
+    } catch (dbErr: any) {
+      if (dbErr?.message?.includes("ai_execution_mode") || dbErr?.code === "42703") {
+        try {
+          const { pool } = await import("@workspace/db");
+          if (pool) {
+            await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`);
+            const [updated] = await db
+              .update(companiesTable)
+              .set({ aiExecutionMode: mode })
+              .where(eq(companiesTable.id, existingCompany.id))
+              .returning({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode });
+            if (updated) updatedMode = updated.aiExecutionMode as "quota" | "tokens";
+          }
+        } catch (innerErr) {
+          logger.error({ innerErr }, "Failed to auto-add ai_execution_mode column");
+        }
+      } else {
+        throw dbErr;
+      }
+    }
+
+    res.json({ success: true, aiExecutionMode: updatedMode });
+  } catch (err: any) {
     logger.error({ err }, "Update AI execution mode error");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 
@@ -1826,6 +1871,32 @@ router.get("/client/notifications", async (req, res) => {
   }
 });
 
+async function testAiConnection(provider: string, model: string, apiKey: string): Promise<void> {
+  const timeoutMs = 8000;
+  if (provider === "google") {
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const genModel = genAI.getGenerativeModel({ model });
+    await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
+  } else if (provider === "anthropic") {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const client = new Anthropic({ apiKey, timeout: timeoutMs });
+    await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+  } else if (provider === "openrouter") {
+    const OpenAI = (await import("openai")).default;
+    const openai = new OpenAI({
+      apiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      timeout: timeoutMs,
+    });
+    await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+  } else {
+    const OpenAI = (await import("openai")).default;
+    const openai = new OpenAI({ apiKey, timeout: timeoutMs });
+    await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+  }
+}
+
 // GET /client/company/ai-status
 router.get("/client/company/ai-status", async (req, res) => {
   try {
@@ -1840,61 +1911,125 @@ router.get("/client/company/ai-status", async (req, res) => {
       return;
     }
 
-    // Check quota
+    // Determine target mode (from query param or DB)
+    const rawMode = req.query.mode as string | undefined;
+    const mode = (rawMode === "tokens" || rawMode === "quota")
+      ? rawMode
+      : ((company as any).aiExecutionMode === "tokens" ? "tokens" : "quota");
+
+    if (mode === "tokens") {
+      // ── API Tokens Mode (BYOK) ───────────────────────────────────
+      const provider = company.aiProvider || "openai";
+      const model = company.aiModel || (
+        provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+        provider === "google" ? "gemini-2.0-flash" :
+        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
+      );
+
+      const apiKey = company.aiAgentApiKey?.trim();
+      if (!apiKey) {
+        res.json({
+          status: "no_key",
+          mode: "tokens",
+          provider,
+          model,
+          isSupportAgent: false,
+          detail: "لم يتم إدخال مفتاح API خاص بشركتك بعد. يرجى إدخال مفتاح الـ API في قسم إعدادات الذكاء الاصطناعي أدناه لتفعيل الردود.",
+        });
+        return;
+      }
+
+      try {
+        await testAiConnection(provider, model, apiKey);
+        res.json({
+          status: "ok",
+          mode: "tokens",
+          provider,
+          model,
+          isSupportAgent: false,
+        });
+      } catch (aiErr: any) {
+        const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+        const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
+        const isAuth = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+        res.json({
+          status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
+          mode: "tokens",
+          provider,
+          model,
+          isSupportAgent: false,
+          detail: msg.slice(0, 300),
+        });
+      }
+      return;
+    }
+
+    // ── Platform Quota Mode ──────────────────────────────────────────
+    const quotaModelInfo = await getQuotaAiModelInfo();
+    const hasQuota = company.monthlyTokenQuota !== null && company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota > 0;
+
+    if (!hasQuota) {
+      res.json({
+        status: "no_quota",
+        mode: "quota",
+        provider: quotaModelInfo.provider,
+        model: quotaModelInfo.model,
+        isSupportAgent: true,
+        detail: "لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة من قِبل المسؤول بعد. يرجى من المسؤول تحديد حصة في صفحة AI / Quota أو يمكنك التبديل إلى نمط رموز API الخاصة.",
+      });
+      return;
+    }
+
+    // Check if monthly quota exceeded
     try {
       await assertCompanyQuotaNotExceeded(company);
     } catch (quotaErr: any) {
       res.json({
         status: "quota_exceeded",
-        provider: company.aiProvider ?? "openai",
-        model: company.aiModel ?? "gpt-4o-mini",
-        detail: quotaErr?.message,
+        mode: "quota",
+        provider: quotaModelInfo.provider,
+        model: quotaModelInfo.model,
+        isSupportAgent: true,
+        detail: quotaErr?.message || "تم استهلاك كامل حصة الرموز الشهرية المخصصة لشركتك.",
       });
       return;
     }
 
-    let aiConfig;
-    try {
-      aiConfig = await resolveCompanyAi(company);
-    } catch {
-      res.json({ status: "no_key", provider: company.aiProvider ?? "openai" });
+    // Get Platform Quota AI credentials
+    const quotaAi = await getQuotaAiSettings();
+    if (!quotaAi || !quotaAi.apiKey) {
+      res.json({
+        status: "no_platform_key",
+        mode: "quota",
+        provider: quotaModelInfo.provider,
+        model: quotaModelInfo.model,
+        isSupportAgent: true,
+        detail: "لم يتم إعداد مفتاح وكيل حصص الشركات (Company Quota AI Agent) في صفحة AI / Quota في لوحة الإدارة.",
+      });
       return;
     }
 
-    const { apiKey, provider, model, isSupportAgent } = aiConfig;
-
+    // Ping the Quota AI model
     try {
-      if (provider === "google") {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const genModel = genAI.getGenerativeModel({ model });
-        await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
-      } else if (provider === "anthropic") {
-        const Anthropic = (await import("@anthropic-ai/sdk")).default;
-        const client = new Anthropic({ apiKey });
-        await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
-      } else if (provider === "openrouter") {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({
-          apiKey,
-          baseURL: "https://openrouter.ai/api/v1",
-        });
-        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
-      } else {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey });
-        await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
-      }
-      res.json({ status: "ok", provider, model, isSupportAgent });
-    } catch (aiErr: unknown) {
+      await testAiConnection(quotaAi.provider, quotaAi.model, quotaAi.apiKey);
+      res.json({
+        status: "ok",
+        mode: "quota",
+        provider: quotaAi.provider,
+        model: quotaAi.model,
+        isSupportAgent: true,
+      });
+    } catch (aiErr: any) {
       const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
       const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
       const isAuth = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
       res.json({
         status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
-        provider,
-        model,
-        detail: msg.slice(0, 200),
+        mode: "quota",
+        provider: quotaAi.provider,
+        model: quotaAi.model,
+        isSupportAgent: true,
+        detail: msg.slice(0, 300),
       });
     }
   } catch (err) {

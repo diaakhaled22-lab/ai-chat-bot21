@@ -420,12 +420,24 @@ export default function ClientCompany() {
   const { t, lang } = useLanguage();
   const { data: company, isLoading } = useGetClientCompany();
   const { data: knowledgeFiles } = useListClientKnowledgeFiles();
-  type AiStatus = { status: "ok" | "no_key" | "invalid_key" | "quota_exceeded" | "error" | "no_company"; provider?: string; model?: string; detail?: string };
+  type AiStatus = {
+    status: "ok" | "no_quota" | "no_platform_key" | "no_key" | "invalid_key" | "quota_exceeded" | "error" | "no_company";
+    mode?: "quota" | "tokens";
+    provider?: string;
+    model?: string;
+    isSupportAgent?: boolean;
+    detail?: string;
+  };
+
+  const [optimisticMode, setOptimisticMode] = useState<"quota" | "tokens" | null>(null);
+  const serverExecutionMode = ((company as any)?.aiExecutionMode as "quota" | "tokens") || "quota";
+  const currentExecutionMode = optimisticMode ?? serverExecutionMode;
+
   const { data: aiStatus, isLoading: aiStatusLoading, refetch: refetchAiStatus } = useQuery<AiStatus>({
-    queryKey: ["client-ai-status"],
-    queryFn: () => customFetch("/api/client/company/ai-status") as Promise<AiStatus>,
-    enabled: true,
-    staleTime: 60_000,
+    queryKey: ["client-ai-status", currentExecutionMode],
+    queryFn: () => customFetch(`/api/client/company/ai-status?mode=${currentExecutionMode}`) as Promise<AiStatus>,
+    enabled: !!company,
+    staleTime: 30_000,
     retry: false,
   });
 
@@ -488,8 +500,6 @@ export default function ClientCompany() {
   const initialized = useRef(false);
   const fabOverlayRef = useRef<HTMLDivElement>(null);
 
-  const currentExecutionMode = ((company as any)?.aiExecutionMode as "quota" | "tokens") || "quota";
-
   const toggleExecutionModeMutation = useMutation({
     mutationFn: async (mode: "quota" | "tokens") => {
       try {
@@ -499,22 +509,26 @@ export default function ClientCompany() {
           body: JSON.stringify({ mode }),
         });
       } catch (err: any) {
-        const msg = String(err?.message || "");
-        const status = err?.status || err?.statusCode;
-        if (status === 404 || msg.includes("404") || msg.includes("Cannot PUT")) {
-          return await customFetch("/api/client/company", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: company?.name || "Company",
-              aiExecutionMode: mode,
-            }),
-          });
-        }
-        throw err;
+        return await customFetch("/api/client/company", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: company?.name || "Company",
+            aiExecutionMode: mode,
+          }),
+        });
       }
     },
+    onMutate: (mode) => {
+      setOptimisticMode(mode);
+      form.setValue("aiExecutionMode", mode);
+    },
     onSuccess: (_, mode) => {
+      setOptimisticMode(null);
+      queryClient.setQueryData(getGetClientCompanyQueryKey(), (old: any) => {
+        if (!old) return old;
+        return { ...old, aiExecutionMode: mode };
+      });
       queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
       queryClient.invalidateQueries({ queryKey: ["client-ai-status"] });
       queryClient.invalidateQueries({ queryKey: ["client-company-quota"] });
@@ -523,22 +537,26 @@ export default function ClientCompany() {
       form.setValue("aiExecutionMode", mode);
       toast({
         title: lang === "ar"
-          ? (mode === "quota" ? "تم تفعيل نمط: حصة الرموز (Quota)" : "تم تفعيل نمط: رموز API الخاصة (API Tokens)")
+          ? (mode === "quota" ? "تم تفعيل نمط: حصة المنصة (Quota)" : "تم تفعيل نمط: رموز API الخاصة (API Tokens)")
           : (mode === "quota" ? "Switched to: Admin Quota Mode" : "Switched to: API Tokens Mode"),
         description: lang === "ar"
           ? (mode === "quota"
               ? "يعتمد المساعد الآن على حصة الرموز المخصصة لشركتك من قِبل الإدارة."
-              : "يعتمد المساعد الآن على مفتاح API الخاص بشركتك دون قيود الحصة.")
+              : (company?.aiAgentApiKey
+                  ? "يعتمد المساعد الآن على مفتاح API الخاص بشركتك دون قيود الحصة."
+                  : "يرجى إضافة مفتاح API الخاص بك في قسم إعدادات الذكاء الاصطناعي أدناه لتفعيل الردود."))
           : (mode === "quota"
               ? "Your assistant is now using the monthly quota assigned by the platform admin."
-              : "Your assistant is now using your company's own API tokens."),
+              : (company?.aiAgentApiKey
+                  ? "Your assistant is now using your company's own API tokens."
+                  : "Please add your API key in the AI Configuration section below to activate responses.")),
       });
-      refetchAiStatus();
     },
     onError: (err: any) => {
+      setOptimisticMode(null);
       toast({
         title: lang === "ar" ? "فشل تبديل النمط" : "Failed to switch mode",
-        description: err?.message,
+        description: err?.message || (lang === "ar" ? "حدث خطأ أثناء حفظ النمط، يرجى المحاولة مرة أخرى." : "Error updating execution mode."),
         variant: "destructive",
       });
     },
@@ -622,6 +640,7 @@ export default function ClientCompany() {
     // Transform empty strings to nulls for API
     const data = {
       ...values,
+      aiExecutionMode: values.aiExecutionMode || currentExecutionMode,
       googleSheetsLink: values.googleSheetsLink || null,
       googleSheetsName: values.googleSheetsName || null,
       googleSheetsPage: values.googleSheetsPage || null,
@@ -783,9 +802,10 @@ export default function ClientCompany() {
         <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-all ${
           aiStatusLoading ? "border-border bg-muted/30" :
           aiStatus?.status === "ok" ? "border-emerald-500/40 bg-emerald-500/8" :
-          aiStatus?.status === "no_key" ? "border-amber-500/40 bg-amber-500/8" :
+          (aiStatus?.status === "no_quota" || aiStatus?.status === "no_key" || aiStatus?.status === "no_platform_key") ? "border-amber-500/40 bg-amber-500/8" :
           aiStatus?.status === "quota_exceeded" ? "border-orange-500/40 bg-orange-500/8" :
           aiStatus?.status === "invalid_key" ? "border-red-500/40 bg-red-500/8" :
+          aiStatus?.status === "error" ? "border-rose-500/40 bg-rose-500/8" :
           "border-border bg-muted/30"
         }`}>
           <div className="flex items-center gap-3">
@@ -793,47 +813,101 @@ export default function ClientCompany() {
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/30 animate-pulse" />
             ) : aiStatus?.status === "ok" ? (
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,0.4)]" />
+            ) : (aiStatus?.status === "no_quota" || aiStatus?.status === "no_key" || aiStatus?.status === "no_platform_key") ? (
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_2px_rgba(245,158,11,0.3)]" />
             ) : aiStatus?.status === "quota_exceeded" ? (
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-orange-500" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_6px_2px_rgba(249,115,22,0.3)]" />
             ) : aiStatus?.status === "invalid_key" ? (
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
-            ) : aiStatus?.status === "no_key" ? (
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.3)]" />
+            ) : aiStatus?.status === "error" ? (
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_6px_2px_rgba(244,63,94,0.3)]" />
             ) : (
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
             )}
             <div className="flex-1 min-w-0">
-              <span className="font-medium block">
-                {aiStatusLoading ? (lang === "ar" ? "جاري فحص اتصال الذكاء الاصطناعي…" : "Checking AI connection…") :
-                 aiStatus?.status === "ok" ? (lang === "ar" ? "الذكاء الاصطناعي متصل ويعمل بنجاح" : "AI is connected and working") :
-                 aiStatus?.status === "quota_exceeded" ? (lang === "ar" ? "تم تجاوز الحصة المجانية لمفتاح الـ API" : "Quota exceeded — API rate limit reached") :
-                 aiStatus?.status === "invalid_key" ? (lang === "ar" ? "مفتاح API غير صالح أو منتهي الصلاحية" : "Invalid API key — authentication failed") :
-                 aiStatus?.status === "no_key" ? (lang === "ar" ? "لم يتم إدخال مفتاح API للذكاء الاصطناعي" : "No AI API key configured") :
-                 (lang === "ar" ? "حالة الذكاء الاصطناعي غير معروفة" : "AI status unknown")}
+              <span className="font-semibold block text-foreground">
+                {aiStatusLoading ? (
+                  lang === "ar" ? "جاري فحص اتصال الذكاء الاصطناعي…" : "Checking AI connection…"
+                ) : aiStatus?.status === "ok" ? (
+                  currentExecutionMode === "quota"
+                    ? (lang === "ar" ? "وكيل حصة المنصة متصل وجاهز للعمل" : "Platform Quota AI is connected and ready")
+                    : (lang === "ar" ? "مفتاح الـ API الخاص بشركتك متصل ويعمل بنجاح" : "Company API key is connected and working")
+                ) : aiStatus?.status === "no_quota" ? (
+                  lang === "ar" ? "لم يتم تخصيص حصة رموز لهذه الشركة من قِبل المسؤول حتى الآن" : "No token quota allocated yet by administrator"
+                ) : aiStatus?.status === "no_key" ? (
+                  lang === "ar" ? "لم يتم إدخال مفتاح API خاص بالشركة" : "No company API key configured"
+                ) : aiStatus?.status === "no_platform_key" ? (
+                  lang === "ar" ? "لم يقم المسؤول بتهيئة مفتاح وكيل حصص المنصة" : "Platform Quota AI key not configured"
+                ) : aiStatus?.status === "quota_exceeded" ? (
+                  currentExecutionMode === "quota"
+                    ? (lang === "ar" ? "تم استهلاك كامل حصة الرموز الشهرية المخصصة لشركتك" : "Monthly token quota fully consumed")
+                    : (lang === "ar" ? "تم تجاوز الحصة لمفتاح الـ API الخاص بشركتك" : "Quota exceeded — API rate limit reached")
+                ) : aiStatus?.status === "invalid_key" ? (
+                  currentExecutionMode === "quota"
+                    ? (lang === "ar" ? "مفتاح وكيل الحصص في المنصة غير صالح" : "Platform Quota AI key is invalid")
+                    : (lang === "ar" ? "مفتاح API الخاص بشركتك غير صالح أو منتهي الصلاحية" : "Invalid API key — authentication failed")
+                ) : aiStatus?.status === "error" ? (
+                  lang === "ar" ? "تعذر الاتصال بمزود الذكاء الاصطناعي" : "AI connection error"
+                ) : (
+                  lang === "ar" ? "حالة الذكاء الاصطناعي غير معروفة" : "AI status unknown"
+                )}
               </span>
               {!aiStatusLoading && aiStatus?.model && (
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed">
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-background/50 px-2 py-0.5 rounded border border-border/50">
                     {aiStatus.provider} / {aiStatus.model}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-muted text-muted-foreground border border-border/40">
-                    {currentExecutionMode === "quota" ? (lang === "ar" ? "حصة المنصة" : "Platform Quota") : (lang === "ar" ? "مفتاحك الخاص" : "Own Key")}
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
+                    (aiStatus.mode || currentExecutionMode) === "quota"
+                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      : "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                  }`}>
+                    {(aiStatus.mode || currentExecutionMode) === "quota"
+                      ? (lang === "ar" ? "حصة المنصة" : "Platform Quota")
+                      : (lang === "ar" ? "مفتاحك الخاص" : "Own API Key")}
                   </span>
                 </div>
               )}
-              {aiStatus?.status === "quota_exceeded" && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
-                  {lang === "ar" ? "وصل المفتاح إلى الحد الأقصى للحصة المجانية. يرجى تفعيل الدفع أو استخدام مفتاح جديد أدناه." : "Your API key has hit its free tier limit. Enable billing or use a new key in the AI Configuration section below."}
-                </p>
-              )}
-              {aiStatus?.status === "invalid_key" && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                  {lang === "ar" ? "تم رفض المفتاح من قِبل المزود. يرجى تحديثه في قسم إعدادات الذكاء الاصطناعي أدناه." : "The API key saved is rejected by the AI provider. Update it in the AI Configuration section below."}
+              {aiStatus?.status === "no_quota" && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
+                  {aiStatus.detail || (lang === "ar"
+                    ? "المساعد مضبوط على نمط الحصة ولكن لم يتم تخصيص رصيد رموز بعد. يرجى من المسؤول تحديد حصة في صفحة AI / Quota أو يمكنك التبديل إلى نمط رموز API الخاصة."
+                    : "Chatbot is in Quota mode, but no monthly tokens have been assigned yet. The administrator can allocate a quota, or you can switch to API Tokens mode.")}
                 </p>
               )}
               {aiStatus?.status === "no_key" && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                  {lang === "ar" ? "أضف مفتاح API في قسم إعدادات الذكاء الاصطناعي لتفعيل البوت." : "Add an API key in the AI Configuration section below to activate your chatbot."}
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
+                  {aiStatus.detail || (lang === "ar"
+                    ? "نمط العمل محدد على رموز API الخاصة. أضف مفتاح API في قسم إعدادات الذكاء الاصطناعي أدناه لتفعيل البوت."
+                    : "Mode is set to API Tokens. Add your API key in the AI Configuration section below to activate your chatbot.")}
+                </p>
+              )}
+              {aiStatus?.status === "no_platform_key" && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 leading-relaxed">
+                  {aiStatus.detail || (lang === "ar"
+                    ? "يرجى من مسؤول المنصة إدخال مفتاح API في صفحة AI / Quota في لوحة الإدارة."
+                    : "Please ask the administrator to configure the API key in the AI / Quota page.")}
+                </p>
+              )}
+              {aiStatus?.status === "quota_exceeded" && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 leading-relaxed">
+                  {aiStatus.detail || (currentExecutionMode === "quota"
+                    ? (lang === "ar" ? "تواصل مع الإدارة لزيادة الحصة أو قم بالتبديل إلى نمط رموز API الخاصة." : "Contact admin to increase quota or switch to API Tokens mode.")
+                    : (lang === "ar" ? "وصل المفتاح إلى الحد الأقصى للحصة. يرجى تفعيل الدفع أو استخدام مفتاح جديد أدناه." : "Your API key hit its usage limit. Update it in AI Configuration below."))}
+                </p>
+              )}
+              {aiStatus?.status === "invalid_key" && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1 leading-relaxed">
+                  {aiStatus.detail || (currentExecutionMode === "quota"
+                    ? (lang === "ar" ? "يرجى مراجعة إدارة المنصة لتحديث مفتاح وكيل الحصص." : "Please contact the administrator to update the Quota AI key.")
+                    : (lang === "ar" ? "تم رفض المفتاح من قِبل المزود. يرجى التأكد من صلاحية المفتاح وتحديثه أدناه." : "The API key was rejected by the provider. Update it below."))}
+                </p>
+              )}
+              {aiStatus?.status === "error" && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 leading-relaxed">
+                  {aiStatus.detail || (lang === "ar"
+                    ? "حدث خطأ أثناء فحص اتصال الذكاء الاصطناعي. تأكد من إعدادات المزود والنموذج."
+                    : "An error occurred while testing the AI connection.")}
                 </p>
               )}
             </div>
@@ -850,27 +924,22 @@ export default function ClientCompany() {
         </div>
       
         {/* Color legend */}
-      
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_1px_rgba(16,185,129,0.5)]" />
             {lang === "ar" ? "متصل ويعمل" : "Connected & working"}
           </span>
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />
-            {lang === "ar" ? "لا يوجد API Key" : "No API Key"}
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_5px_1px_rgba(245,158,11,0.5)]" />
+            {lang === "ar" ? "لا توجد حصة / لا يوجد مفتاح" : "No quota / No API Key"}
           </span>
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-block w-2 h-2 rounded-full bg-orange-500" />
-            {lang === "ar" ? "تجاوز الحصة المجانية" : "Quota exceeded"}
+            <span className="inline-block w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_5px_1px_rgba(249,115,22,0.5)]" />
+            {lang === "ar" ? "تجاوز الحصة" : "Quota exceeded"}
           </span>
           <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
-            {lang === "ar" ? "مفتاح خاطئ أو منتهي" : "Invalid/expired key"}
-          </span>
-          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/40" />
-            {lang === "ar" ? "حالة غير معروفة" : "Unknown status"}
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_1px_rgba(239,68,68,0.5)]" />
+            {lang === "ar" ? "مفتاح غير صالح أو خطأ" : "Invalid key / Error"}
           </span>
         </div>
         </div>
@@ -930,7 +999,10 @@ export default function ClientCompany() {
                 checked={currentExecutionMode === "tokens"}
                 disabled={toggleExecutionModeMutation.isPending}
                 onCheckedChange={(checked) => {
-                  toggleExecutionModeMutation.mutate(checked ? "tokens" : "quota");
+                  const targetMode = checked ? "tokens" : "quota";
+                  if (targetMode !== currentExecutionMode && !toggleExecutionModeMutation.isPending) {
+                    toggleExecutionModeMutation.mutate(targetMode);
+                  }
                 }}
               />
 
