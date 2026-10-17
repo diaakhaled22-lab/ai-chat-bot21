@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
@@ -11,6 +13,13 @@ import {
   XCircle,
   AlertTriangle,
   BarChart2,
+  KeyRound,
+  ExternalLink,
+  Sparkles,
+  Cpu,
+  Layers,
+  ShieldCheck,
+  Info,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useLanguage } from "@/hooks/use-language";
@@ -21,6 +30,11 @@ interface DashboardData {
   aiModel: string | null;
   isActive: boolean;
   monthlyTokenQuota: number | null;
+  hasOwnApiKey: boolean;
+  hasQuota: boolean;
+  activeExecutionMode: "quota" | "own_key" | "none";
+  quotaAiProvider: string | null;
+  quotaAiModel: string | null;
   totalMessages: number;
   estimatedInputTokens: number;
   estimatedOutputTokens: number;
@@ -95,10 +109,23 @@ export default function ClientDashboard() {
     retry: false,
   });
 
+  const [filterMode, setFilterMode] = useState<"own_key" | "quota">("own_key");
+  const [userSelected, setUserSelected] = useState(false);
+
+  useEffect(() => {
+    if (data && !userSelected) {
+      if (data.activeExecutionMode === "quota" || data.hasQuota) {
+        setFilterMode("quota");
+      } else if (data.activeExecutionMode === "own_key" || data.hasOwnApiKey) {
+        setFilterMode("own_key");
+      }
+    }
+  }, [data, userSelected]);
+
   const totalTokens = (data?.estimatedInputTokens ?? 0) + (data?.estimatedOutputTokens ?? 0);
   const quota = data?.monthlyTokenQuota ?? null;
   const quotaPercent = quota && quota > 0 ? Math.min((totalTokens / quota) * 100, 100) : null;
-  const hasQuota = quota !== null && quota > 0;
+  const hasQuota = !!(data?.hasQuota || (quota !== null && quota > 0));
 
   const channelPieData = (data?.byChannel ?? []).map((ch) => ({
     name: ch.channel,
@@ -122,8 +149,8 @@ export default function ClientDashboard() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {lang === "ar"
-              ? "نظرة عامة على استهلاك الذكاء الاصطناعي والإحصائيات"
-              : "AI usage overview and conversation statistics"}
+              ? "نظرة عامة على استهلاك الذكاء الاصطناعي والإحصائيات والتحليلات"
+              : "AI usage overview, model analytics, and conversation statistics"}
           </p>
         </div>
         {data && (
@@ -140,56 +167,256 @@ export default function ClientDashboard() {
         )}
       </div>
 
-      {/* Quota progress bar — only shown if admin assigned a quota */}
-      {!isLoading && hasQuota && (
-        <div className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Coins className="w-4 h-4 text-amber-500" />
-              <span className="font-semibold text-sm">
-                {lang === "ar" ? "الحصة الشهرية المخصصة" : "Monthly Token Quota"}
-              </span>
-            </div>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-              quotaPercent! > 90
-                ? "bg-rose-500/20 text-rose-400"
-                : quotaPercent! > 75
-                ? "bg-amber-500/20 text-amber-400"
-                : "bg-emerald-500/20 text-emerald-400"
-            }`}>
-              {quotaPercent!.toFixed(1)}%
-            </span>
-          </div>
-          <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                quotaPercent! > 90 ? "bg-rose-500" : quotaPercent! > 75 ? "bg-amber-500" : "bg-emerald-500"
+      {/* Filter Buttons Group */}
+      <div className="bg-card border border-border/70 rounded-2xl p-2.5 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-1.5 p-1 bg-muted/70 rounded-xl border border-border/50">
+            {/* Filter 1: Own API Key Model */}
+            <button
+              type="button"
+              onClick={() => {
+                setUserSelected(true);
+                setFilterMode("own_key");
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                filterMode === "own_key"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               }`}
-              style={{ width: `${quotaPercent}%` }}
-            />
+            >
+              <KeyRound className="w-4 h-4 shrink-0" />
+              <span>{lang === "ar" ? "نموذج مفتاح API الخاص" : "Own API Key Model"}</span>
+              {data?.activeExecutionMode === "own_key" && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {lang === "ar" ? "نشط حالياً" : "Active"}
+                </span>
+              )}
+            </button>
+
+            {/* Filter 2: Admin Assigned Quota */}
+            <button
+              type="button"
+              onClick={() => {
+                setUserSelected(true);
+                setFilterMode("quota");
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                filterMode === "quota"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              }`}
+            >
+              <Coins className="w-4 h-4 shrink-0" />
+              <span>{lang === "ar" ? "الحصة المخصصة من المسؤول" : "Admin Assigned Quota"}</span>
+              {data?.activeExecutionMode === "quota" && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {lang === "ar" ? "نشط حالياً" : "Active"}
+                </span>
+              )}
+              {hasQuota && quotaPercent !== null && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  filterMode === "quota"
+                    ? "bg-primary-foreground/20 text-primary-foreground"
+                    : "bg-muted-foreground/20 text-foreground"
+                }`}>
+                  {quotaPercent.toFixed(0)}%
+                </span>
+              )}
+            </button>
           </div>
-          <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+
+          {/* Active System Mode Indicator Badge */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-1.5 bg-muted/40 rounded-xl border border-border/40">
+            <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>
-              {lang === "ar" ? "المستهلك:" : "Used:"}{" "}
-              <strong className="text-foreground">{fmt(totalTokens)}</strong>
-            </span>
-            <span>
-              {lang === "ar" ? "الحد الأقصى:" : "Quota:"}{" "}
-              <strong className="text-foreground">{fmt(quota!)}</strong>
+              {lang === "ar" ? "المسار الفعلي في النظام:" : "Current System Routing:"}{" "}
+              <strong className="text-foreground">
+                {data?.activeExecutionMode === "quota"
+                  ? (lang === "ar" ? "حصة المسؤول المخصصة" : "Admin Assigned Quota")
+                  : data?.activeExecutionMode === "own_key"
+                  ? (lang === "ar" ? "مفتاح API الخاص" : "Own API Key")
+                  : (lang === "ar" ? "غير مفعل" : "Inactive")}
+              </strong>
             </span>
           </div>
-          {quotaPercent! > 90 && (
-            <div className="mt-3 flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 rounded-lg px-3 py-2">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              {lang === "ar"
-                ? "تنبيه: لقد اقتربت من الحد الأقصى لحصتك الشهرية!"
-                : "Warning: You are close to reaching your monthly token quota!"}
+        </div>
+
+        {/* Dynamic Mode Explanation Banner */}
+        {filterMode === "quota" ? (
+          <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-muted-foreground">
+            <Coins className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-semibold text-foreground">
+                  {lang === "ar"
+                    ? "عرض استهلاك الحصة المخصصة من المسؤول (النموذج المركزي للمنصة)"
+                    : "Admin Assigned Quota Usage (Platform Central Model)"}
+                </span>
+                <span className="text-[11px] font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                  {data?.quotaAiProvider ?? "openai"} / {data?.quotaAiModel ?? "gpt-4o-mini"}
+                </span>
+              </div>
+              <p>
+                {lang === "ar"
+                  ? "يتم تشغيل المحادثات مجاناً للعميل اعتماداً على حصة الرموز المحددة من الإدارة. لا تتحمل أي تكلفة مباشرة حتى استهلاك كامل الحصة المخصصة."
+                  : "Conversations are processed through the central AI agent allocated by the system administrator at $0.00 cost to you, up to your monthly quota limit."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs text-muted-foreground">
+            <KeyRound className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-semibold text-foreground">
+                  {lang === "ar"
+                    ? "عرض استهلاك نموذج مفتاح API الخاص بالشركة (BYOK)"
+                    : "Company's Own API Key Usage (BYOK)"}
+                </span>
+                <Link
+                  href="/client/company"
+                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                >
+                  <span>{lang === "ar" ? "إعدادات المفتاح والمزود" : "Key & Provider Settings"}</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+              <p>
+                {lang === "ar"
+                  ? "تتم الفوترة مباشرة بينك وبين مزود الذكاء الاصطناعي (مثل OpenAI أو Anthropic أو Gemini) بناءً على أسعار الرموز الفعلية وبدون قيود حصة المنصة."
+                  : "Usage is billed directly by your AI provider account (OpenAI, Anthropic, Gemini) per token rates without platform quota restrictions."}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Middle Status Section (Quota progress bar OR Own Key Status Card) */}
+      {!isLoading && (
+        <>
+          {filterMode === "quota" ? (
+            hasQuota ? (
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-amber-500" />
+                    <span className="font-semibold text-sm">
+                      {lang === "ar" ? "الحصة الشهرية المخصصة من المسؤول" : "Admin Assigned Monthly Quota"}
+                    </span>
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    quotaPercent! > 90
+                      ? "bg-rose-500/20 text-rose-400"
+                      : quotaPercent! > 75
+                      ? "bg-amber-500/20 text-amber-400"
+                      : "bg-emerald-500/20 text-emerald-400"
+                  }`}>
+                    {quotaPercent!.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      quotaPercent! > 90 ? "bg-rose-500" : quotaPercent! > 75 ? "bg-amber-500" : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${quotaPercent}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>
+                    {lang === "ar" ? "المستهلك:" : "Used:"}{" "}
+                    <strong className="text-foreground">{fmt(totalTokens)}</strong>
+                  </span>
+                  <span>
+                    {lang === "ar" ? "الحد الأقصى للحصة:" : "Assigned Quota:"}{" "}
+                    <strong className="text-foreground">{fmt(quota!)}</strong>
+                  </span>
+                </div>
+                {quotaPercent! > 90 && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 rounded-lg px-3 py-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    {lang === "ar"
+                      ? "تنبيه: لقد اقتربت من استنفاذ الحصة الشهرية المخصصة لك من قِبل المسؤول!"
+                      : "Warning: You are close to exhausting your administrator-allocated monthly quota!"}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-card border border-dashed border-border/80 rounded-xl p-5 flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
+                    <Coins className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold">
+                      {lang === "ar" ? "لم يتم تخصيص حصة شهرية لك بعد" : "No Monthly Quota Assigned Yet"}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lang === "ar"
+                        ? "يمكن للمسؤول تعيين رصيد رموز شهري مجاني لشركتك من لوحة تحكم المسؤول."
+                        : "The administrator has not set a monthly token quota for your company yet."}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/client/support"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors font-medium"
+                >
+                  {lang === "ar" ? "طلب حصة من الإدارة" : "Request Quota"}
+                </Link>
+              </div>
+            )
+          ) : (
+            <div className="bg-card border border-border rounded-xl p-5 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-lg ${
+                  data?.hasOwnApiKey ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
+                }`}>
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold">
+                      {data?.hasOwnApiKey
+                        ? (lang === "ar" ? "مفتاح API الخاص بك متصل" : "Your API Key is Connected")
+                        : (lang === "ar" ? "لم يتم ضبط مفتاح API خاص بك بعد" : "No Own API Key Configured Yet")}
+                    </h4>
+                    {data?.hasOwnApiKey ? (
+                      <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        {lang === "ar" ? "محفوظ ومحمي" : "Saved & Masked"}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {lang === "ar" ? "غير متوفر" : "Not Set"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {data?.hasOwnApiKey
+                      ? (lang === "ar"
+                          ? `المزود: ${data.aiProvider || "—"} · النموذج: ${data.aiModel || "—"} · فواتير مباشرة حسب الاستهلاك دون سقف حصة`
+                          : `Provider: ${data.aiProvider || "—"} · Model: ${data.aiModel || "—"} · Pay-as-you-go with no quota cap`)
+                      : (lang === "ar"
+                          ? "أدخل مفتاحك الخاص في بيانات الشركة لتمكين الذكاء الاصطناعي بنموذجك المفضل."
+                          : "Configure your API key in Company Profile to enable AI with your preferred model.")}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/client/company"
+                className="text-xs px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium flex items-center gap-1.5"
+              >
+                <span>{data?.hasOwnApiKey ? (lang === "ar" ? "تعديل الإعدادات" : "Manage Key") : (lang === "ar" ? "إدخال مفتاح API" : "Configure Key")}</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {/* Main stat cards — always shown (0 when loading/error) */}
+      {/* Main stat cards — dynamically adjusted based on filterMode */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -226,26 +453,46 @@ export default function ClientDashboard() {
               color="bg-violet-500/10 text-violet-400"
             />
             <StatCard
-              icon={TrendingUp}
-              label={lang === "ar" ? "النموذج النشط" : "Active Model"}
-              value={data?.aiModel ?? "—"}
-              sub={data?.aiProvider ?? (lang === "ar" ? "لم يحدد مزود" : "provider not set")}
-              color="bg-emerald-500/10 text-emerald-400"
+              icon={filterMode === "quota" ? Cpu : KeyRound}
+              label={
+                filterMode === "quota"
+                  ? (lang === "ar" ? "نموذج الحصة المعتمد" : "Quota Assigned Model")
+                  : (lang === "ar" ? "نموذج مفتاحك الخاص" : "Own Key Model")
+              }
+              value={
+                filterMode === "quota"
+                  ? (data?.quotaAiModel ?? "gpt-4o-mini")
+                  : (data?.aiModel ?? (lang === "ar" ? "غير محدد" : "—"))
+              }
+              sub={
+                filterMode === "quota"
+                  ? `${data?.quotaAiProvider ?? "openai"} · ${lang === "ar" ? "حصة المنصة" : "Platform Quota"}`
+                  : `${data?.aiProvider ?? (lang === "ar" ? "لم يحدد مزود" : "provider not set")} · ${lang === "ar" ? "مفتاحك الخاص" : "Own Key"}`
+              }
+              color={filterMode === "quota" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}
             />
             <StatCard
               icon={DollarSign}
-              label={lang === "ar" ? "التكلفة التقديرية" : "Est. Cost"}
+              label={
+                filterMode === "quota"
+                  ? (lang === "ar" ? "التكلفة على العميل" : "Cost to Client")
+                  : (lang === "ar" ? "التكلفة التقديرية" : "Est. Cost")
+              }
               value={
-                (data?.pricingPer1MTokens.input ?? 0) > 0
+                filterMode === "quota"
+                  ? "$0.00"
+                  : (data?.pricingPer1MTokens.input ?? 0) > 0
                   ? `$${data!.estimatedCostUsd.toFixed(4)}`
                   : "—"
               }
               sub={
-                (data?.pricingPer1MTokens.input ?? 0) > 0
+                filterMode === "quota"
+                  ? (lang === "ar" ? "مغطى بالكامل عبر الحصة المخصصة" : "Covered by assigned quota")
+                  : (data?.pricingPer1MTokens.input ?? 0) > 0
                   ? `$${data!.pricingPer1MTokens.input}/M in · $${data!.pricingPer1MTokens.output}/M out`
-                  : (lang === "ar" ? "النموذج المجاني" : "free model")
+                  : (lang === "ar" ? "النموذج المجاني / حسب المزود" : "free / provider rates")
               }
-              color="bg-amber-500/10 text-amber-400"
+              color={filterMode === "quota" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}
             />
           </div>
 

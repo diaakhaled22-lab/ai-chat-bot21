@@ -25,7 +25,7 @@ import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
-import { resolveCompanyAi, assertCompanyQuotaNotExceeded } from "../lib/supportAi";
+import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
@@ -996,19 +996,26 @@ router.get("/client/dashboard", async (req, res) => {
         aiModel: null,
         isActive: false,
         monthlyTokenQuota: null,
+        hasOwnApiKey: false,
+        hasQuota: false,
+        activeExecutionMode: "none",
+        quotaAiProvider: null,
+        quotaAiModel: null,
         totalMessages: 0,
         estimatedInputTokens: 0,
         estimatedOutputTokens: 0,
         estimatedCostUsd: 0,
         pricingPer1MTokens: { input: 0, output: 0 },
         byChannel: [],
-          sentiments: { positive: 0, neutral: 0, negative: 0, angry: 0 },
-          intents: [],
+        sentiments: { positive: 0, neutral: 0, negative: 0, angry: 0 },
+        intents: [],
         periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
         hasCompany: false,
       });
       return;
     }
+
+    const quotaAi = await getQuotaAiSettings();
 
     // Always compute for the current month so quota progress is accurate
     const now = new Date();
@@ -1073,14 +1080,19 @@ router.get("/client/dashboard", async (req, res) => {
       aiModel: company.aiModel,
       isActive: company.isActive,
       monthlyTokenQuota: company.monthlyTokenQuota ?? null,
+      hasOwnApiKey: !!company.aiAgentApiKey,
+      hasQuota: (company.monthlyTokenQuota ?? 0) > 0,
+      activeExecutionMode: (company.monthlyTokenQuota && company.monthlyTokenQuota > 0) ? "quota" : (company.aiAgentApiKey ? "own_key" : "none"),
+      quotaAiProvider: quotaAi?.provider ?? "openai",
+      quotaAiModel: quotaAi?.model ?? "gpt-4o-mini",
       totalMessages: logs.length,
       estimatedInputTokens: totalInputTokens,
       estimatedOutputTokens: totalOutputTokens,
       estimatedCostUsd: Math.round(estimatedCostUsd * 10000) / 10000,
       pricingPer1MTokens: modelPricing,
       byChannel: Object.entries(byChannelMap).map(([channel, d]) => ({ channel, ...d })),
-        sentiments,
-        intents: Object.entries(intents).map(([name, count]) => ({ name, count })).sort((a,b)=>b.count-a.count),
+      sentiments,
+      intents: Object.entries(intents).map(([name, count]) => ({ name, count })).sort((a,b)=>b.count-a.count),
       periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
       hasCompany: true,
     });
