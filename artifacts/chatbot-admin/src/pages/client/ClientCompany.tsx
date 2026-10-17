@@ -429,9 +429,26 @@ export default function ClientCompany() {
     detail?: string;
   };
 
-  const [optimisticMode, setOptimisticMode] = useState<"quota" | "tokens" | null>(null);
-  const serverExecutionMode = ((company as any)?.aiExecutionMode as "quota" | "tokens") || "quota";
-  const currentExecutionMode = optimisticMode ?? serverExecutionMode;
+  // Track user-selected execution mode persistently
+  const userToggledRef = useRef(false);
+  const [activeMode, setActiveMode] = useState<"quota" | "tokens">("quota");
+
+  // Sync activeMode from server data only on initial company load or before user manually toggles
+  useEffect(() => {
+    if (company && (company as any).aiExecutionMode && !userToggledRef.current) {
+      setActiveMode((company as any).aiExecutionMode);
+    }
+  }, [(company as any)?.aiExecutionMode]);
+
+  const currentExecutionMode = activeMode;
+
+  const handleToggleMode = (newMode: "quota" | "tokens") => {
+    if (newMode === activeMode) return;
+    userToggledRef.current = true;
+    setActiveMode(newMode);
+    form.setValue("aiExecutionMode", newMode);
+    toggleExecutionModeMutation.mutate(newMode);
+  };
 
   const { data: aiStatus, isLoading: aiStatusLoading, refetch: refetchAiStatus } = useQuery<AiStatus>({
     queryKey: ["client-ai-status", currentExecutionMode],
@@ -520,16 +537,17 @@ export default function ClientCompany() {
       }
     },
     onMutate: (mode) => {
-      setOptimisticMode(mode);
+      userToggledRef.current = true;
+      setActiveMode(mode);
       form.setValue("aiExecutionMode", mode);
     },
     onSuccess: (_, mode) => {
-      setOptimisticMode(null);
+      userToggledRef.current = true;
+      setActiveMode(mode);
       queryClient.setQueryData(getGetClientCompanyQueryKey(), (old: any) => {
         if (!old) return old;
         return { ...old, aiExecutionMode: mode };
       });
-      queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
       queryClient.invalidateQueries({ queryKey: ["client-ai-status"] });
       queryClient.invalidateQueries({ queryKey: ["client-company-quota"] });
       queryClient.invalidateQueries({ queryKey: ["/client/dashboard"] });
@@ -553,9 +571,8 @@ export default function ClientCompany() {
       });
     },
     onError: (err: any) => {
-      setOptimisticMode(null);
       toast({
-        title: lang === "ar" ? "فشل تبديل النمط" : "Failed to switch mode",
+        title: lang === "ar" ? "فشل تبديل النمط على الخادم" : "Failed to switch mode on server",
         description: err?.message || (lang === "ar" ? "حدث خطأ أثناء حفظ النمط، يرجى المحاولة مرة أخرى." : "Error updating execution mode."),
         variant: "destructive",
       });
@@ -985,11 +1002,7 @@ export default function ClientCompany() {
                 className={`text-xs select-none cursor-pointer transition-colors ${
                   currentExecutionMode === "quota" ? "text-amber-500 font-bold" : "text-muted-foreground hover:text-foreground"
                 }`}
-                onClick={() => {
-                  if (currentExecutionMode !== "quota" && !toggleExecutionModeMutation.isPending) {
-                    toggleExecutionModeMutation.mutate("quota");
-                  }
-                }}
+                onClick={() => handleToggleMode("quota")}
               >
                 {lang === "ar" ? "حصة الرموز (Quota)" : "Quota"}
               </span>
@@ -998,12 +1011,7 @@ export default function ClientCompany() {
                 id="ai-execution-mode-switch"
                 checked={currentExecutionMode === "tokens"}
                 disabled={toggleExecutionModeMutation.isPending}
-                onCheckedChange={(checked) => {
-                  const targetMode = checked ? "tokens" : "quota";
-                  if (targetMode !== currentExecutionMode && !toggleExecutionModeMutation.isPending) {
-                    toggleExecutionModeMutation.mutate(targetMode);
-                  }
-                }}
+                onCheckedChange={(checked) => handleToggleMode(checked ? "tokens" : "quota")}
               />
 
               <span
@@ -1012,11 +1020,7 @@ export default function ClientCompany() {
                 className={`text-xs select-none cursor-pointer transition-colors ${
                   currentExecutionMode === "tokens" ? "text-blue-500 font-bold" : "text-muted-foreground hover:text-foreground"
                 }`}
-                onClick={() => {
-                  if (currentExecutionMode !== "tokens" && !toggleExecutionModeMutation.isPending) {
-                    toggleExecutionModeMutation.mutate("tokens");
-                  }
-                }}
+                onClick={() => handleToggleMode("tokens")}
               >
                 {lang === "ar" ? "رموز الـ API (Tokens)" : "API Tokens"}
               </span>
@@ -1027,11 +1031,7 @@ export default function ClientCompany() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             {/* Quota Option Card */}
             <div
-              onClick={() => {
-                if (currentExecutionMode !== "quota" && !toggleExecutionModeMutation.isPending) {
-                  toggleExecutionModeMutation.mutate("quota");
-                }
-              }}
+              onClick={() => handleToggleMode("quota")}
               className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
                 currentExecutionMode === "quota"
                   ? "bg-amber-500/10 border-amber-500/40 text-foreground ring-1 ring-amber-500/30"
@@ -1062,11 +1062,7 @@ export default function ClientCompany() {
 
             {/* API Tokens Option Card */}
             <div
-              onClick={() => {
-                if (currentExecutionMode !== "tokens" && !toggleExecutionModeMutation.isPending) {
-                  toggleExecutionModeMutation.mutate("tokens");
-                }
-              }}
+              onClick={() => handleToggleMode("tokens")}
               className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
                 currentExecutionMode === "tokens"
                   ? "bg-blue-500/10 border-blue-500/40 text-foreground ring-1 ring-blue-500/30"

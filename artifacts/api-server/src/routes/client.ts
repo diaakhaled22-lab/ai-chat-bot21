@@ -8,7 +8,7 @@ import { sendMessengerMessage } from "./messenger";
 
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable, leadsTable, cannedResponsesTable } from "@workspace/db";
+import { db, pool, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable, leadsTable, cannedResponsesTable } from "@workspace/db";
 import { eq, and, or, sql, gte, lte, desc, inArray } from "drizzle-orm";
 import {
   CreateClientCompanyBody,
@@ -102,7 +102,7 @@ router.get("/client/company", async (req, res) => {
       aiAgentUrl: company.aiAgentUrl,
       aiProvider: company.aiProvider,
       aiModel: company.aiModel,
-      aiExecutionMode: (company as any).aiExecutionMode || "quota",
+      aiExecutionMode: (company as any).aiExecutionMode === "tokens" ? "tokens" : "quota",
       monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
@@ -480,8 +480,17 @@ router.put("/client/company", async (req, res) => {
     if (data.aiAgentUrl !== undefined) updates.aiAgentUrl = data.aiAgentUrl;
     if (data.aiProvider !== undefined) updates.aiProvider = data.aiProvider;
     if (data.aiModel !== undefined) updates.aiModel = data.aiModel;
-    if ((data as any).aiExecutionMode !== undefined) {
-      updates.aiExecutionMode = (data as any).aiExecutionMode === "tokens" ? "tokens" : "quota";
+    const rawAiExecutionMode = (req.body as any)?.aiExecutionMode ?? (data as any)?.aiExecutionMode;
+    if (rawAiExecutionMode !== undefined) {
+      const mode = rawAiExecutionMode === "tokens" ? "tokens" : "quota";
+      updates.aiExecutionMode = mode;
+      await pool.query(
+        `ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`
+      ).catch(() => {});
+      await pool.query(
+        `UPDATE companies SET ai_execution_mode = $1 WHERE id = $2;`,
+        [mode, existingCompany.id]
+      ).catch(() => {});
     }
     if (data.telegramBotApiKey !== undefined) {
       updates.telegramBotApiKey = preserveMaskedSecret(data.telegramBotApiKey, existingCompany.telegramBotApiKey);
@@ -659,37 +668,26 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
       return;
     }
 
-    let updatedMode = mode;
+    // 1. Ensure column exists directly via raw SQL
+    await pool.query(
+      `ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`
+    ).catch(() => {});
+
+    // 2. Perform direct SQL update to ensure immediate persistence in Postgres
+    await pool.query(
+      `UPDATE companies SET ai_execution_mode = $1 WHERE id = $2;`,
+      [mode, existingCompany.id]
+    );
+
+    // 3. Keep Drizzle ORM in sync
     try {
-      const [updated] = await db
+      await db
         .update(companiesTable)
         .set({ aiExecutionMode: mode })
-        .where(eq(companiesTable.id, existingCompany.id))
-        .returning({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode });
+        .where(eq(companiesTable.id, existingCompany.id));
+    } catch {}
 
-      if (updated) updatedMode = updated.aiExecutionMode as "quota" | "tokens";
-    } catch (dbErr: any) {
-      if (dbErr?.message?.includes("ai_execution_mode") || dbErr?.code === "42703") {
-        try {
-          const { pool } = await import("@workspace/db");
-          if (pool) {
-            await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`);
-            const [updated] = await db
-              .update(companiesTable)
-              .set({ aiExecutionMode: mode })
-              .where(eq(companiesTable.id, existingCompany.id))
-              .returning({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode });
-            if (updated) updatedMode = updated.aiExecutionMode as "quota" | "tokens";
-          }
-        } catch (innerErr) {
-          logger.error({ innerErr }, "Failed to auto-add ai_execution_mode column");
-        }
-      } else {
-        throw dbErr;
-      }
-    }
-
-    res.json({ success: true, aiExecutionMode: updatedMode });
+    res.json({ success: true, aiExecutionMode: mode });
   } catch (err: any) {
     logger.error({ err }, "Update AI execution mode error");
     res.status(500).json({ error: err?.message || "Internal server error" });
