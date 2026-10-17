@@ -544,13 +544,13 @@ export default function ClientCompany() {
     const positionFab = () => {
       const x = Math.min(96, Math.max(4, company.fabPositionX ?? 96));
       const y = Math.min(94, Math.max(6, company.fabPositionY ?? 92));
-      const edgeX = Math.min(54, window.innerWidth / 2);
-      const edgeY = Math.min(54, window.innerHeight / 2);
+      const edgeX = Math.min(44, window.innerWidth / 2);
+      const edgeY = Math.min(44, window.innerHeight / 2);
       const isLargeScreen = window.innerWidth >= 768;
       fab.style.left = isLargeScreen
-        ? x < 50 ? "25px" : "auto"
+        ? x < 50 ? "20px" : "auto"
         : `${edgeX + Math.max(0, window.innerWidth - edgeX * 2) * (x / 100)}px`;
-      fab.style.right = isLargeScreen && x >= 50 ? "25px" : "auto";
+      fab.style.right = isLargeScreen && x >= 50 ? "20px" : "auto";
       fab.style.top = `${edgeY + Math.max(0, window.innerHeight - edgeY * 2) * (y / 100)}px`;
     };
 
@@ -1731,7 +1731,7 @@ export default function ClientCompany() {
                 </p>
 
                 <div className="relative group">
-                  <pre className="bg-background text-foreground p-4 rounded-lg overflow-x-auto border border-violet-500/30 font-mono text-xs leading-relaxed shadow-inner">
+                  <pre className="bg-background text-foreground p-3 rounded-lg overflow-x-auto border border-violet-500/30 font-mono text-[11px] leading-relaxed shadow-inner">
 {`<script
   src="${window.location.origin}/api/widget.js"
   data-key="${company.websiteChatbotKey}"
@@ -1741,7 +1741,7 @@ export default function ClientCompany() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="absolute top-2 right-2 opacity-100 shadow-sm"
+                    className="absolute top-1.5 right-1.5 h-7 px-2.5 text-xs opacity-100 shadow-sm"
                     aria-label="Copy Website Widget embed code"
                     onClick={() => {
                       navigator.clipboard.writeText(
@@ -1751,7 +1751,7 @@ export default function ClientCompany() {
                       setTimeout(() => setCopied(false), 2000);
                     }}
                   >
-                    {copied ? <Check className="w-4 h-4 mr-1.5 text-emerald-500" /> : <Copy className="w-4 h-4 mr-1.5" />}
+                    {copied ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                     {copied ? "Copied!" : "Copy"}
                   </Button>
                 </div>
@@ -1811,24 +1811,24 @@ export default function ClientCompany() {
 
         const fabSnippet = `<!-- Chatbot FAB Widget -->
 <style>
-#cfab{position:fixed;left:0;top:0;transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-#cfab-btn{position:relative;width:60px;height:60px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
-#cfab-btn:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(124,58,237,.65);}
-#cfab-btn:focus-visible{outline:3px solid rgba(124,58,237,.7);outline-offset:3px;}
+#cfab{position:fixed;left:0;top:0;transform:translate(-50%,-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+#cfab-btn{position:relative;width:48px;height:48px;border-radius:50%;background:#7c3aed;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(124,58,237,.5);transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;outline:none;flex-shrink:0;}
+#cfab-btn:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(124,58,237,.65);}
+#cfab-btn:focus-visible{outline:2px solid rgba(124,58,237,.7);outline-offset:2px;}
 .cfab-icon{transition:transform .3s cubic-bezier(.34,1.56,.64,1);display:block;}
 #cfab-btn[data-open="1"] .cfab-icon{transform:rotate(45deg);}
 #cfab-pulse{position:absolute;inset:0;border-radius:50%;background:#7c3aed;animation:cfab-pulse 2.2s ease-out infinite;pointer-events:none;}
-@keyframes cfab-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.8)}100%{opacity:0;transform:scale(1.8)}}
-#cfab-menu{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+@keyframes cfab-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.7)}100%{opacity:0;transform:scale(1.7)}}
+#cfab-menu{display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
 #cfab.cfab-down{flex-direction:column-reverse;}
 #cfab.cfab-left,#cfab.cfab-left #cfab-menu{align-items:flex-start;}
 #cfab.cfab-center,#cfab.cfab-center #cfab-menu{align-items:center;}
-.cfab-row{display:flex;align-items:center;justify-content:flex-end;opacity:0;transform:translateY(12px) scale(.85);pointer-events:none;transition:opacity .2s ease,transform .24s cubic-bezier(.34,1.56,.64,1);}
+.cfab-row{display:flex;align-items:center;justify-content:flex-end;opacity:0;transform:translateY(10px) scale(.88);pointer-events:none;transition:opacity .18s ease,transform .22s cubic-bezier(.34,1.56,.64,1);}
 .cfab-row.cfab-on{opacity:1;transform:none;pointer-events:auto;}
-.cfab-item{width:50px;height:50px;border-radius:50%;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;}
-.cfab-item:hover{transform:scale(1.14);box-shadow:0 6px 22px rgba(0,0,0,.32);}
-.cfab-item:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:2px;border-radius:50%;}
-@media(max-width:500px){.cfab-item{width:46px;height:46px;}}
+.cfab-item{width:38px;height:38px;border-radius:50%;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.22);transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;}
+.cfab-item:hover{transform:scale(1.12);box-shadow:0 5px 16px rgba(0,0,0,.32);}
+.cfab-item:focus-visible{outline:2px solid rgba(255,255,255,.9);outline-offset:2px;border-radius:50%;}
+@media(max-width:500px){.cfab-item{width:34px;height:34px;}#cfab-btn{width:44px;height:44px;}}
 </style>
 <div id="cfab" class="${fabVerticalClass} ${fabHorizontalClass}" role="complementary" aria-label="Chat support options">
   <div id="cfab-menu" role="list" aria-label="Chat channels">
@@ -1836,7 +1836,7 @@ ${fabRows.join('\n')}
   </div>
   <button id="cfab-btn" data-open="0" type="button" aria-label="Open chat menu" aria-haspopup="true" aria-expanded="false" aria-controls="cfab-menu">
     <span id="cfab-pulse" aria-hidden="true"></span>
-    <svg class="cfab-icon" xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg class="cfab-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 </div>
 <script>
@@ -1849,10 +1849,10 @@ ${fabRows.join('\n')}
       fabY=${fabPositionY};
   function positionFab(){
     var vw=window.innerWidth, vh=window.innerHeight,
-        edgeX=Math.min(54,vw/2), edgeY=Math.min(54,vh/2);
+        edgeX=Math.min(44,vw/2), edgeY=Math.min(44,vh/2);
      if(vw>=768){
-       root.style.left=fabX<50?'25px':'auto';
-       root.style.right=fabX>=50?'25px':'auto';
+       root.style.left=fabX<50?'20px':'auto';
+       root.style.right=fabX>=50?'20px':'auto';
      } else {
        root.style.left=(edgeX+Math.max(0,vw-edgeX*2)*(fabX/100))+'px';
        root.style.right='auto';
@@ -1911,13 +1911,13 @@ ${fabRows.join('\n')}
                   const enabled = icon.isWidget ? true : !!icon.href;
                   const content = (
                     <div
-                      className={`flex flex-col items-center gap-1 rounded-xl border px-4 py-3 min-w-[92px] transition-colors ${
+                      className={`flex flex-col items-center gap-1 rounded-xl border px-3 py-2 min-w-[76px] transition-colors ${
                         enabled
                           ? `${COLOR_CLASSES[icon.color]} cursor-pointer`
                           : "border-border/40 bg-background opacity-50 cursor-not-allowed"
                       }`}
                     >
-                      <ChannelIcon channel={icon.channel} size={28} />
+                      <ChannelIcon channel={icon.channel} size={22} />
                       <span className="text-xs font-medium">{icon.label}</span>
                       {!enabled && <span className="text-[10px] text-muted-foreground">Not set up</span>}
                     </div>
@@ -1964,14 +1964,14 @@ ${fabRows.join('\n')}
                   }
                 </p>
                 <div className="relative group">
-                  <pre className="bg-background text-foreground p-4 rounded-lg overflow-x-auto border border-emerald-500/30 font-mono text-xs leading-relaxed shadow-inner whitespace-pre-wrap">
+                  <pre className="bg-background text-foreground p-3 max-h-[200px] rounded-lg overflow-x-auto border border-emerald-500/30 font-mono text-[11px] leading-relaxed shadow-inner whitespace-pre-wrap">
                     {snippet}
                   </pre>
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="absolute top-2 right-2 opacity-100 shadow-sm"
+                    className="absolute top-1.5 right-1.5 h-7 px-2.5 text-xs opacity-100 shadow-sm"
                     aria-label={company.fabEnabled ? "Copy FAB Widget embed code" : "Copy chatbot links embed code"}
                     onClick={() => {
                       navigator.clipboard.writeText(snippet);
@@ -1979,7 +1979,7 @@ ${fabRows.join('\n')}
                       setTimeout(() => setCopiedShare(false), 2000);
                     }}
                   >
-                    {copiedShare ? <Check className="w-4 h-4 mr-1.5 text-emerald-500" /> : <Copy className="w-4 h-4 mr-1.5" />}
+                    {copiedShare ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                     {copiedShare ? "Copied!" : company.fabEnabled ? "Copy FAB Code" : "Copy Code"}
                   </Button>
                 </div>
@@ -2030,11 +2030,11 @@ ${fabRows.join('\n')}
             {channels.map((ch, i) => (
               <div
                 key={ch.key}
-                className="flex items-center gap-2.5 justify-end"
+                className="flex items-center gap-2 justify-end"
                 style={{
                   opacity: fabOpen ? 1 : 0,
-                  transform: fabOpen ? "translateY(0) scale(1)" : "translateY(12px) scale(0.85)",
-                  transition: `opacity .2s ease ${fabOpen ? i * 65 : 0}ms, transform .24s cubic-bezier(.34,1.56,.64,1) ${fabOpen ? i * 65 : 0}ms`,
+                  transform: fabOpen ? "translateY(0) scale(1)" : "translateY(10px) scale(0.88)",
+                  transition: `opacity .18s ease ${fabOpen ? i * 60 : 0}ms, transform .22s cubic-bezier(.34,1.56,.64,1) ${fabOpen ? i * 60 : 0}ms`,
                   pointerEvents: fabOpen ? "auto" : "none",
                 }}
               >
@@ -2046,10 +2046,10 @@ ${fabRows.join('\n')}
                     if (ch.href) window.open(ch.href, "_blank", "noopener noreferrer");
                     else toast({ title: "Website Chat", description: "On your live site this opens the embedded widget." });
                   }}
-                  className="transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 rounded-full flex-shrink-0"
+                  className="transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-white focus-visible:outline-offset-2 rounded-full flex-shrink-0"
                   style={{
-                    width: 50,
-                    height: 50,
+                    width: 38,
+                    height: 38,
                     borderRadius: "50%",
                     border: "none",
                     padding: 0,
@@ -2057,11 +2057,11 @@ ${fabRows.join('\n')}
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: "0 4px 16px rgba(0,0,0,.3)",
+                    boxShadow: "0 3px 12px rgba(0,0,0,.25)",
                     background: "transparent",
                   }}
                 >
-                  <ChannelIcon channel={ch.channel} size={44} />
+                  <ChannelIcon channel={ch.channel} size={30} />
                 </button>
               </div>
             ))}
@@ -2079,23 +2079,23 @@ ${fabRows.join('\n')}
                   }}
                 />
               )}
-              <style>{`@keyframes cfab-admin-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.75)}100%{opacity:0;transform:scale(1.75)}}`}</style>
+              <style>{`@keyframes cfab-admin-pulse{0%{opacity:.38;transform:scale(1)}65%{opacity:0;transform:scale(1.7)}100%{opacity:0;transform:scale(1.7)}}`}</style>
               <button
                 onClick={(e) => { e.stopPropagation(); setFabOpen((v) => !v); }}
                 aria-label={fabOpen ? "Close chat menu" : "Open chat menu"}
                 aria-expanded={fabOpen}
-                className="relative flex items-center justify-center rounded-full border-none cursor-pointer transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 focus-visible:outline-offset-3"
+                className="relative flex items-center justify-center rounded-full border-none cursor-pointer transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400 focus-visible:outline-offset-2"
                 style={{
-                  width: 60,
-                  height: 60,
+                  width: 48,
+                  height: 48,
                   background: "#7c3aed",
-                  boxShadow: "0 6px 24px rgba(124,58,237,.55)",
-                  transform: fabOpen ? "rotate(45deg) scale(1.08)" : "rotate(0) scale(1)",
+                  boxShadow: "0 5px 20px rgba(124,58,237,.5)",
+                  transform: fabOpen ? "rotate(45deg) scale(1.06)" : "rotate(0) scale(1)",
                   transition: "transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .2s",
                   outline: "none",
                 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
