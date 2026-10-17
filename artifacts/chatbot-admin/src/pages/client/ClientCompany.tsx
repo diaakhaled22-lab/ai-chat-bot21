@@ -1692,8 +1692,9 @@ export default function ClientCompany() {
                         </div>
                       </div>
                     </div>
-                  </Link>
-                );
+                  </div>
+                </Link>
+              );
               })()}
 
               {/* Arrow */}
