@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   Database,
   Cpu,
+  Coins,
   PenTool, Menu, Trash2, Mail, type LucideIcon,
 } from "lucide-react";
 
@@ -670,7 +671,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
       { href: "/client/leads",            label: lang === "ar" ? "العملاء المحتملين" : "Leads CRM", icon: Users },
-    { href: "/client/usage",            label: t("nav_api_tokens"),      icon: KeyRound },
+    { href: "/client/api-tokens",       label: lang === "ar" ? "رموز API" : "API Tokens", icon: KeyRound },
+    { href: "/client/usage",            label: lang === "ar" ? "الحصة الشهرية (Quota)" : "Token Quota", icon: Coins },
     { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles, clientChatBadge: true },
     { href: "/client/widget-preview",   label: t("nav_widget_preview"),  icon: Bot },
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },

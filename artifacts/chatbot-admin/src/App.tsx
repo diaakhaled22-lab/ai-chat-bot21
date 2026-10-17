@@ -35,6 +35,7 @@ import ClientChatLogs from "@/pages/client/ClientChatLogs";
 import ClientLeads from "@/pages/client/ClientLeads";
 import ClientSettings from "@/pages/client/ClientSettings";
 import ClientUsage from "@/pages/client/ClientUsage";
+import ClientApiTokens from "@/pages/client/ClientApiTokens";
 import ClientSupport from "@/pages/client/ClientSupport";
 import ClientMalfunctions from "@/pages/client/ClientMalfunctions";
 import ClientAIChat from "@/pages/client/ClientAIChat";
@@ -185,7 +186,13 @@ function Router() {
       <Route path="/client/support">
         {() => <ProtectedRoute component={ClientSupport} allowedRole="client" />}
       </Route>
+      <Route path="/client/api-tokens">
+        {() => <ProtectedRoute component={ClientApiTokens} allowedRole="client" />}
+      </Route>
       <Route path="/client/usage">
+        {() => <ProtectedRoute component={ClientUsage} allowedRole="client" />}
+      </Route>
+      <Route path="/client/quota">
         {() => <ProtectedRoute component={ClientUsage} allowedRole="client" />}
       </Route>
       <Route path="/client/settings">
