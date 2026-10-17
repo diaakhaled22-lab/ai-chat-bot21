@@ -110,13 +110,13 @@ export function mergeDynamicModels<T extends { value: string; label: string; fre
     if (!merged.has(model.id)) {
       merged.set(model.id, {
         value: model.id,
-        label: model.label,
-        free: model.free,
+        label: model.label || model.id,
+        free: Boolean(model.free),
       } as T);
     }
   });
   return [...merged.values()].sort((a, b) => {
     if (a.free !== b.free) return a.free ? -1 : 1;
-    return a.label.localeCompare(b.label);
+    return (a.label || a.value || "").localeCompare(b.label || b.value || "");
   });
 }

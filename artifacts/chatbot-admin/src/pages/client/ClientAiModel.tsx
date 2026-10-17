@@ -26,6 +26,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Check,
+  Info,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,9 +80,9 @@ export default function ClientAiModel() {
   const userToggledRef = useRef(false);
   const [activeMode, setActiveMode] = useState<"quota" | "tokens">("quota");
 
-  // Form states
-  const [selectedProvider, setSelectedProvider] = useState<AiProvider>("openai");
-  const [selectedModel, setSelectedModel] = useState<string>("");
+  // Form states with smart initial values
+  const [selectedProvider, setSelectedProvider] = useState<AiProvider>("openrouter");
+  const [selectedModel, setSelectedModel] = useState<string>("nvidia/nemotron-3.5-lightning:free");
   const [apiKey, setApiKey] = useState<string>("");
   const [showApiKey, setShowApiKey] = useState(false);
   const initialized = useRef(false);
@@ -97,28 +98,13 @@ export default function ClientAiModel() {
     mode?: string;
   } | null>(null);
 
-  // Sync state from server on company load
-  useEffect(() => {
-    if (company && !initialized.current) {
-      if ((company as any).aiExecutionMode && !userToggledRef.current) {
-        setActiveMode((company as any).aiExecutionMode);
-      }
-      if (company.aiProvider && company.aiProvider in AI_PROVIDERS) {
-        setSelectedProvider(company.aiProvider as AiProvider);
-      }
-      if (company.aiModel) {
-        setSelectedModel(
-          company.aiModel.includes("nemotron-nano")
-            ? "nvidia/nemotron-3.5-lightning:free"
-            : company.aiModel
-        );
-      }
-      if (company.aiAgentApiKey) {
-        setApiKey(company.aiAgentApiKey);
-      }
-      initialized.current = true;
-    }
-  }, [company]);
+  // Monthly Quota Data Query
+  const { data: quotaData } = useQuery<QuotaData>({
+    queryKey: ["client-company-quota"],
+    queryFn: () => customFetch<QuotaData>("/api/client/company/quota"),
+    enabled: true,
+    refetchInterval: 60_000,
+  });
 
   // Dynamic model catalog
   const { data: syncedAiModels } = useQuery<AiModelCatalogResponse>({
@@ -129,6 +115,42 @@ export default function ClientAiModel() {
     refetchInterval: 60 * 60 * 1000,
   });
 
+  // Effective Quota Defaults
+  const quotaProvider = (company as any)?.quotaAiProvider || (quotaData as any)?.provider || "openrouter";
+  const quotaModel = (company as any)?.quotaAiModel || (quotaData as any)?.model || "nvidia/nemotron-3.5-lightning:free";
+
+  // Sync state from server on company load
+  useEffect(() => {
+    if (company && !initialized.current) {
+      if ((company as any).aiExecutionMode && !userToggledRef.current) {
+        setActiveMode((company as any).aiExecutionMode);
+      }
+
+      // Pre-fill provider: use company provider if valid, otherwise fallback to quotaProvider or openrouter
+      const initialProvider = (company.aiProvider && company.aiProvider in AI_PROVIDERS)
+        ? (company.aiProvider as AiProvider)
+        : (quotaProvider in AI_PROVIDERS ? (quotaProvider as AiProvider) : "openrouter");
+      setSelectedProvider(initialProvider);
+
+      // Pre-fill model: use company model if valid, otherwise fallback to quotaModel
+      if (company.aiModel) {
+        setSelectedModel(
+          company.aiModel.includes("nemotron-nano")
+            ? "nvidia/nemotron-3.5-lightning:free"
+            : company.aiModel
+        );
+      } else {
+        setSelectedModel(quotaModel || "nvidia/nemotron-3.5-lightning:free");
+      }
+
+      if (company.aiAgentApiKey) {
+        setApiKey(company.aiAgentApiKey);
+      }
+
+      initialized.current = true;
+    }
+  }, [company, quotaProvider, quotaModel]);
+
   // AI Connection Status Query
   const { data: aiStatus, isLoading: aiStatusLoading, refetch: refetchAiStatus } = useQuery<AiStatus>({
     queryKey: ["client-ai-status", activeMode],
@@ -136,14 +158,6 @@ export default function ClientAiModel() {
     enabled: !!company,
     staleTime: 30_000,
     retry: false,
-  });
-
-  // Monthly Quota Data Query
-  const { data: quotaData } = useQuery<QuotaData>({
-    queryKey: ["client-company-quota"],
-    queryFn: () => customFetch<QuotaData>("/api/client/company/quota"),
-    enabled: true,
-    refetchInterval: 60_000,
   });
 
   // Mode Switch Mutation
@@ -212,6 +226,20 @@ export default function ClientAiModel() {
     userToggledRef.current = true;
     setActiveMode(newMode);
     toggleExecutionModeMutation.mutate(newMode);
+  };
+
+  // Switch Provider and auto-select recommended model
+  const handleSelectProvider = (key: AiProvider) => {
+    setSelectedProvider(key);
+    setTestResult(null);
+    const models = mergeDynamicModels(
+      (AI_PROVIDERS[key]?.models ?? []) as unknown as Array<{ value: string; label: string; free: boolean }>,
+      syncedAiModels?.providers?.[key]
+    );
+    const defaultModel = models.find((m) => m.free) || models[0];
+    if (defaultModel) {
+      setSelectedModel(defaultModel.value);
+    }
   };
 
   // Test AI Connection
@@ -303,6 +331,7 @@ export default function ClientAiModel() {
     return (
       <div className="space-y-6 max-w-4xl pb-12">
         <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-28 w-full rounded-xl" />
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-44 w-full rounded-xl" />
         <Skeleton className="h-64 w-full rounded-xl" />
@@ -310,9 +339,6 @@ export default function ClientAiModel() {
     );
   }
 
-  // Quota & BYOK metadata
-  const quotaProvider = (company as any)?.quotaAiProvider || (quotaData as any)?.provider || "openrouter";
-  const quotaModel = (company as any)?.quotaAiModel || (quotaData as any)?.model || "nvidia/nemotron-3.5-lightning:free";
   const hasOwnKey = Boolean(apiKey || company?.aiAgentApiKey);
 
   // Model catalog for selected provider
@@ -330,7 +356,7 @@ export default function ClientAiModel() {
 
   return (
     <div className="space-y-8 max-w-4xl pb-12">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
@@ -353,7 +379,7 @@ export default function ClientAiModel() {
           </p>
         </div>
 
-        {/* Quick Save Header Button */}
+        {/* Quick Action Buttons */}
         <div className="flex items-center gap-2 self-start sm:self-center">
           <Button
             type="button"
@@ -366,7 +392,7 @@ export default function ClientAiModel() {
             {testing ? (
               <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full" />
             ) : (
-              <Zap className="w-3.5 h-3.5" />
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
             )}
             {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
           </Button>
@@ -384,6 +410,92 @@ export default function ClientAiModel() {
             )}
             {lang === "ar" ? "حفظ الإعدادات" : "Save Changes"}
           </Button>
+        </div>
+      </div>
+
+      {/* ── 0. Active Operating Engine Hero Card (المحرك الفعلي المشغّل للردود) ── */}
+      <div className="rounded-xl border border-border/70 bg-card p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className={`p-2.5 rounded-xl ${activeMode === "quota" ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"} shrink-0`}>
+              <Cpu className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-base text-foreground">
+                  {lang === "ar" ? "المحرك الذكي الفعلي المعتمد للمحادثات" : "Currently Operating AI Engine"}
+                </span>
+                <Badge
+                  className={
+                    activeMode === "quota"
+                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-semibold"
+                      : "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 font-semibold"
+                  }
+                >
+                  {activeMode === "quota"
+                    ? (lang === "ar" ? "حصة المنصة (Platform Quota)" : "Admin Quota Mode")
+                    : (lang === "ar" ? "رموز ومفتاح API الخاص (Own API Key)" : "Own API Key Mode")}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {activeMode === "quota"
+                  ? (lang === "ar"
+                      ? "مساعدك الذكي يعمل حالياً بالاعتماد على رصيد حصة المنصة الشهرية المخصص مجاناً من الإدارة."
+                      : "Your assistant is actively generating responses using the platform quota without requiring a private API key.")
+                  : (lang === "ar"
+                      ? "مساعدك الذكي يعمل حالياً بالاعتماد على مفتاح API ونموذج شركتك الخاص دون أي حدود للحصة."
+                      : "Your assistant is using your company's own private API credentials without platform quota limits.")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Metric Pills */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          {/* Active Provider */}
+          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-xs space-y-1">
+            <span className="text-muted-foreground block text-[11px] font-medium">
+              {lang === "ar" ? "المزود المشغّل حالياً:" : "Operating Provider:"}
+            </span>
+            <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
+              <span className="text-base">
+                {activeMode === "quota"
+                  ? (AI_PROVIDERS[quotaProvider as AiProvider]?.icon || "🟣")
+                  : (AI_PROVIDERS[selectedProvider]?.icon || "🤖")}
+              </span>
+              <span>
+                {activeMode === "quota"
+                  ? (AI_PROVIDERS[quotaProvider as AiProvider]?.label || quotaProvider.toUpperCase())
+                  : (AI_PROVIDERS[selectedProvider]?.label || selectedProvider.toUpperCase())}
+              </span>
+            </span>
+          </div>
+
+          {/* Active Model */}
+          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-xs space-y-1">
+            <span className="text-muted-foreground block text-[11px] font-medium">
+              {lang === "ar" ? "النموذج الذكي الفعلي:" : "Operating Model:"}
+            </span>
+            <span className="font-mono font-semibold text-xs text-foreground block truncate">
+              {activeMode === "quota" ? quotaModel : (selectedModel || (lang === "ar" ? "النموذج الافتراضي" : "Default Model"))}
+            </span>
+          </div>
+
+          {/* Balance / Status */}
+          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-xs space-y-1">
+            <span className="text-muted-foreground block text-[11px] font-medium">
+              {activeMode === "quota" ? (lang === "ar" ? "رصيد الحصة الشهرية:" : "Monthly Token Quota:") : (lang === "ar" ? "حالة المفتاح الخاص:" : "Private API Key:")}
+            </span>
+            <span className="font-semibold text-xs text-foreground block">
+              {activeMode === "quota"
+                ? (company?.monthlyTokenQuota && company.monthlyTokenQuota > 0
+                    ? `${Number(company.monthlyTokenQuota).toLocaleString()} ${lang === "ar" ? "رمز" : "tokens"}`
+                    : (lang === "ar" ? "غير محددة من الإدارة" : "Not allocated yet"))
+                : (apiKey || company?.aiAgentApiKey
+                    ? (lang === "ar" ? "✓ مسجل ومشفر عبر الخادم" : "✓ Key Configured")
+                    : (lang === "ar" ? "⚠️ غير مسجل (مطلوب للرد)" : "⚠️ Key Missing"))}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -452,19 +564,19 @@ export default function ClientAiModel() {
                 )}
               </span>
 
-              {!aiStatusLoading && aiStatus?.model && (
+              {!aiStatusLoading && (aiStatus?.model || quotaModel) && (
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-background/50 px-2 py-0.5 rounded border border-border/50">
-                    {aiStatus.provider} / {aiStatus.model?.includes("nemotron-nano") ? "nvidia/nemotron-3.5-lightning:free" : aiStatus.model}
+                    {(aiStatus?.provider || (activeMode === "quota" ? quotaProvider : selectedProvider))} / {aiStatus?.model?.includes("nemotron-nano") ? "nvidia/nemotron-3.5-lightning:free" : (aiStatus?.model || (activeMode === "quota" ? quotaModel : selectedModel))}
                   </span>
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
-                      (aiStatus.mode || activeMode) === "quota"
+                      (aiStatus?.mode || activeMode) === "quota"
                         ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
                         : "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30"
                     }`}
                   >
-                    {(aiStatus.mode || activeMode) === "quota"
+                    {(aiStatus?.mode || activeMode) === "quota"
                       ? (lang === "ar" ? "حصة المنصة" : "Platform Quota")
                       : (lang === "ar" ? "مفتاحك الخاص" : "Own API Key")}
                   </span>
@@ -623,8 +735,8 @@ export default function ClientAiModel() {
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {company?.monthlyTokenQuota && company.monthlyTokenQuota > 0
                 ? (lang === "ar"
-                    ? `تم تعيين حصة شهرية قدرها ${company.monthlyTokenQuota.toLocaleString()} رمز مجاناً لشركتك.`
-                    : `Assigned ${company.monthlyTokenQuota.toLocaleString()} tokens/mo at no direct provider cost to you.`)
+                    ? `تم تعيين حصة شهرية قدرها ${Number(company.monthlyTokenQuota).toLocaleString()} رمز مجاناً لشركتك.`
+                    : `Assigned ${Number(company.monthlyTokenQuota).toLocaleString()} tokens/mo at no direct provider cost to you.`)
                 : (lang === "ar"
                     ? "لم يتم تعيين حصة شهرية لشركتك من قِبل المسؤول حتى الآن."
                     : "No token quota has been allocated by the administrator yet.")}
@@ -691,8 +803,8 @@ export default function ClientAiModel() {
               </p>
               <p className="opacity-80 text-xs">
                 {lang === "ar"
-                  ? `استهلكت ${quotaData.usedTokens.toLocaleString()} من أصل ${quotaData.quota?.toLocaleString()} رمز (${quotaData.percentUsed}%). يمكنك التبديل إلى نمط رموز API الخاصة لمتابعة الردود.`
-                  : `You used ${quotaData.usedTokens.toLocaleString()} of ${quotaData.quota?.toLocaleString()} tokens (${quotaData.percentUsed}%). Switch to Own API Tokens to continue.`}
+                  ? `استهلكت ${(quotaData.usedTokens ?? 0).toLocaleString()} من أصل ${(quotaData.quota ?? 0).toLocaleString()} رمز (${quotaData.percentUsed ?? 0}%). يمكنك التبديل إلى نمط رموز API الخاصة لمتابعة الردود.`
+                  : `You used ${(quotaData.usedTokens ?? 0).toLocaleString()} of ${(quotaData.quota ?? 0).toLocaleString()} tokens (${quotaData.percentUsed ?? 0}%). Switch to Own API Tokens to continue.`}
               </p>
             </div>
           </div>
@@ -713,6 +825,41 @@ export default function ClientAiModel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Mode Context Notice */}
+          {activeMode === "quota" ? (
+            <div className="flex items-start gap-3 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3.5 text-xs text-amber-700 dark:text-amber-400">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-0.5">
+                <p className="font-semibold">
+                  {lang === "ar"
+                    ? "أنت في نمط حصة المنصة المجانية (Platform Quota Mode)"
+                    : "You are currently running on Platform Quota"}
+                </p>
+                <p className="opacity-90 leading-relaxed">
+                  {lang === "ar"
+                    ? `يعمل البوت حالياً بالنموذج المخصص مجاناً (${quotaProvider.toUpperCase()} · ${quotaModel}). الإعدادات أدناه تتيح لك تجهيز مفتاح API ونموذج خاص بشركتك (BYOK) في حال أردت التبديل إلى نمط الرموز الخاصة.`
+                    : `Your bot is currently powered by the assigned model (${quotaProvider.toUpperCase()} · ${quotaModel}) for free. The settings below allow you to configure your company's own API key & model if you wish to switch to private API tokens mode.`}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-3 rounded-xl bg-blue-500/10 border border-blue-500/30 p-3.5 text-xs text-blue-700 dark:text-blue-400">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-0.5">
+                <p className="font-semibold">
+                  {lang === "ar"
+                    ? "أنت في نمط رموز ومفتاح API الخاص (Own API Key & Tokens)"
+                    : "You are currently running on Own API Key & Tokens"}
+                </p>
+                <p className="opacity-90 leading-relaxed">
+                  {lang === "ar"
+                    ? "يتطلب هذا النمط اختيار المزود، تحديد النموذج، وإدخال مفتاح الـ API الخاص بشركتك ليتمكن المساعد من إنشاء الردود دون قيود الحصة."
+                    : "This mode requires choosing your provider, selecting your preferred model, and providing your private API key."}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Choose Provider */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -732,11 +879,7 @@ export default function ClientAiModel() {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => {
-                      setSelectedProvider(key);
-                      setSelectedModel("");
-                      setTestResult(null);
-                    }}
+                    onClick={() => handleSelectProvider(key)}
                     className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-3.5 text-xs font-medium transition-all text-center ${
                       isSelected
                         ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary/30"
@@ -807,7 +950,7 @@ export default function ClientAiModel() {
                   </p>
                   <div className="flex items-center gap-1.5">
                     <Select
-                      value={currentIsFree ? selectedModel : ""}
+                      value={currentIsFree && selectedModel ? selectedModel : undefined}
                       onValueChange={(val) => {
                         setSelectedModel(val);
                         setTestResult(null);
@@ -849,7 +992,7 @@ export default function ClientAiModel() {
                   </p>
                   <div className="flex items-center gap-1.5">
                     <Select
-                      value={currentIsPaid ? selectedModel : ""}
+                      value={currentIsPaid && selectedModel ? selectedModel : undefined}
                       onValueChange={(val) => {
                         setSelectedModel(val);
                         setTestResult(null);
@@ -881,7 +1024,7 @@ export default function ClientAiModel() {
               </div>
             ) : (
               <Select
-                value={selectedModel}
+                value={selectedModel || undefined}
                 onValueChange={(val) => {
                   setSelectedModel(val);
                   setTestResult(null);
