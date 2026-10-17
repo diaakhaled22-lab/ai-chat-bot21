@@ -30,15 +30,36 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "gemini-3.5-flash-lite",
   ].map((id) => ({ id, label: id, free: id.includes("flash") && !id.includes("preview") })),
   openrouter: [
-    "google/gemini-2.0-flash-exp:free", "google/gemini-2.0-pro-exp-02-05:free",
-    "google/gemini-1.5-flash", "google/gemini-1.5-pro",
-    "google/gemma-4-31b-it:free", "openai/gpt-oss-20b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free", "nvidia/nemotron-nano-9b-v2:free",
-    "deepseek/deepseek-v4-flash", "deepseek/deepseek-r1", "deepseek/deepseek-v3",
-    "anthropic/claude-3.5-sonnet", "openai/gpt-4o", "openai/gpt-4o-mini",
-    "mistralai/mistral-large", "meta-llama/llama-3.3-70b-instruct",
-  ].map((id) => ({ id, label: id, free: id.endsWith(":free") })),
+    "openrouter/free",
+    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "liquid/lfm-2.5-2.6b:free",
+    "deepseek/deepseek-r1",
+    "deepseek/deepseek-chat",
+    "openai/gpt-4o",
+    "openai/gpt-4o-mini",
+    "mistralai/mistral-large",
+    "meta-llama/llama-3.3-70b-instruct",
+  ].map((id) => ({ id, label: id === "openrouter/free" ? "Free Models Router (Auto)" : id, free: id.endsWith(":free") || id === "openrouter/free" })),
 };
+
+export function sanitizeOpenRouterModel(model?: string | null): string {
+  if (!model || !model.trim()) return "openrouter/free";
+  const trimmed = model.trim();
+  if (
+    trimmed === "nvidia/nemotron-nano-9b-v2:free" ||
+    trimmed.includes("nemotron-nano-9b") ||
+    trimmed === "openai/gpt-oss-20b:free" ||
+    trimmed === "google/gemini-2.0-flash-exp:free" ||
+    trimmed === "google/gemini-2.0-pro-exp-02-05:free"
+  ) {
+    return "nvidia/nemotron-3.5-lightning:free";
+  }
+  return trimmed;
+}
 
 let catalog: AiModelCatalog = cloneCatalog(FALLBACK_MODELS);
 let lastSyncedAt: Date | null = null;

@@ -23,7 +23,7 @@ import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
-import { getAiModelCatalog } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
@@ -101,7 +101,7 @@ router.get("/client/company", async (req, res) => {
       aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
       aiAgentUrl: company.aiAgentUrl,
       aiProvider: company.aiProvider,
-      aiModel: company.aiModel,
+      aiModel: company.aiProvider === "openrouter" ? sanitizeOpenRouterModel(company.aiModel) : company.aiModel,
       aiExecutionMode: (company as any).aiExecutionMode === "tokens" ? "tokens" : "quota",
       monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
@@ -1887,7 +1887,16 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
       baseURL: "https://openrouter.ai/api/v1",
       timeout: timeoutMs,
     });
-    await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+    const effectiveModel = sanitizeOpenRouterModel(model);
+    try {
+      await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+    } catch (err: any) {
+      if (err?.status === 404 || err?.message?.includes("No endpoints found") || err?.message?.includes("not found")) {
+        await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 1 });
+      } else {
+        throw err;
+      }
+    }
   } else {
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({ apiKey, timeout: timeoutMs });
@@ -1918,11 +1927,12 @@ router.get("/client/company/ai-status", async (req, res) => {
     if (mode === "tokens") {
       // ── API Tokens Mode (BYOK) ───────────────────────────────────
       const provider = company.aiProvider || "openai";
-      const model = company.aiModel || (
+      const defaultModel =
         provider === "anthropic" ? "claude-3-5-haiku-20241022" :
         provider === "google" ? "gemini-2.0-flash" :
-        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
-      );
+        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      const rawModel = company.aiModel || defaultModel;
+      const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
       const apiKey = company.aiAgentApiKey?.trim();
       if (!apiKey) {
@@ -2260,10 +2270,23 @@ router.post("/client/multi-ai/chat", async (req, res) => {
     } else if (provider === "openrouter") {
       const OpenAI   = (await import("openai")).default;
       const openai   = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-      const stream   = await openai.chat.completions.create({
-        model, max_tokens: 2048, stream: true,
-        messages: [{ role: "system", content: SYSTEM }, ...formatted],
-      });
+      const effectiveModel = sanitizeOpenRouterModel(model);
+      let stream;
+      try {
+        stream = await openai.chat.completions.create({
+          model: effectiveModel, max_tokens: 2048, stream: true,
+          messages: [{ role: "system", content: SYSTEM }, ...formatted],
+        });
+      } catch (openRouterErr: any) {
+        if (openRouterErr?.status === 404 || openRouterErr?.message?.includes("No endpoints found")) {
+          stream = await openai.chat.completions.create({
+            model: "openrouter/free", max_tokens: 2048, stream: true,
+            messages: [{ role: "system", content: SYSTEM }, ...formatted],
+          });
+        } else {
+          throw openRouterErr;
+        }
+      }
       for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content;
         if (text) res.write(`data: ${JSON.stringify({ content: text })}\n\n`);

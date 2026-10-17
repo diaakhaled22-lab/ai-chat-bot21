@@ -48,8 +48,17 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_rest_api BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_shopify BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';
+
+      UPDATE companies
+      SET ai_model = 'nvidia/nemotron-3.5-lightning:free'
+      WHERE ai_model = 'nvidia/nemotron-nano-9b-v2:free' OR ai_model LIKE '%nemotron-nano%';
+
+      UPDATE admin_config
+      SET value = 'nvidia/nemotron-3.5-lightning:free'
+      WHERE (key = 'quota_ai_model' OR key = 'support_ai_model')
+        AND (value = 'nvidia/nemotron-nano-9b-v2:free' OR value LIKE '%nemotron-nano%');
     `);
-    logger.info("Data source permissions schema columns ensured successfully");
+    logger.info("Data source permissions schema columns and model migrations ensured successfully");
   } catch (err) {
     logger.error({ err }, "Failed to ensure data source permissions schema columns");
   }

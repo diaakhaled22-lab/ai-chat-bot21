@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
-import { getAiModelCatalog } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
@@ -1496,7 +1496,16 @@ router.get("/admin/support-ai-status", async (req, res) => {
         } else if (provider === "openrouter") {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+          const effectiveModel = sanitizeOpenRouterModel(model);
+          try {
+            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+          } catch (err: any) {
+            if (err?.status === 404 || err?.message?.includes("No endpoints found")) {
+              await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+            } else {
+              throw err;
+            }
+          }
         } else {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey });
@@ -1538,7 +1547,8 @@ router.get("/admin/quota-ai-settings", async (req, res) => {
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
-    const model = cfg["quota_ai_model"] || defaultModel;
+    const rawModel = cfg["quota_ai_model"] || defaultModel;
+    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
     res.json({
       hasKey: !!key,
@@ -1560,7 +1570,10 @@ router.put("/admin/quota-ai-settings", async (req, res) => {
     const upserts: { key: string; value: string }[] = [];
     if (aiApiKey && typeof aiApiKey === "string") upserts.push({ key: "quota_ai_api_key", value: aiApiKey });
     if (aiProvider && typeof aiProvider === "string") upserts.push({ key: "quota_ai_provider", value: aiProvider });
-    if (aiModel && typeof aiModel === "string") upserts.push({ key: "quota_ai_model", value: aiModel });
+    if (aiModel && typeof aiModel === "string") {
+      const sanitizedModel = (aiProvider || "openai") === "openrouter" ? sanitizeOpenRouterModel(aiModel) : aiModel;
+      upserts.push({ key: "quota_ai_model", value: sanitizedModel });
+    }
 
     if (upserts.length === 0) {
       res.status(400).json({ error: "Nothing to update" });
@@ -1593,7 +1606,8 @@ router.get("/admin/quota-ai-status", async (req, res) => {
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
-    const model    = cfg["quota_ai_model"]    || defaultModel;
+    const rawModel = cfg["quota_ai_model"]    || defaultModel;
+    const model    = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
     let apiKey = cfg["quota_ai_api_key"]?.trim();
     if (!apiKey) {
@@ -1627,7 +1641,16 @@ router.get("/admin/quota-ai-status", async (req, res) => {
         } else if (provider === "openrouter") {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-          await openai.chat.completions.create({ model, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+          const effectiveModel = sanitizeOpenRouterModel(model);
+          try {
+            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+          } catch (err: any) {
+            if (err?.status === 404 || err?.message?.includes("No endpoints found")) {
+              await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+            } else {
+              throw err;
+            }
+          }
         } else {
           const OpenAI = (await import("openai")).default;
           const openai = new OpenAI({ apiKey });

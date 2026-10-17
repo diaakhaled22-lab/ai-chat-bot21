@@ -614,7 +614,9 @@ export default function ClientCompany() {
         serviceAccountKey: company.serviceAccountKey || "",
         aiAgentApiKey: company.aiAgentApiKey || "",
         aiProvider: (company.aiProvider as AiProvider) || undefined,
-        aiModel: company.aiModel || "",
+        aiModel: (company.aiModel === "nvidia/nemotron-nano-9b-v2:free" || company.aiModel?.includes("nemotron-nano"))
+          ? "nvidia/nemotron-3.5-lightning:free"
+          : (company.aiModel || ""),
         aiExecutionMode: ((company as any)?.aiExecutionMode as "quota" | "tokens") || "quota",
         websiteDataUrl: company.websiteDataUrl || "",
         websiteAutoSync: company.websiteAutoSync ?? false,
@@ -872,7 +874,7 @@ export default function ClientCompany() {
               {!aiStatusLoading && aiStatus?.model && (
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-background/50 px-2 py-0.5 rounded border border-border/50">
-                    {aiStatus.provider} / {aiStatus.model}
+                    {aiStatus.provider} / {aiStatus.model?.includes("nemotron-nano") ? "nvidia/nemotron-3.5-lightning:free" : aiStatus.model}
                   </span>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
                     (aiStatus.mode || currentExecutionMode) === "quota"

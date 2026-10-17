@@ -2,6 +2,7 @@ import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/
 import { eq, sql, and, gte, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyQuota75PercentConsumed } from "./companyNotification";
+import { sanitizeOpenRouterModel } from "./aiModels";
 
 export interface ResolvedAiConfig {
   apiKey: string;
@@ -23,10 +24,14 @@ export async function getSupportAiSettings(): Promise<{
     const key = cfg["support_ai_api_key"]?.trim();
     if (!key) return null;
 
+    const provider = (cfg["support_ai_provider"] as any) || "openai";
+    const rawModel = cfg["support_ai_model"] || "gpt-4o-mini";
+    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+
     return {
       apiKey: key,
-      provider: (cfg["support_ai_provider"] as any) || "openai",
-      model: cfg["support_ai_model"] || "gpt-4o-mini",
+      provider,
+      model,
     };
   } catch (err) {
     logger.error({ err }, "Failed to get Support AI settings");
@@ -54,7 +59,8 @@ export async function getQuotaAiModelInfo(): Promise<{
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
-    const model = cfg["quota_ai_model"]?.trim() || defaultModel;
+    const rawModel = cfg["quota_ai_model"]?.trim() || defaultModel;
+    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
     return { provider, model };
   } catch (err) {
@@ -80,7 +86,8 @@ export async function getQuotaAiSettings(): Promise<{
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
-    const model = cfg["quota_ai_model"]?.trim() || defaultModel;
+    const rawModel = cfg["quota_ai_model"]?.trim() || defaultModel;
+    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
     // Resolve API key
     let key = cfg["quota_ai_api_key"]?.trim();
@@ -124,11 +131,12 @@ export async function resolveCompanyAi(
   if (mode === "tokens") {
     if (company.aiAgentApiKey) {
       const provider = (company.aiProvider as any) || "openai";
-      const model = company.aiModel || (
+      const defaultModel =
         provider === "anthropic" ? "claude-3-5-haiku-20241022" :
         provider === "google" ? "gemini-2.0-flash" :
-        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
-      );
+        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      const rawModel = company.aiModel || defaultModel;
+      const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
       return {
         apiKey: company.aiAgentApiKey,
@@ -159,11 +167,12 @@ export async function resolveCompanyAi(
   // If in quota mode, but no admin quota has been assigned yet:
   if (company.aiAgentApiKey) {
     const provider = (company.aiProvider as any) || "openai";
-    const model = company.aiModel || (
+    const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
-    );
+      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+    const rawModel = company.aiModel || defaultModel;
+    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
     return {
       apiKey: company.aiAgentApiKey,
