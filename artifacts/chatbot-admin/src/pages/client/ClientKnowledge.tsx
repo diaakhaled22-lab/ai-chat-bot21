@@ -1573,7 +1573,17 @@ const websiteFormSchema = z.object({
 
 export default function ClientKnowledge() {
   const { t, lang } = useLanguage();
-  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress" | "restapi" | "shopify">("website");
+  const getInitialSource = (): "website" | "files" | "wordpress" | "restapi" | "shopify" => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const s = (params.get("source") || params.get("tab"))?.toLowerCase();
+      if (s && ["website", "files", "wordpress", "restapi", "shopify"].includes(s)) {
+        return s as "website" | "files" | "wordpress" | "restapi" | "shopify";
+      }
+    } catch {}
+    return "website";
+  };
+  const [activeSource, setActiveSource] = useState<"website" | "files" | "wordpress" | "restapi" | "shopify">(getInitialSource);
   
   const { data: company, isLoading: companyLoading } = useGetClientCompany({
     query: {
@@ -1627,17 +1637,40 @@ export default function ClientKnowledge() {
   const allowRestApi = (company as any)?.allowSourceRestApi === false ? false : true;
   const allowShopify = (company as any)?.allowSourceShopify === false ? false : true;
 
-  const hasAutoSelectedRef = useRef(false);
+  // Sync activeSource with URL search params (?source=... or ?tab=...) and permissions
   useEffect(() => {
-    if (company && !hasAutoSelectedRef.current) {
-      hasAutoSelectedRef.current = true;
-      if (!allowWebsite) {
-        const firstAllowed = (["files", "wordpress", "restapi", "shopify"] as const).find(
-          (k) => (k === "files" ? allowFiles : k === "wordpress" ? allowWordpress : k === "restapi" ? allowRestApi : allowShopify)
-        );
-        if (firstAllowed) {
-          setActiveSource(firstAllowed);
+    if (!company) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const s = (params.get("source") || params.get("tab"))?.toLowerCase();
+      if (s && ["website", "files", "wordpress", "restapi", "shopify"].includes(s)) {
+        const isRequestedAllowed =
+          s === "website" ? allowWebsite :
+          s === "files" ? allowFiles :
+          s === "wordpress" ? allowWordpress :
+          s === "restapi" ? allowRestApi :
+          allowShopify;
+        if (isRequestedAllowed) {
+          setActiveSource(s as any);
+          return;
         }
+      }
+    } catch {}
+
+    // Fallback if current activeSource is not allowed
+    const currentAllowed =
+      activeSource === "website" ? allowWebsite :
+      activeSource === "files" ? allowFiles :
+      activeSource === "wordpress" ? allowWordpress :
+      activeSource === "restapi" ? allowRestApi :
+      allowShopify;
+
+    if (!currentAllowed) {
+      const firstAllowed = (["website", "files", "wordpress", "restapi", "shopify"] as const).find(
+        (k) => (k === "website" ? allowWebsite : k === "files" ? allowFiles : k === "wordpress" ? allowWordpress : k === "restapi" ? allowRestApi : allowShopify)
+      );
+      if (firstAllowed) {
+        setActiveSource(firstAllowed);
       }
     }
   }, [company, allowWebsite, allowFiles, allowWordpress, allowRestApi, allowShopify]);

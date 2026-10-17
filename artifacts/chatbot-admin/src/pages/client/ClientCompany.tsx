@@ -443,10 +443,30 @@ export default function ClientCompany() {
     refetchInterval: 60 * 60 * 1000,
   });
 
+  const allowWebsite = (company as any)?.allowSourceWebsite === false ? false : true;
+  const allowFiles = (company as any)?.allowSourceFiles === false ? false : true;
+  const allowWordpress = (company as any)?.allowSourceWordpress === false ? false : true;
+  const allowRestApi = (company as any)?.allowSourceRestApi === false ? false : true;
+  const allowShopify = (company as any)?.allowSourceShopify === false ? false : true;
+
   const { data: wpIntegration } = useQuery<{ status: "pending" | "connected" | "error"; totalItems: number } | null>({
     queryKey: ["client-wordpress-status"],
     queryFn: () => customFetch<{ status: "pending" | "connected" | "error"; totalItems: number }>("/api/client/wordpress").catch(() => null),
-    enabled: !!company,
+    enabled: !!company && allowWordpress,
+    staleTime: 60_000,
+  });
+
+  const { data: restApiIntegration } = useQuery<{ status: "pending" | "connected" | "error"; totalItems: number } | null>({
+    queryKey: ["client-rest-api-status"],
+    queryFn: () => customFetch<{ status: "pending" | "connected" | "error"; totalItems: number }>("/api/client/rest-api").catch(() => null),
+    enabled: !!company && allowRestApi,
+    staleTime: 60_000,
+  });
+
+  const { data: shopifyIntegration } = useQuery<{ status: "pending" | "connected" | "error"; totalItems: number } | null>({
+    queryKey: ["client-shopify-status"],
+    queryFn: () => customFetch<{ status: "pending" | "connected" | "error"; totalItems: number }>("/api/client/shopify").catch(() => null),
+    enabled: !!company && allowShopify,
     staleTime: 60_000,
   });
   const createCompany = useCreateClientCompany();
@@ -1445,65 +1465,201 @@ export default function ClientCompany() {
             {/* Architecture flow */}
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
               {/* Row 1: Inputs */}
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Knowledge Sources</p>
-              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-center text-xs">
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.systemPrompt ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background"}`}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                {lang === "ar" ? "مصادر المعرفة والبيانات" : "Knowledge & Data Sources"}
+              </p>
+              <div className="grid grid-cols-2 min-[500px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 text-center text-xs">
+                {/* 1. System Prompt */}
+                <div className={`rounded-lg border p-2.5 space-y-1 transition-all ${company.systemPrompt ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">📝</div>
-                  <div className="font-medium">System Prompt</div>
-                  <div className={`text-[10px] ${company.systemPrompt ? "text-primary" : "text-muted-foreground"}`}>
-                    {company.systemPrompt ? "✓ Configured" : "Not set"}
+                  <div className="font-medium truncate">{lang === "ar" ? "التعليمات" : "System Prompt"}</div>
+                  <div className={`text-[10px] ${company.systemPrompt ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                    {company.systemPrompt ? (lang === "ar" ? "✓ مفعّل" : "✓ Configured") : (lang === "ar" ? "غير محدد" : "Not set")}
                   </div>
                 </div>
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.websiteDataUrl ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background"}`}>
-                  <div className="text-base">🌐</div>
-                  <div className="font-medium">Website Data URL</div>
-                  <div className={`text-[10px] ${company.websiteDataUrl ? "text-primary" : "text-muted-foreground"}`}>
-                    {company.websiteDataUrl ? "✓ Configured" : "Not set"}
+
+                {/* 2. Website Data URL */}
+                <Link href={allowWebsite ? "/client/knowledge?source=website" : "#"} className={`block h-full group ${!allowWebsite ? "pointer-events-none" : ""}`}>
+                  <div className={`rounded-lg border p-2.5 space-y-1 transition-all h-full ${
+                    !allowWebsite
+                      ? "border-amber-500/30 bg-amber-500/5 opacity-80"
+                      : "group-hover:border-primary/60 cursor-pointer " + (company.websiteDataUrl ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background")
+                  }`}>
+                    <div className="text-base relative inline-block">
+                      🌐
+                      {!allowWebsite && <Lock className="w-3 h-3 text-amber-500 absolute -bottom-1 -right-1" />}
+                    </div>
+                    <div className="font-medium truncate">{lang === "ar" ? "رابط الموقع" : "Website URL"}</div>
+                    <div className={`text-[10px] ${
+                      !allowWebsite
+                        ? "text-amber-500 font-medium"
+                        : company.websiteDataUrl
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {!allowWebsite
+                        ? (lang === "ar" ? "🔒 مقفل" : "🔒 Locked")
+                        : company.websiteDataUrl
+                        ? (lang === "ar" ? "✓ مفعّل" : "✓ Configured")
+                        : (lang === "ar" ? "غير محدد" : "Not set")}
+                    </div>
                   </div>
-                </div>
-                <div className={`rounded-lg border p-2.5 space-y-1 ${company.googleSheetsEnabled ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/40 bg-background"}`}>
+                </Link>
+
+                {/* 3. Uploaded Files */}
+                <Link href={allowFiles ? "/client/knowledge?source=files" : "#"} className={`block h-full group ${!allowFiles ? "pointer-events-none" : ""}`}>
+                  <div className={`rounded-lg border p-2.5 space-y-1 transition-all h-full ${
+                    !allowFiles
+                      ? "border-amber-500/30 bg-amber-500/5 opacity-80"
+                      : "group-hover:border-primary/60 cursor-pointer " + ((knowledgeFiles?.length ?? 0) > 0 ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background")
+                  }`}>
+                    <div className="text-base relative inline-block">
+                      📁
+                      {!allowFiles && <Lock className="w-3 h-3 text-amber-500 absolute -bottom-1 -right-1" />}
+                    </div>
+                    <div className="font-medium truncate">{lang === "ar" ? "الملفات" : "Files"}</div>
+                    <div className={`text-[10px] ${
+                      !allowFiles
+                        ? "text-amber-500 font-medium"
+                        : (knowledgeFiles?.length ?? 0) > 0
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {!allowFiles
+                        ? (lang === "ar" ? "🔒 مقفل" : "🔒 Locked")
+                        : (knowledgeFiles?.length ?? 0) > 0
+                        ? (lang === "ar" ? `✓ ${knowledgeFiles?.length} ملفات` : `✓ ${knowledgeFiles?.length} files`)
+                        : (lang === "ar" ? "لا يوجد" : "None")}
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 4. WordPress */}
+                <Link href={allowWordpress ? "/client/knowledge?source=wordpress" : "#"} className={`block h-full group ${!allowWordpress ? "pointer-events-none" : ""}`}>
+                  <div className={`rounded-lg border p-2.5 space-y-1 transition-all h-full ${
+                    !allowWordpress
+                      ? "border-amber-500/30 bg-amber-500/5 opacity-80"
+                      : "group-hover:border-primary/60 cursor-pointer " + (
+                          wpIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"
+                          : wpIntegration?.status === "error" ? "border-red-500/40 bg-red-500/5"
+                          : "border-border/40 bg-background"
+                        )
+                  }`}>
+                    <div className="text-base relative inline-block">
+                      🔌
+                      {!allowWordpress && <Lock className="w-3 h-3 text-amber-500 absolute -bottom-1 -right-1" />}
+                    </div>
+                    <div className="font-medium truncate">WordPress</div>
+                    <div className={`text-[10px] ${
+                      !allowWordpress
+                        ? "text-amber-500 font-medium"
+                        : wpIntegration?.status === "connected"
+                        ? "text-primary font-medium"
+                        : wpIntegration?.status === "error"
+                        ? "text-red-500 font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {!allowWordpress
+                        ? (lang === "ar" ? "🔒 مقفل" : "🔒 Locked")
+                        : wpIntegration?.status === "connected"
+                        ? (lang === "ar" ? `✓ ${wpIntegration.totalItems} عنصر` : `✓ ${wpIntegration.totalItems} items`)
+                        : wpIntegration?.status === "error"
+                        ? (lang === "ar" ? "⚠ خطأ" : "⚠ Error")
+                        : wpIntegration?.status === "pending"
+                        ? (lang === "ar" ? "قيد الانتظار…" : "Pending…")
+                        : (lang === "ar" ? "غير متصل" : "Not connected")}
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 5. REST API */}
+                <Link href={allowRestApi ? "/client/knowledge?source=restapi" : "#"} className={`block h-full group ${!allowRestApi ? "pointer-events-none" : ""}`}>
+                  <div className={`rounded-lg border p-2.5 space-y-1 transition-all h-full ${
+                    !allowRestApi
+                      ? "border-amber-500/30 bg-amber-500/5 opacity-80"
+                      : "group-hover:border-primary/60 cursor-pointer " + (
+                          restApiIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"
+                          : restApiIntegration?.status === "error" ? "border-red-500/40 bg-red-500/5"
+                          : "border-border/40 bg-background"
+                        )
+                  }`}>
+                    <div className="text-base relative inline-block">
+                      💻
+                      {!allowRestApi && <Lock className="w-3 h-3 text-amber-500 absolute -bottom-1 -right-1" />}
+                    </div>
+                    <div className="font-medium truncate">REST API</div>
+                    <div className={`text-[10px] ${
+                      !allowRestApi
+                        ? "text-amber-500 font-medium"
+                        : restApiIntegration?.status === "connected"
+                        ? "text-primary font-medium"
+                        : restApiIntegration?.status === "error"
+                        ? "text-red-500 font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {!allowRestApi
+                        ? (lang === "ar" ? "🔒 مقفل" : "🔒 Locked")
+                        : restApiIntegration?.status === "connected"
+                        ? (lang === "ar" ? "✓ متصل" : "✓ Connected")
+                        : restApiIntegration?.status === "error"
+                        ? (lang === "ar" ? "⚠ خطأ" : "⚠ Error")
+                        : restApiIntegration?.status === "pending"
+                        ? (lang === "ar" ? "قيد الانتظار…" : "Pending…")
+                        : (lang === "ar" ? "غير مهيأ" : "Not set")}
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 6. Shopify Store */}
+                <Link href={allowShopify ? "/client/knowledge?source=shopify" : "#"} className={`block h-full group ${!allowShopify ? "pointer-events-none" : ""}`}>
+                  <div className={`rounded-lg border p-2.5 space-y-1 transition-all h-full ${
+                    !allowShopify
+                      ? "border-amber-500/30 bg-amber-500/5 opacity-80"
+                      : "group-hover:border-primary/60 cursor-pointer " + (
+                          shopifyIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"
+                          : shopifyIntegration?.status === "error" ? "border-red-500/40 bg-red-500/5"
+                          : "border-border/40 bg-background"
+                        )
+                  }`}>
+                    <div className="text-base relative inline-block">
+                      🛍️
+                      {!allowShopify && <Lock className="w-3 h-3 text-amber-500 absolute -bottom-1 -right-1" />}
+                    </div>
+                    <div className="font-medium truncate">Shopify</div>
+                    <div className={`text-[10px] ${
+                      !allowShopify
+                        ? "text-amber-500 font-medium"
+                        : shopifyIntegration?.status === "connected"
+                        ? "text-primary font-medium"
+                        : shopifyIntegration?.status === "error"
+                        ? "text-red-500 font-medium"
+                        : "text-muted-foreground"
+                    }`}>
+                      {!allowShopify
+                        ? (lang === "ar" ? "🔒 مقفل" : "🔒 Locked")
+                        : shopifyIntegration?.status === "connected"
+                        ? (shopifyIntegration.totalItems > 0
+                            ? (lang === "ar" ? `✓ ${shopifyIntegration.totalItems} منتج` : `✓ ${shopifyIntegration.totalItems} items`)
+                            : (lang === "ar" ? "✓ متصل" : "✓ Connected"))
+                        : shopifyIntegration?.status === "error"
+                        ? (lang === "ar" ? "⚠ خطأ" : "⚠ Error")
+                        : shopifyIntegration?.status === "pending"
+                        ? (lang === "ar" ? "قيد الانتظار…" : "Pending…")
+                        : (lang === "ar" ? "غير متصل" : "Not connected")}
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 7. Google Sheets */}
+                <div className={`rounded-lg border p-2.5 space-y-1 transition-all ${
+                  company.googleSheetsEnabled ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/40 bg-background"
+                }`}>
                   <div className="text-base">📊</div>
-                  <div className="font-medium">Google Sheets</div>
-                  <div className={`text-[10px] ${company.googleSheetsEnabled ? "text-emerald-500" : "text-muted-foreground"}`}>
-                    {company.googleSheetsEnabled ? "✓ Enabled" : "Disabled"}
+                  <div className="font-medium truncate">Sheets</div>
+                  <div className={`text-[10px] ${company.googleSheetsEnabled ? "text-emerald-500 font-medium" : "text-muted-foreground"}`}>
+                    {company.googleSheetsEnabled ? (lang === "ar" ? "✓ مفعّل" : "✓ Enabled") : (lang === "ar" ? "معطل" : "Disabled")}
                   </div>
                 </div>
-                <Link href="/client/knowledge" className="block h-full">
-                  <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 h-full ${
-                    (knowledgeFiles?.length ?? 0) > 0 ? "border-primary/40 bg-primary/5"
-                    : "border-border/40 bg-background"
-                  }`}>
-                    <div className="text-base">📁</div>
-                    <div className="font-medium">Uploaded Files</div>
-                    <div className={`text-[10px] ${
-                      (knowledgeFiles?.length ?? 0) > 0 ? "text-primary"
-                      : "text-muted-foreground"
-                    }`}>
-                      {(knowledgeFiles?.length ?? 0) > 0 ? `✓ ${(knowledgeFiles?.length ?? 0)} files` : "None"}
-                    </div>
-                  </div>
-                </Link>
-                <Link href="/client/wordpress" className="block h-full">
-                  <div className={`rounded-lg border p-2.5 space-y-1 cursor-pointer transition-colors hover:bg-muted/40 h-full ${
-                    wpIntegration?.status === "connected" ? "border-primary/40 bg-primary/5"
-                    : wpIntegration?.status === "error" ? "border-red-500/40 bg-red-500/5"
-                    : "border-border/40 bg-background"
-                  }`}>
-                    <div className="text-base">🔌</div>
-                    <div className="font-medium">WordPress</div>
-                    <div className={`text-[10px] ${
-                      wpIntegration?.status === "connected" ? "text-primary"
-                      : wpIntegration?.status === "error" ? "text-red-500"
-                      : "text-muted-foreground"
-                    }`}>
-                      {wpIntegration?.status === "connected"
-                        ? `✓ ${wpIntegration.totalItems} items`
-                        : wpIntegration?.status === "error" ? "⚠ Error"
-                        : wpIntegration?.status === "pending" ? "Pending…"
-                        : "Not connected"}
-                    </div>
-                  </div>
-                </Link>
               </div>
 
               {/* Arrow */}
