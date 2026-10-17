@@ -14,7 +14,7 @@ export type AiModelCatalog = Record<AiProviderId, SyncedAiModel[]>;
 
 const FALLBACK_MODELS: AiModelCatalog = {
   openai: [
-    "gpt-4o-mini", "gpt-3.5-turbo", "o3-mini", "o1-mini", "gpt-4o", "gpt-4-turbo", "gpt-4",
+    "gpt-4o-mini", "gpt-3.5-turbo", "o3-mini", "o1-mini", "gpt-4o", "chatgpt-4o-latest", "gpt-4-turbo", "gpt-4",
     "o1", "o3",
   ].map((id) => ({ id, label: displayLabel(id), free: isOpenAiFreeModel(id) })),
   anthropic: [
@@ -113,13 +113,14 @@ export function isOpenAiReasoningModel(modelId?: string | null): boolean {
 export function buildOpenAiChatParams(
   model: string,
   messages: Array<{ role: string; content: string }>,
-  options?: { maxTokens?: number; stream?: boolean }
+  options?: { maxTokens?: number; stream?: boolean; temperature?: number }
 ): {
   model: string;
   messages: Array<any>;
   max_tokens?: number;
   max_completion_tokens?: number;
   stream?: boolean;
+  temperature?: number;
 } {
   const effectiveModel = sanitizeOpenAiModel(model);
   const isReasoning = isOpenAiReasoningModel(effectiveModel);
@@ -140,15 +141,72 @@ export function buildOpenAiChatParams(
     params.stream = options.stream;
   }
 
+  // OpenAI reasoning models (o1, o3, etc.) reject any 'temperature' parameter
+  if (!isReasoning && options?.temperature !== undefined) {
+    params.temperature = options.temperature;
+  }
+
   if (options?.maxTokens !== undefined) {
     if (isReasoning) {
-      params.max_completion_tokens = options.maxTokens;
+      // Reasoning models (o1, o3, etc.) consume completion tokens for hidden thinking.
+      // Ensuring a minimum of 300 tokens prevents reasoning models from failing or truncating during internal thought.
+      params.max_completion_tokens = Math.max(options.maxTokens, 300);
     } else {
       params.max_tokens = options.maxTokens;
     }
   }
 
   return params;
+}
+
+export const AI_MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  // OpenAI Advanced, Paid & Free models
+  "gpt-4o":                             { input: 2.50,  output: 10.00 },
+  "gpt-4o-mini":                        { input: 0.15,  output: 0.60  },
+  "gpt-4o-2024-08-06":                  { input: 2.50,  output: 10.00 },
+  "gpt-4o-2024-11-20":                  { input: 2.50,  output: 10.00 },
+  "chatgpt-4o-latest":                  { input: 5.00,  output: 15.00 },
+  "gpt-4-turbo":                        { input: 10.00, output: 30.00 },
+  "gpt-4":                              { input: 30.00, output: 60.00 },
+  "gpt-3.5-turbo":                      { input: 0.50,  output: 1.50  },
+  "o1":                                 { input: 15.00, output: 60.00 },
+  "o1-preview":                         { input: 15.00, output: 60.00 },
+  "o1-mini":                            { input: 3.00,  output: 12.00 },
+  "o3":                                 { input: 15.00, output: 60.00 },
+  "o3-mini":                            { input: 1.10,  output: 4.40  },
+  // Anthropic
+  "claude-3-5-sonnet-20241022":         { input: 3.00,  output: 15.00 },
+  "claude-3-5-haiku-20241022":          { input: 0.80,  output: 4.00  },
+  "claude-3-opus-20240229":             { input: 15.00, output: 75.00 },
+  "claude-3-haiku-20240307":            { input: 0.25,  output: 1.25  },
+  "claude-3-sonnet-20240229":           { input: 3.00,  output: 15.00 },
+  "claude-sonnet-4-5":                  { input: 3.00,  output: 15.00 },
+  "claude-opus-4-5":                    { input: 15.00, output: 75.00 },
+  // Google
+  "gemini-1.5-pro":                     { input: 1.25,  output: 5.00  },
+  "gemini-1.5-flash":                   { input: 0.075, output: 0.30  },
+  "gemini-1.5-flash-8b":                { input: 0.0375, output: 0.15 },
+  "gemini-2.0-flash":                   { input: 0.10,  output: 0.40  },
+  "gemini-2.0-flash-lite":              { input: 0.075, output: 0.30  },
+  // OpenRouter & Others
+  "deepseek/deepseek-r1":               { input: 0.55,  output: 2.19  },
+  "deepseek/deepseek-v3":               { input: 0.27,  output: 1.10  },
+  "deepseek/deepseek-v4-flash":         { input: 0.14,  output: 0.28  },
+  "anthropic/claude-3.5-sonnet":        { input: 3.00,  output: 15.00 },
+  "openai/gpt-4o":                      { input: 2.50,  output: 10.00 },
+  "openai/gpt-4o-mini":                 { input: 0.15,  output: 0.60  },
+  "google/gemini-pro-1.5":              { input: 1.25,  output: 5.00  },
+  "mistralai/mistral-large":            { input: 2.00,  output: 6.00  },
+  "meta-llama/llama-3.3-70b-instruct":  { input: 0.12,  output: 0.30  },
+};
+
+export function getModelPricing(modelId?: string | null): { input: number; output: number } {
+  if (!modelId) return { input: 0.15, output: 0.60 };
+  const clean = modelId.trim();
+  if (AI_MODEL_PRICING[clean]) return AI_MODEL_PRICING[clean];
+  const withoutPrefix = clean.replace(/^(openai|models)\//i, "");
+  if (AI_MODEL_PRICING[withoutPrefix]) return AI_MODEL_PRICING[withoutPrefix];
+  return { input: 0.15, output: 0.60 };
 }
 
 export interface GeminiChatTurn {
@@ -284,7 +342,7 @@ async function getProviderKeys(): Promise<Record<AiProviderId, string>> {
 
 function isOpenAiChatModel(id: string): boolean {
   return /^(gpt-|o[1-9](?:-|$)|chatgpt|codex)/i.test(id)
-    && !/(embedding|moderation|whisper|tts|dall-e|search|realtime)/i.test(id);
+    && !/(embedding|moderation|whisper|tts|dall-e|search|realtime|instruct)/i.test(id);
 }
 
 async function syncOpenAi(apiKey: string): Promise<SyncedAiModel[]> {

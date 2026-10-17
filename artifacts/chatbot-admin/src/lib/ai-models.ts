@@ -24,8 +24,11 @@ export const AI_PROVIDERS = {
       { value: "o3-mini", label: "o3-mini (Free Tier, Reasoning)", free: true },
       { value: "o1-mini", label: "o1-mini (Free Tier, Reasoning)", free: true },
       { value: "gpt-4o", label: "GPT-4o (Most Capable)", free: false },
+      { value: "chatgpt-4o-latest", label: "ChatGPT-4o Latest (Dynamic Frontier)", free: false },
       { value: "gpt-4-turbo", label: "GPT-4 Turbo (Vision)", free: false },
+      { value: "gpt-4", label: "GPT-4 (High Accuracy)", free: false },
       { value: "o1", label: "o1 (Frontier Reasoning)", free: false },
+      { value: "o3", label: "o3 (Next-Gen Reasoning)", free: false },
     ],
   },
   anthropic: {

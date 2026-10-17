@@ -2,6 +2,7 @@ import { google, sheets_v4 } from "googleapis";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams } from "./aiModels";
 import { logger } from "./logger";
 import type { companiesTable } from "@workspace/db";
 
@@ -117,11 +118,18 @@ async function extractFieldsWithAI(
   if (!company.aiAgentApiKey) return null;
 
   const provider = company.aiProvider ?? "openai";
-  const model = company.aiModel ?? (
+  const rawModel = company.aiModel ?? (
     provider === "anthropic" ? "claude-3-5-haiku-20241022" :
     provider === "google" ? "gemini-2.0-flash" :
     provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
   );
+  const model = provider === "google"
+    ? sanitizeGoogleModel(rawModel)
+    : provider === "openrouter"
+    ? sanitizeOpenRouterModel(rawModel)
+    : provider === "openai"
+    ? sanitizeOpenAiModel(rawModel)
+    : rawModel;
 
   const instructions =
     `You extract structured data from a customer support conversation.\n` +
@@ -153,10 +161,9 @@ async function extractFieldsWithAI(
       raw = completion.choices[0]?.message?.content ?? "";
     } else {
       const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
-      const completion = await openai.chat.completions.create({
-        model, messages: [{ role: "user", content: instructions }],
-        response_format: { type: "json_object" },
-      });
+      const completion = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, [{ role: "user", content: instructions }], { maxTokens: 1024 })
+      );
       raw = completion.choices[0]?.message?.content ?? "";
     }
   } catch (err) {

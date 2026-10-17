@@ -25,6 +25,11 @@ const PROVIDERS = [
       { id: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", tier: "free" },
       { id: "o3-mini", label: "o3-mini", tier: "free" },
       { id: "gpt-4o", label: "GPT-4o", tier: "paid" },
+      { id: "chatgpt-4o-latest", label: "ChatGPT-4o Latest", tier: "paid" },
+      { id: "gpt-4-turbo", label: "GPT-4 Turbo", tier: "paid" },
+      { id: "gpt-4", label: "GPT-4", tier: "paid" },
+      { id: "o1", label: "o1", tier: "paid" },
+      { id: "o3", label: "o3", tier: "paid" },
     ],
   },
   {
