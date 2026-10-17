@@ -19,6 +19,7 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
+import { getQuotaAiSettings } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
 import { notifySubscriptionActivated } from "../lib/companyNotification";
@@ -130,18 +131,40 @@ router.get("/admin/usage-cost", async (req, res) => {
     const CHARS_PER_TOKEN = 4;
 
     const pricing: Record<string, { input: number; output: number }> = {
+      // OpenAI
       "gpt-4o":                     { input: 2.50,  output: 10.00 },
       "gpt-4o-mini":                { input: 0.15,  output: 0.60  },
       "gpt-4-turbo":                { input: 10.00, output: 30.00 },
       "gpt-3.5-turbo":              { input: 0.50,  output: 1.50  },
+      "o1":                         { input: 15.00, output: 60.00 },
+      "o1-mini":                    { input: 3.00,  output: 12.00 },
+      "o3":                         { input: 15.00, output: 60.00 },
+      "o3-mini":                    { input: 1.10,  output: 4.40  },
+      // Anthropic
       "claude-3-5-sonnet-20241022": { input: 3.00,  output: 15.00 },
       "claude-3-5-haiku-20241022":  { input: 0.80,  output: 4.00  },
       "claude-3-opus-20240229":     { input: 15.00, output: 75.00 },
       "claude-3-haiku-20240307":    { input: 0.25,  output: 1.25  },
+      "claude-3-sonnet-20240229":   { input: 3.00,  output: 15.00 },
+      // Google
       "gemini-1.5-pro":             { input: 1.25,  output: 5.00  },
       "gemini-1.5-flash":           { input: 0.075, output: 0.30  },
       "gemini-2.0-flash":           { input: 0.10,  output: 0.40  },
+      "gemini-2.0-flash-lite":      { input: 0.075, output: 0.30  },
+      // OpenRouter & Others
+      "deepseek/deepseek-r1":        { input: 0.55,  output: 2.19  },
+      "deepseek/deepseek-v3":        { input: 0.27,  output: 1.10  },
+      "anthropic/claude-3.5-sonnet": { input: 3.00,  output: 15.00 },
+      "openai/gpt-4o":               { input: 2.50,  output: 10.00 },
+      "openai/gpt-4o-mini":          { input: 0.15,  output: 0.60  },
+      "google/gemini-pro-1.5":       { input: 1.25,  output: 5.00  },
+      "mistralai/mistral-large":     { input: 2.00,  output: 6.00  },
+      "meta-llama/llama-3.3-70b-instruct": { input: 0.12, output: 0.30 },
     };
+
+    const quotaAi = await getQuotaAiSettings();
+    const quotaModel = quotaAi?.model || "gpt-4o-mini";
+    const quotaProvider = quotaAi?.provider || "openai";
 
     const { from, to, range } = req.query as { from?: string; to?: string; range?: string };
     let fromDate = from ? new Date(from) : undefined;
@@ -161,7 +184,13 @@ router.get("/admin/usage-cost", async (req, res) => {
     }
 
     const companies = await db
-      .select({ id: companiesTable.id, name: companiesTable.name, aiProvider: companiesTable.aiProvider, aiModel: companiesTable.aiModel })
+      .select({
+        id: companiesTable.id,
+        name: companiesTable.name,
+        aiProvider: companiesTable.aiProvider,
+        aiModel: companiesTable.aiModel,
+        monthlyTokenQuota: companiesTable.monthlyTokenQuota,
+      })
       .from(companiesTable);
 
     const whereClause = and(
@@ -211,8 +240,10 @@ router.get("/admin/usage-cost", async (req, res) => {
         continue;
       }
 
-      const modelKey = company.aiModel ?? "unknown";
-      const provider = company.aiProvider ?? "unknown";
+      const hasQuota = typeof company.monthlyTokenQuota === "number" && company.monthlyTokenQuota > 0;
+      // If company has quota, it executes via the Platform Quota AI Agent model!
+      const modelKey = hasQuota ? quotaModel : (company.aiModel ?? "unknown");
+      const provider = hasQuota ? quotaProvider : (company.aiProvider ?? "unknown");
       const inputTokens = Math.ceil((log.customerMessage?.length ?? 0) / CHARS_PER_TOKEN);
       const outputTokens = Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
       const mp = pricing[modelKey] ?? { input: 0, output: 0 };

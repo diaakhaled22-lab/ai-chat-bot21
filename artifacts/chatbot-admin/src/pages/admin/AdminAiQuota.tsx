@@ -221,7 +221,7 @@ export default function AdminAiQuota() {
 
   // Build Company Stats Map
   const companyUsageMap = useMemo(() => {
-    const map = new Map<number, { tokens: number; messages: number; cost: number; inputTokens: number; outputTokens: number }>();
+    const map = new Map<number, { tokens: number; messages: number; cost: number; inputTokens: number; outputTokens: number; model?: string; provider?: string }>();
     if (usageData?.byCompany) {
       for (const c of usageData.byCompany) {
         map.set(c.companyId, {
@@ -230,6 +230,8 @@ export default function AdminAiQuota() {
           cost: c.costUsd,
           inputTokens: c.inputTokens,
           outputTokens: c.outputTokens,
+          model: c.model,
+          provider: c.provider,
         });
       }
     }
@@ -357,7 +359,9 @@ export default function AdminAiQuota() {
       const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
       const cost = hasQuota ? (usage?.cost ?? 0) : 0;
 
-      const effectiveModel = c.aiModel || ((usage as any)?.model && (usage as any).model !== "unknown" ? (usage as any).model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
+      const effectiveModel = hasQuota
+        ? (quotaSettings?.aiModel || usage?.model || "gpt-4o-mini")
+        : (c.aiModel || "—");
 
       return [
         `"${c.name.replace(/"/g, '""')}"`,
@@ -743,7 +747,8 @@ export default function AdminAiQuota() {
                       ? Math.min(100, Math.max(tokensUsed > 0 ? 1 : 0, Math.round(percentFloat)))
                       : 0;
 
-                    const effectiveModel = c.aiModel || ((usage as any)?.model && (usage as any).model !== "unknown" ? (usage as any).model : null) || quotaSettings?.aiModel || "gpt-4o-mini";
+                    const effectiveModel = (hasQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
+                    const effectiveProvider = (hasQuota ? (quotaSettings?.aiProvider || usage?.provider) : c.aiProvider) || "openai";
 
                     return (
                       <tr key={c.id} className="hover:bg-muted/20 transition-colors">
@@ -754,9 +759,14 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-mono text-[11px] font-medium text-foreground bg-muted/70 px-2 py-0.5 rounded border border-border/40 inline-block">
-                            {effectiveModel}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-mono text-[11px] font-semibold text-amber-500 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded w-fit inline-block">
+                              {effectiveModel}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                              {effectiveProvider}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono text-muted-foreground">
                           {hasQuota ? (usage?.messages ?? 0).toLocaleString() : "—"}

@@ -321,6 +321,8 @@ export default function QuotaAICard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-quota-ai-settings"] });
       queryClient.invalidateQueries({ queryKey: ["admin-support-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       toast({
         title: lang === "ar" ? "تم حفظ إعدادات الذكاء الاصطناعي بنجاح" : "Support AI settings saved successfully",
       });
