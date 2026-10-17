@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  MessageCircle, Send, Loader2, Check, AlertTriangle,
-  Zap, Copy, Layers, Code, Mic,
+  MessageCircle, Send, Loader2, Check,
+  Copy, Layers, Code, Mic,
 } from "lucide-react";
 import {
   useGetClientCompany,
@@ -102,9 +102,6 @@ export default function ClientChannels() {
   const [draggingFab, setDraggingFab] = useState(false);
   const [fabPreviewSize, setFabPreviewSize] = useState({ width: 0, height: 0 });
 
-  /* ── Telegram webhook helpers ────────────────────────────── */
-  const [tgRegistering, setTgRegistering] = useState(false);
-  const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -262,27 +259,6 @@ export default function ClientChannels() {
     }
   };
 
-  const registerTelegramWebhook = async () => {
-    if (!company?.telegramBotApiKey) return;
-    setTgRegistering(true);
-    setTgStatus(null);
-    const webhookUrl = `${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`;
-    try {
-      const res = await fetch(`/api/telegram/register-webhook/${company.telegramBotApiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ webhookUrl }),
-      });
-      const data = await res.json();
-      setTgStatus(res.ok
-        ? { ok: true,  message: "✅ Webhook registered! Telegram will now send messages to your chatbot." }
-        : { ok: false, message: `❌ ${data.error}` });
-    } catch {
-      setTgStatus({ ok: false, message: "❌ Connection error. Check your bot token and try again." });
-    } finally {
-      setTgRegistering(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -371,54 +347,6 @@ export default function ClientChannels() {
                       )}
                     />
 
-                    {/* Webhook registration (only when token already saved) */}
-                    {company?.telegramBotApiKey && (
-                      <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-4 space-y-3">
-                        <p className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1.5">
-                          <Zap className="w-3.5 h-3.5" /> {lang === "ar" ? "تسجيل الويب هوك (Webhook)" : "Webhook Registration"}
-                        </p>
-                        {!company.isActive && (
-                          <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
-                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            {lang === "ar" ? "يرجى تفعيل حسابك أولاً قبل تسجيل الويب هوك." : "Activate your account first before registering."}
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          <p className="text-[11px] font-medium text-muted-foreground">{lang === "ar" ? "رابط الويب هوك الخاص بك" : "Your webhook URL"}</p>
-                          <div className="relative group">
-                            <pre className="bg-background/80 border border-border rounded-lg px-3 py-2 font-mono text-[11px] overflow-x-auto">
-                              {`${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`}
-                            </pre>
-                            <button
-                              type="button"
-                              className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded px-2 py-1 text-[10px] bg-muted border border-border hover:bg-accent"
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/api/telegram/webhook/${company.telegramBotApiKey}`);
-                                toast({ title: t("btn_copied") });
-                              }}
-                            >
-                              <Copy className="w-3 h-3 inline mr-1" />{t("btn_copy")}
-                            </button>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={registerTelegramWebhook}
-                          disabled={tgRegistering || !company.isActive}
-                          className="bg-sky-500 hover:bg-sky-600 text-white gap-2 h-8"
-                        >
-                          {tgRegistering
-                            ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full" /> {lang === "ar" ? "جاري التسجيل..." : "Registering…"}</>
-                            : <><Zap className="w-3.5 h-3.5" /> {lang === "ar" ? "تسجيل الويب هوك" : "Register Webhook"}</>}
-                        </Button>
-                        {tgStatus && (
-                          <p className={`text-xs rounded-lg border px-3 py-2 ${tgStatus.ok ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400" : "border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400"}`}>
-                            {tgStatus.message}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </AccordionContent>
