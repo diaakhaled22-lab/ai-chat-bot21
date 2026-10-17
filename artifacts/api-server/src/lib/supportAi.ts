@@ -34,6 +34,35 @@ export async function getSupportAiSettings(): Promise<{
   }
 }
 
+/**
+ * Retrieves Quota AI model and provider info configured on the AI / Quota page.
+ * Strictly decoupled from Customer Problems (support_ai_...) settings.
+ * Does not require an API key to be set, ensuring that UI components and dashboards
+ * always display the administrator's configured quota model.
+ */
+export async function getQuotaAiModelInfo(): Promise<{
+  provider: "openai" | "anthropic" | "google" | "openrouter";
+  model: string;
+}> {
+  try {
+    const rows = await db.select().from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_provider', 'quota_ai_model')`);
+    
+    const cfg = Object.fromEntries(rows.map(r => [r.key, r.value ?? ""]));
+    const provider = (cfg["quota_ai_provider"] as any) || "openai";
+    const defaultModel =
+      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+      provider === "google" ? "gemini-2.0-flash" :
+      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+    const model = cfg["quota_ai_model"]?.trim() || defaultModel;
+
+    return { provider, model };
+  } catch (err) {
+    logger.error({ err }, "Failed to get Quota AI model info");
+    return { provider: "openai", model: "gpt-4o-mini" };
+  }
+}
+
 export async function getQuotaAiSettings(): Promise<{
   apiKey: string;
   provider: "openai" | "anthropic" | "google" | "openrouter";
@@ -41,22 +70,41 @@ export async function getQuotaAiSettings(): Promise<{
 } | null> {
   try {
     const rows = await db.select().from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
     
     const cfg = Object.fromEntries(rows.map(r => [r.key, r.value ?? ""]));
-    const key = cfg["quota_ai_api_key"]?.trim() || cfg["support_ai_api_key"]?.trim();
+    
+    // Model and Provider strictly from Quota AI settings:
+    const provider = (cfg["quota_ai_provider"] as any) || "openai";
+    const defaultModel =
+      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+      provider === "google" ? "gemini-2.0-flash" :
+      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+    const model = cfg["quota_ai_model"]?.trim() || defaultModel;
+
+    // Resolve API key
+    let key = cfg["quota_ai_api_key"]?.trim();
+    if (!key) {
+      if (provider === "openai" && process.env.OPENAI_API_KEY) key = process.env.OPENAI_API_KEY;
+      else if (provider === "google" && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) key = process.env.ANTHROPIC_API_KEY;
+      else if (provider === "openrouter" && process.env.OPENROUTER_API_KEY) key = process.env.OPENROUTER_API_KEY;
+      else if (cfg["support_ai_api_key"]?.trim()) key = cfg["support_ai_api_key"]?.trim();
+    }
+
     if (!key) return null;
 
     return {
       apiKey: key,
-      provider: (cfg["quota_ai_provider"] || cfg["support_ai_provider"] || "openai") as any,
-      model: cfg["quota_ai_model"] || cfg["support_ai_model"] || "gpt-4o-mini",
+      provider,
+      model,
     };
   } catch (err) {
     logger.error({ err }, "Failed to get Quota AI settings");
     return null;
   }
 }
+
 
 /**
  * Resolves the AI credentials for a company.

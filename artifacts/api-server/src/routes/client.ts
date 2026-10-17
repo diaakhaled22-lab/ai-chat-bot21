@@ -25,7 +25,7 @@ import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
 import { getAiModelCatalog } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
-import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings } from "../lib/supportAi";
+import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
@@ -1015,7 +1015,7 @@ router.get("/client/dashboard", async (req, res) => {
       return;
     }
 
-    const quotaAi = await getQuotaAiSettings();
+    const quotaModelInfo = await getQuotaAiModelInfo();
 
     // Always compute for the current month so quota progress is accurate
     const now = new Date();
@@ -1083,8 +1083,8 @@ router.get("/client/dashboard", async (req, res) => {
       hasOwnApiKey: !!company.aiAgentApiKey,
       hasQuota: (company.monthlyTokenQuota ?? 0) > 0,
       activeExecutionMode: (company.monthlyTokenQuota && company.monthlyTokenQuota > 0) ? "quota" : (company.aiAgentApiKey ? "own_key" : "none"),
-      quotaAiProvider: quotaAi?.provider ?? "openai",
-      quotaAiModel: quotaAi?.model ?? "gpt-4o-mini",
+      quotaAiProvider: quotaModelInfo.provider,
+      quotaAiModel: quotaModelInfo.model,
       totalMessages: logs.length,
       estimatedInputTokens: totalInputTokens,
       estimatedOutputTokens: totalOutputTokens,
@@ -1141,9 +1141,9 @@ router.get("/client/usage", async (req, res) => {
       return;
     }
 
-    const quotaAi = await getQuotaAiSettings();
-    const quotaAiProvider = quotaAi?.provider ?? "openai";
-    const quotaAiModel = quotaAi?.model ?? "gpt-4o-mini";
+    const quotaModelInfo = await getQuotaAiModelInfo();
+    const quotaAiProvider = quotaModelInfo.provider;
+    const quotaAiModel = quotaModelInfo.model;
     const quota = company.monthlyTokenQuota!;
 
     const fromParam = req.query.from as string | undefined;

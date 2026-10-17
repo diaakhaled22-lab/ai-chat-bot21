@@ -282,14 +282,7 @@ export default function QuotaAICard() {
   const { data: quotaSettings, isLoading: quotaLoading } = useQuery({
     queryKey: ["admin-quota-ai-settings"],
     queryFn: async () => {
-      try {
-        return await customFetch("/api/admin/quota-ai-settings");
-      } catch (err: any) {
-        if (err?.status === 404) {
-          return await customFetch("/api/admin/support-settings");
-        }
-        throw err;
-      }
+      return await customFetch("/api/admin/quota-ai-settings");
     },
     staleTime: 30 * 1000,
   });
@@ -303,28 +296,17 @@ export default function QuotaAICard() {
 
   const saveQuotaAi = useMutation({
     mutationFn: async (payload: { aiApiKey?: string; aiProvider: string; aiModel: string }) => {
-      try {
-        return await customFetch("/api/admin/quota-ai-settings", {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
-      } catch (err: any) {
-        if (err?.status === 404) {
-          return await customFetch("/api/admin/support-settings", {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          });
-        }
-        throw err;
-      }
+      return await customFetch("/api/admin/quota-ai-settings", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-quota-ai-settings"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-support-settings"] });
       queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       toast({
-        title: lang === "ar" ? "تم حفظ إعدادات الذكاء الاصطناعي بنجاح" : "Support AI settings saved successfully",
+        title: lang === "ar" ? "تم حفظ إعدادات وكيل ذكاء الحصص بنجاح" : "Quota AI settings saved successfully",
       });
       setAiApiKey("");
       refetchAiStatus();

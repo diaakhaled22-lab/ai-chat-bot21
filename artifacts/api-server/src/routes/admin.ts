@@ -19,7 +19,7 @@ import {
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog } from "../lib/aiModels";
-import { getQuotaAiSettings } from "../lib/supportAi";
+import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
 import { notifySubscriptionActivated } from "../lib/companyNotification";
@@ -162,9 +162,9 @@ router.get("/admin/usage-cost", async (req, res) => {
       "meta-llama/llama-3.3-70b-instruct": { input: 0.12, output: 0.30 },
     };
 
-    const quotaAi = await getQuotaAiSettings();
-    const quotaModel = quotaAi?.model || "gpt-4o-mini";
-    const quotaProvider = quotaAi?.provider || "openai";
+    const quotaModelInfo = await getQuotaAiModelInfo();
+    const quotaModel = quotaModelInfo.model;
+    const quotaProvider = quotaModelInfo.provider;
 
     const { from, to, range } = req.query as { from?: string; to?: string; range?: string };
     let fromDate = from ? new Date(from) : undefined;
@@ -1529,15 +1529,22 @@ router.get("/admin/quota-ai-settings", async (req, res) => {
     const rows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
     const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
     const key = cfg["quota_ai_api_key"] || cfg["support_ai_api_key"] || "";
     const masked = key.length > 8 ? `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}` : key ? "****" : "";
+    const provider = cfg["quota_ai_provider"] || "openai";
+    const defaultModel =
+      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+      provider === "google" ? "gemini-2.0-flash" :
+      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+    const model = cfg["quota_ai_model"] || defaultModel;
+
     res.json({
       hasKey: !!key,
       maskedKey: masked,
-      aiProvider: cfg["quota_ai_provider"] || cfg["support_ai_provider"] || "openai",
-      aiModel: cfg["quota_ai_model"] || cfg["support_ai_model"] || "gpt-4o-mini",
+      aiProvider: provider,
+      aiModel: model,
     });
   } catch (err) {
     logger.error({ err }, "Get quota AI settings error");
@@ -1579,11 +1586,23 @@ router.get("/admin/quota-ai-status", async (req, res) => {
     const rows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
     const cfg      = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
-    const apiKey   = cfg["quota_ai_api_key"]  || cfg["support_ai_api_key"]  || "";
-    const provider = cfg["quota_ai_provider"] || cfg["support_ai_provider"] || "openai";
-    const model    = cfg["quota_ai_model"]    || cfg["support_ai_model"]    || "gpt-4o-mini";
+    const provider = cfg["quota_ai_provider"] || "openai";
+    const defaultModel =
+      provider === "anthropic" ? "claude-3-5-haiku-20241022" :
+      provider === "google" ? "gemini-2.0-flash" :
+      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+    const model    = cfg["quota_ai_model"]    || defaultModel;
+
+    let apiKey = cfg["quota_ai_api_key"]?.trim();
+    if (!apiKey) {
+      if (provider === "openai" && process.env.OPENAI_API_KEY) apiKey = process.env.OPENAI_API_KEY;
+      else if (provider === "google" && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) apiKey = process.env.ANTHROPIC_API_KEY;
+      else if (provider === "openrouter" && process.env.OPENROUTER_API_KEY) apiKey = process.env.OPENROUTER_API_KEY;
+      else if (cfg["support_ai_api_key"]?.trim()) apiKey = cfg["support_ai_api_key"]?.trim();
+    }
 
     if (!apiKey) {
       res.json({ status: "no_key", provider, model });
