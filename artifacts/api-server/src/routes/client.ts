@@ -23,7 +23,7 @@ import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
-import { getAiModelCatalog, sanitizeOpenRouterModel } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
@@ -1886,7 +1886,8 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
   if (provider === "google") {
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(apiKey);
-    const genModel = genAI.getGenerativeModel({ model });
+    const effectiveModel = sanitizeGoogleModel(model);
+    const genModel = genAI.getGenerativeModel({ model: effectiveModel });
     await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
   } else if (provider === "anthropic") {
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
@@ -1944,7 +1945,11 @@ router.get("/client/company/ai-status", async (req, res) => {
         provider === "google" ? "gemini-2.0-flash" :
         provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
       const rawModel = company.aiModel || defaultModel;
-      const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+      const model = provider === "google"
+        ? sanitizeGoogleModel(rawModel)
+        : provider === "openrouter"
+        ? sanitizeOpenRouterModel(rawModel)
+        : rawModel;
 
       const apiKey = company.aiAgentApiKey?.trim();
       if (!apiKey) {
@@ -2105,7 +2110,11 @@ router.post("/client/company/test-ai", async (req, res) => {
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
     const rawModel = bodyModel || company.aiModel || defaultModel;
-    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+    const model = provider === "google"
+      ? sanitizeGoogleModel(rawModel)
+      : provider === "openrouter"
+      ? sanitizeOpenRouterModel(rawModel)
+      : rawModel;
 
     let apiKey = bodyApiKey?.trim();
     if (!apiKey || apiKey === maskApiKey(company.aiAgentApiKey || "")) {
@@ -2347,12 +2356,10 @@ router.post("/client/multi-ai/chat", async (req, res) => {
     } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI    = new GoogleGenerativeAI(apiKey);
-      const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM });
-      const history  = formatted.slice(0, -1).map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
+      const effectiveModel = sanitizeGoogleModel(model);
+      const genModel = genAI.getGenerativeModel({ model: effectiveModel, systemInstruction: SYSTEM });
       const lastMsg = formatted[formatted.length - 1].content;
+      const history = formatGeminiHistory(formatted.slice(0, -1));
       const chat    = genModel.startChat({ history });
       const result  = await chat.sendMessageStream(lastMsg);
       for await (const chunk of result.stream) {

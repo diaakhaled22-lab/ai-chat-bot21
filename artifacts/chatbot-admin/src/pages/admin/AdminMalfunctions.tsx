@@ -64,12 +64,12 @@ const AI_PROVIDERS: Record<AiProvider, ProviderConfig> = {
     name: "Google Gemini",
     badgeName: "Gemini Pro",
     models: [
-      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro ⭐ (موصى به - سياق 1M واستدلال متقدم)" },
-      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro (أعلى دقة للمهام المعقدة)" },
-      { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash (فائق السرعة)" },
-      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash (خفيف ومتوازن)" },
+      { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash ⭐ (موصى به - فائق السرعة ومجاني)" },
+      { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite (خفيف وسريع جداً)" },
+      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash (سياق 1M ومجاني)" },
+      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro (استدلال متقدم)" },
     ],
-    defaultModel: "gemini-1.5-pro",
+    defaultModel: "gemini-2.0-flash",
     keyPlaceholder: "AIzaSy...",
     keyHelpText: {
       ar: "يمكنك استخدام مفتاح مجاني أو مدفوع لاشتراكك من منصة Google AI Studio الرسمية.",

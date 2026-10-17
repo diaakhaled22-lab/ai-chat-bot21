@@ -48,16 +48,14 @@ const PROVIDERS: AIProvider[] = [
   {
     id: "google", label: "Google Gemini",
     color: "text-blue-400", tabActive: "border-blue-400 text-blue-400",
-    keyHint: "AIza… (aistudio.google.com)",
     models: [
-      { id: "gemini-2.0-flash-lite",    label: "Gemini 2.0 Flash Lite",    tier: "free", description: "Lightest, free tier",    contextWindow: "1M" },
-      { id: "gemini-1.5-flash",         label: "Gemini 1.5 Flash",         tier: "free", description: "Fast multimodal",        contextWindow: "1M" },
-      { id: "gemini-2.0-flash",         label: "Gemini 2.0 Flash",         tier: "free", description: "Next-gen Flash",         contextWindow: "1M" },
-      { id: "gemini-1.5-pro",           label: "Gemini 1.5 Pro",           tier: "paid", description: "Complex reasoning",      contextWindow: "1M" },
-      { id: "gemini-2.5-flash-preview", label: "Gemini 2.5 Flash Preview", tier: "paid", description: "Thinking + tool use",   contextWindow: "1M" },
-      { id: "gemini-2.5-pro-preview",   label: "Gemini 2.5 Pro Preview",   tier: "paid", description: "Best Gemini, frontier", contextWindow: "1M" },
-      { id: "gemini-2.5-pro",           label: "Gemini 2.5 Pro",           tier: "paid", description: "Advanced reasoning model", contextWindow: "1M" },
+      { id: "gemini-2.0-flash",         label: "Gemini 2.0 Flash",         tier: "free", description: "Flagship fast & multimodal", contextWindow: "1M" },
+      { id: "gemini-2.0-flash-lite",    label: "Gemini 2.0 Flash Lite",    tier: "free", description: "Lightest, ultra-fast free tier", contextWindow: "1M" },
+      { id: "gemini-1.5-flash",         label: "Gemini 1.5 Flash",         tier: "free", description: "Fast multimodal free tier", contextWindow: "1M" },
+      { id: "gemini-1.5-flash-8b",      label: "Gemini 1.5 Flash 8B",      tier: "free", description: "High frequency, lightweight", contextWindow: "1M" },
+      { id: "gemini-1.5-pro",           label: "Gemini 1.5 Pro",           tier: "free", description: "Complex reasoning & coding", contextWindow: "2M" },
     ],
+    keyHint: "AIza… (aistudio.google.com)",
   },
   {
     id: "openrouter", label: "OpenRouter",

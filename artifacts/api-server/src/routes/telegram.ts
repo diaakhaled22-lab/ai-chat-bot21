@@ -26,6 +26,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -82,12 +83,13 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
 
   } else if (provider === "google") {
     const genAI = new GoogleGenerativeAI(apiKey);
+    const effectiveModel = sanitizeGoogleModel(model);
     const genModel = genAI.getGenerativeModel({
-      model,
+      model: effectiveModel,
       systemInstruction: sysContent || undefined,
     });
     const chat = genModel.startChat({
-      history: history.map(h => ({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: h.content }] })),
+      history: formatGeminiHistory(history),
     });
     const result = await chat.sendMessage(userMessage);
     return result.response.text();

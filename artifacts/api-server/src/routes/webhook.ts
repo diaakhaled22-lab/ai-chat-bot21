@@ -8,6 +8,7 @@ import { notifyNewConversation } from "../lib/companyNotification";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
@@ -168,14 +169,12 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
 
         } else if (provider === "google") {
           const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
+          const effectiveModel = sanitizeGoogleModel(model);
           const genModel = genAI.getGenerativeModel({
-            model,
+            model: effectiveModel,
             systemInstruction: sysContent || undefined,
           });
-          const history = conversationHistory.map(t => ({
-            role: t.role === "assistant" ? "model" : "user",
-            parts: [{ text: t.content }],
-          }));
+          const history = formatGeminiHistory(conversationHistory);
           const chat = genModel.startChat({ history });
           const result = await chat.sendMessage(customerMessage);
           aiReply = result.response.text();

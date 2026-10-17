@@ -23,12 +23,12 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "claude-3-sonnet-20240229", "claude-opus-4-5", "claude-sonnet-4-5",
   ].map((id) => ({ id, label: id, free: id.includes("haiku") })),
   google: [
-    "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-2.0-flash",
-    "gemini-1.5-pro", "gemini-2.5-flash-preview", "gemini-2.5-pro-preview",
-    "gemini-2.5-pro", "gemini-3.7-flash", "gemini-3.6-flash",
-    "gemini-3.5-flash", "gemini-3.1-pro", "gemini-3.1-flash-lite",
-    "gemini-3.5-flash-lite",
-  ].map((id) => ({ id, label: id, free: id.includes("flash") && !id.includes("preview") })),
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro",
+  ].map((id) => ({ id, label: displayLabel(id), free: true })),
   openrouter: [
     "openrouter/free",
     "google/gemma-4-31b-it:free",
@@ -45,6 +45,74 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "meta-llama/llama-3.3-70b-instruct",
   ].map((id) => ({ id, label: id === "openrouter/free" ? "Free Models Router (Auto)" : id, free: id.endsWith(":free") || id === "openrouter/free" })),
 };
+
+export function sanitizeGoogleModel(model?: string | null): string {
+  if (!model || !model.trim()) return "gemini-2.0-flash";
+  const trimmed = model.trim().replace(/^models\//, "");
+  // Deprecated or non-existent models -> fallback to the recommended free tier model
+  if (
+    trimmed === "gemini-pro" ||
+    trimmed === "gemini-1.0-pro" ||
+    trimmed.startsWith("gemini-3") ||
+    trimmed.startsWith("gemini-2.5") ||
+    trimmed === "gemini-flash"
+  ) {
+    return "gemini-2.0-flash";
+  }
+  return trimmed;
+}
+
+export function isGoogleFreeModel(modelId: string): boolean {
+  const normalized = modelId.toLowerCase().replace(/^models\//, "");
+  return (
+    normalized.includes("flash") ||
+    normalized.includes("lite") ||
+    normalized.includes("8b") ||
+    normalized.startsWith("gemini-2.0") ||
+    normalized.startsWith("gemini-1.5")
+  );
+}
+
+export interface GeminiChatTurn {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
+}
+
+export function formatGeminiHistory(
+  rawHistory: Array<{ role: string; content: string }>
+): GeminiChatTurn[] {
+  const result: Array<{ role: "user" | "model"; text: string }> = [];
+
+  for (const item of rawHistory) {
+    const text = (item.content || "").trim();
+    if (!text) continue;
+    const role: "user" | "model" = (item.role === "assistant" || item.role === "model") ? "model" : "user";
+
+    // Gemini requires the contents array in multi-turn chat to begin with a user turn
+    if (result.length === 0 && role === "model") {
+      continue;
+    }
+
+    // Merge consecutive turns with the same role into one turn to strictly maintain alternating turns
+    const prev = result[result.length - 1];
+    if (prev && prev.role === role) {
+      prev.text += `\n${text}`;
+    } else {
+      result.push({ role, text });
+    }
+  }
+
+  // If history ends with a user turn, when sendMessage(userMessage) is called,
+  // that would append a second consecutive user turn. Trim trailing user turn.
+  while (result.length > 0 && result[result.length - 1].role === "user") {
+    result.pop();
+  }
+
+  return result.map((t) => ({
+    role: t.role,
+    parts: [{ text: t.text }],
+  }));
+}
 
 export function sanitizeOpenRouterModel(model?: string | null): string {
   if (!model || !model.trim()) return "openrouter/free";
@@ -180,7 +248,7 @@ async function syncGoogle(apiKey: string): Promise<SyncedAiModel[]> {
       return {
         id,
         label: displayLabel(id, model.displayName),
-        free: false,
+        free: isGoogleFreeModel(id),
       };
     })
     .filter((model: SyncedAiModel) => model.id.startsWith("gemini"));

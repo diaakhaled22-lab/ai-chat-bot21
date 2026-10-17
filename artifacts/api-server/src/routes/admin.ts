@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
-import { getAiModelCatalog, sanitizeOpenRouterModel } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
@@ -149,6 +149,7 @@ router.get("/admin/usage-cost", async (req, res) => {
       // Google
       "gemini-1.5-pro":             { input: 1.25,  output: 5.00  },
       "gemini-1.5-flash":           { input: 0.075, output: 0.30  },
+      "gemini-1.5-flash-8b":        { input: 0.0375, output: 0.15 },
       "gemini-2.0-flash":           { input: 0.10,  output: 0.40  },
       "gemini-2.0-flash-lite":      { input: 0.075, output: 0.30  },
       // OpenRouter & Others
@@ -1370,7 +1371,8 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
     } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
-      const gemini = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM_PROMPT });
+      const effectiveModel = sanitizeGoogleModel(model);
+      const gemini = genAI.getGenerativeModel({ model: effectiveModel, systemInstruction: SYSTEM_PROMPT });
       const result = await gemini.generateContent(USER_PROMPT);
       aiResponse = result.response.text();
     } else if (provider === "openrouter") {
@@ -1491,7 +1493,8 @@ router.get("/admin/support-ai-status", async (req, res) => {
         } else if (provider === "google") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genAI    = new GoogleGenerativeAI(apiKey);
-          const genModel = genAI.getGenerativeModel({ model });
+          const effectiveModel = sanitizeGoogleModel(model);
+          const genModel = genAI.getGenerativeModel({ model: effectiveModel });
           await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
         } else if (provider === "openrouter") {
           const OpenAI = (await import("openai")).default;
@@ -1636,7 +1639,8 @@ router.get("/admin/quota-ai-status", async (req, res) => {
         } else if (provider === "google") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genAI    = new GoogleGenerativeAI(apiKey);
-          const genModel = genAI.getGenerativeModel({ model });
+          const effectiveModel = sanitizeGoogleModel(model);
+          const genModel = genAI.getGenerativeModel({ model: effectiveModel });
           await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
         } else if (provider === "openrouter") {
           const OpenAI = (await import("openai")).default;
@@ -1935,7 +1939,8 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
       if (provider === "google") {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
-        const genModel = genAI.getGenerativeModel({ model });
+        const effectiveModel = sanitizeGoogleModel(model);
+        const genModel = genAI.getGenerativeModel({ model: effectiveModel });
         const result = await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: testPrompt }] }] });
         reply = result.response.text();
       } else if (provider === "anthropic") {
@@ -2037,7 +2042,8 @@ router.post("/admin/ai-test", async (req, res) => {
     } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
-      const genModel = genAI.getGenerativeModel({ model, systemInstruction: SYSTEM });
+      const effectiveModel = sanitizeGoogleModel(model);
+      const genModel = genAI.getGenerativeModel({ model: effectiveModel, systemInstruction: SYSTEM });
       const result = await genModel.generateContent(testMessage);
       response = result.response.text();
     } else if (provider === "openrouter") {
@@ -2713,7 +2719,7 @@ router.post("/admin/malfunctions/ai-test", async (req, res) => {
       });
       responseText = comp.choices[0]?.message?.content || "OpenAI Connected successfully";
     } else {
-      const selectedModel = customModel || "gemini-1.5-pro";
+      const selectedModel = sanitizeGoogleModel(customModel || "gemini-2.0-flash");
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(key);
       const gemini = genAI.getGenerativeModel({ model: selectedModel });
@@ -2826,8 +2832,9 @@ ${malfunction.description}
     } else {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
+      const effectiveModel = sanitizeGoogleModel(model);
       const gemini = genAI.getGenerativeModel({
-        model,
+        model: effectiveModel,
         systemInstruction: SYSTEM_INSTRUCTION,
       });
       const result = await gemini.generateContent(USER_PROMPT);

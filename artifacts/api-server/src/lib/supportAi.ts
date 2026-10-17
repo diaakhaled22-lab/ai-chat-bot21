@@ -2,7 +2,7 @@ import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/
 import { eq, sql, and, gte, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyQuota75PercentConsumed } from "./companyNotification";
-import { sanitizeOpenRouterModel } from "./aiModels";
+import { sanitizeOpenRouterModel, sanitizeGoogleModel } from "./aiModels";
 
 export interface ResolvedAiConfig {
   apiKey: string;
@@ -136,7 +136,11 @@ export async function resolveCompanyAi(
         provider === "google" ? "gemini-2.0-flash" :
         provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
       const rawModel = company.aiModel || defaultModel;
-      const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+      const model = provider === "google"
+        ? sanitizeGoogleModel(rawModel)
+        : provider === "openrouter"
+        ? sanitizeOpenRouterModel(rawModel)
+        : rawModel;
 
       return {
         apiKey: company.aiAgentApiKey,

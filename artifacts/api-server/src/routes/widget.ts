@@ -13,6 +13,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sanitizeGoogleModel, formatGeminiHistory } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -218,14 +219,12 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     } else if (provider === "google") {
       const genAI = new GoogleGenerativeAI(aiConfig.apiKey);
+      const effectiveModel = sanitizeGoogleModel(model);
       const genModel = genAI.getGenerativeModel({
-        model,
+        model: effectiveModel,
         systemInstruction: sysContent || undefined,
       });
-      const history = conversationHistory.map((t) => ({
-        role: t.role === "assistant" ? "model" : "user",
-        parts: [{ text: t.content }],
-      }));
+      const history = formatGeminiHistory(conversationHistory);
       const chat = genModel.startChat({ history });
       const result = await chat.sendMessage(message.trim());
       aiReply = result.response.text();

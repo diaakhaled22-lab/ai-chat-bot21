@@ -38,7 +38,9 @@ const PROVIDERS = [
     label: "Google",
     models: [
       { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", tier: "free" },
-      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", tier: "paid" },
+      { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite", tier: "free" },
+      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", tier: "free" },
+      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", tier: "free" },
     ],
   },
   {
