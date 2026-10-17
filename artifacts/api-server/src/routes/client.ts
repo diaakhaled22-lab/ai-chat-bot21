@@ -429,7 +429,7 @@ router.post("/client/company", async (req, res) => {
 // PUT /client/company
 router.put("/client/company", async (req, res) => {
   try {
-    const parsed = UpdateClientCompanyBody.safeParse(req.body);
+    const parsed = UpdateClientCompanyBody.partial().safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid input" });
       return;
@@ -615,8 +615,11 @@ router.put("/client/company", async (req, res) => {
   }
 });
 
-// PUT /client/company/execution-mode — quick toggle between quota and API tokens
-router.put("/client/company/execution-mode", async (req, res) => {
+// PUT/PATCH/POST /client/company/execution-mode — quick toggle between quota and API tokens
+router.all("/client/company/execution-mode", async (req, res, next) => {
+  if (req.method !== "PUT" && req.method !== "PATCH" && req.method !== "POST") {
+    return next();
+  }
   try {
     const { mode } = req.body as { mode?: string };
     if (mode !== "quota" && mode !== "tokens") {

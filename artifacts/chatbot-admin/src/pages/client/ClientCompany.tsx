@@ -492,11 +492,27 @@ export default function ClientCompany() {
 
   const toggleExecutionModeMutation = useMutation({
     mutationFn: async (mode: "quota" | "tokens") => {
-      return await customFetch("/api/client/company/execution-mode", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
-      });
+      try {
+        return await customFetch("/api/client/company/execution-mode", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode }),
+        });
+      } catch (err: any) {
+        const msg = String(err?.message || "");
+        const status = err?.status || err?.statusCode;
+        if (status === 404 || msg.includes("404") || msg.includes("Cannot PUT")) {
+          return await customFetch("/api/client/company", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: company?.name || "Company",
+              aiExecutionMode: mode,
+            }),
+          });
+        }
+        throw err;
+      }
     },
     onSuccess: (_, mode) => {
       queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
