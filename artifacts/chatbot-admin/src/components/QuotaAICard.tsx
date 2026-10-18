@@ -65,9 +65,11 @@ const PROVIDERS: AIProvider[] = [
   {
     id: "openrouter", label: "OpenRouter", color: "text-pink-400", bgColor: "bg-pink-500/10 border-pink-500/30",
     models: [
-      { id: "google/gemini-2.0-flash-exp:free",      label: "Gemini 2.0 Flash (Free)",    tier: "free", description: "Free Gemini 2.0 via OpenRouter — ultra-fast",     contextWindow: "1M"   },
-      { id: "meta-llama/llama-3.2-3b-instruct:free",  label: "Llama 3.2 3B (Free)",        tier: "free", description: "Free lightweight Meta model, low latency",        contextWindow: "128K" },
-      { id: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 (Free)",         tier: "free", description: "Free frontier reasoning model via OpenRouter",    contextWindow: "64K"  },
+      { id: "openrouter/free",                       label: "OpenRouter Free Auto ⭐",   tier: "free", description: "Auto-routes to available free model", contextWindow: "128K" },
+      { id: "google/gemma-4-31b-it:free",             label: "Google Gemma 4 31B",        tier: "free", description: "High-capability open model",           contextWindow: "256K" },
+      { id: "nvidia/nemotron-3.5-lightning:free",    label: "NVIDIA Nemotron 3.5 Light", tier: "free", description: "Ultra-fast NVIDIA free model",         contextWindow: "128K" },
+      { id: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 (Free)",        tier: "free", description: "Free frontier reasoning model",        contextWindow: "64K"  },
+      { id: "meta-llama/llama-3.3-70b-instruct:free",label: "Llama 3.3 70B (Free)",      tier: "free", description: "Meta flagship open model",             contextWindow: "128K" },
       { id: "anthropic/claude-3.5-sonnet",            label: "Claude 3.5 Sonnet",          tier: "paid", description: "Via OpenRouter — balanced speed & intelligence", contextWindow: "200K" },
       { id: "openai/gpt-4o",                          label: "GPT-4o",                     tier: "paid", description: "Via OpenRouter — OpenAI's flagship model",      contextWindow: "128K" },
       { id: "openai/gpt-4o-mini",                     label: "GPT-4o mini",                tier: "paid", description: "Via OpenRouter — affordable GPT-4 class",      contextWindow: "128K" },

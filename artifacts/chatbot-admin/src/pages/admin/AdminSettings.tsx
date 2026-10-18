@@ -57,8 +57,15 @@ const PROVIDERS = [
     id: "openrouter",
     label: "OpenRouter",
     models: [
-      { id: "openai/gpt-4o-mini", label: "GPT-4o mini", tier: "free" },
+      { id: "openrouter/free", label: "OpenRouter Free Auto", tier: "free" },
+      { id: "google/gemma-4-31b-it:free", label: "Google Gemma 4 31B", tier: "free" },
+      { id: "nvidia/nemotron-3.5-lightning:free", label: "NVIDIA Nemotron 3.5 Lightning", tier: "free" },
+      { id: "deepseek/deepseek-r1:free", label: "DeepSeek R1", tier: "free" },
+      { id: "meta-llama/llama-3.3-70b-instruct:free", label: "Llama 3.3 70B Instruct", tier: "free" },
       { id: "openai/gpt-4o", label: "GPT-4o", tier: "paid" },
+      { id: "openai/gpt-4o-mini", label: "GPT-4o mini", tier: "paid" },
+      { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", tier: "paid" },
+      { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet", tier: "paid" },
     ],
   },
 ] as const;

@@ -13,7 +13,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -230,15 +230,38 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       aiReply = result.response.text();
 
     } else if (provider === "openrouter") {
-      const openrouter = new OpenAI({ apiKey: aiConfig.apiKey, baseURL: "https://openrouter.ai/api/v1" });
+      const openrouter = new OpenAI({
+        apiKey: aiConfig.apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: getOpenRouterHeaders(),
+      });
+      const effectiveModel = sanitizeOpenRouterModel(model);
       const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
       if (sysContent) msgs.push({ role: "system", content: sysContent });
       for (const turn of conversationHistory) {
         msgs.push({ role: turn.role, content: turn.content });
       }
       msgs.push({ role: "user", content: message.trim() });
-      const completion = await openrouter.chat.completions.create({ model, messages: msgs });
-      aiReply = completion.choices?.[0]?.message?.content ?? "";
+      let completion;
+      try {
+        completion = await openrouter.chat.completions.create({
+          model: effectiveModel,
+          messages: msgs,
+          max_tokens: 1024,
+        });
+      } catch (err: any) {
+        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+          logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in widget; falling back to openrouter/free");
+          completion = await openrouter.chat.completions.create({
+            model: "openrouter/free",
+            messages: msgs,
+            max_tokens: 1024,
+          });
+        } else {
+          throw err;
+        }
+      }
+      aiReply = stripThinkingTags(completion.choices?.[0]?.message?.content ?? "");
 
     } else {
       const openai = new OpenAI({ apiKey: aiConfig.apiKey });

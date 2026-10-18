@@ -82,7 +82,7 @@ export default function ClientAiModel() {
 
   // Form states with smart initial values
   const [selectedProvider, setSelectedProvider] = useState<AiProvider>("openrouter");
-  const [selectedModel, setSelectedModel] = useState<string>("nvidia/nemotron-3.5-lightning:free");
+  const [selectedModel, setSelectedModel] = useState<string>("openrouter/free");
   const [apiKey, setApiKey] = useState<string>("");
   const [showApiKey, setShowApiKey] = useState(false);
   const initialized = useRef(false);
@@ -117,7 +117,7 @@ export default function ClientAiModel() {
 
   // Effective Quota Defaults
   const quotaProvider = (company as any)?.quotaAiProvider || (quotaData as any)?.provider || "openrouter";
-  const quotaModel = (company as any)?.quotaAiModel || (quotaData as any)?.model || "nvidia/nemotron-3.5-lightning:free";
+  const quotaModel = (company as any)?.quotaAiModel || (quotaData as any)?.model || "openrouter/free";
 
   // Sync state from server on company load
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function ClientAiModel() {
             : company.aiModel
         );
       } else {
-        setSelectedModel(quotaModel || "nvidia/nemotron-3.5-lightning:free");
+        setSelectedModel(quotaModel || "openrouter/free");
       }
 
       if (company.aiAgentApiKey) {

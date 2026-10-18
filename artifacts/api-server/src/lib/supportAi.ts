@@ -64,7 +64,7 @@ export async function getQuotaAiModelInfo(): Promise<{
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
     const rawModel = cfg["quota_ai_model"]?.trim() || defaultModel;
     const model = provider === "google"
       ? sanitizeGoogleModel(rawModel)
@@ -97,7 +97,7 @@ export async function getQuotaAiSettings(): Promise<{
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
     const rawModel = cfg["quota_ai_model"]?.trim() || defaultModel;
     const model = provider === "google"
       ? sanitizeGoogleModel(rawModel)
@@ -152,7 +152,7 @@ export async function resolveCompanyAi(
       const defaultModel =
         provider === "anthropic" ? "claude-3-5-haiku-20241022" :
         provider === "google" ? "gemini-2.0-flash" :
-        provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+        provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
       const rawModel = company.aiModel || defaultModel;
       const model = provider === "google"
         ? sanitizeGoogleModel(rawModel)
@@ -194,7 +194,7 @@ export async function resolveCompanyAi(
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
     const rawModel = company.aiModel || defaultModel;
     const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 

@@ -34,18 +34,28 @@ const FALLBACK_MODELS: AiModelCatalog = {
   openrouter: [
     "openrouter/free",
     "google/gemma-4-31b-it:free",
-    "google/gemma-4-26b-a4b-it:free",
     "nvidia/nemotron-3.5-lightning:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "deepseek/deepseek-r1:free",
+    "deepseek/deepseek-v3-base:free",
+    "mistralai/mistral-7b-instruct:free",
+    "qwen/qwen3-8b:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "liquid/lfm-2.5-2.6b:free",
+    "deepseek/deepseek-v4-flash",
     "deepseek/deepseek-r1",
-    "deepseek/deepseek-chat",
+    "deepseek/deepseek-v3",
+    "anthropic/claude-3.5-sonnet",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
+    "google/gemini-pro-1.5",
     "mistralai/mistral-large",
     "meta-llama/llama-3.3-70b-instruct",
-  ].map((id) => ({ id, label: id === "openrouter/free" ? "Free Models Router (Auto)" : id, free: id.endsWith(":free") || id === "openrouter/free" })),
+  ].map((id) => ({
+    id,
+    label: id === "openrouter/free" ? "OpenRouter Free Auto (Recommended)" : displayLabel(id),
+    free: isOpenRouterFreeModel(id),
+  })),
 };
 
 export function sanitizeGoogleModel(model?: string | null): string {
@@ -208,8 +218,10 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
 export function getModelPricing(modelId?: string | null): { input: number; output: number } {
   if (!modelId) return { input: 0.15, output: 0.60 };
   const clean = modelId.trim();
+  if (isOpenRouterFreeModel(clean)) return { input: 0, output: 0 };
   if (AI_MODEL_PRICING[clean]) return AI_MODEL_PRICING[clean];
   const withoutPrefix = clean.replace(/^(openai|models|google)\//i, "");
+  if (isOpenRouterFreeModel(withoutPrefix)) return { input: 0, output: 0 };
   if (AI_MODEL_PRICING[withoutPrefix]) return AI_MODEL_PRICING[withoutPrefix];
 
   const lower = withoutPrefix.toLowerCase();
@@ -264,9 +276,31 @@ export function formatGeminiHistory(
   }));
 }
 
+export function isOpenRouterFreeModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  const lower = modelId.toLowerCase().trim();
+  return lower.endsWith(":free") || lower === "openrouter/free" || lower.endsWith("/free");
+}
+
+export function stripThinkingTags(text?: string | null): string {
+  if (!text) return "";
+  const cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  return cleaned || text.trim();
+}
+
+export function getOpenRouterHeaders(): Record<string, string> {
+  return {
+    "HTTP-Referer": "https://chatpot.ai",
+    "X-Title": "AI Chatbot Platform",
+  };
+}
+
 export function sanitizeOpenRouterModel(model?: string | null): string {
   if (!model || !model.trim()) return "openrouter/free";
   const trimmed = model.trim();
+  if (trimmed === "free" || trimmed === "openrouter/auto") {
+    return "openrouter/free";
+  }
   if (
     trimmed === "nvidia/nemotron-nano-9b-v2:free" ||
     trimmed.includes("nemotron-nano-9b") ||
@@ -406,16 +440,26 @@ async function syncGoogle(apiKey: string): Promise<SyncedAiModel[]> {
 
 async function syncOpenRouter(): Promise<SyncedAiModel[]> {
   const data = await fetchJson("https://openrouter.ai/api/v1/models");
-  return (data.data ?? []).map((model: any) => {
+  const models: SyncedAiModel[] = (data.data ?? []).map((model: any) => {
     const id = String(model.id);
     const pricing = model.pricing ?? {};
     return {
       id,
-      label: displayLabel(id, model.name),
-      free: id.endsWith(":free")
+      label: id === "openrouter/free" ? "OpenRouter Free Auto (Recommended)" : displayLabel(id, model.name),
+      free: isOpenRouterFreeModel(id)
         || (Number(pricing.prompt ?? -1) === 0 && Number(pricing.completion ?? -1) === 0),
     };
   });
+
+  if (!models.some((m) => m.id === "openrouter/free")) {
+    models.unshift({
+      id: "openrouter/free",
+      label: "OpenRouter Free Auto (Recommended)",
+      free: true,
+    });
+  }
+
+  return models;
 }
 
 export async function refreshAiModels(): Promise<AiModelCatalog> {

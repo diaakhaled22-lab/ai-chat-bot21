@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
@@ -1345,16 +1345,37 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
       const result = await gemini.generateContent(USER_PROMPT);
       aiResponse = result.response.text();
     } else if (provider === "openrouter") {
-      const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-      const completion = await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user",   content: USER_PROMPT   },
-        ],
-        max_tokens: 600,
+      const openai = new OpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: getOpenRouterHeaders(),
       });
-      aiResponse = completion.choices[0]?.message?.content ?? "";
+      const effectiveModel = sanitizeOpenRouterModel(model);
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: effectiveModel,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user",   content: USER_PROMPT   },
+          ],
+          max_tokens: 600,
+        });
+      } catch (err: any) {
+        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+          completion = await openai.chat.completions.create({
+            model: "openrouter/free",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user",   content: USER_PROMPT   },
+            ],
+            max_tokens: 600,
+          });
+        } else {
+          throw err;
+        }
+      }
+      aiResponse = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
     } else {
       // openai (default)
       const openai = new OpenAI({ apiKey });
@@ -1465,13 +1486,17 @@ router.get("/admin/support-ai-status", async (req, res) => {
           await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
         } else if (provider === "openrouter") {
           const OpenAI = (await import("openai")).default;
-          const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+          const openai = new OpenAI({
+            apiKey,
+            baseURL: "https://openrouter.ai/api/v1",
+            defaultHeaders: getOpenRouterHeaders(),
+          });
           const effectiveModel = sanitizeOpenRouterModel(model);
           try {
-            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
           } catch (err: any) {
-            if (err?.status === 404 || err?.message?.includes("No endpoints found")) {
-              await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+            if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+              await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
             } else {
               throw err;
             }
@@ -1518,7 +1543,7 @@ router.get("/admin/quota-ai-settings", async (req, res) => {
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
     const rawModel = cfg["quota_ai_model"] || defaultModel;
     const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
@@ -1577,7 +1602,7 @@ router.get("/admin/quota-ai-status", async (req, res) => {
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google" ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini";
+      provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
     const rawModel = cfg["quota_ai_model"]    || defaultModel;
     const model    = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
@@ -1613,13 +1638,17 @@ router.get("/admin/quota-ai-status", async (req, res) => {
           await genModel.generateContent({ contents: [{ role: "user", parts: [{ text: "hi" }] }] });
         } else if (provider === "openrouter") {
           const OpenAI = (await import("openai")).default;
-          const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+          const openai = new OpenAI({
+            apiKey,
+            baseURL: "https://openrouter.ai/api/v1",
+            defaultHeaders: getOpenRouterHeaders(),
+          });
           const effectiveModel = sanitizeOpenRouterModel(model);
           try {
-            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
           } catch (err: any) {
-            if (err?.status === 404 || err?.message?.includes("No endpoints found")) {
-              await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 5 });
+            if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+              await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
             } else {
               throw err;
             }
@@ -1899,7 +1928,7 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
     const model = company.aiModel ?? (
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
       provider === "google"    ? "gemini-2.0-flash" :
-      provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
+      provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini"
     );
 
     const testPrompt = "Reply with exactly: 'AI is working correctly.'";
@@ -1921,9 +1950,31 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
         reply = (msg.content[0] as { type: string; text: string })?.text ?? "";
       } else if (provider === "openrouter") {
         const OpenAI = (await import("openai")).default;
-        const openrouter = new OpenAI({ apiKey: company.aiAgentApiKey, baseURL: "https://openrouter.ai/api/v1" });
-        const completion = await openrouter.chat.completions.create({ model, messages: [{ role: "user", content: testPrompt }], max_tokens: 64 });
-        reply = completion.choices[0]?.message?.content ?? "";
+        const openrouter = new OpenAI({
+          apiKey: company.aiAgentApiKey,
+          baseURL: "https://openrouter.ai/api/v1",
+          defaultHeaders: getOpenRouterHeaders(),
+        });
+        const effectiveModel = sanitizeOpenRouterModel(model);
+        let completion;
+        try {
+          completion = await openrouter.chat.completions.create({
+            model: effectiveModel,
+            messages: [{ role: "user", content: testPrompt }],
+            max_tokens: 64,
+          });
+        } catch (err: any) {
+          if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+            completion = await openrouter.chat.completions.create({
+              model: "openrouter/free",
+              messages: [{ role: "user", content: testPrompt }],
+              max_tokens: 64,
+            });
+          } else {
+            throw err;
+          }
+        }
+        reply = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
       } else {
         const OpenAI = (await import("openai")).default;
         const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
@@ -2020,12 +2071,31 @@ router.post("/admin/ai-test", async (req, res) => {
       const result = await genModel.generateContent(testMessage);
       response = result.response.text();
     } else if (provider === "openrouter") {
-      const openai = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
-      const completion = await openai.chat.completions.create({
-        model, max_tokens: 100,
-        messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
+      const openai = new OpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: getOpenRouterHeaders(),
       });
-      response = completion.choices[0]?.message?.content ?? "";
+      const effectiveModel = sanitizeOpenRouterModel(model);
+      let completion;
+      try {
+        completion = await openai.chat.completions.create({
+          model: effectiveModel,
+          max_tokens: 100,
+          messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
+        });
+      } catch (err: any) {
+        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+          completion = await openai.chat.completions.create({
+            model: "openrouter/free",
+            max_tokens: 100,
+            messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
+          });
+        } else {
+          throw err;
+        }
+      }
+      response = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
     } else {
       const openai = new OpenAI({ apiKey });
       const completion = await openai.chat.completions.create(

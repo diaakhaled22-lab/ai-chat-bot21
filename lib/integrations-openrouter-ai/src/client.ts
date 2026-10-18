@@ -16,7 +16,14 @@ function getClient(): OpenAI {
         "OPENROUTER_API_KEY must be set. Please add your OpenRouter API key as a secret.",
       );
     }
-    _openrouter = new OpenAI({ apiKey, baseURL });
+    _openrouter = new OpenAI({
+      apiKey,
+      baseURL,
+      defaultHeaders: {
+        "HTTP-Referer": "https://chatpot.ai",
+        "X-Title": "AI Chatbot Platform",
+      },
+    });
   }
   return _openrouter;
 }

@@ -63,10 +63,11 @@ const PROVIDERS: AIProvider[] = [
   {
     id: "openrouter", label: "OpenRouter", color: "text-purple-400", bgColor: "bg-purple-500/10 border-purple-500/30",
     models: [
-      { id: "google/gemma-4-31b-it:free",             label: "Google Gemma 4 31B ⭐",      tier: "free", description: "Recommended free model, strong general tasks",   contextWindow: "256K" },
-      { id: "openai/gpt-oss-20b:free",                label: "OpenAI OSS 20B",             tier: "free", description: "OpenAI open-weight model, free via OpenRouter",  contextWindow: "128K" },
-      { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "NVIDIA Nemotron Super 120B", tier: "free", description: "Large NVIDIA model, strong reasoning",           contextWindow: "1M"   },
-      { id: "nvidia/nemotron-nano-9b-v2:free",        label: "NVIDIA Nemotron Nano 9B",    tier: "free", description: "Lightweight NVIDIA model, fast responses",       contextWindow: "128K" },
+      { id: "openrouter/free",                       label: "OpenRouter Free Auto ⭐",   tier: "free", description: "Auto-routes to available free model",             contextWindow: "128K" },
+      { id: "google/gemma-4-31b-it:free",             label: "Google Gemma 4 31B",        tier: "free", description: "Recommended free model, strong general tasks",   contextWindow: "256K" },
+      { id: "nvidia/nemotron-3.5-lightning:free",    label: "NVIDIA Nemotron 3.5 Light", tier: "free", description: "Fast NVIDIA free model, ultra-low latency",       contextWindow: "128K" },
+      { id: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 (Free)",        tier: "free", description: "Frontier reasoning model, free tier",            contextWindow: "64K"  },
+      { id: "meta-llama/llama-3.3-70b-instruct:free",label: "Llama 3.3 70B (Free)",      tier: "free", description: "Meta flagship open-weight model",                contextWindow: "128K" },
       { id: "deepseek/deepseek-v4-flash",             label: "DeepSeek V4 Flash ⭐",       tier: "paid", description: "Fast & affordable, great quality-to-cost ratio", contextWindow: "128K" },
       { id: "deepseek/deepseek-r1",                   label: "DeepSeek R1",                tier: "paid", description: "Full reasoning model, higher rate limits",       contextWindow: "128K" },
       { id: "deepseek/deepseek-v3",                   label: "DeepSeek V3",                tier: "paid", description: "Top-tier open-weight model",                    contextWindow: "128K" },

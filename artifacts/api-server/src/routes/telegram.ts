@@ -26,7 +26,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -95,13 +95,37 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
     return result.response.text();
 
   } else if (provider === "openrouter") {
-    const openrouter = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+    const openrouter = new OpenAI({
+      apiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: getOpenRouterHeaders(),
+    });
+    const effectiveModel = sanitizeOpenRouterModel(model);
     const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
-    const completion = await openrouter.chat.completions.create({ model, messages: msgs });
-    return (completion.choices?.[0]?.message?.content || "") as string;
+    let completion;
+    try {
+      completion = await openrouter.chat.completions.create({
+        model: effectiveModel,
+        messages: msgs,
+        max_tokens: 1024,
+      });
+    } catch (err: any) {
+      if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+        logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in Telegram; falling back to openrouter/free");
+        completion = await openrouter.chat.completions.create({
+          model: "openrouter/free",
+          messages: msgs,
+          max_tokens: 1024,
+        });
+      } else {
+        throw err;
+      }
+    }
+    const reply = completion.choices?.[0]?.message?.content || "";
+    return stripThinkingTags(reply);
 
   } else {
     const openai = new OpenAI({ apiKey });

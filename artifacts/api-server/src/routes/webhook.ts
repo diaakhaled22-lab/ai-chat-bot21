@@ -8,7 +8,7 @@ import { notifyNewConversation } from "../lib/companyNotification";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
@@ -110,7 +110,7 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
         const model = company.aiModel ?? (
           provider === "anthropic" ? "claude-3-5-haiku-20241022" :
           provider === "google" ? "gemini-1.5-flash" :
-          provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
+          provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini"
         );
 
         let sysContent = company.systemPrompt ?? "";
@@ -180,15 +180,38 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
           aiReply = result.response.text();
 
         } else if (provider === "openrouter") {
-          const openrouter = new OpenAI({ apiKey: company.aiAgentApiKey, baseURL: "https://openrouter.ai/api/v1" });
+          const openrouter = new OpenAI({
+            apiKey: company.aiAgentApiKey,
+            baseURL: "https://openrouter.ai/api/v1",
+            defaultHeaders: getOpenRouterHeaders(),
+          });
+          const effectiveModel = sanitizeOpenRouterModel(model);
           const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
           if (sysContent) messages.push({ role: "system", content: sysContent });
           for (const turn of conversationHistory) {
             messages.push({ role: turn.role, content: turn.content });
           }
           messages.push({ role: "user", content: customerMessage });
-          const completion = await openrouter.chat.completions.create({ model, messages });
-          aiReply = completion.choices[0]?.message?.content ?? "";
+          let completion;
+          try {
+            completion = await openrouter.chat.completions.create({
+              model: effectiveModel,
+              messages,
+              max_tokens: 1024,
+            });
+          } catch (err: any) {
+            if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+              logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in webhook; falling back to openrouter/free");
+              completion = await openrouter.chat.completions.create({
+                model: "openrouter/free",
+                messages,
+                max_tokens: 1024,
+              });
+            } else {
+              throw err;
+            }
+          }
+          aiReply = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
 
         } else {
           const openai = new OpenAI({ apiKey: company.aiAgentApiKey });

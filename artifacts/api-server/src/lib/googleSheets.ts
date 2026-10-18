@@ -2,7 +2,7 @@ import { google, sheets_v4 } from "googleapis";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams } from "./aiModels";
+import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "./aiModels";
 import { logger } from "./logger";
 import type { companiesTable } from "@workspace/db";
 
@@ -121,7 +121,7 @@ async function extractFieldsWithAI(
   const rawModel = company.aiModel ?? (
     provider === "anthropic" ? "claude-3-5-haiku-20241022" :
     provider === "google" ? "gemini-2.0-flash" :
-    provider === "openrouter" ? "google/gemma-4-31b-it:free" : "gpt-4o-mini"
+    provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini"
   );
   const model = provider === "google"
     ? sanitizeGoogleModel(rawModel)
@@ -154,11 +154,26 @@ async function extractFieldsWithAI(
       const result = await genModel.generateContent(instructions);
       raw = result.response.text();
     } else if (provider === "openrouter") {
-      const openrouter = new OpenAI({ apiKey: company.aiAgentApiKey, baseURL: "https://openrouter.ai/api/v1" });
-      const completion = await openrouter.chat.completions.create({
-        model, messages: [{ role: "user", content: instructions }],
+      const openrouter = new OpenAI({
+        apiKey: company.aiAgentApiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: getOpenRouterHeaders(),
       });
-      raw = completion.choices[0]?.message?.content ?? "";
+      let completion;
+      try {
+        completion = await openrouter.chat.completions.create({
+          model, messages: [{ role: "user", content: instructions }],
+        });
+      } catch (err: any) {
+        if (isOpenRouterFreeModel(model) && model !== "openrouter/free") {
+          completion = await openrouter.chat.completions.create({
+            model: "openrouter/free", messages: [{ role: "user", content: instructions }],
+          });
+        } else {
+          throw err;
+        }
+      }
+      raw = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
     } else {
       const openai = new OpenAI({ apiKey: company.aiAgentApiKey });
       const completion = await openai.chat.completions.create(

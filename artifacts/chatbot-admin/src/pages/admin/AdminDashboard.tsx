@@ -82,8 +82,13 @@ const MODEL_COLORS: Record<string, string> = {
   "gemini-1.5-flash-8b":        "#93c5fd",
   "gemini-2.0-flash":           "#38bdf8",
   "gemini-2.0-flash-lite":      "#7dd3fc",
-  "gemini-2.5-flash":           "#0284c7",
-  "unknown":                    "#6b7280",
+  "openrouter/free":                        "#ec4899",
+  "google/gemma-4-31b-it:free":             "#f43f5e",
+  "nvidia/nemotron-3.5-lightning:free":     "#fb7185",
+  "deepseek/deepseek-r1:free":              "#a855f7",
+  "meta-llama/llama-3.3-70b-instruct:free": "#d946ef",
+  "meta-llama/llama-3.1-8b-instruct:free":  "#e879f9",
+  "unknown":                                "#6b7280",
 };
 
 type RangePreset = "today" | "7d" | "30d" | "month" | "all";
