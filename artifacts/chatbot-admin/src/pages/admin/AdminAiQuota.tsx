@@ -876,13 +876,76 @@ export default function AdminAiQuota() {
         queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       }
     } catch (err: any) {
+      const errMsg = String(err?.message || "");
+      const is404 = err?.status === 404 || errMsg.includes("404") || errMsg.includes("Cannot POST");
       toast({
         title: lang === "ar" ? "فشل مشاركة الفاتورة" : "Failed to share bill",
-        description: err?.message || (lang === "ar" ? "حدث خطأ أثناء إرسال البريد" : "An error occurred while sending the email"),
+        description: is404
+          ? (lang === "ar"
+              ? "الخادم على Replit يحتاج لإعادة تشغيل (Restart) لتفعيل مسار إرسال الفاتورة الجديد. يرجى الضغط على زر Restart أو Stop ثم Run في Replit."
+              : "The backend server needs a restart to activate the send-bill-email route. Please click Restart in Replit.")
+          : (err?.message || (lang === "ar" ? "حدث خطأ أثناء إرسال البريد" : "An error occurred while sending the email")),
         variant: "destructive",
       });
     } finally {
       setIsSharingBill(false);
+    }
+  };
+
+  const handleDownloadInvoiceImage = (company: Company) => {
+    try {
+      const usage = companyUsageMap.get(company.id);
+      const quota = company.monthlyTokenQuota ?? 0;
+      const totalTokens = usage?.tokens ?? 0;
+      const cost = usage?.cost ?? 0;
+      const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
+      const remaining = quota > 0 ? Math.max(0, quota - totalTokens) : null;
+      const invoiceNumber = `INV-Q-${company.id}-${toIso(new Date()).replace(/-/g, "")}`;
+      const effectiveModel = (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : company.aiModel) || "gpt-4o-mini";
+      const effectiveProvider = (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
+
+      const dataUrl = generateBillInvoiceCanvas({
+        companyName: company.name,
+        clientName: company.clientName || company.clientUsername || "—",
+        invoiceNumber,
+        rangeLabel,
+        effectiveModel,
+        effectiveProvider,
+        quotaFormatted: formatQuota(quota),
+        validityPeriod:
+          company.activationStart || company.activationEnd
+            ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
+            : undefined,
+        messages: usage?.messages ?? 0,
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        totalTokens,
+        percent,
+        remaining,
+        cost,
+        isExceeded: quota > 0 && totalTokens > quota,
+      });
+
+      if (!dataUrl) {
+        throw new Error("Failed to generate invoice image");
+      }
+
+      const link = document.createElement("a");
+      link.download = `Invoice_${company.name.replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, "_")}_${invoiceNumber}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: lang === "ar" ? "تم تحميل صورة الفاتورة بنجاح" : "Invoice image downloaded successfully",
+      });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل تحميل صورة الفاتورة" : "Failed to download invoice image",
+        description: err?.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -2153,6 +2216,16 @@ export default function AdminAiQuota() {
                     >
                       <Printer className="w-3.5 h-3.5 text-blue-400" />
                       {lang === "ar" ? "طباعة" : "Print"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                      onClick={() => handleDownloadInvoiceImage(billTarget)}
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-500" />
+                      {lang === "ar" ? "تحميل الصورة" : "Download Image"}
                     </Button>
                     <Button
                       type="button"
