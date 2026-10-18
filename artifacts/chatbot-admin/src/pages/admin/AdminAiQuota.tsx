@@ -26,7 +26,15 @@ import {
   BarChart3,
   Plus,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Receipt,
+  Printer,
+  Copy,
+  Calendar,
+  Check,
+  CheckCircle2,
+  AlertCircle,
+  FileText
 } from "lucide-react";
 import {
   BarChart,
@@ -96,6 +104,20 @@ function formatQuota(num: number | null | undefined): string {
 type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent";
 type SortDir = "asc" | "desc";
 
+type RangePreset = "today" | "7d" | "30d" | "month" | "all";
+
+const RANGE_OPTIONS: { key: RangePreset; labelAr: string; labelEn: string }[] = [
+  { key: "today",  labelAr: "اليوم", labelEn: "Today" },
+  { key: "7d",     labelAr: "آخر 7 أيام", labelEn: "Last 7 days" },
+  { key: "30d",    labelAr: "آخر 30 يوم", labelEn: "Last 30 days" },
+  { key: "month",  labelAr: "هذا الشهر", labelEn: "This month" },
+  { key: "all",    labelAr: "كل الأوقات", labelEn: "All time" },
+];
+
+function toIso(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
   if (col !== sortKey) return <ArrowUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
   return sortDir === "desc"
@@ -111,6 +133,36 @@ export default function AdminAiQuota() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("tokens");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [activeRange, setActiveRange] = useState<RangePreset>("30d");
+  const [showCustom, setShowCustom] = useState(false);
+  const [customFrom, setCustomFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return toIso(d);
+  });
+  const [customTo, setCustomTo] = useState(() => toIso(new Date()));
+
+  const [billTarget, setBillTarget] = useState<Company | null>(null);
+  const [showAllBillsModal, setShowAllBillsModal] = useState(false);
+  const [copiedBill, setCopiedBill] = useState(false);
+
+  const queryParams = useMemo(() => {
+    if (showCustom && customFrom && customTo) {
+      return `from=${customFrom}&to=${customTo}`;
+    }
+    return `range=${activeRange}`;
+  }, [showCustom, customFrom, customTo, activeRange]);
+
+  const queryKeyParam = showCustom ? `custom:${customFrom}:${customTo}` : activeRange;
+
+  const rangeLabel = useMemo(() => {
+    if (showCustom) {
+      return `${customFrom} → ${customTo}`;
+    }
+    const opt = RANGE_OPTIONS.find((o) => o.key === activeRange);
+    return lang === "ar" ? opt?.labelAr : opt?.labelEn;
+  }, [showCustom, customFrom, customTo, activeRange, lang]);
 
   const toggleSort = (col: SortKey) => {
     if (sortKey === col) {
@@ -148,8 +200,8 @@ export default function AdminAiQuota() {
     refetch: refetchUsage,
     isFetching: isFetchingUsage,
   } = useQuery<UsageCostData>({
-    queryKey: ["admin-usage-cost", "month"],
-    queryFn: () => customFetch("/api/admin/usage-cost?range=month"),
+    queryKey: ["admin-usage-cost", queryKeyParam],
+    queryFn: () => customFetch(`/api/admin/usage-cost?${queryParams}`),
     refetchInterval: 10_000,
   });
 
@@ -383,11 +435,50 @@ export default function AdminAiQuota() {
     
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Quota_Export_${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `Quota_Export_${showCustom ? `${customFrom}_to_${customTo}` : activeRange}_${toIso(new Date())}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyBill = (c: Company) => {
+    const usage = companyUsageMap.get(c.id);
+    const tokens = usage?.tokens ?? 0;
+    const cost = usage?.cost ?? 0;
+    const quota = c.monthlyTokenQuota ?? 0;
+    const effectiveModel = (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
+    const invoiceNumber = `INV-Q-${c.id}-${toIso(new Date()).replace(/-/g, "")}`;
+
+    const text = [
+      `=== ${lang === "ar" ? "فاتورة استهلاك الحصة" : "Quota Usage Invoice"} ===`,
+      `${lang === "ar" ? "رقم الفاتورة" : "Invoice #"}: ${invoiceNumber}`,
+      `${lang === "ar" ? "الفترة الزمنية" : "Period"}: ${rangeLabel}`,
+      `${lang === "ar" ? "الشركة" : "Company"}: ${c.name}`,
+      `${lang === "ar" ? "العميل" : "Client"}: ${c.clientName || c.clientUsername || "—"}`,
+      `${lang === "ar" ? "النموذج النشط" : "Active AI Model"}: ${effectiveModel}`,
+      `${lang === "ar" ? "الحصة المخصصة" : "Allocated Quota"}: ${formatQuota(quota)} tokens`,
+      `-----------------------------------------`,
+      `${lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}: ${(usage?.messages ?? 0).toLocaleString()}`,
+      `${lang === "ar" ? "رموز المدخلات" : "Input Tokens"}: ${(usage?.inputTokens ?? 0).toLocaleString()}`,
+      `${lang === "ar" ? "رموز المخرجات" : "Output Tokens"}: ${(usage?.outputTokens ?? 0).toLocaleString()}`,
+      `${lang === "ar" ? "إجمالي الرموز المستهلكة" : "Total Consumed Tokens"}: ${tokens.toLocaleString()}`,
+      `${lang === "ar" ? "نسبة استهلاك الحصة" : "Quota Usage %"}: ${quota > 0 ? ((tokens / quota) * 100).toFixed(2) : 0}%`,
+      `${lang === "ar" ? "الرموز المتبقية" : "Remaining Quota"}: ${quota > 0 ? Math.max(0, quota - tokens).toLocaleString() : "Unlimited"}`,
+      `-----------------------------------------`,
+      `${lang === "ar" ? "إجمالي التكلفة التقديرية" : "Total Estimated Cost"}: $${cost.toFixed(4)} USD`,
+    ].join("\n");
+
+    navigator.clipboard.writeText(text);
+    setCopiedBill(true);
+    setTimeout(() => setCopiedBill(false), 2000);
+    toast({
+      title: lang === "ar" ? "تم نسخ تفاصيل الفاتورة بنجاح" : "Invoice details copied successfully",
+    });
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const totalAllocatedQuota = useMemo(() => {
@@ -411,8 +502,8 @@ export default function AdminAiQuota() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header with Unified Date Range Filter */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Cpu className="w-8 h-8 text-violet-400" />
@@ -424,7 +515,79 @@ export default function AdminAiQuota() {
               : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
           </p>
         </div>
+
+        {/* Global Date Filter Controls */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1 overflow-x-auto max-w-full">
+            <Calendar className="w-3.5 h-3.5 text-primary ml-1.5 shrink-0" />
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
+                  !showCustom && activeRange === opt.key
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+              >
+                {lang === "ar" ? opt.labelAr : opt.labelEn}
+              </button>
+            ))}
+            <button
+              onClick={() => setShowCustom((v) => !v)}
+              className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
+                showCustom
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              }`}
+            >
+              <span>{lang === "ar" ? "مخصص" : "Custom"}</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
+
+          {showCustom && (
+            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1 shadow-sm text-xs">
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="bg-transparent text-foreground outline-none text-xs"
+              />
+              <span className="text-muted-foreground">→</span>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom}
+                max={toIso(new Date())}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="bg-transparent text-foreground outline-none text-xs"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons & Period Badge */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-3 py-1.5 rounded-md flex items-center gap-2">
+          <Calendar className="w-3.5 h-3.5 text-primary" />
+          <span>{lang === "ar" ? "الفترة المعروضة:" : "Showing:"}</span>
+          <span className="text-foreground font-semibold">{rangeLabel}</span>
+        </span>
+
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+            disabled={!filteredAndSortedCompanies.length}
+            onClick={() => setShowAllBillsModal(true)}
+          >
+            <Receipt className="w-4 h-4 text-emerald-500" />
+            {lang === "ar" ? "كشف فواتير العملاء" : "Client Invoices"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -483,7 +646,7 @@ export default function AdminAiQuota() {
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
               <Coins className="w-4 h-4 text-emerald-400" />
-              {lang === "ar" ? "استهلاك الرموز هذا الشهر" : "Tokens Consumed This Month"}
+              {lang === "ar" ? `استهلاك الرموز (${rangeLabel})` : `Tokens Consumed (${rangeLabel})`}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -708,7 +871,7 @@ export default function AdminAiQuota() {
                       {lang === "ar" ? "النسبة" : "Percent"} <SortIcon col="percent" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الإجراء" : "Action"}</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">{lang === "ar" ? "الإجراءات" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
@@ -820,15 +983,26 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[11px]"
-                            onClick={() => openQuotaDialog(c)}
-                          >
-                            <TrendingUp className="w-3 h-3 mr-1.5 text-blue-400" />
-                            {lang === "ar" ? "الحصة" : "Quota"}
-                          </Button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[11px] gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                              onClick={() => setBillTarget(c)}
+                            >
+                              <Receipt className="w-3 h-3 text-emerald-500" />
+                              {lang === "ar" ? "الفاتورة" : "Bill"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[11px] gap-1 text-blue-500 hover:text-blue-600 border-blue-500/30 hover:border-blue-500/50"
+                              onClick={() => openQuotaDialog(c)}
+                            >
+                              <TrendingUp className="w-3 h-3 text-blue-400" />
+                              {lang === "ar" ? "الحصة" : "Quota"}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1094,6 +1268,338 @@ export default function AdminAiQuota() {
 
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setShowModelCostModal(false)}>
+              {lang === "ar" ? "إغلاق" : "Close"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Individual Client Quota Bill Modal */}
+      <Dialog open={!!billTarget} onOpenChange={(open) => !open && setBillTarget(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          {billTarget && (() => {
+            const usage = companyUsageMap.get(billTarget.id);
+            const totalTokens = usage?.tokens ?? 0;
+            const inputTokens = usage?.inputTokens ?? 0;
+            const outputTokens = usage?.outputTokens ?? 0;
+            const messages = usage?.messages ?? 0;
+            const cost = usage?.cost ?? 0;
+            const quota = billTarget.monthlyTokenQuota ?? 0;
+            const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
+            const isExceeded = quota > 0 && totalTokens > quota;
+            const remaining = quota > 0 ? Math.max(0, quota - totalTokens) : null;
+            const effectiveModel = (billTarget.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : billTarget.aiModel) || "gpt-4o-mini";
+            const effectiveProvider = (billTarget.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : billTarget.aiProvider) || "openai";
+            const invoiceNumber = `INV-Q-${billTarget.id}-${toIso(new Date()).replace(/-/g, "")}`;
+
+            return (
+              <div className="space-y-5">
+                <DialogHeader className="border-b border-border/50 pb-4">
+                  <div className="flex items-center justify-between">
+                    <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <Receipt className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div>{lang === "ar" ? "فاتورة استهلاك الحصة" : "Quota Usage Bill"}</div>
+                        <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                          {lang === "ar" ? `رقم الفاتورة: ${invoiceNumber}` : `Invoice #: ${invoiceNumber}`}
+                        </p>
+                      </div>
+                    </DialogTitle>
+                    <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-muted border border-border/50 text-muted-foreground">
+                      {rangeLabel}
+                    </span>
+                  </div>
+                </DialogHeader>
+
+                {/* Company & Client Info Card */}
+                <div className="grid grid-cols-2 gap-3 p-3.5 bg-muted/30 border border-border/50 rounded-xl text-xs">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px] mb-0.5">
+                      {lang === "ar" ? "الشركة:" : "Company:"}
+                    </span>
+                    <span className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-primary" />
+                      {billTarget.name}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-muted-foreground block text-[11px] mb-0.5">
+                      {lang === "ar" ? "العميل:" : "Client:"}
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {billTarget.clientName || billTarget.clientUsername || "—"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-muted-foreground block text-[11px] mb-0.5">
+                      {lang === "ar" ? "النموذج النشط:" : "Active Model:"}
+                    </span>
+                    <span className="font-mono text-amber-500 dark:text-amber-400 font-semibold">
+                      {effectiveModel}
+                    </span>
+                    <span className="text-muted-foreground text-[10px] ml-1 uppercase">({effectiveProvider})</span>
+                  </div>
+
+                  <div>
+                    <span className="text-muted-foreground block text-[11px] mb-0.5">
+                      {lang === "ar" ? "الحصة المخصصة:" : "Allocated Quota:"}
+                    </span>
+                    <span className="font-semibold text-blue-400">
+                      {formatQuota(quota)} tokens
+                    </span>
+                  </div>
+                </div>
+
+                {/* Usage Progress Gauge */}
+                <div className="p-3.5 bg-card border border-border/50 rounded-xl space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">
+                      {lang === "ar" ? "مستوى استهلاك الحصة:" : "Quota Utilization:"}
+                    </span>
+                    <span className={`font-bold ${isExceeded ? "text-red-500" : percent >= 80 ? "text-amber-500" : "text-emerald-500"}`}>
+                      {percent.toFixed(1)}% {isExceeded && (lang === "ar" ? "(تجاوز الحصة)" : "(Over Quota)")}
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        isExceeded ? "bg-red-500" : percent >= 80 ? "bg-amber-500" : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${Math.min(100, percent)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                    <span>
+                      {lang === "ar" ? "المستهلك:" : "Consumed:"}{" "}
+                      <strong className="text-foreground">{totalTokens.toLocaleString()}</strong> tokens
+                    </span>
+                    <span>
+                      {remaining !== null && (
+                        <>
+                          {lang === "ar" ? "المتبقي:" : "Remaining:"}{" "}
+                          <strong className={isExceeded ? "text-red-400" : "text-foreground"}>
+                            {remaining.toLocaleString()}
+                          </strong> tokens
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Itemized Invoice Table */}
+                <div className="border border-border/50 rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-muted/40 border-b border-border/50 text-muted-foreground">
+                        <th className="text-left px-3.5 py-2.5 font-medium">{lang === "ar" ? "البند" : "Item"}</th>
+                        <th className="text-right px-3.5 py-2.5 font-medium">{lang === "ar" ? "الكمية / الاستهلاك" : "Quantity / Usage"}</th>
+                        <th className="text-right px-3.5 py-2.5 font-medium">{lang === "ar" ? "التكلفة التقديرية" : "Est. Cost"}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      <tr>
+                        <td className="px-3.5 py-2 text-foreground font-medium">
+                          {lang === "ar" ? "رسائل المحادثة (Chat Messages)" : "Total Chat Messages"}
+                        </td>
+                        <td className="px-3.5 py-2 text-right font-mono tabular-nums">{messages.toLocaleString()} msgs</td>
+                        <td className="px-3.5 py-2 text-right text-muted-foreground">—</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3.5 py-2 text-foreground font-medium">
+                          {lang === "ar" ? "رموز المدخلات (Input Tokens)" : "Input Tokens"}
+                        </td>
+                        <td className="px-3.5 py-2 text-right font-mono tabular-nums">{inputTokens.toLocaleString()} tokens</td>
+                        <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums">
+                          ${((inputTokens / 1_000_000) * (cost > 0 && totalTokens > 0 ? (cost / totalTokens) * 1_000_000 : 0)).toFixed(4)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-3.5 py-2 text-foreground font-medium">
+                          {lang === "ar" ? "رموز المخرجات (Output Tokens)" : "Output Tokens"}
+                        </td>
+                        <td className="px-3.5 py-2 text-right font-mono tabular-nums">{outputTokens.toLocaleString()} tokens</td>
+                        <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums">
+                          ${((outputTokens / 1_000_000) * (cost > 0 && totalTokens > 0 ? (cost / totalTokens) * 1_000_000 : 0)).toFixed(4)}
+                        </td>
+                      </tr>
+                      <tr className="bg-muted/10 font-medium">
+                        <td className="px-3.5 py-2 text-foreground">
+                          {lang === "ar" ? "إجمالي الرموز المستهلكة" : "Total Consumed Tokens"}
+                        </td>
+                        <td className="px-3.5 py-2 text-right font-mono tabular-nums font-bold text-foreground">
+                          {totalTokens.toLocaleString()} tokens
+                        </td>
+                        <td className="px-3.5 py-2 text-right font-bold text-emerald-400 tabular-nums">
+                          ${cost.toFixed(4)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Grand Total Box */}
+                <div className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      {lang === "ar" ? "إجمالي الفاتورة المستحقة للفترة:" : "Total Amount for Period:"}
+                    </span>
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      {isExceeded
+                        ? (lang === "ar" ? "تجاوز استهلاك الحصة المسموحة" : "Exceeded assigned quota")
+                        : (lang === "ar" ? "مغطى بالكامل ضمن الحصة الشهرية" : "Covered within monthly quota")}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-emerald-500 font-mono">
+                      ${cost.toFixed(4)}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground block">USD</span>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => handleCopyBill(billTarget)}
+                    >
+                      {copiedBill ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      {lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={handlePrint}
+                    >
+                      <Printer className="w-3.5 h-3.5 text-blue-400" />
+                      {lang === "ar" ? "طباعة" : "Print"}
+                    </Button>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setBillTarget(null)}>
+                    {lang === "ar" ? "إغلاق" : "Close"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* All Client Bills Summary Modal */}
+      <Dialog open={showAllBillsModal} onOpenChange={setShowAllBillsModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b border-border/50 pb-4">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                <Receipt className="w-5 h-5 text-emerald-400" />
+                {lang === "ar" ? "كشف فواتير استهلاك الحصص لجميع الشركات" : "All Client Quota Invoices Summary"}
+              </DialogTitle>
+              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-muted border border-border/50 text-muted-foreground">
+                {rangeLabel}
+              </span>
+            </div>
+            <DialogDescription>
+              {lang === "ar"
+                ? "ملخص الفواتير والتكلفة التقديرية لكل شركة بناءً على استهلاك الرموز الفعلية للفترة المحددة."
+                : "Invoice summary and estimated AI cost per company based on token quota usage for the selected period."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-x-auto mt-2">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الشركة" : "Company"}</th>
+                  <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "العميل" : "Client"}</th>
+                  <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النموذج" : "Model"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الحصة" : "Quota"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرموز المستهلكة" : "Tokens Used"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرسائل" : "Messages"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Quota %"}</th>
+                  <th className="text-right p-2.5 font-medium text-emerald-500 font-bold">{lang === "ar" ? "الفاتورة" : "Bill (USD)"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "تفاصيل" : "Action"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y border-border/30">
+                {filteredAndSortedCompanies.map((c) => {
+                  const usage = companyUsageMap.get(c.id);
+                  const tokens = usage?.tokens ?? 0;
+                  const cost = usage?.cost ?? 0;
+                  const quota = c.monthlyTokenQuota ?? 0;
+                  const pct = quota > 0 ? (tokens / quota) * 100 : 0;
+                  const effectiveModel = (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
+
+                  return (
+                    <tr key={c.id} className="hover:bg-muted/10 transition-colors">
+                      <td className="p-2.5 font-medium text-foreground">{c.name}</td>
+                      <td className="p-2.5 text-muted-foreground">{c.clientName || c.clientUsername || "—"}</td>
+                      <td className="p-2.5 font-mono text-[11px] text-amber-500">{effectiveModel}</td>
+                      <td className="p-2.5 text-right font-mono">{formatQuota(quota)}</td>
+                      <td className="p-2.5 text-right font-mono font-medium">{tokens.toLocaleString()}</td>
+                      <td className="p-2.5 text-right font-mono text-muted-foreground">{(usage?.messages ?? 0).toLocaleString()}</td>
+                      <td className="p-2.5 text-right font-mono">
+                        <span className={pct > 100 ? "text-red-500 font-bold" : pct >= 80 ? "text-amber-500 font-semibold" : "text-emerald-500"}>
+                          {pct.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-right font-bold text-emerald-400 font-mono">
+                        ${cost.toFixed(4)}
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px] text-emerald-500 hover:text-emerald-400"
+                          onClick={() => {
+                            setShowAllBillsModal(false);
+                            setBillTarget(c);
+                          }}
+                        >
+                          <Receipt className="w-3 h-3 mr-1" />
+                          {lang === "ar" ? "عرض" : "View"}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* Total Row */}
+                <tr className="bg-muted/30 font-bold border-t-2 border-border/60">
+                  <td colSpan={3} className="p-2.5 text-foreground">{lang === "ar" ? "الإجمالي الكلي" : "Grand Total"}</td>
+                  <td className="p-2.5 text-right font-mono">{formatQuota(totalAllocatedQuota)}</td>
+                  <td className="p-2.5 text-right font-mono text-foreground">{totalTokensConsumedMonth.toLocaleString()}</td>
+                  <td className="p-2.5 text-right font-mono text-muted-foreground">
+                    {filteredAndSortedCompanies.reduce((s, c) => s + (companyUsageMap.get(c.id)?.messages ?? 0), 0).toLocaleString()}
+                  </td>
+                  <td className="p-2.5 text-right font-mono text-muted-foreground">
+                    {totalAllocatedQuota > 0 ? `${((totalTokensConsumedMonth / totalAllocatedQuota) * 100).toFixed(1)}%` : "0%"}
+                  </td>
+                  <td className="p-2.5 text-right text-emerald-400 font-mono text-sm">
+                    ${totalCostConsumedMonth.toFixed(4)}
+                  </td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <DialogFooter className="mt-4 flex flex-row items-center justify-between">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="w-3.5 h-3.5 mr-1 text-blue-400" />
+              {lang === "ar" ? "طباعة الكشف" : "Print Summary"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowAllBillsModal(false)}>
               {lang === "ar" ? "إغلاق" : "Close"}
             </Button>
           </DialogFooter>
