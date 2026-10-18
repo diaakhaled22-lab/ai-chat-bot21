@@ -38,8 +38,6 @@ interface UsageCostData {
   totalOutputTokens: number;
   totalTokens: number;
   totalCostUsd: number;
-  quotaModel?: string;
-  quotaProvider?: string;
   byModel: ModelUsage[];
   byCompany: CompanyUsage[];
 }
@@ -120,6 +118,10 @@ const RANGE_OPTIONS: { key: RangePreset; label: string }[] = [
   { key: "all",    label: "All time" },
 ];
 
+function toIso(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 function getDateRange(preset: RangePreset): { from?: string; to?: string } {
   const now = new Date();
   const toISO = now.toISOString();
@@ -177,24 +179,33 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useGetAdminStats();
   const [activeRange, setActiveRange] = useState<RangePreset>("30d");
+  const [showCustom, setShowCustom] = useState(false);
+  const [customFrom, setCustomFrom] = useState(toIso(new Date(Date.now() - 30 * 86400000)));
+  const [customTo, setCustomTo] = useState(toIso(new Date()));
   const [sortKey, setSortKey]   = useState<SortKey>("costUsd");
   const [sortDir, setSortDir]   = useState<SortDir>("desc");
 
-  const { from, to } = getDateRange(activeRange);
+  const { from, to } = showCustom
+    ? {
+        from: customFrom ? new Date(`${customFrom}T00:00:00.000Z`).toISOString() : undefined,
+        to: customTo ? new Date(`${customTo}T23:59:59.999Z`).toISOString() : undefined,
+      }
+    : getDateRange(activeRange);
+
   const queryParams = new URLSearchParams();
   if (from) queryParams.set("from", from);
   if (to)   queryParams.set("to",   to);
   const qs = queryParams.toString();
 
   const { data: usage, isLoading: usageLoading } = useQuery<UsageCostData>({
-    queryKey: ["admin-usage-cost", activeRange],
+    queryKey: ["admin-usage-cost", activeRange, from, to],
     queryFn: () => customFetch(`/api/admin/usage-cost${qs ? `?${qs}` : ""}`),
     refetchInterval: 5 * 60 * 1000,
   });
 
   const { data: ticketStats, isLoading: ticketStatsLoading } = useQuery<TicketAnalytics>({
-    queryKey: ["admin-ticket-analytics"],
-    queryFn: () => customFetch("/api/admin/ticket-analytics"),
+    queryKey: ["admin-ticket-analytics", activeRange, from, to],
+    queryFn: () => customFetch(`/api/admin/ticket-analytics${qs ? `?${qs}` : ""}`),
     refetchInterval: 60 * 1000,
   });
 
@@ -218,8 +229,8 @@ export default function AdminDashboard() {
       const u = (usage?.byCompany ?? []).find(x => x.companyId === c.id);
       return {
         ...c,
-        activeProvider: u?.provider ?? usage?.quotaProvider ?? c.aiProvider ?? "unknown",
-        activeModel: u?.model ?? usage?.quotaModel ?? c.aiModel ?? "unknown",
+        model: u?.model || c.aiModel || "unknown",
+        provider: u?.provider || c.aiProvider || "unknown",
         messages: u?.messages ?? 0,
         inputTokens: u?.inputTokens ?? 0,
         outputTokens: u?.outputTokens ?? 0,
@@ -267,7 +278,7 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `usage-report-${activeRange}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `usage-report-${showCustom ? `${customFrom}-to-${customTo}` : activeRange}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -277,13 +288,72 @@ export default function AdminDashboard() {
     return sortDir === "desc" ? -diff : diff;
   });
 
-  const rangeLabel = RANGE_OPTIONS.find((o) => o.key === activeRange)?.label ?? "";
+  const rangeLabel = showCustom
+    ? `${customFrom} → ${customTo}`
+    : RANGE_OPTIONS.find((o) => o.key === activeRange)?.label ?? "";
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-        <p className="text-muted-foreground mt-2">Platform statistics and metrics.</p>
+      {/* Top Header with Unified Date Range Filter */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-muted-foreground mt-1">
+            Platform statistics and metrics · <span className="text-foreground font-medium">{rangeLabel}</span>
+          </p>
+        </div>
+
+        {/* Global Date Filter Controls */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1 overflow-x-auto max-w-full scrollbar-hide">
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground ml-1.5 shrink-0" />
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
+                  !showCustom && activeRange === opt.key
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button
+              onClick={() => setShowCustom((v) => !v)}
+              className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
+                showCustom
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              }`}
+            >
+              <span>Custom</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
+
+          {showCustom && (
+            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1.5 shadow-sm text-xs">
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="bg-transparent text-foreground outline-none text-xs"
+              />
+              <span className="text-muted-foreground">→</span>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom}
+                max={toIso(new Date())}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="bg-transparent text-foreground outline-none text-xs"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Platform stat cards */}
@@ -351,29 +421,16 @@ export default function AdminDashboard() {
 
       {/* Usage & Cost Section */}
       <div>
-        {/* Header + range picker */}
+        {/* Section Header */}
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
             AI Usage &amp; Cost Estimation
           </h2>
-
-          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1 overflow-x-auto max-w-full scrollbar-hide">
-            <Calendar className="w-3.5 h-3.5 text-muted-foreground ml-1.5 shrink-0" />
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setActiveRange(opt.key)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
-                  activeRange === opt.key
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-primary" />
+            Showing: {rangeLabel}
+          </span>
         </div>
 
         {/* Summary cards */}
@@ -630,8 +687,12 @@ export default function AdminDashboard() {
                 <Coins className="w-4 h-4 text-amber-500" />
                 Quota Assigned Companies
               </CardTitle>
+              <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
+                <Calendar className="w-3 h-3 text-primary" />
+                {rangeLabel}
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Companies with an active monthly token quota</p>
+            <p className="text-xs text-muted-foreground mt-1">Companies with an active monthly token quota · Usage in {rangeLabel}</p>
           </CardHeader>
           <CardContent className="p-0">
             {companiesLoading || usageLoading ? (
@@ -669,14 +730,14 @@ export default function AdminDashboard() {
                               </span>
                               <div>
                                 <p className="font-medium text-foreground">{c.name}</p>
-                                <p className="text-muted-foreground/60 capitalize">{c.activeProvider}</p>
+                                <p className="text-muted-foreground/60 capitalize">{c.provider ?? "unknown"}</p>
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.activeModel] ?? MODEL_COLORS["unknown"] }} />
-                              <span className="font-mono">{c.activeModel}</span>
+                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.model ?? ""] ?? MODEL_COLORS["unknown"] }} />
+                              <span className="font-mono">{c.model ?? "unknown"}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums">{formatTokens(c.monthlyTokenQuota)}</td>
@@ -705,9 +766,15 @@ export default function AdminDashboard() {
 
       {/* Ticket Analytics Section */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Ticket className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">Support Ticket Analytics</h2>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Ticket className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold">Support Ticket Analytics</h2>
+          </div>
+          <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-primary" />
+            Showing: {rangeLabel}
+          </span>
         </div>
 
         {/* Summary cards */}

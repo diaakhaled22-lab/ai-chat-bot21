@@ -244,8 +244,6 @@ router.get("/admin/usage-cost", async (req, res) => {
       totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
       totalCostUsd: Math.round(totalCostUsd * 10000) / 10000,
-      quotaModel,
-      quotaProvider,
       byModel: Object.values(byModel).map((m) => ({ ...m, costUsd: Math.round(m.costUsd * 10000) / 10000 })),
       byCompany: byCompanyList,
     });
@@ -1170,6 +1168,20 @@ router.put("/admin/chat-log-retention", async (req, res) => {
 // GET /admin/ticket-analytics
 router.get("/admin/ticket-analytics", async (req, res) => {
   try {
+    const { from, to } = req.query as { from?: string; to?: string };
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate   = to   ? new Date(to)   : undefined;
+
+    const conditions = [];
+    if (fromDate && !isNaN(fromDate.getTime())) {
+      conditions.push(gte(ticketsTable.createdAt, fromDate));
+    }
+    if (toDate && !isNaN(toDate.getTime())) {
+      conditions.push(lte(ticketsTable.createdAt, toDate));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
     const rows = await db
       .select({
         id:        ticketsTable.id,
@@ -1180,7 +1192,8 @@ router.get("/admin/ticket-analytics", async (req, res) => {
         createdAt:  ticketsTable.createdAt,
         updatedAt:  ticketsTable.updatedAt,
       })
-      .from(ticketsTable);
+      .from(ticketsTable)
+      .where(whereClause);
 
     const total    = rows.length;
     const open     = rows.filter((r) => r.status === "open").length;
