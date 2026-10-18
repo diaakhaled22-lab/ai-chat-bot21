@@ -137,10 +137,19 @@ router.get("/admin/usage-cost", async (req, res) => {
     const quotaProvider = quotaModelInfo.provider;
 
     const { from, to, range } = req.query as { from?: string; to?: string; range?: string };
-    let fromDate = from ? new Date(from) : undefined;
-    let toDate   = to   ? new Date(to)   : undefined;
+    let fromDate: Date | undefined;
+    let toDate: Date | undefined;
 
-    if (!fromDate && range) {
+    if (from) {
+      fromDate = from.includes("T") ? new Date(from) : new Date(`${from}T00:00:00.000Z`);
+      if (isNaN(fromDate.getTime())) fromDate = undefined;
+    }
+    if (to) {
+      toDate = to.includes("T") ? new Date(to) : new Date(`${to}T23:59:59.999Z`);
+      if (isNaN(toDate.getTime())) toDate = undefined;
+    }
+
+    if (!fromDate && range && range !== "all") {
       const now = new Date();
       if (range === "month") {
         fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -163,10 +172,10 @@ router.get("/admin/usage-cost", async (req, res) => {
       })
       .from(companiesTable);
 
-    const whereClause = and(
-      fromDate ? sql`${chatLogsTable.createdAt} >= ${fromDate}` : undefined,
-      toDate   ? sql`${chatLogsTable.createdAt} <= ${toDate}`   : undefined,
-    );
+    const conditions = [];
+    if (fromDate) conditions.push(gte(chatLogsTable.createdAt, fromDate));
+    if (toDate) conditions.push(lte(chatLogsTable.createdAt, toDate));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const logs = await db
       .select({
@@ -1168,17 +1177,35 @@ router.put("/admin/chat-log-retention", async (req, res) => {
 // GET /admin/ticket-analytics
 router.get("/admin/ticket-analytics", async (req, res) => {
   try {
-    const { from, to } = req.query as { from?: string; to?: string };
-    const fromDate = from ? new Date(from) : undefined;
-    const toDate   = to   ? new Date(to)   : undefined;
+    const { from, to, range } = req.query as { from?: string; to?: string; range?: string };
+    let fromDate: Date | undefined;
+    let toDate: Date | undefined;
+
+    if (from) {
+      fromDate = from.includes("T") ? new Date(from) : new Date(`${from}T00:00:00.000Z`);
+      if (isNaN(fromDate.getTime())) fromDate = undefined;
+    }
+    if (to) {
+      toDate = to.includes("T") ? new Date(to) : new Date(`${to}T23:59:59.999Z`);
+      if (isNaN(toDate.getTime())) toDate = undefined;
+    }
+
+    if (!fromDate && range && range !== "all") {
+      const now = new Date();
+      if (range === "month") {
+        fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (range === "today") {
+        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (range === "7d") {
+        fromDate = new Date(now.getTime() - 7 * 864e5);
+      } else if (range === "30d") {
+        fromDate = new Date(now.getTime() - 30 * 864e5);
+      }
+    }
 
     const conditions = [];
-    if (fromDate && !isNaN(fromDate.getTime())) {
-      conditions.push(gte(ticketsTable.createdAt, fromDate));
-    }
-    if (toDate && !isNaN(toDate.getTime())) {
-      conditions.push(lte(ticketsTable.createdAt, toDate));
-    }
+    if (fromDate) conditions.push(gte(ticketsTable.createdAt, fromDate));
+    if (toDate) conditions.push(lte(ticketsTable.createdAt, toDate));
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 

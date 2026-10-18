@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useGetAdminStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Users, CheckCircle2, XCircle, Activity, Coins, Zap, TrendingUp, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Download, Bot, Ticket, Clock, Sparkles } from "lucide-react";
@@ -122,22 +122,6 @@ function toIso(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-function getDateRange(preset: RangePreset): { from?: string; to?: string } {
-  const now = new Date();
-  const toISO = now.toISOString();
-  if (preset === "all") return {};
-  if (preset === "today") {
-    const s = new Date(now); s.setHours(0, 0, 0, 0);
-    return { from: s.toISOString(), to: toISO };
-  }
-  if (preset === "7d")  return { from: new Date(now.getTime() - 7  * 864e5).toISOString(), to: toISO };
-  if (preset === "30d") return { from: new Date(now.getTime() - 30 * 864e5).toISOString(), to: toISO };
-  if (preset === "month") {
-    return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), to: toISO };
-  }
-  return {};
-}
-
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
@@ -185,27 +169,24 @@ export default function AdminDashboard() {
   const [sortKey, setSortKey]   = useState<SortKey>("costUsd");
   const [sortDir, setSortDir]   = useState<SortDir>("desc");
 
-  const { from, to } = showCustom
-    ? {
-        from: customFrom ? new Date(`${customFrom}T00:00:00.000Z`).toISOString() : undefined,
-        to: customTo ? new Date(`${customTo}T23:59:59.999Z`).toISOString() : undefined,
-      }
-    : getDateRange(activeRange);
+  const queryParams = useMemo(() => {
+    if (showCustom && customFrom && customTo) {
+      return `from=${customFrom}&to=${customTo}`;
+    }
+    return `range=${activeRange}`;
+  }, [showCustom, customFrom, customTo, activeRange]);
 
-  const queryParams = new URLSearchParams();
-  if (from) queryParams.set("from", from);
-  if (to)   queryParams.set("to",   to);
-  const qs = queryParams.toString();
+  const queryKeyParam = showCustom ? `custom:${customFrom}:${customTo}` : activeRange;
 
   const { data: usage, isLoading: usageLoading } = useQuery<UsageCostData>({
-    queryKey: ["admin-usage-cost", activeRange, from, to],
-    queryFn: () => customFetch(`/api/admin/usage-cost${qs ? `?${qs}` : ""}`),
+    queryKey: ["admin-usage-cost", queryKeyParam],
+    queryFn: () => customFetch(`/api/admin/usage-cost?${queryParams}`),
     refetchInterval: 5 * 60 * 1000,
   });
 
   const { data: ticketStats, isLoading: ticketStatsLoading } = useQuery<TicketAnalytics>({
-    queryKey: ["admin-ticket-analytics", activeRange, from, to],
-    queryFn: () => customFetch(`/api/admin/ticket-analytics${qs ? `?${qs}` : ""}`),
+    queryKey: ["admin-ticket-analytics", queryKeyParam],
+    queryFn: () => customFetch(`/api/admin/ticket-analytics?${queryParams}`),
     refetchInterval: 60 * 1000,
   });
 
@@ -215,38 +196,56 @@ export default function AdminDashboard() {
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const pieData = (usage?.byModel ?? []).map((m) => ({
-    ...m,
-    name: m.model,
-    value: m.costUsd > 0 ? m.costUsd : m.inputTokens + m.outputTokens,
-  }));
+  const pieData = useMemo(() => {
+    return (usage?.byModel ?? []).map((m) => ({
+      ...m,
+      name: m.model,
+      value: m.costUsd > 0 ? m.costUsd : m.inputTokens + m.outputTokens,
+    }));
+  }, [usage]);
 
   const hasUsage = (usage?.totalTokens ?? 0) > 0;
 
-  const quotaCompanies = (companies ?? [])
-    .filter(c => c.monthlyTokenQuota != null && c.monthlyTokenQuota > 0)
-    .map(c => {
-      const u = (usage?.byCompany ?? []).find(x => x.companyId === c.id);
-      return {
-        ...c,
-        model: u?.model || c.aiModel || "unknown",
-        provider: u?.provider || c.aiProvider || "unknown",
-        messages: u?.messages ?? 0,
-        inputTokens: u?.inputTokens ?? 0,
-        outputTokens: u?.outputTokens ?? 0,
-        costUsd: u?.costUsd ?? 0,
-      };
-    })
-    .sort((a, b) => b.monthlyTokenQuota - a.monthlyTokenQuota);
+  const quotaCompanies = useMemo(() => {
+    return (companies ?? [])
+      .filter((c) => c.monthlyTokenQuota != null && Number(c.monthlyTokenQuota) > 0)
+      .map((c) => {
+        const u = (usage?.byCompany ?? []).find((x) => x.companyId === c.id);
+        return {
+          ...c,
+          model: u?.model || c.aiModel || "unknown",
+          provider: u?.provider || c.aiProvider || "unknown",
+          messages: u?.messages ?? 0,
+          inputTokens: u?.inputTokens ?? 0,
+          outputTokens: u?.outputTokens ?? 0,
+          costUsd: u?.costUsd ?? 0,
+        };
+      })
+      .sort((a, b) => Number(b.monthlyTokenQuota || 0) - Number(a.monthlyTokenQuota || 0));
+  }, [companies, usage]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
-      setSortDir((d) => d === "desc" ? "asc" : "desc");
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     } else {
       setSortKey(key);
       setSortDir("desc");
     }
   }
+
+  const sortedCompanies = useMemo(() => {
+    return [...(usage?.byCompany ?? [])].sort((a, b) => {
+      const diff = a[sortKey] - b[sortKey];
+      return sortDir === "desc" ? -diff : diff;
+    });
+  }, [usage, sortKey, sortDir]);
+
+  const rangeLabel = useMemo(() => {
+    if (showCustom) {
+      return `${customFrom} → ${customTo}`;
+    }
+    return RANGE_OPTIONS.find((o) => o.key === activeRange)?.label ?? "";
+  }, [showCustom, customFrom, customTo, activeRange]);
 
   function exportCSV() {
     const rows: string[][] = [
@@ -282,15 +281,6 @@ export default function AdminDashboard() {
     a.click();
     URL.revokeObjectURL(url);
   }
-
-  const sortedCompanies = [...(usage?.byCompany ?? [])].sort((a, b) => {
-    const diff = a[sortKey] - b[sortKey];
-    return sortDir === "desc" ? -diff : diff;
-  });
-
-  const rangeLabel = showCustom
-    ? `${customFrom} → ${customTo}`
-    : RANGE_OPTIONS.find((o) => o.key === activeRange)?.label ?? "";
 
   return (
     <div className="space-y-6">
