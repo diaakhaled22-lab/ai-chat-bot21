@@ -244,6 +244,8 @@ router.get("/admin/usage-cost", async (req, res) => {
       totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
       totalCostUsd: Math.round(totalCostUsd * 10000) / 10000,
+      quotaModel,
+      quotaProvider,
       byModel: Object.values(byModel).map((m) => ({ ...m, costUsd: Math.round(m.costUsd * 10000) / 10000 })),
       byCompany: byCompanyList,
     });

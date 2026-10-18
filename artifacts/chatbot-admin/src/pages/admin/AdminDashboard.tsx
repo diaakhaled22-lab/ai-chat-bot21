@@ -38,6 +38,8 @@ interface UsageCostData {
   totalOutputTokens: number;
   totalTokens: number;
   totalCostUsd: number;
+  quotaModel?: string;
+  quotaProvider?: string;
   byModel: ModelUsage[];
   byCompany: CompanyUsage[];
 }
@@ -216,6 +218,8 @@ export default function AdminDashboard() {
       const u = (usage?.byCompany ?? []).find(x => x.companyId === c.id);
       return {
         ...c,
+        activeProvider: u?.provider ?? usage?.quotaProvider ?? c.aiProvider ?? "unknown",
+        activeModel: u?.model ?? usage?.quotaModel ?? c.aiModel ?? "unknown",
         messages: u?.messages ?? 0,
         inputTokens: u?.inputTokens ?? 0,
         outputTokens: u?.outputTokens ?? 0,
@@ -665,14 +669,14 @@ export default function AdminDashboard() {
                               </span>
                               <div>
                                 <p className="font-medium text-foreground">{c.name}</p>
-                                <p className="text-muted-foreground/60 capitalize">{c.aiProvider ?? "unknown"}</p>
+                                <p className="text-muted-foreground/60 capitalize">{c.activeProvider}</p>
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.aiModel ?? ""] ?? MODEL_COLORS["unknown"] }} />
-                              <span className="font-mono">{c.aiModel ?? "unknown"}</span>
+                              <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.activeModel] ?? MODEL_COLORS["unknown"] }} />
+                              <span className="font-mono">{c.activeModel}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums">{formatTokens(c.monthlyTokenQuota)}</td>
