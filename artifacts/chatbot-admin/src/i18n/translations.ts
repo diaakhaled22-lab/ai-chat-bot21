@@ -42,6 +42,7 @@ const translations = {
     notif_loading: "Loading…",
     notif_new: "new",
     notif_client_no_notifications: "No notifications",
+    notif_system_updates: "Activity & Updates",
 
     // ── Common Actions & UI ─────────────────────────────────────────────────
     loading: "Loading...",
@@ -457,6 +458,7 @@ const translations = {
     notif_loading: "جاري التحميل…",
     notif_new: "جديد",
     notif_client_no_notifications: "لا توجد إشعارات",
+    notif_system_updates: "تحديثات النشاط والنظام",
 
     // ── Common Actions & UI ─────────────────────────────────────────────────
     loading: "جاري التحميل...",

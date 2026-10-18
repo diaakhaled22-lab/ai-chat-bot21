@@ -115,9 +115,15 @@ function NotificationBell() {
     refetchInterval: 10_000,
   });
 
-  const reminders = notifications.filter((n) => n.type === "renewal_reminder");
+  const reminders = notifications.filter((n) => n.type.startsWith("renewal_reminder"));
   const securityAlerts = notifications.filter((n) => n.type === "security_alert");
   const malfunctions = notifications.filter((n) => n.type === "malfunction");
+  const generalNotifications = notifications.filter(
+    (n) =>
+      !n.type.startsWith("renewal_reminder") &&
+      n.type !== "security_alert" &&
+      n.type !== "malfunction"
+  );
   const unreadNotifications = notifications.filter((n) => !n.isRead).length;
   const totalBadge = openTicketCount + unreadNotifications;
 
@@ -296,22 +302,70 @@ function NotificationBell() {
             </div>
           )}
 
-          {/* Open tickets section */}
-          <div>
-            <div className="px-4 py-1.5 bg-muted/30">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("notif_customer_problems")}
-                {openTicketCount > 0 && <span className="ml-1 text-amber-400">· {openTicketCount} {t("notif_open")}</span>}
-              </span>
-            </div>
-            {ticketsFetching && tickets.length === 0 ? (
-              <div className="flex items-center justify-center h-16 text-muted-foreground text-xs">{t("notif_loading")}</div>
-            ) : tickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-16 gap-1.5 text-muted-foreground">
-                <CheckCircle2 className="w-5 h-5 opacity-20" />
-                <p className="text-xs">{t("notif_no_problems")}</p>
+          {/* Client & System Updates section */}
+          {generalNotifications.length > 0 && (
+            <div>
+              <div className="px-4 py-1.5 bg-blue-500/10 flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
+                  {t("notif_system_updates")}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{generalNotifications.length}</span>
               </div>
-            ) : (
+              {generalNotifications.slice(0, 10).map((n) => {
+                const isClientUpdate = n.type.includes("client") || n.type.includes("credential");
+                const isTicketNotif = n.type.includes("ticket");
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      setOpen(false);
+                      if (isClientUpdate) {
+                        setLocation("/admin/companies");
+                      } else if (isTicketNotif) {
+                        setLocation("/admin/tickets");
+                      }
+                    }}
+                    className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-blue-500/5" : ""}`}
+                  >
+                    {isClientUpdate ? (
+                      <KeyRound className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                    ) : isTicketNotif ? (
+                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <Bell className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-tight">{n.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">{n.message}</p>
+                      <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
+                    </div>
+                    {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0 mt-1.5" />}
+                    <button
+                      type="button"
+                      title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMutation.mutate(n.id);
+                      }}
+                      className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Open tickets section */}
+          {tickets.length > 0 && (
+            <div>
+              <div className="px-4 py-1.5 bg-muted/30">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("notif_customer_problems")}
+                  {openTicketCount > 0 && <span className="ml-1 text-amber-400">· {openTicketCount} {t("notif_open")}</span>}
+                </span>
+              </div>
               <ul>
                 {tickets.map((ticket, i) => (
                   <li key={ticket.id}>
@@ -332,11 +386,12 @@ function NotificationBell() {
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
+            </div>
+          )}
 
-          {reminders.length === 0 && securityAlerts.length === 0 && malfunctions.length === 0 && tickets.length === 0 && !ticketsFetching && (
-            <div className="flex flex-col items-center justify-center h-24 gap-2 text-muted-foreground">
+          {/* Empty state: shown only when there are truly no notifications and no tickets */}
+          {notifications.length === 0 && tickets.length === 0 && !ticketsFetching && (
+            <div className="flex flex-col items-center justify-center h-28 gap-2 text-muted-foreground">
               <CheckCircle2 className="w-7 h-7 opacity-20" />
               <p className="text-xs">{t("notif_no_notifications")}</p>
             </div>
