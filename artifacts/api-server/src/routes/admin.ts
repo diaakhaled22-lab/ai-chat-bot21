@@ -20,9 +20,9 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
-import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
-import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
-import { notifySubscriptionActivated } from "../lib/companyNotification";
+import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
+import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
+import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
@@ -474,19 +474,22 @@ router.get("/admin/companies", async (req, res) => {
       .select({
         company: companiesTable,
         clientName: usersTable.name,
+        clientUsername: usersTable.username,
+        clientNotificationEmail: usersTable.notificationEmail,
       })
       .from(companiesTable)
       .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id))
       .orderBy(companiesTable.createdAt);
 
     res.json(
-      rows.map(({ company, clientName }) => ({
+      rows.map(({ company, clientName, clientUsername, clientNotificationEmail }) => ({
         id: company.id,
         clientId: company.clientId,
         clientName: clientName ?? null,
+        clientUsername: clientUsername ?? null,
         myId: company.myId ?? null,
         name: company.name,
-        notificationEmail: company.notificationEmail ?? null,
+        notificationEmail: company.notificationEmail?.trim() || clientNotificationEmail?.trim() || null,
         resendApiKey: maskApiKey(company.resendApiKey),
         generalInfo: company.generalInfo,
         isActive: company.isActive,
@@ -905,6 +908,329 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Set company quota error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+function buildBillEmailHtml(data: {
+  companyName: string;
+  clientName: string;
+  invoiceNumber: string;
+  rangeLabel: string;
+  effectiveModel: string;
+  quotaFormatted: string;
+  validityPeriod: string;
+  totalMessages: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  quotaPercent: string;
+  remainingTokens: string;
+  totalCost: string;
+  hasImageAttachment: boolean;
+}) {
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاتورة استهلاك الحصة</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937;">
+  <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); border: 1px solid #e5e7eb;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
+      <div style="font-size: 32px; margin-bottom: 6px;">🧾</div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">فاتورة استهلاك الحصة (Quota Usage Bill)</h1>
+      <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-family: monospace;">رقم الفاتورة: ${escapeHtml(data.invoiceNumber)}</p>
+      <div style="margin-top: 10px; display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
+        الفترة: ${escapeHtml(data.rangeLabel)}
+      </div>
+    </div>
+
+    <div style="padding: 24px;">
+      <!-- Meta Information Grid -->
+      <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 20px;">
+        <tr>
+          <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">الشركة:</span>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.companyName)}</strong>
+          </td>
+          <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">العميل:</span>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.clientName)}</strong>
+          </td>
+        </tr>
+        <tr>
+          <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">النموذج النشط:</span>
+            <span style="font-size: 12px; font-family: monospace; color: #d97706; font-weight: 600;">${escapeHtml(data.effectiveModel)}</span>
+          </td>
+          <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">الحصة المخصصة:</span>
+            <strong style="font-size: 13px; color: #2563eb;">${escapeHtml(data.quotaFormatted)}</strong>
+          </td>
+        </tr>
+        ${data.validityPeriod ? `
+        <tr>
+          <td colspan="2" style="background: #f0fdf4; padding: 10px 14px; border-radius: 10px; border: 1px solid #dcfce7; text-align: center; font-size: 12px;">
+            <span style="color: #166534;">📅 فترة صلاحية الحصة: <strong>${escapeHtml(data.validityPeriod)}</strong></span>
+          </td>
+        </tr>` : ""}
+      </table>
+
+      <!-- Progress Section -->
+      <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
+          <span style="color: #4b5563; font-weight: 500;">مستوى استهلاك الحصة:</span>
+          <strong style="color: #059669;">${escapeHtml(data.quotaPercent)}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; margin-top: 8px;">
+          <span>المستهلك: <strong style="color: #111827;">${data.totalTokens.toLocaleString()}</strong> tokens</span>
+          <span>المتبقي: <strong style="color: #111827;">${escapeHtml(data.remainingTokens)}</strong></span>
+        </div>
+      </div>
+
+      <!-- Itemized Table -->
+      <h3 style="font-size: 14px; margin: 0 0 10px; color: #374151;">تفاصيل الاستهلاك للفترة:</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px;">
+        <thead>
+          <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb; text-align: right;">
+            <th style="padding: 10px 12px; color: #4b5563;">البند</th>
+            <th style="padding: 10px 12px; color: #4b5563; text-align: center;">الكمية / الاستهلاك</th>
+            <th style="padding: 10px 12px; color: #4b5563; text-align: left;">التكلفة التقديرية</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px;">إجمالي رسائل المحادثة</td>
+            <td style="padding: 10px 12px; text-align: center; font-family: monospace;">${data.totalMessages.toLocaleString()} msgs</td>
+            <td style="padding: 10px 12px; text-align: left; color: #9ca3af;">—</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px;">رموز المدخلات (Input)</td>
+            <td style="padding: 10px 12px; text-align: center; font-family: monospace;">${data.inputTokens.toLocaleString()} tokens</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace;">$${(data.inputTokens * 0.00000015).toFixed(4)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px;">رموز المخرجات (Output)</td>
+            <td style="padding: 10px 12px; text-align: center; font-family: monospace;">${data.outputTokens.toLocaleString()} tokens</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace;">$${(data.outputTokens * 0.0000006).toFixed(4)}</td>
+          </tr>
+          <tr style="background: #f0fdf4; font-weight: bold; border-top: 2px solid #bbf7d0;">
+            <td style="padding: 12px; color: #166534;">إجمالي الاستهلاك والتكلفة</td>
+            <td style="padding: 12px; text-align: center; color: #166534; font-family: monospace;">${data.totalTokens.toLocaleString()} tokens</td>
+            <td style="padding: 12px; text-align: left; color: #166534; font-size: 15px; font-family: monospace;">$${escapeHtml(data.totalCost)} USD</td>
+          </tr>
+        </tbody>
+      </table>
+
+      ${data.hasImageAttachment ? `
+      <!-- Embedded Visual Bill Image -->
+      <div style="margin: 24px 0; text-align: center;">
+        <p style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">📷 نسخة طبق الأصل من بطاقة الفاتورة:</p>
+        <img src="cid:bill-image" alt="Bill Screenshot" style="max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.08);" />
+      </div>` : ""}
+
+      <!-- Footer Info -->
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; text-align: center; font-size: 12px; color: #9ca3af;">
+        <p style="margin: 0;">تم إرسال هذه الفاتورة تلقائياً من نظام <strong>Bot Manager</strong> إلى بريد الإشعارات المسجل لديك.</p>
+        <p style="margin: 4px 0 0;">إذا كانت لديك أي استفسارات بخصوص هذه الفاتورة، يرجى التواصل مع إدارة النظام.</p>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+// POST /admin/companies/:id/send-bill-email — Send bill invoice with image to notification email
+router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.id, id))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const [clientUser] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, company.clientId))
+      .limit(1);
+
+    const emailConfig = await getEmailConfig();
+
+    const recipient =
+      (typeof req.body?.recipientEmail === "string" && req.body.recipientEmail.trim()) ||
+      company.notificationEmail?.trim() ||
+      clientUser?.notificationEmail?.trim() ||
+      emailConfig.recipientEmail?.trim();
+
+    if (!recipient) {
+      res.status(400).json({
+        error: "لم يتم العثور على بريد إلكتروني للإشعارات. يرجى إدخال بريد Gmail في حقل Notification Email (Gmail) في صفحة الإعدادات أو كتابته في نافذة المشاركة.",
+      });
+      return;
+    }
+
+    // Auto-save the email as company notificationEmail if specified
+    if (req.body?.saveAsNotificationEmail && req.body?.recipientEmail) {
+      const emailToSave = req.body.recipientEmail.trim();
+      await db.update(companiesTable).set({ notificationEmail: emailToSave }).where(eq(companiesTable.id, id)).catch(() => {});
+      if (company.clientId) {
+        await db.update(usersTable).set({ notificationEmail: emailToSave }).where(eq(usersTable.id, company.clientId)).catch(() => {});
+      }
+    }
+
+    const { imageDataUrl, billData } = req.body as {
+      imageDataUrl?: string;
+      recipientEmail?: string;
+      saveAsNotificationEmail?: boolean;
+      billData?: any;
+    };
+
+    const invoiceNumber = billData?.invoiceNumber || `INV-Q-${company.id}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+    const rangeLabel = billData?.rangeLabel || "الشهر الحالي";
+    const effectiveModel = billData?.effectiveModel || company.aiModel || "gpt-4o-mini";
+    const quotaVal = billData?.quota ?? company.monthlyTokenQuota;
+    const quotaFormatted = quotaVal ? (quotaVal >= 1000000 ? `${(quotaVal / 1000000).toFixed(1)}M` : quotaVal >= 1000 ? `${(quotaVal / 1000).toFixed(0)}K` : String(quotaVal)) : "غير محدود";
+    const validityPeriod =
+      company.activationStart || company.activationEnd
+        ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
+        : "";
+
+    const emailHtml = buildBillEmailHtml({
+      companyName: company.name,
+      clientName: clientUser?.name || "—",
+      invoiceNumber,
+      rangeLabel,
+      effectiveModel,
+      quotaFormatted,
+      validityPeriod,
+      totalMessages: billData?.messages ?? 0,
+      inputTokens: billData?.inputTokens ?? 0,
+      outputTokens: billData?.outputTokens ?? 0,
+      totalTokens: billData?.totalTokens ?? 0,
+      quotaPercent: billData?.percent != null ? `${Number(billData.percent).toFixed(1)}%` : "0%",
+      remainingTokens: billData?.remaining != null ? `${Number(billData.remaining).toLocaleString()} tokens` : "غير محدود",
+      totalCost: billData?.cost != null ? Number(billData.cost).toFixed(4) : "0.0000",
+      hasImageAttachment: !!imageDataUrl,
+    });
+
+    let sentVia = "";
+    let sendError: string | null = null;
+
+    // 1. Try Resend first if available
+    const { apiKey: resendApiKey, fromEmail } = await getResendConfig(company.resendApiKey || clientUser?.resendApiKey);
+
+    if (resendApiKey) {
+      try {
+        const resendAttachments: any[] = [];
+        if (imageDataUrl && imageDataUrl.includes(",")) {
+          const base64Data = imageDataUrl.split(",")[1];
+          resendAttachments.push({
+            filename: `Invoice-${invoiceNumber}.png`,
+            content: base64Data,
+          });
+        }
+
+        const resendPayload: any = {
+          from: fromEmail,
+          to: [recipient],
+          subject: `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`,
+          html: emailHtml,
+        };
+        if (resendAttachments.length > 0) {
+          resendPayload.attachments = resendAttachments;
+        }
+
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(resendPayload),
+        });
+
+        if (resendRes.ok) {
+          sentVia = "resend";
+        } else {
+          const errText = await resendRes.text();
+          sendError = `Resend failed: ${errText}`;
+          logger.warn({ errText }, "Resend failed for bill share, trying SMTP fallback");
+        }
+      } catch (err: any) {
+        sendError = `Resend exception: ${err?.message}`;
+        logger.warn({ err }, "Resend exception for bill share, trying SMTP fallback");
+      }
+    }
+
+    // 2. Fallback to SMTP (Nodemailer)
+    if (!sentVia && isSmtpConfigured(emailConfig)) {
+      try {
+        const transporter = buildTransporter(emailConfig);
+        const mailAttachments: any[] = [];
+        if (imageDataUrl && imageDataUrl.includes(",")) {
+          const base64Data = imageDataUrl.split(",")[1];
+          mailAttachments.push({
+            filename: `Invoice-${invoiceNumber}.png`,
+            content: Buffer.from(base64Data, "base64"),
+            cid: "bill-image",
+          });
+        }
+
+        await transporter.sendMail({
+          from: `"Bot Manager" <${emailConfig.smtpUser}>`,
+          to: recipient,
+          subject: `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`,
+          html: emailHtml,
+          attachments: mailAttachments,
+        });
+        sentVia = "smtp";
+      } catch (smtpErr: any) {
+        logger.error({ smtpErr }, "SMTP failed for bill share");
+        sendError = `SMTP error: ${smtpErr?.message}`;
+      }
+    }
+
+    if (!sentVia) {
+      res.status(400).json({
+        error: sendError || "لم يتم العثور على خدمة بريد مهيأة (Resend أو SMTP). يرجى التحقق من إعدادات البريد في صفحة الإعدادات.",
+      });
+      return;
+    }
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Share Bill Email",
+      `Sent quota bill invoice image for "${company.name}" to "${recipient}" via ${sentVia}.`,
+      req.ip || null
+    );
+
+    res.json({
+      ok: true,
+      recipient,
+      sentVia,
+      message: `تم إرسال صورة وبيانات الفاتورة بنجاح إلى: ${recipient}`,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Error sending bill email");
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 

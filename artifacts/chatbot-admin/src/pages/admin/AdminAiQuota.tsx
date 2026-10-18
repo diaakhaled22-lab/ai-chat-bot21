@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
+import html2canvas from "html2canvas";
 import QuotaAICard from "@/components/QuotaAICard";
 import { useLanguage } from "@/hooks/use-language";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,7 +35,10 @@ import {
   Check,
   CheckCircle2,
   AlertCircle,
-  FileText
+  FileText,
+  Share2,
+  Send,
+  Mail
 } from "lucide-react";
 import {
   BarChart,
@@ -59,6 +63,7 @@ interface Company {
   isActive: boolean;
   activationStart?: string | null;
   activationEnd?: string | null;
+  notificationEmail?: string | null;
 }
 
 interface CompanyUsage {
@@ -179,6 +184,11 @@ export default function AdminAiQuota() {
   const [billTarget, setBillTarget] = useState<Company | null>(null);
   const [showAllBillsModal, setShowAllBillsModal] = useState(false);
   const [copiedBill, setCopiedBill] = useState(false);
+  const billCardRef = useRef<HTMLDivElement>(null);
+  const [isSharingBill, setIsSharingBill] = useState(false);
+  const [shareEmailPromptOpen, setShareEmailPromptOpen] = useState(false);
+  const [customShareEmail, setCustomShareEmail] = useState("");
+  const [shareTargetCompany, setShareTargetCompany] = useState<Company | null>(null);
 
   const queryParams = useMemo(() => {
     if (showCustom && customFrom && customTo) {
@@ -558,6 +568,94 @@ export default function AdminAiQuota() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const executeShare = async (company: Company, overrideEmail?: string) => {
+    setIsSharingBill(true);
+    try {
+      let imageDataUrl: string | undefined;
+      if (billCardRef.current) {
+        try {
+          const canvas = await html2canvas(billCardRef.current, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: null,
+            logging: false,
+          });
+          imageDataUrl = canvas.toDataURL("image/png");
+        } catch (canvasErr) {
+          console.warn("Could not capture bill screenshot with html2canvas:", canvasErr);
+        }
+      }
+
+      const usage = companyUsageMap.get(company.id);
+      const quota = company.monthlyTokenQuota ?? 0;
+      const totalTokens = usage?.tokens ?? 0;
+      const cost = usage?.cost ?? 0;
+      const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
+      const remaining = quota > 0 ? Math.max(0, quota - totalTokens) : null;
+      const invoiceNumber = `INV-Q-${company.id}-${toIso(new Date()).replace(/-/g, "")}`;
+      const effectiveModel = (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : company.aiModel) || "gpt-4o-mini";
+      const effectiveProvider = (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
+
+      const res = await customFetch<{ ok: boolean; recipient: string; message: string }>(
+        `/api/admin/companies/${company.id}/send-bill-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientEmail: overrideEmail?.trim() || undefined,
+            saveAsNotificationEmail: !!overrideEmail,
+            imageDataUrl,
+            billData: {
+              invoiceNumber,
+              rangeLabel,
+              companyName: company.name,
+              clientName: company.clientName || company.clientUsername || "—",
+              effectiveModel,
+              effectiveProvider,
+              quota,
+              messages: usage?.messages ?? 0,
+              inputTokens: usage?.inputTokens ?? 0,
+              outputTokens: usage?.outputTokens ?? 0,
+              totalTokens,
+              cost,
+              percent,
+              remaining,
+            },
+          }),
+        }
+      );
+
+      toast({
+        title: lang === "ar" ? "تمت مشاركة الفاتورة بنجاح" : "Bill shared successfully",
+        description: lang === "ar"
+          ? `تم إرسال صورة وبيانات الفاتورة إلى: ${res.recipient || company.notificationEmail}`
+          : `Invoice image and details sent to: ${res.recipient || company.notificationEmail}`,
+      });
+      setShareEmailPromptOpen(false);
+      if (overrideEmail) {
+        queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      }
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل مشاركة الفاتورة" : "Failed to share bill",
+        description: err?.message || (lang === "ar" ? "حدث خطأ أثناء إرسال البريد" : "An error occurred while sending the email"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharingBill(false);
+    }
+  };
+
+  const handleShareBill = (company: Company) => {
+    if (company.notificationEmail && company.notificationEmail.trim()) {
+      executeShare(company);
+    } else {
+      setShareTargetCompany(company);
+      setCustomShareEmail("");
+      setShareEmailPromptOpen(true);
+    }
   };
 
   const totalAllocatedQuota = useMemo(() => {
@@ -1583,79 +1681,107 @@ export default function AdminAiQuota() {
 
             return (
               <div className="space-y-5">
-                <DialogHeader className="border-b border-border/50 pb-4">
-                  <div className="flex items-center justify-between">
-                    <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <Receipt className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div>{lang === "ar" ? "فاتورة استهلاك الحصة" : "Quota Usage Bill"}</div>
-                        <p className="text-xs text-muted-foreground font-normal mt-0.5">
-                          {lang === "ar" ? `رقم الفاتورة: ${invoiceNumber}` : `Invoice #: ${invoiceNumber}`}
-                        </p>
-                      </div>
-                    </DialogTitle>
-                    <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-muted border border-border/50 text-muted-foreground">
-                      {rangeLabel}
-                    </span>
-                  </div>
-                </DialogHeader>
-
-                {/* Company & Client Info Card */}
-                <div className="grid grid-cols-2 gap-3 p-3.5 bg-muted/30 border border-border/50 rounded-xl text-xs">
-                  <div>
-                    <span className="text-muted-foreground block text-[11px] mb-0.5">
-                      {lang === "ar" ? "الشركة:" : "Company:"}
-                    </span>
-                    <span className="font-semibold text-foreground text-sm flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-primary" />
-                      {billTarget.name}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-muted-foreground block text-[11px] mb-0.5">
-                      {lang === "ar" ? "العميل:" : "Client:"}
-                    </span>
-                    <span className="font-medium text-foreground">
-                      {billTarget.clientName || billTarget.clientUsername || "—"}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-muted-foreground block text-[11px] mb-0.5">
-                      {lang === "ar" ? "النموذج النشط:" : "Active Model:"}
-                    </span>
-                    <span className="font-mono text-amber-500 dark:text-amber-400 font-semibold">
-                      {effectiveModel}
-                    </span>
-                    <span className="text-muted-foreground text-[10px] ml-1 uppercase">({effectiveProvider})</span>
-                  </div>
-
-                  <div>
-                    <span className="text-muted-foreground block text-[11px] mb-0.5">
-                      {lang === "ar" ? "الحصة المخصصة:" : "Allocated Quota:"}
-                    </span>
-                    <span className="font-semibold text-blue-400">
-                      {formatQuota(quota)} tokens
-                    </span>
-                  </div>
-
-                  {(billTarget.activationStart || billTarget.activationEnd) && (
-                    <div className="col-span-2 pt-2 border-t border-border/40 flex items-center justify-between text-[11px]">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-primary" />
-                        {lang === "ar" ? "فترة صلاحية الحصة:" : "Quota Validity Period:"}
-                      </span>
-                      <span className="font-mono text-foreground font-medium">
-                        {billTarget.activationStart ? billTarget.activationStart.slice(0, 10) : "—"}
-                        {" → "}
-                        {billTarget.activationEnd ? billTarget.activationEnd.slice(0, 10) : "—"}
+                <div ref={billCardRef} className="space-y-5 p-2 bg-card rounded-xl">
+                  <DialogHeader className="border-b border-border/50 pb-4">
+                    <div className="flex items-center justify-between">
+                      <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                        <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          <Receipt className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div>{lang === "ar" ? "فاتورة استهلاك الحصة" : "Quota Usage Bill"}</div>
+                          <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                            {lang === "ar" ? `رقم الفاتورة: ${invoiceNumber}` : `Invoice #: ${invoiceNumber}`}
+                          </p>
+                        </div>
+                      </DialogTitle>
+                      <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-muted border border-border/50 text-muted-foreground">
+                        {rangeLabel}
                       </span>
                     </div>
-                  )}
-                </div>
+                  </DialogHeader>
+
+                  {/* Company & Client Info Card */}
+                  <div className="grid grid-cols-2 gap-3 p-3.5 bg-muted/30 border border-border/50 rounded-xl text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px] mb-0.5">
+                        {lang === "ar" ? "الشركة:" : "Company:"}
+                      </span>
+                      <span className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-primary" />
+                        {billTarget.name}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-muted-foreground block text-[11px] mb-0.5">
+                        {lang === "ar" ? "العميل:" : "Client:"}
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {billTarget.clientName || billTarget.clientUsername || "—"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-muted-foreground block text-[11px] mb-0.5">
+                        {lang === "ar" ? "النموذج النشط:" : "Active Model:"}
+                      </span>
+                      <span className="font-mono text-amber-500 dark:text-amber-400 font-semibold">
+                        {effectiveModel}
+                      </span>
+                      <span className="text-muted-foreground text-[10px] ml-1 uppercase">({effectiveProvider})</span>
+                    </div>
+
+                    <div>
+                      <span className="text-muted-foreground block text-[11px] mb-0.5">
+                        {lang === "ar" ? "الحصة المخصصة:" : "Allocated Quota:"}
+                      </span>
+                      <span className="font-semibold text-blue-400">
+                        {formatQuota(quota)} tokens
+                      </span>
+                    </div>
+
+                    {(billTarget.activationStart || billTarget.activationEnd) && (
+                      <div className="col-span-2 pt-2 border-t border-border/40 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-primary" />
+                          {lang === "ar" ? "فترة صلاحية الحصة:" : "Quota Validity Period:"}
+                        </span>
+                        <span className="font-mono text-foreground font-medium">
+                          {billTarget.activationStart ? billTarget.activationStart.slice(0, 10) : "—"}
+                          {" → "}
+                          {billTarget.activationEnd ? billTarget.activationEnd.slice(0, 10) : "—"}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="col-span-2 pt-2 border-t border-border/40 flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-primary" />
+                        {lang === "ar" ? "بريد الإشعارات (Gmail):" : "Notification Email (Gmail):"}
+                      </span>
+                      <div className="flex items-center gap-1.5 font-mono">
+                        {billTarget.notificationEmail ? (
+                          <span className="text-foreground font-medium">{billTarget.notificationEmail}</span>
+                        ) : (
+                          <span className="text-amber-500 italic text-[10px]">
+                            {lang === "ar" ? "غير مسجل بالإعدادات" : "Not set in Settings"}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShareTargetCompany(billTarget);
+                            setCustomShareEmail(billTarget.notificationEmail || "");
+                            setShareEmailPromptOpen(true);
+                          }}
+                          className="text-[10px] text-primary hover:underline ml-1"
+                        >
+                          {billTarget.notificationEmail ? (lang === "ar" ? "تعديل" : "Edit") : (lang === "ar" ? "+ تعيين بريد" : "+ Set email")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
                 {/* Usage Progress Gauge */}
                 <div className="p-3.5 bg-card border border-border/50 rounded-xl space-y-2 text-xs">
@@ -1765,10 +1891,11 @@ export default function AdminAiQuota() {
                     <span className="text-[11px] text-muted-foreground block">USD</span>
                   </div>
                 </div>
+                </div>
 
                 {/* Footer Actions */}
                 <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-border/50">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -1789,6 +1916,27 @@ export default function AdminAiQuota() {
                       <Printer className="w-3.5 h-3.5 text-blue-400" />
                       {lang === "ar" ? "طباعة" : "Print"}
                     </Button>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      disabled={isSharingBill}
+                      onClick={() => handleShareBill(billTarget)}
+                      title={billTarget.notificationEmail ? `Send to ${billTarget.notificationEmail}` : (lang === "ar" ? "مشاركة الفاتورة عبر البريد" : "Share bill via email")}
+                    >
+                      {isSharingBill ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {lang === "ar" ? "جاري المشاركة..." : "Sharing..."}
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "مشاركة" : "Share"}
+                        </>
+                      )}
+                    </Button>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setBillTarget(null)}>
                     {lang === "ar" ? "إغلاق" : "Close"}
@@ -1797,6 +1945,72 @@ export default function AdminAiQuota() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Bill Email Prompt Modal (when company doesn't have an email or admin wants to change it) */}
+      <Dialog open={shareEmailPromptOpen} onOpenChange={setShareEmailPromptOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="w-5 h-5 text-emerald-500" />
+              {lang === "ar" ? "مشاركة الفاتورة عبر البريد الإلكتروني" : "Share Bill via Email"}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "ar"
+                ? "إرسال صورة وبيانات الفاتورة إلى بريد الإشعارات (Gmail)."
+                : "Send bill invoice screenshot and itemized details to the notification Gmail address."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="custom-share-email" className="flex items-center gap-1.5 text-xs">
+                <Mail className="w-3.5 h-3.5 text-primary" />
+                {lang === "ar" ? "البريد الإلكتروني للإشعارات (Gmail)" : "Notification Email (Gmail)"}
+              </Label>
+              <Input
+                id="custom-share-email"
+                type="email"
+                placeholder={lang === "ar" ? "أدخل بريد Gmail لتلقي الفاتورة" : "Enter Gmail address to receive bill"}
+                value={customShareEmail}
+                onChange={(e) => setCustomShareEmail(e.target.value)}
+                className="font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {lang === "ar"
+                  ? "سيتم إرسال صورة الفاتورة إلى هذا البريد وحفظه تلقائياً كبريد إشعارات لهذه الشركة."
+                  : "The invoice image will be sent to this email and saved as the notification email for this company."}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShareEmailPromptOpen(false)}>
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              disabled={isSharingBill || !customShareEmail.trim()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              onClick={() => {
+                if (shareTargetCompany) {
+                  executeShare(shareTargetCompany, customShareEmail.trim());
+                }
+              }}
+            >
+              {isSharingBill ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {lang === "ar" ? "جاري الإرسال..." : "Sending..."}
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  {lang === "ar" ? "إرسال الفاتورة" : "Send Bill"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

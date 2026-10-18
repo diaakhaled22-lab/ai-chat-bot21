@@ -36,7 +36,7 @@ export function isEmailConfigured(cfg: Awaited<ReturnType<typeof getEmailConfig>
   return !!(cfg.recipientEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
 }
 
-function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
+export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
   const enc = cfg.smtpEncryption;
   return nodemailer.createTransport({
     host: cfg.smtpHost,
