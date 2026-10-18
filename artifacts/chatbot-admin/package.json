@@ -78,7 +78,6 @@
                             "vite":  "catalog:",
                             "wouter":  "^3.3.5",
                             "zod":  "catalog:",
-                            "html2canvas": "^1.4.1",
                             "qrcode.react":  "^4.0.1"
                         }
 }

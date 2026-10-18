@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import html2canvas from "html2canvas";
 import QuotaAICard from "@/components/QuotaAICard";
 import { useLanguage } from "@/hooks/use-language";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -154,6 +153,233 @@ function applyDatePreset(
     const e = new Date(base.getFullYear(), base.getMonth() + 1, 0);
     setEnd(toIso(e));
   }
+}
+
+function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number | number[]) {
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+  }
+}
+
+function generateBillInvoiceCanvas(data: {
+  companyName: string;
+  clientName: string;
+  invoiceNumber: string;
+  rangeLabel: string;
+  effectiveModel: string;
+  effectiveProvider: string;
+  quotaFormatted: string;
+  validityPeriod?: string;
+  messages: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  percent: number;
+  remaining: number | null;
+  cost: number;
+  isExceeded: boolean;
+}): string {
+  const width = 640;
+  const height = 660;
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  ctx.scale(scale, scale);
+
+  // Background
+  ctx.fillStyle = "#ffffff";
+  drawRoundRect(ctx, 0, 0, width, height, 16);
+  ctx.fill();
+
+  ctx.strokeStyle = "#e5e7eb";
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, 0, 0, width, height, 16);
+  ctx.stroke();
+
+  // Header Banner
+  const grad = ctx.createLinearGradient(0, 0, width, 110);
+  grad.addColorStop(0, "#10b981");
+  grad.addColorStop(1, "#059669");
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx, 0, 0, width, 110, [16, 16, 0, 0]);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("فاتورة استهلاك الحصة (Quota Usage Bill)", width / 2, 40);
+
+  ctx.font = "12px monospace";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.fillText(`Invoice #: ${data.invoiceNumber}`, width / 2, 65);
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+  drawRoundRect(ctx, width / 2 - 140, 76, 280, 24, 12);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillText(`الفترة / Period: ${data.rangeLabel}`, width / 2, 92);
+
+  // Info Cards
+  const drawCard = (x: number, y: number, w: number, h: number, title: string, value: string, color = "#111827") => {
+    ctx.fillStyle = "#f9fafb";
+    ctx.strokeStyle = "#f3f4f6";
+    drawRoundRect(ctx, x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.fillText(title, x + w - 12, y + 18);
+
+    ctx.fillStyle = color;
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText(value, x + w - 12, y + 38);
+  };
+
+  const cardW = 286;
+  const cardH = 50;
+  const startY = 126;
+  drawCard(334, startY, cardW, cardH, "الشركة (Company)", data.companyName);
+  drawCard(20, startY, cardW, cardH, "العميل (Client)", data.clientName);
+  drawCard(334, startY + 58, cardW, cardH, "الحصة المخصصة (Allocated Quota)", `${data.quotaFormatted} tokens`, "#2563eb");
+  drawCard(20, startY + 58, cardW, cardH, "النموذج النشط (Active Model)", `${data.effectiveModel} (${data.effectiveProvider.toUpperCase()})`, "#d97706");
+
+  let currentY = startY + 116;
+  if (data.validityPeriod) {
+    ctx.fillStyle = "#f0fdf4";
+    ctx.strokeStyle = "#dcfce7";
+    drawRoundRect(ctx, 20, currentY, 600, 28, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.fillStyle = "#166534";
+    ctx.fillText(`📅 فترة صلاحية الحصة (Quota Validity): ${data.validityPeriod}`, width / 2, currentY + 18);
+    currentY += 36;
+  }
+
+  // Quota Utilization
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#e5e7eb";
+  drawRoundRect(ctx, 20, currentY, 600, 68, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#374151";
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.fillText("مستوى استهلاك الحصة (Quota Utilization):", 608, currentY + 20);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = data.isExceeded ? "#ef4444" : data.percent >= 80 ? "#f59e0b" : "#10b981";
+  ctx.font = "bold 13px system-ui, sans-serif";
+  ctx.fillText(`${data.percent.toFixed(1)}%${data.isExceeded ? " (تجاوز الحصة)" : ""}`, 32, currentY + 20);
+
+  ctx.fillStyle = "#e5e7eb";
+  drawRoundRect(ctx, 32, currentY + 30, 576, 8, 4);
+  ctx.fill();
+
+  const barWidth = Math.min(576, Math.max(4, (Math.min(100, data.percent) / 100) * 576));
+  ctx.fillStyle = data.isExceeded ? "#ef4444" : data.percent >= 80 ? "#f59e0b" : "#10b981";
+  drawRoundRect(ctx, 32, currentY + 30, barWidth, 8, 4);
+  ctx.fill();
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillText(`المستهلك: ${data.totalTokens.toLocaleString()} tokens`, 608, currentY + 54);
+
+  ctx.textAlign = "left";
+  ctx.fillText(`المتبقي: ${data.remaining != null ? data.remaining.toLocaleString() : "غير محدود"}`, 32, currentY + 54);
+
+  currentY += 80;
+  const tableX = 20;
+  const tableW = 600;
+
+  // Table Header
+  ctx.fillStyle = "#f9fafb";
+  drawRoundRect(ctx, tableX, currentY, tableW, 28, [6, 6, 0, 0]);
+  ctx.fill();
+  ctx.strokeStyle = "#e5e7eb";
+  ctx.stroke();
+
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillStyle = "#4b5563";
+  ctx.textAlign = "right";
+  ctx.fillText("البند (Item)", tableX + tableW - 14, currentY + 18);
+  ctx.textAlign = "center";
+  ctx.fillText("الاستهلاك (Usage)", tableX + tableW / 2, currentY + 18);
+  ctx.textAlign = "left";
+  ctx.fillText("التكلفة (Est. Cost)", tableX + 14, currentY + 18);
+
+  currentY += 28;
+  const drawRow = (item: string, usage: string, costStr: string, isTotal = false) => {
+    ctx.fillStyle = isTotal ? "#f0fdf4" : "#ffffff";
+    ctx.fillRect(tableX, currentY, tableW, 30);
+    ctx.strokeStyle = isTotal ? "#bbf7d0" : "#f3f4f6";
+    ctx.beginPath();
+    ctx.moveTo(tableX, currentY + 30);
+    ctx.lineTo(tableX + tableW, currentY + 30);
+    ctx.stroke();
+
+    ctx.font = isTotal ? "bold 12px system-ui, sans-serif" : "12px system-ui, sans-serif";
+    ctx.fillStyle = isTotal ? "#166534" : "#1f2937";
+    ctx.textAlign = "right";
+    ctx.fillText(item, tableX + tableW - 14, currentY + 20);
+
+    ctx.textAlign = "center";
+    ctx.font = "11px monospace";
+    ctx.fillText(usage, tableX + tableW / 2, currentY + 20);
+
+    ctx.textAlign = "left";
+    ctx.font = isTotal ? "bold 13px monospace" : "11px monospace";
+    ctx.fillText(costStr, tableX + 14, currentY + 20);
+    currentY += 30;
+  };
+
+  drawRow("رسائل المحادثة (Total Messages)", `${data.messages.toLocaleString()} msgs`, "—");
+  drawRow("رموز المدخلات (Input Tokens)", `${data.inputTokens.toLocaleString()} tokens`, `$${(data.inputTokens * 0.00000015).toFixed(4)}`);
+  drawRow("رموز المخرجات (Output Tokens)", `${data.outputTokens.toLocaleString()} tokens`, `$${(data.outputTokens * 0.0000006).toFixed(4)}`);
+  drawRow("إجمالي الاستهلاك والتكلفة", `${data.totalTokens.toLocaleString()} tokens`, `$${data.cost.toFixed(4)} USD`, true);
+
+  currentY += 12;
+  ctx.fillStyle = "#ecfdf5";
+  ctx.strokeStyle = "#a7f3d0";
+  drawRoundRect(ctx, tableX, currentY, tableW, 54, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#065f46";
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.fillText("إجمالي الفاتورة المستحقة للفترة:", tableX + tableW - 16, currentY + 22);
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillStyle = "#047857";
+  ctx.fillText(data.isExceeded ? "تجاوز استهلاك الحصة المسموحة" : "مغطى بالكامل ضمن الحصة الشهرية", tableX + tableW - 16, currentY + 40);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#059669";
+  ctx.font = "bold 22px monospace";
+  ctx.fillText(`$${data.cost.toFixed(4)}`, tableX + 16, currentY + 34);
+  ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText("USD", tableX + 16, currentY + 47);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#9ca3af";
+  ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText("نظام إدارة الحصص والذكاء الاصطناعي — Bot Manager AI Quota System", width / 2, height - 12);
+
+  return canvas.toDataURL("image/png");
 }
 
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
@@ -573,21 +799,6 @@ export default function AdminAiQuota() {
   const executeShare = async (company: Company, overrideEmail?: string) => {
     setIsSharingBill(true);
     try {
-      let imageDataUrl: string | undefined;
-      if (billCardRef.current) {
-        try {
-          const canvas = await html2canvas(billCardRef.current, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: null,
-            logging: false,
-          });
-          imageDataUrl = canvas.toDataURL("image/png");
-        } catch (canvasErr) {
-          console.warn("Could not capture bill screenshot with html2canvas:", canvasErr);
-        }
-      }
-
       const usage = companyUsageMap.get(company.id);
       const quota = company.monthlyTokenQuota ?? 0;
       const totalTokens = usage?.tokens ?? 0;
@@ -597,6 +808,33 @@ export default function AdminAiQuota() {
       const invoiceNumber = `INV-Q-${company.id}-${toIso(new Date()).replace(/-/g, "")}`;
       const effectiveModel = (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : company.aiModel) || "gpt-4o-mini";
       const effectiveProvider = (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
+
+      let imageDataUrl: string | undefined;
+      try {
+        imageDataUrl = generateBillInvoiceCanvas({
+          companyName: company.name,
+          clientName: company.clientName || company.clientUsername || "—",
+          invoiceNumber,
+          rangeLabel,
+          effectiveModel,
+          effectiveProvider,
+          quotaFormatted: formatQuota(quota),
+          validityPeriod:
+            company.activationStart || company.activationEnd
+              ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
+              : undefined,
+          messages: usage?.messages ?? 0,
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
+          totalTokens,
+          percent,
+          remaining,
+          cost,
+          isExceeded: quota > 0 && totalTokens > quota,
+        });
+      } catch (canvasErr) {
+        console.warn("Could not generate bill canvas image:", canvasErr);
+      }
 
       const res = await customFetch<{ ok: boolean; recipient: string; message: string }>(
         `/api/admin/companies/${company.id}/send-bill-email`,
