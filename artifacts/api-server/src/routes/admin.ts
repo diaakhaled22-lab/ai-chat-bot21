@@ -1882,7 +1882,7 @@ router.get("/admin/support-ai-status", async (req, res) => {
 
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("AI connection check timed out (5s limit)")), 5000)
+        setTimeout(() => reject(new Error("AI connection check timed out (15s limit)")), 15000)
       );
 
       const checkPromise = (async () => {
@@ -2044,7 +2044,7 @@ router.get("/admin/quota-ai-status", async (req, res) => {
 
     try {
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("AI connection check timed out (5s limit)")), 5000)
+        setTimeout(() => reject(new Error("AI connection check timed out (15s limit)")), 15000)
       );
 
       const checkPromise = (async () => {
