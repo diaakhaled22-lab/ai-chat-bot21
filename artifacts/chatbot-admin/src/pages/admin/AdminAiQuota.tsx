@@ -107,7 +107,7 @@ function formatQuota(num: number | null | undefined): string {
   return num.toLocaleString();
 }
 
-type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent";
+type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "startDate" | "endDate" | "tokens" | "cost" | "percent";
 type SortDir = "asc" | "desc";
 
 type RangePreset = "today" | "7d" | "30d" | "month" | "all";
@@ -650,6 +650,18 @@ export default function AdminAiQuota() {
         case "quota":
           cmp = aQuota - bQuota;
           break;
+        case "startDate": {
+          const aTime = a.activationStart ? new Date(a.activationStart).getTime() : 0;
+          const bTime = b.activationStart ? new Date(b.activationStart).getTime() : 0;
+          cmp = aTime - bTime;
+          break;
+        }
+        case "endDate": {
+          const aTime = a.activationEnd ? new Date(a.activationEnd).getTime() : 0;
+          const bTime = b.activationEnd ? new Date(b.activationEnd).getTime() : 0;
+          cmp = aTime - bTime;
+          break;
+        }
         case "tokens":
           cmp = (aUsage?.tokens ?? 0) - (bUsage?.tokens ?? 0);
           break;
@@ -710,6 +722,8 @@ export default function AdminAiQuota() {
       "Company",
       "Client Name",
       "AI Model",
+      "Start Date",
+      "End Date",
       "Messages",
       "Input Tokens",
       "Output Tokens",
@@ -734,6 +748,8 @@ export default function AdminAiQuota() {
         `"${c.name.replace(/"/g, '""')}"`,
         `"${c.clientName ? c.clientName.replace(/"/g, '""') : ''}"`,
         `"${effectiveModel}"`,
+        `"${c.activationStart ? c.activationStart.slice(0, 10) : '—'}"`,
+        `"${c.activationEnd ? c.activationEnd.slice(0, 10) : '—'}"`,
         hasQuota ? (usage?.messages ?? 0) : 0,
         hasQuota ? (usage?.inputTokens ?? 0) : 0,
         hasQuota ? (usage?.outputTokens ?? 0) : 0,
@@ -1273,6 +1289,8 @@ export default function AdminAiQuota() {
               <SelectContent>
                 <SelectItem value="tokens-desc">{lang === "ar" ? "الأعلى استهلاكاً" : "Highest Tokens"}</SelectItem>
                 <SelectItem value="tokens-asc">{lang === "ar" ? "الأقل استهلاكاً" : "Lowest Tokens"}</SelectItem>
+                <SelectItem value="startDate-desc">{lang === "ar" ? "الأحدث تاريخ بدء" : "Newest Start Date"}</SelectItem>
+                <SelectItem value="endDate-asc">{lang === "ar" ? "الأقرب انتهاءً" : "Ending Soonest"}</SelectItem>
                 <SelectItem value="messages-desc">{lang === "ar" ? "الأكثر رسائل" : "Most Messages"}</SelectItem>
                 <SelectItem value="inputTokens-desc">{lang === "ar" ? "الأعلى مدخلات (Input)" : "Highest Input Tokens"}</SelectItem>
                 <SelectItem value="outputTokens-desc">{lang === "ar" ? "الأعلى مخرجات (Output)" : "Highest Output Tokens"}</SelectItem>
@@ -1331,6 +1349,22 @@ export default function AdminAiQuota() {
                     </span>
                   </th>
                   <th 
+                    className="text-center px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("startDate")}
+                  >
+                    <span className="inline-flex items-center justify-center gap-1">
+                      {lang === "ar" ? "تاريخ البدء" : "Start Date"} <SortIcon col="startDate" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
+                    className="text-center px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                    onClick={() => toggleSort("endDate")}
+                  >
+                    <span className="inline-flex items-center justify-center gap-1">
+                      {lang === "ar" ? "تاريخ الانتهاء" : "End Date"} <SortIcon col="endDate" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
                     className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
                     onClick={() => toggleSort("tokens")}
                   >
@@ -1360,14 +1394,14 @@ export default function AdminAiQuota() {
               <tbody className="divide-y border-border/30">
                 {companiesLoading || usageLoading ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={12} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                       {lang === "ar" ? "جاري تحميل البيانات..." : "Loading data..."}
                     </td>
                   </tr>
                 ) : filteredAndSortedCompanies.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={12} className="text-center py-8 text-muted-foreground">
                       {lang === "ar" ? "لا توجد شركات بحصص محددة حالياً." : "No companies with assigned quotas."}
                     </td>
                   </tr>
@@ -1425,23 +1459,47 @@ export default function AdminAiQuota() {
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {hasQuota ? (
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
-                                {formatQuota(c.monthlyTokenQuota)}
-                              </span>
-                              {(c.activationStart || c.activationEnd) && (
-                                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                                  <Calendar className="w-2.5 h-2.5" />
-                                  {c.activationStart ? new Date(c.activationStart).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "numeric", day: "numeric" }) : "—"}
-                                  {" - "}
-                                  {c.activationEnd ? new Date(c.activationEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "numeric", day: "numeric" }) : "—"}
-                                </span>
-                              )}
-                            </div>
+                            <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
+                              {formatQuota(c.monthlyTokenQuota)}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground/60 text-[10px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">
                               {lang === "ar" ? "معطل" : "Disabled"}
                             </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                          {c.activationStart ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 border border-border/40 text-muted-foreground">
+                              <Calendar className="w-2.5 h-2.5 text-blue-400" />
+                              {c.activationStart.slice(0, 10)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center tabular-nums font-mono text-[11px] whitespace-nowrap">
+                          {c.activationEnd ? (
+                            (() => {
+                              const isPast = new Date(c.activationEnd) < new Date();
+                              return (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+                                  isPast 
+                                    ? "bg-red-500/10 border-red-500/30 text-red-500 font-semibold" 
+                                    : "bg-muted/50 border-border/40 text-muted-foreground"
+                                }`}>
+                                  <Calendar className={`w-2.5 h-2.5 ${isPast ? "text-red-500" : "text-amber-400"}`} />
+                                  {c.activationEnd.slice(0, 10)}
+                                  {isPast && (
+                                    <span className="text-[9px] px-1 rounded bg-red-500/20 text-red-500 font-bold">
+                                      {lang === "ar" ? "منتهي" : "Expired"}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono">
@@ -2366,6 +2424,8 @@ export default function AdminAiQuota() {
                   <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "العميل" : "Client"}</th>
                   <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النموذج" : "Model"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الحصة" : "Quota"}</th>
+                  <th className="text-center p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "تاريخ البدء" : "Start Date"}</th>
+                  <th className="text-center p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "تاريخ الانتهاء" : "End Date"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرموز المستهلكة" : "Tokens Used"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرسائل" : "Messages"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Quota %"}</th>
@@ -2388,6 +2448,27 @@ export default function AdminAiQuota() {
                       <td className="p-2.5 text-muted-foreground">{c.clientName || c.clientUsername || "—"}</td>
                       <td className="p-2.5 font-mono text-[11px] text-amber-500">{effectiveModel}</td>
                       <td className="p-2.5 text-right font-mono">{formatQuota(quota)}</td>
+                      <td className="p-2.5 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                        {c.activationStart ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5 text-blue-400" />
+                            {c.activationStart.slice(0, 10)}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="p-2.5 text-center font-mono text-[11px] whitespace-nowrap">
+                        {c.activationEnd ? (
+                          (() => {
+                            const isPast = new Date(c.activationEnd) < new Date();
+                            return (
+                              <span className={`inline-flex items-center gap-1 ${isPast ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>
+                                <Calendar className={`w-2.5 h-2.5 ${isPast ? "text-red-500" : "text-amber-400"}`} />
+                                {c.activationEnd.slice(0, 10)}
+                              </span>
+                            );
+                          })()
+                        ) : "—"}
+                      </td>
                       <td className="p-2.5 text-right font-mono font-medium">{tokens.toLocaleString()}</td>
                       <td className="p-2.5 text-right font-mono text-muted-foreground">{(usage?.messages ?? 0).toLocaleString()}</td>
                       <td className="p-2.5 text-right font-mono">
@@ -2431,6 +2512,7 @@ export default function AdminAiQuota() {
                 <tr className="bg-muted/30 font-bold border-t-2 border-border/60">
                   <td colSpan={3} className="p-2.5 text-foreground">{lang === "ar" ? "الإجمالي الكلي" : "Grand Total"}</td>
                   <td className="p-2.5 text-right font-mono">{formatQuota(totalAllocatedQuota)}</td>
+                  <td colSpan={2}></td>
                   <td className="p-2.5 text-right font-mono text-foreground">{totalTokensConsumedMonth.toLocaleString()}</td>
                   <td className="p-2.5 text-right font-mono text-muted-foreground">
                     {filteredAndSortedCompanies.reduce((s, c) => s + (companyUsageMap.get(c.id)?.messages ?? 0), 0).toLocaleString()}
