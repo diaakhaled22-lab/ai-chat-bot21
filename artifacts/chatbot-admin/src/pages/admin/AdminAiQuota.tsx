@@ -2329,14 +2329,26 @@ export default function AdminAiQuota() {
       <Dialog open={showAllBillsModal} onOpenChange={setShowAllBillsModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b border-border/50 pb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <DialogTitle className="flex items-center gap-2 text-lg font-bold">
                 <Receipt className="w-5 h-5 text-emerald-400" />
                 {lang === "ar" ? "كشف فواتير استهلاك الحصص لجميع الشركات" : "All Client Quota Invoices Summary"}
               </DialogTitle>
-              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-muted border border-border/50 text-muted-foreground">
-                {rangeLabel}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-muted border border-border/50 text-muted-foreground">
+                  {rangeLabel}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-sm"
+                  onClick={handleExportCsv}
+                  title={lang === "ar" ? "تحميل كشف الحصص كملف CSV / Excel" : "Download summary as CSV / Excel"}
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-500" />
+                  {lang === "ar" ? "تحميل الكشف (CSV)" : "Download (CSV)"}
+                </Button>
+              </div>
             </div>
             <DialogDescription>
               {lang === "ar"
@@ -2357,7 +2369,7 @@ export default function AdminAiQuota() {
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرسائل" : "Messages"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Quota %"}</th>
                   <th className="text-right p-2.5 font-medium text-emerald-500 font-bold">{lang === "ar" ? "الفاتورة" : "Bill (USD)"}</th>
-                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "تفاصيل" : "Action"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "إجراءات" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
@@ -2386,18 +2398,30 @@ export default function AdminAiQuota() {
                         ${cost.toFixed(4)}
                       </td>
                       <td className="p-2.5 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-[11px] text-emerald-500 hover:text-emerald-400"
-                          onClick={() => {
-                            setShowAllBillsModal(false);
-                            setBillTarget(c);
-                          }}
-                        >
-                          <Receipt className="w-3 h-3 mr-1" />
-                          {lang === "ar" ? "عرض" : "View"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[11px] text-emerald-500 hover:text-emerald-400"
+                            onClick={() => {
+                              setShowAllBillsModal(false);
+                              setBillTarget(c);
+                            }}
+                          >
+                            <Receipt className="w-3 h-3 mr-1" />
+                            {lang === "ar" ? "عرض" : "View"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[11px] text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            title={lang === "ar" ? "تحميل صورة الفاتورة" : "Download invoice image"}
+                            onClick={() => handleDownloadInvoiceImage(c)}
+                          >
+                            <Download className="w-3 h-3 mr-1 text-emerald-500" />
+                            {lang === "ar" ? "تحميل" : "Download"}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2422,11 +2446,22 @@ export default function AdminAiQuota() {
             </table>
           </div>
 
-          <DialogFooter className="mt-4 flex flex-row items-center justify-between">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="w-3.5 h-3.5 mr-1 text-blue-400" />
-              {lang === "ar" ? "طباعة الكشف" : "Print Summary"}
-            </Button>
+          <DialogFooter className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-border/50 pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
+                <Printer className="w-3.5 h-3.5 text-blue-400" />
+                {lang === "ar" ? "طباعة الكشف" : "Print Summary"}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                onClick={handleExportCsv}
+              >
+                <Download className="w-3.5 h-3.5" />
+                {lang === "ar" ? "تحميل الكشف (CSV)" : "Download Summary (CSV)"}
+              </Button>
+            </div>
             <Button variant="outline" size="sm" onClick={() => setShowAllBillsModal(false)}>
               {lang === "ar" ? "إغلاق" : "Close"}
             </Button>
