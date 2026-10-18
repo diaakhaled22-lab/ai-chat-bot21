@@ -182,8 +182,20 @@ export function preserveMaskedSecret(
   nextValue: string | null | undefined,
   existingValue: string | null | undefined,
 ): string | null | undefined {
-  if (nextValue !== undefined && existingValue && nextValue === maskApiKey(existingValue)) {
-    return existingValue;
+  if (nextValue === undefined || nextValue === null) {
+    return nextValue;
+  }
+  const trimmed = typeof nextValue === "string" ? nextValue.trim() : "";
+  if (existingValue) {
+    if (
+      trimmed === maskApiKey(existingValue) ||
+      trimmed.includes("••••") ||
+      trimmed.includes("****") ||
+      /^[\u2022\*\.]{3,}$/.test(trimmed) ||
+      trimmed.startsWith("••••")
+    ) {
+      return existingValue;
+    }
   }
   return nextValue;
 }

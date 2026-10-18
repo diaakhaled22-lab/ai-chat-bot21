@@ -24,7 +24,7 @@ import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
-import { maskApiKey } from "../lib/security";
+import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
@@ -464,16 +464,6 @@ router.put("/client/company", async (req, res) => {
       res.status(404).json({ error: "No company found" });
       return;
     }
-
-    const preserveMaskedSecret = (
-      nextValue: string | null | undefined,
-      existingValue: string | null | undefined,
-    ) => {
-      if (nextValue !== undefined && existingValue && nextValue === maskApiKey(existingValue)) {
-        return existingValue;
-      }
-      return nextValue;
-    };
 
     const updates: Record<string, unknown> = {};
     if (data.name !== undefined) updates.name = data.name;
@@ -1635,19 +1625,23 @@ router.put("/client/settings", async (req, res) => {
           .limit(1);
 
         if (comp) {
-          sendCompanyNotification(
-            comp.id,
-            "Email Notifications Enabled",
-            buildNotificationHtml({
-              companyName: comp.name,
-              eventType: "Notifications Enabled",
-              title: "Email Notifications Enabled",
-              dateTime: new Date(),
-              customerDetails: { "Notification Email": trimmedEmail },
-              eventDetails: "Your email has been successfully linked to your Bot Manager account. You will now receive automatic notifications for conversations, leads, orders, and malfunctions here.",
-            }),
-            { eventType: "Email Notifications Enabled" }
-          ).catch((e: any) => logger.error({ err: e }, "Failed to send confirmation email via Resend"));
+          try {
+            sendCompanyNotification(
+              comp.id,
+              "Email Notifications Enabled",
+              buildNotificationHtml({
+                companyName: comp.name,
+                eventType: "Notifications Enabled",
+                title: "Email Notifications Enabled",
+                dateTime: new Date(),
+                customerDetails: { "Notification Email": trimmedEmail },
+                eventDetails: "Your email has been successfully linked to your Bot Manager account. You will now receive automatic notifications for conversations, leads, orders, and malfunctions here.",
+              }),
+              { eventType: "Email Notifications Enabled" }
+            ).catch((e: any) => logger.error({ err: e }, "Failed to send confirmation email via Resend"));
+          } catch (notifErr) {
+            logger.error({ notifErr }, "Failed to dispatch confirmation email via Resend");
+          }
         }
       }
     }
@@ -1655,7 +1649,14 @@ router.put("/client/settings", async (req, res) => {
     // Save RESEND_API_KEY secret if provided
     if (resendApiKey !== undefined) {
       const trimmedKey = resendApiKey === "" ? null : resendApiKey.trim();
-      const resolvedKey = preserveMaskedSecret(trimmedKey, user.resendApiKey);
+      const [comp] = await db
+        .select({ resendApiKey: companiesTable.resendApiKey })
+        .from(companiesTable)
+        .where(eq(companiesTable.clientId, req.session.userId!))
+        .limit(1);
+
+      const existingKey = user.resendApiKey || comp?.resendApiKey || null;
+      const resolvedKey = preserveMaskedSecret(trimmedKey, existingKey);
       updates.resendApiKey = resolvedKey;
       changes.push(`Resend API key ${resolvedKey ? "updated" : "removed"}`);
       await db
