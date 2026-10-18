@@ -163,16 +163,16 @@ export async function sendMessengerMessage(pageAccessToken: string, recipientId:
 }
 
 /**
- * GET /messenger/webhook
+ * GET /messenger/webhook and /webhook/messenger
  *
  * Platform-level webhook verification handshake (no page ID in URL).
  * In the Meta App Dashboard set:
- *   Webhook URL   â†’ <your-domain>/api/messenger/webhook
- *   Verify Token  â†’ the token generated in Admin â†’ Security / Webhook Settings
+ *   Webhook URL   → <your-domain>/api/messenger/webhook (or /messenger/webhook)
+ *   Verify Token  → the token generated in Admin → Security / Webhook Settings
  *
  * Meta sends hub.verify_token which we check against the stored platform token.
  */
-router.get("/messenger/webhook", webhookLimiter, async (req, res) => {
+router.get(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, async (req, res) => {
   try {
     const mode        = req.query["hub.mode"];
     const verifyToken = req.query["hub.verify_token"];
@@ -201,12 +201,12 @@ router.get("/messenger/webhook", webhookLimiter, async (req, res) => {
 });
 
 /**
- * POST /messenger/webhook
+ * POST /messenger/webhook and /webhook/messenger
  *
  * Platform-level incoming Messenger events. Extracts the Page ID from
  * entry[].id in the payload and routes to the matching company.
  */
-router.post("/messenger/webhook", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
+router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
 
   try {
@@ -454,12 +454,12 @@ router.post("/messenger/webhook", webhookLimiter, verifyMetaWebhookSignature, as
 });
 
 /**
- * GET /messenger/webhook/:pageId
+ * GET /messenger/webhook/:pageId and /webhook/messenger/:pageId
  *
- * Per-company webhook verification (legacy â€” kept for backwards compatibility).
- * Verify Token = Page Access Token stored in company settings.
+ * Per-company webhook verification.
+ * Verify Token = Page Access Token stored in company settings, or platform verify token.
  */
-router.get("/messenger/webhook/:pageId", async (req, res) => {
+router.get(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], async (req, res) => {
   try {
     const { pageId } = req.params;
     const mode        = req.query["hub.mode"];
@@ -474,7 +474,15 @@ router.get("/messenger/webhook/:pageId", async (req, res) => {
     const companies = await db.select().from(companiesTable);
     const company   = companies.find(c => c.messengerPageId === pageId);
 
-    if (!company || !company.messengerApiKey || verifyToken !== company.messengerApiKey) {
+    const [globalRow] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "messenger_verify_token"));
+
+    const isTokenValid = (company?.messengerApiKey && verifyToken === company.messengerApiKey) ||
+      (globalRow?.value && verifyToken === globalRow.value);
+
+    if (!company || !isTokenValid) {
       res.sendStatus(403);
       return;
     }
@@ -487,13 +495,13 @@ router.get("/messenger/webhook/:pageId", async (req, res) => {
 });
 
 /**
- * POST /messenger/webhook/:pageId
+ * POST /messenger/webhook/:pageId and /webhook/messenger/:pageId
  *
  * Receives incoming Messenger events from Meta.
  * Looks up the company by Page ID, processes the message through the AI pipeline,
  * and sends the reply back to the user via the Graph API.
  */
-router.post("/messenger/webhook/:pageId", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
+router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
 
   let company: typeof companiesTable.$inferSelect | undefined;

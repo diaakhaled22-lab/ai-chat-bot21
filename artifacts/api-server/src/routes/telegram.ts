@@ -176,7 +176,7 @@ export async function sendTelegramMessage(botToken: string, chatId: number, text
   });
 }
 
-router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
+router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookLimiter, async (req, res) => {
   res.sendStatus(200);
   let company: typeof companiesTable.$inferSelect | undefined;
   try {
@@ -192,17 +192,39 @@ router.post("/telegram/webhook/:secret", webhookLimiter, async (req, res) => {
     let userText: string = message.text || "";
     let isVoice = false;
 
-    const [foundCompany] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
-    if (!foundCompany || !timingSafeCompare(secret, foundCompany.telegramWebhookSecretHash)) {
+    let [foundCompany] = await db.select().from(companiesTable).where(eq(companiesTable.telegramWebhookSecretHash, secret)).limit(1);
+
+    if (!foundCompany) {
+      // Fallback: check if secret matches company's telegramBotApiKey directly or its hashed version
+      const allCompanies = await db.select().from(companiesTable);
+      for (const c of allCompanies) {
+        if (!c.telegramBotApiKey) continue;
+        const computedHash = telegramWebhookSecret(c.telegramBotApiKey);
+        if (timingSafeCompare(secret, c.telegramBotApiKey) || timingSafeCompare(secret, computedHash)) {
+          foundCompany = c;
+          if (!c.telegramWebhookSecretHash) {
+            db.update(companiesTable).set({ telegramWebhookSecretHash: computedHash }).where(eq(companiesTable.id, c.id)).catch(() => {});
+          }
+          break;
+        }
+      }
+    }
+
+    if (!foundCompany) {
       logger.warn({ secret: secret.slice(0, 8), ip: req.ip }, "SECURITY: Telegram webhook rejected due to invalid secret");
       return;
     }
 
     // Cryptographic Secret Token verification:
     // If Telegram sends the X-Telegram-Bot-Api-Secret-Token header, verify it matches
-    // the registered secret hash with 100% mathematical certainty.
+    // the registered secret hash or token.
     if (headerSecretToken) {
-      if (!timingSafeCompare(headerSecretToken, foundCompany.telegramWebhookSecretHash)) {
+      const computedHash = foundCompany.telegramBotApiKey ? telegramWebhookSecret(foundCompany.telegramBotApiKey) : "";
+      const isHeaderValid = (foundCompany.telegramWebhookSecretHash && timingSafeCompare(headerSecretToken, foundCompany.telegramWebhookSecretHash)) ||
+        (foundCompany.telegramBotApiKey && timingSafeCompare(headerSecretToken, foundCompany.telegramBotApiKey)) ||
+        (computedHash && timingSafeCompare(headerSecretToken, computedHash));
+
+      if (!isHeaderValid) {
         logger.warn(
           { companyId: foundCompany.id, ip: req.ip },
           "SECURITY: Telegram webhook rejected due to mismatched X-Telegram-Bot-Api-Secret-Token header!"

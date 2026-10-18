@@ -170,14 +170,14 @@ export async function sendWhatsAppMessage(phoneNumberId: string, apiToken: strin
 }
 
 /**
- * GET /whatsapp/webhook
+ * GET /whatsapp/webhook and /webhook/whatsapp
  *
  * Platform-level webhook verification handshake (no phone number ID in URL).
  * In the Meta App Dashboard set:
- *   Webhook URL   â†’ <your-domain>/api/whatsapp/webhook
- *   Verify Token  â†’ the token generated in Admin â†’ Security / Webhook Settings
+ *   Webhook URL   → <your-domain>/api/whatsapp/webhook (or /whatsapp/webhook)
+ *   Verify Token  → the token generated in Admin → Security / Webhook Settings
  */
-router.get("/whatsapp/webhook", webhookLimiter, async (req, res) => {
+router.get(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, async (req, res) => {
   try {
     const mode        = req.query["hub.mode"];
     const verifyToken = req.query["hub.verify_token"];
@@ -206,12 +206,12 @@ router.get("/whatsapp/webhook", webhookLimiter, async (req, res) => {
 });
 
 /**
- * POST /whatsapp/webhook
+ * POST /whatsapp/webhook and /webhook/whatsapp
  *
  * Platform-level incoming WhatsApp events. Extracts the Phone Number ID from
  * entry[].changes[].value.metadata.phone_number_id and routes to the matching company.
  */
-router.post("/whatsapp/webhook", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
+router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
 
   try {
@@ -518,12 +518,12 @@ router.post("/whatsapp/webhook", webhookLimiter, verifyMetaWebhookSignature, asy
 });
 
 /**
- * GET /whatsapp/webhook/:phoneNumberId
+ * GET /whatsapp/webhook/:phoneNumberId and /webhook/whatsapp/:phoneNumberId
  *
- * Per-company webhook verification (legacy â€” kept for backwards compatibility).
- * Verify Token = whatsappApiToken stored in company settings.
+ * Per-company webhook verification.
+ * Verify Token = whatsappApiToken stored in company settings, or platform verify token.
  */
-router.get("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
+router.get(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumberId"], async (req, res) => {
   try {
     const { phoneNumberId } = req.params;
     const mode        = req.query["hub.mode"];
@@ -538,7 +538,15 @@ router.get("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
     const companies = await db.select().from(companiesTable);
     const company   = companies.find(c => c.whatsappPhoneNumberId === phoneNumberId);
 
-    if (!company || !company.whatsappApiToken || verifyToken !== company.whatsappApiToken) {
+    const [globalRow] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "whatsapp_verify_token"));
+
+    const isTokenValid = (company?.whatsappApiToken && verifyToken === company.whatsappApiToken) ||
+      (globalRow?.value && verifyToken === globalRow.value);
+
+    if (!company || !isTokenValid) {
       res.sendStatus(403);
       return;
     }
@@ -551,13 +559,13 @@ router.get("/whatsapp/webhook/:phoneNumberId", async (req, res) => {
 });
 
 /**
- * POST /whatsapp/webhook/:phoneNumberId
+ * POST /whatsapp/webhook/:phoneNumberId and /webhook/whatsapp/:phoneNumberId
  *
  * Receives incoming messages from the WhatsApp Cloud API.
  * Looks up the company by Phone Number ID, processes the message through the AI pipeline,
  * and sends the reply back to the user via the WhatsApp Cloud API.
  */
-router.post("/whatsapp/webhook/:phoneNumberId", webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
+router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumberId"], webhookLimiter, verifyMetaWebhookSignature, async (req, res) => {
   res.sendStatus(200);
   let company: typeof companiesTable.$inferSelect | undefined;
   try {

@@ -891,10 +891,20 @@ export function suspiciousActivityDetector(req: Request, res: Response, next: Ne
     "/client/company",
     "/api/whatsapp/webhook",
     "/whatsapp/webhook",
+    "/api/webhook/whatsapp",
+    "/webhook/whatsapp",
     "/api/messenger/webhook",
     "/messenger/webhook",
+    "/api/webhook/messenger",
+    "/webhook/messenger",
     "/api/telegram/webhook",
     "/telegram/webhook",
+    "/api/webhook/telegram",
+    "/webhook/telegram",
+    "/api/webhook/message",
+    "/webhook/message",
+    "/api/webhook",
+    "/webhook",
   ];
   if (urlAcceptingPaths.some((p) => req.path.startsWith(p))) {
     return next();

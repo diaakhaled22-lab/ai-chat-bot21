@@ -122,6 +122,29 @@ app.use(sanitizeInputs);            // Strip null bytes & dangerous control char
 app.use(suspiciousActivityDetector); // Block SQL injection, XSS, path traversal attempts
 app.use(sessionAnomalyDetector);     // Smart session anomaly detection
 
+// ── Webhook Path Normalization ───────────────────────────────────────────
+// External platforms (Meta, Telegram, Zapier, custom integrations) often
+// send webhooks to root paths (e.g. /whatsapp/webhook or /webhook/message).
+// Normalize them to the /api router prefix so they match registered routes.
+app.use((req, _res, next) => {
+  const urlPath = req.url.split("?")[0];
+  if (
+    urlPath.startsWith("/webhook/") ||
+    urlPath === "/webhook" ||
+    urlPath.startsWith("/whatsapp/webhook") ||
+    urlPath.startsWith("/messenger/webhook") ||
+    urlPath.startsWith("/telegram/webhook") ||
+    urlPath.startsWith("/webhook/whatsapp") ||
+    urlPath.startsWith("/webhook/messenger") ||
+    urlPath.startsWith("/webhook/telegram")
+  ) {
+    if (!req.url.startsWith("/api/")) {
+      req.url = `/api${req.url}`;
+    }
+  }
+  next();
+});
+
 app.use("/api", express.static(path.join(__dirname, "../public")));
 app.use("/api", router);
 
