@@ -57,6 +57,8 @@ interface Company {
   aiModel?: string;
   monthlyTokenQuota?: number | null;
   isActive: boolean;
+  activationStart?: string | null;
+  activationEnd?: string | null;
 }
 
 interface CompanyUsage {
@@ -118,6 +120,37 @@ function toIso(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+function applyDatePreset(
+  type: "30d" | "endOfMonth" | "90d" | "clear",
+  setStart: (v: string) => void,
+  setEnd: (v: string) => void,
+  currentStart?: string
+) {
+  if (type === "clear") {
+    setStart("");
+    setEnd("");
+    return;
+  }
+  const today = new Date();
+  const startDate = currentStart && !isNaN(new Date(currentStart).getTime()) ? new Date(currentStart) : today;
+  const sStr = toIso(startDate);
+  setStart(sStr);
+
+  const base = new Date(sStr);
+  if (type === "30d") {
+    const e = new Date(base);
+    e.setDate(e.getDate() + 30);
+    setEnd(toIso(e));
+  } else if (type === "90d") {
+    const e = new Date(base);
+    e.setDate(e.getDate() + 90);
+    setEnd(toIso(e));
+  } else if (type === "endOfMonth") {
+    const e = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+    setEnd(toIso(e));
+  }
+}
+
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
   if (col !== sortKey) return <ArrowUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
   return sortDir === "desc"
@@ -175,11 +208,15 @@ export default function AdminAiQuota() {
 
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
   const [quotaInput, setQuotaInput] = useState("");
+  const [quotaStartDate, setQuotaStartDate] = useState("");
+  const [quotaEndDate, setQuotaEndDate] = useState("");
   const [showModelCostModal, setShowModelCostModal] = useState(false);
 
   const [isAssignNewOpen, setIsAssignNewOpen] = useState(false);
   const [newAssignCompanyId, setNewAssignCompanyId] = useState<string>("");
   const [newAssignQuota, setNewAssignQuota] = useState<string>("");
+  const [newAssignStartDate, setNewAssignStartDate] = useState("");
+  const [newAssignEndDate, setNewAssignEndDate] = useState("");
 
   // Fetch Companies
   const {
@@ -213,11 +250,25 @@ export default function AdminAiQuota() {
 
   // Quota Mutation
   const setQuotaMutation = useMutation({
-    mutationFn: ({ companyId, quota }: { companyId: number; quota: number | null }) =>
+    mutationFn: ({
+      companyId,
+      quota,
+      startDate,
+      endDate,
+    }: {
+      companyId: number;
+      quota: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    }) =>
       customFetch(`/api/admin/companies/${companyId}/quota`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monthlyTokenQuota: quota }),
+        body: JSON.stringify({
+          monthlyTokenQuota: quota,
+          startDate,
+          endDate,
+        }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
@@ -239,6 +290,8 @@ export default function AdminAiQuota() {
   const openQuotaDialog = (company: Company) => {
     setQuotaTarget(company);
     setQuotaInput(company.monthlyTokenQuota ? String(company.monthlyTokenQuota) : "");
+    setQuotaStartDate(company.activationStart ? company.activationStart.slice(0, 10) : "");
+    setQuotaEndDate(company.activationEnd ? company.activationEnd.slice(0, 10) : "");
   };
 
   const handleSaveQuota = () => {
@@ -253,7 +306,20 @@ export default function AdminAiQuota() {
       });
       return;
     }
-    setQuotaMutation.mutate({ companyId: quotaTarget.id, quota });
+    if (quotaStartDate && quotaEndDate && quotaEndDate < quotaStartDate) {
+      toast({
+        title: lang === "ar" ? "تواريخ غير صالحة" : "Invalid dates",
+        description: lang === "ar" ? "تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء" : "End date must be after start date",
+        variant: "destructive",
+      });
+      return;
+    }
+    setQuotaMutation.mutate({
+      companyId: quotaTarget.id,
+      quota,
+      startDate: quotaStartDate ? new Date(quotaStartDate.length === 10 ? `${quotaStartDate}T00:00:00.000Z` : quotaStartDate).toISOString() : null,
+      endDate: quotaEndDate ? new Date(quotaEndDate.length === 10 ? `${quotaEndDate}T23:59:59.999Z` : quotaEndDate).toISOString() : null,
+    });
   };
 
   const handleAssignNewQuota = () => {
@@ -268,7 +334,20 @@ export default function AdminAiQuota() {
       });
       return;
     }
-    setQuotaMutation.mutate({ companyId: Number(newAssignCompanyId), quota });
+    if (newAssignStartDate && newAssignEndDate && newAssignEndDate < newAssignStartDate) {
+      toast({
+        title: lang === "ar" ? "تواريخ غير صالحة" : "Invalid dates",
+        description: lang === "ar" ? "تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء" : "End date must be after start date",
+        variant: "destructive",
+      });
+      return;
+    }
+    setQuotaMutation.mutate({
+      companyId: Number(newAssignCompanyId),
+      quota,
+      startDate: newAssignStartDate ? new Date(newAssignStartDate.length === 10 ? `${newAssignStartDate}T00:00:00.000Z` : newAssignStartDate).toISOString() : null,
+      endDate: newAssignEndDate ? new Date(newAssignEndDate.length === 10 ? `${newAssignEndDate}T23:59:59.999Z` : newAssignEndDate).toISOString() : null,
+    });
   };
 
   // Build Company Stats Map
@@ -757,6 +836,10 @@ export default function AdminAiQuota() {
                 onClick={() => {
                   setNewAssignCompanyId(String(companiesWithoutQuota[0].id));
                   setNewAssignQuota("");
+                  setNewAssignStartDate(toIso(new Date()));
+                  const end = new Date();
+                  end.setDate(end.getDate() + 30);
+                  setNewAssignEndDate(toIso(end));
                   setIsAssignNewOpen(true);
                 }}
               >
@@ -942,9 +1025,19 @@ export default function AdminAiQuota() {
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {hasQuota ? (
-                            <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
-                              {formatQuota(c.monthlyTokenQuota)}
-                            </span>
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
+                                {formatQuota(c.monthlyTokenQuota)}
+                              </span>
+                              {(c.activationStart || c.activationEnd) && (
+                                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                  <Calendar className="w-2.5 h-2.5" />
+                                  {c.activationStart ? new Date(c.activationStart).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "numeric", day: "numeric" }) : "—"}
+                                  {" - "}
+                                  {c.activationEnd ? new Date(c.activationEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "numeric", day: "numeric" }) : "—"}
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground/60 text-[10px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">
                               {lang === "ar" ? "معطل" : "Disabled"}
@@ -1081,10 +1174,114 @@ export default function AdminAiQuota() {
               </div>
             </div>
 
+            {/* Start & End Dates */}
+            <div className="space-y-2.5 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  {lang === "ar" ? "فترة صلاحية الحصة (تاريخ البدء والانتهاء)" : "Quota Validity Period (Start & End Dates)"}
+                </Label>
+                {(quotaStartDate || quotaEndDate) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                    onClick={() => { setQuotaStartDate(""); setQuotaEndDate(""); }}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    {lang === "ar" ? "مسح التواريخ" : "Clear Dates"}
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="quota-start-date" className="text-[11px] text-muted-foreground">
+                    {lang === "ar" ? "تاريخ البدء:" : "Start Date:"}
+                  </Label>
+                  <Input
+                    id="quota-start-date"
+                    type="date"
+                    value={quotaStartDate}
+                    onChange={(e) => setQuotaStartDate(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="quota-end-date" className="text-[11px] text-muted-foreground">
+                    {lang === "ar" ? "تاريخ الانتهاء:" : "End Date:"}
+                  </Label>
+                  <Input
+                    id="quota-end-date"
+                    type="date"
+                    value={quotaEndDate}
+                    onChange={(e) => setQuotaEndDate(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Period Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] text-muted-foreground">
+                  {lang === "ar" ? "فترات جاهزة:" : "Presets:"}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => applyDatePreset("30d", setQuotaStartDate, setQuotaEndDate, quotaStartDate)}
+                >
+                  {lang === "ar" ? "+30 يوم" : "+30 Days"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => applyDatePreset("endOfMonth", setQuotaStartDate, setQuotaEndDate, quotaStartDate)}
+                >
+                  {lang === "ar" ? "نهاية الشهر" : "End of Month"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => applyDatePreset("90d", setQuotaStartDate, setQuotaEndDate, quotaStartDate)}
+                >
+                  {lang === "ar" ? "+90 يوم" : "+90 Days"}
+                </Button>
+              </div>
+
+              {quotaStartDate && quotaEndDate && (
+                <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border/40 rounded px-2.5 py-1.5 flex items-center justify-between">
+                  <span>{lang === "ar" ? "مدة الصلاحية:" : "Active Duration:"}</span>
+                  <span className="font-medium text-foreground">
+                    {Math.max(0, Math.ceil((new Date(quotaEndDate).getTime() - new Date(quotaStartDate).getTime()) / (1000 * 60 * 60 * 24)))} {lang === "ar" ? "يوم" : "days"}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {quotaTarget?.monthlyTokenQuota && (
-              <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg flex items-center justify-between">
-                <span>{lang === "ar" ? "الحصة الحالية:" : "Current Quota:"}</span>
-                <span className="font-semibold text-foreground">{formatQuota(quotaTarget.monthlyTokenQuota)} tokens / month</span>
+              <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>{lang === "ar" ? "الحصة الحالية:" : "Current Quota:"}</span>
+                  <span className="font-semibold text-foreground">{formatQuota(quotaTarget.monthlyTokenQuota)} tokens / month</span>
+                </div>
+                {(quotaTarget.activationStart || quotaTarget.activationEnd) && (
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
+                    <span>{lang === "ar" ? "فترة التفعيل السابقة:" : "Previous Period:"}</span>
+                    <span className="font-mono text-foreground">
+                      {quotaTarget.activationStart ? quotaTarget.activationStart.slice(0, 10) : "—"}
+                      {" → "}
+                      {quotaTarget.activationEnd ? quotaTarget.activationEnd.slice(0, 10) : "—"}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1178,6 +1375,98 @@ export default function AdminAiQuota() {
                   </Button>
                 ))}
               </div>
+            </div>
+
+            {/* Start & End Dates */}
+            <div className="space-y-2.5 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  {lang === "ar" ? "فترة صلاحية الحصة (تاريخ البدء والانتهاء)" : "Quota Validity Period (Start & End Dates)"}
+                </Label>
+                {(newAssignStartDate || newAssignEndDate) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                    onClick={() => { setNewAssignStartDate(""); setNewAssignEndDate(""); }}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    {lang === "ar" ? "مسح التواريخ" : "Clear Dates"}
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="new-quota-start-date" className="text-[11px] text-muted-foreground">
+                    {lang === "ar" ? "تاريخ البدء:" : "Start Date:"}
+                  </Label>
+                  <Input
+                    id="new-quota-start-date"
+                    type="date"
+                    value={newAssignStartDate}
+                    onChange={(e) => setNewAssignStartDate(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="new-quota-end-date" className="text-[11px] text-muted-foreground">
+                    {lang === "ar" ? "تاريخ الانتهاء:" : "End Date:"}
+                  </Label>
+                  <Input
+                    id="new-quota-end-date"
+                    type="date"
+                    value={newAssignEndDate}
+                    onChange={(e) => setNewAssignEndDate(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Period Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] text-muted-foreground">
+                  {lang === "ar" ? "فترات جاهزة:" : "Presets:"}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => applyDatePreset("30d", setNewAssignStartDate, setNewAssignEndDate, newAssignStartDate)}
+                >
+                  {lang === "ar" ? "+30 يوم" : "+30 Days"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => applyDatePreset("endOfMonth", setNewAssignStartDate, setNewAssignEndDate, newAssignStartDate)}
+                >
+                  {lang === "ar" ? "نهاية الشهر" : "End of Month"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => applyDatePreset("90d", setNewAssignStartDate, setNewAssignEndDate, newAssignStartDate)}
+                >
+                  {lang === "ar" ? "+90 يوم" : "+90 Days"}
+                </Button>
+              </div>
+
+              {newAssignStartDate && newAssignEndDate && (
+                <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border/40 rounded px-2.5 py-1.5 flex items-center justify-between">
+                  <span>{lang === "ar" ? "مدة الصلاحية:" : "Active Duration:"}</span>
+                  <span className="font-medium text-foreground">
+                    {Math.max(0, Math.ceil((new Date(newAssignEndDate).getTime() - new Date(newAssignStartDate).getTime()) / (1000 * 60 * 60 * 24)))} {lang === "ar" ? "يوم" : "days"}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1352,6 +1641,20 @@ export default function AdminAiQuota() {
                       {formatQuota(quota)} tokens
                     </span>
                   </div>
+
+                  {(billTarget.activationStart || billTarget.activationEnd) && (
+                    <div className="col-span-2 pt-2 border-t border-border/40 flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-primary" />
+                        {lang === "ar" ? "فترة صلاحية الحصة:" : "Quota Validity Period:"}
+                      </span>
+                      <span className="font-mono text-foreground font-medium">
+                        {billTarget.activationStart ? billTarget.activationStart.slice(0, 10) : "—"}
+                        {" → "}
+                        {billTarget.activationEnd ? billTarget.activationEnd.slice(0, 10) : "—"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Usage Progress Gauge */}

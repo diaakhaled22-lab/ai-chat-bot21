@@ -860,22 +860,48 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
 router.put("/admin/companies/:id/quota", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { monthlyTokenQuota } = req.body as { monthlyTokenQuota: number | null };
+    const { monthlyTokenQuota, startDate, endDate, activationStart, activationEnd } = req.body as {
+      monthlyTokenQuota: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      activationStart?: string | null;
+      activationEnd?: string | null;
+    };
     const quota = monthlyTokenQuota == null ? null : Number(monthlyTokenQuota);
     if (quota !== null && (isNaN(quota) || quota < 0)) {
       res.status(400).json({ error: "Invalid quota value" });
       return;
     }
+
+    const updates: Partial<typeof companiesTable.$inferInsert> = {
+      monthlyTokenQuota: quota,
+    };
+
+    const sDate = startDate !== undefined ? startDate : activationStart;
+    const eDate = endDate !== undefined ? endDate : activationEnd;
+
+    if (sDate !== undefined) {
+      updates.activationStart = sDate ? new Date(sDate) : null;
+    }
+    if (eDate !== undefined) {
+      updates.activationEnd = eDate ? new Date(eDate) : null;
+    }
+
     const [updated] = await db
       .update(companiesTable)
-      .set({ monthlyTokenQuota: quota })
+      .set(updates)
       .where(eq(companiesTable.id, id))
       .returning();
     if (!updated) {
       res.status(404).json({ error: "Company not found" });
       return;
     }
-    res.json({ ok: true, monthlyTokenQuota: updated.monthlyTokenQuota ?? null });
+    res.json({
+      ok: true,
+      monthlyTokenQuota: updated.monthlyTokenQuota ?? null,
+      activationStart: updated.activationStart?.toISOString() ?? null,
+      activationEnd: updated.activationEnd?.toISOString() ?? null,
+    });
   } catch (err) {
     logger.error({ err }, "Set company quota error");
     res.status(500).json({ error: "Internal server error" });
