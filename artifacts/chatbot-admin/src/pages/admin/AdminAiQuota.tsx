@@ -756,6 +756,7 @@ export default function AdminAiQuota() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+  const handleExportCsv = exportToCSV;
 
   const handleCopyBill = (c: Company) => {
     const usage = companyUsageMap.get(c.id);
@@ -2342,7 +2343,7 @@ export default function AdminAiQuota() {
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 shadow-sm"
-                  onClick={handleExportCsv}
+                  onClick={exportToCSV}
                   title={lang === "ar" ? "تحميل كشف الحصص كملف CSV / Excel" : "Download summary as CSV / Excel"}
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-500" />
@@ -2456,7 +2457,7 @@ export default function AdminAiQuota() {
                 variant="default"
                 size="sm"
                 className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                onClick={handleExportCsv}
+                onClick={exportToCSV}
               >
                 <Download className="w-3.5 h-3.5" />
                 {lang === "ar" ? "تحميل الكشف (CSV)" : "Download Summary (CSV)"}
