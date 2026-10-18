@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey } from "@workspace/api-client-react";
+import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey, useGetClientCompany } from "@workspace/api-client-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -718,12 +718,23 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/settings",           label: "Settings",           icon: Settings },
   ];
 
+  const { data: clientCompany } = useGetClientCompany({
+    query: {
+      enabled: role === "client",
+      staleTime: 5_000,
+    },
+  });
+
+  const isTokensMode = (clientCompany as any)?.aiExecutionMode === "tokens";
+
   const clientLinks: NavLink[] = [
     { href: "/client/dashboard",        label: t("nav_dashboard") || "Dashboard",  icon: LayoutDashboard },
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
     { href: "/client/ai-model",         label: t("nav_ai_model") || "AI Model & Provider", icon: Cpu },
-    { href: "/client/api-tokens",       label: lang === "ar" ? "رموز API" : "API Tokens", icon: KeyRound },
-    { href: "/client/usage",            label: lang === "ar" ? "الحصة الشهرية (Quota)" : "Token Quota", icon: Coins },
+    ...(isTokensMode
+      ? [{ href: "/client/api-tokens",  label: lang === "ar" ? "رموز API" : "API Tokens", icon: KeyRound }]
+      : [{ href: "/client/usage",       label: lang === "ar" ? "الحصة الشهرية (Quota)" : "Token Quota", icon: Coins }]
+    ),
     { href: "/client/prompts",          label: t("nav_prompts") || "Prompts", icon: PenTool },
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },

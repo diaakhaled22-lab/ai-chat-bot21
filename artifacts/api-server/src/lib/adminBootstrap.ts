@@ -49,6 +49,11 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_shopify BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';
 
+      -- Ensure all companies have an active monthly token quota assigned (default: 500,000)
+      UPDATE companies
+      SET monthly_token_quota = 500000
+      WHERE monthly_token_quota IS NULL OR monthly_token_quota = 0;
+
       UPDATE companies
       SET ai_model = 'nvidia/nemotron-3.5-lightning:free'
       WHERE ai_model = 'nvidia/nemotron-nano-9b-v2:free' OR ai_model LIKE '%nemotron-nano%';

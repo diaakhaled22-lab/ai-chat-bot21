@@ -200,7 +200,15 @@ router.get("/client/company/quota", async (req, res) => {
       usedTokens += Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
     }
 
-    const quota = company.monthlyTokenQuota ?? null;
+    let quota = company.monthlyTokenQuota ?? null;
+    if (quota == null || quota <= 0) {
+      quota = 500000;
+      await db
+        .update(companiesTable)
+        .set({ monthlyTokenQuota: quota })
+        .where(eq(companiesTable.id, company.id))
+        .catch(() => {});
+    }
     const percentUsed = quota ? Math.round((usedTokens / quota) * 100) : null;
     const warning = quota ? (usedTokens >= quota ? "exceeded" : usedTokens >= quota * 0.8 ? "near" : "ok") : "none";
     const quotaModelInfo = await getQuotaAiModelInfo();
@@ -366,6 +374,7 @@ router.post("/client/company", async (req, res) => {
         resendApiKey: (data as any).resendApiKey ? (data as any).resendApiKey.trim() : null,
         generalInfo: data.generalInfo ?? null,
         isActive: false,
+        monthlyTokenQuota: 500000,
         systemPrompt: data.systemPrompt ?? null,
         securityPrompt: DEFAULT_SECURITY_PROMPT,
         googleSheetsEnabled: data.googleSheetsEnabled ?? false,
@@ -687,11 +696,19 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
       [mode, existingCompany.id]
     );
 
+    // If switching to quota mode, ensure an active monthly token quota is assigned
+    if (mode === "quota") {
+      await pool.query(
+        `UPDATE companies SET monthly_token_quota = 500000 WHERE id = $1 AND (monthly_token_quota IS NULL OR monthly_token_quota = 0);`,
+        [existingCompany.id]
+      ).catch(() => {});
+    }
+
     // 3. Keep Drizzle ORM in sync
     try {
       await db
         .update(companiesTable)
-        .set({ aiExecutionMode: mode })
+        .set(mode === "quota" ? { aiExecutionMode: mode, monthlyTokenQuota: 500000 } : { aiExecutionMode: mode })
         .where(eq(companiesTable.id, existingCompany.id));
     } catch {}
 
@@ -1205,35 +1222,19 @@ router.get("/client/usage", async (req, res) => {
       return;
     }
 
-    const hasQuota = (company.monthlyTokenQuota ?? 0) > 0;
-
-    // If admin has NOT assigned a quota to this client, do NOT return own API key usage
-    if (!hasQuota) {
-      res.json({
-        hasQuota: false,
-        monthlyTokenQuota: null,
-        quotaAiProvider: null,
-        quotaAiModel: null,
-        aiProvider: null,
-        aiModel: null,
-        totalMessages: 0,
-        estimatedInputTokens: 0,
-        estimatedOutputTokens: 0,
-        estimatedCostUsd: 0,
-        pricingPer1MTokens: { input: 0, output: 0 },
-        byChannel: [],
-        quota: null,
-        usedTokens: 0,
-        percentUsed: 0,
-        warning: "none",
-      });
-      return;
+    let quota = company.monthlyTokenQuota;
+    if (quota == null || quota <= 0) {
+      quota = 500000;
+      await db
+        .update(companiesTable)
+        .set({ monthlyTokenQuota: quota })
+        .where(eq(companiesTable.id, company.id))
+        .catch(() => {});
     }
 
     const quotaModelInfo = await getQuotaAiModelInfo();
     const quotaAiProvider = quotaModelInfo.provider;
     const quotaAiModel = quotaModelInfo.model;
-    const quota = company.monthlyTokenQuota!;
 
     const fromParam = req.query.from as string | undefined;
     const toParam   = req.query.to   as string | undefined;

@@ -295,18 +295,6 @@ export default function ClientUsage() {
               : "This page is dedicated exclusively to tracking consumption under an administrator-assigned monthly quota. Since no quota is currently assigned to your company, no quota data is available."}
           </p>
 
-          <div className="bg-muted/40 border border-border/60 rounded-xl p-4 text-xs text-muted-foreground text-start mb-6 space-y-2">
-            <div className="flex items-center gap-2 font-medium text-foreground">
-              <Sparkles className="w-4 h-4 text-primary shrink-0" />
-              <span>{lang === "ar" ? "تتبع استهلاك مفتاح API الخاص بك:" : "Track your Own API Key usage:"}</span>
-            </div>
-            <p className="leading-relaxed">
-              {lang === "ar"
-                ? "إذا كنت تعتمد على مفتاح API الخاص بشركتك، يمكنك تتبع كامل إحصائيات الرسائل والرموز وتكاليف المزود مباشرة عبر لوحة التحكم (Dashboard)."
-                : "If you are using your company's own API Key, you can view your full conversation stats, tokens, and direct provider costs on your Dashboard."}
-            </p>
-          </div>
-
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
               href="/client/dashboard"
@@ -558,8 +546,8 @@ export default function ClientUsage() {
                 : "Tokens are consumed from your administrator-allocated monthly quota at $0.00 cost to you. Chatbot requests are processed by the central platform model ("}
               <strong className="text-foreground">{modelLabel}</strong>).
               {lang === "ar"
-                ? " في حال استنفاذ الحصة الشهرية، يمكنك طلب زيادة الحصة من الإدارة أو التحول لاستخدام مفتاح API الخاص بك."
-                : " If your quota is exhausted, you may request an increase from the administrator or switch to using your own API key."}
+                ? " في حال استنفاذ الحصة الشهرية، يمكنك التواصل مع إدارة المنصة لترقية أو زيادة الحصة الشهرية المخصصة لشركتك."
+                : " If your monthly quota is exhausted, you can contact the platform administration to upgrade or increase your allocated quota."}
             </span>
           </div>
         </>
