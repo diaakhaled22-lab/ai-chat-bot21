@@ -186,18 +186,20 @@ export function preserveMaskedSecret(
     return nextValue;
   }
   const trimmed = typeof nextValue === "string" ? nextValue.trim() : "";
-  if (existingValue) {
-    if (
-      trimmed === maskApiKey(existingValue) ||
-      trimmed.includes("••••") ||
-      trimmed.includes("****") ||
-      /^[\u2022\*\.]{3,}$/.test(trimmed) ||
-      trimmed.startsWith("••••")
-    ) {
-      return existingValue;
-    }
+  if (trimmed === "") {
+    return null;
   }
-  return nextValue;
+  const isMaskPattern =
+    trimmed.includes("••••") ||
+    trimmed.includes("****") ||
+    /^[\u2022\*\.]{3,}$/.test(trimmed) ||
+    trimmed.startsWith("••••") ||
+    (existingValue ? trimmed === maskApiKey(existingValue) : false);
+
+  if (isMaskPattern) {
+    return existingValue || null;
+  }
+  return trimmed;
 }
 
 /**

@@ -14,10 +14,16 @@ export async function ensureEmailNotificationSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS resend_api_key text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email text;
-      ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_analysis text;
-      ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_provider text;
-      ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_model text;
     `);
+    try {
+      await pool.query(`
+        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_analysis text;
+        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_provider text;
+        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_model text;
+      `);
+    } catch (e) {
+      // malfunctions table might be optional or managed elsewhere
+    }
     await pool.query(`
       CREATE TABLE IF NOT EXISTS email_logs (
         id serial PRIMARY KEY,

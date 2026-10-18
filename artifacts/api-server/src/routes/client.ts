@@ -1670,26 +1670,31 @@ router.put("/client/settings", async (req, res) => {
 
       // Notify all admin users about the change
       if (changes.length > 0) {
-        const adminUsers = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "admin"));
-        const changesSummary = changes.join(" and ");
-        await Promise.all(
-          adminUsers.map((admin) =>
-            db.insert(notificationsTable).values({
-              userId: admin.id,
-              type: "client_credentials_changed",
-              title: "Client Settings Updated",
-              message: `Client "${user.name}" (${user.username}) has ${changesSummary}.`,
-              isRead: false,
-            })
-          )
-        );
+        try {
+          const adminUsers = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "admin"));
+          const changesSummary = changes.join(" and ");
+          await Promise.all(
+            adminUsers.map((admin) =>
+              db.insert(notificationsTable).values({
+                userId: admin.id,
+                type: "client_credentials_changed",
+                title: "Client Settings Updated",
+                message: `Client "${user.name}" (${user.username}) has ${changesSummary}.`,
+                isRead: false,
+              })
+            )
+          );
+        } catch (notifErr) {
+          logger.warn({ notifErr }, "Failed to record admin notifications for client settings change");
+        }
       }
     }
 
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Update client settings error");
-    res.status(500).json({ error: "Internal server error" });
+    const errorMessage = err instanceof Error ? err.message : "Internal server error";
+    res.status(500).json({ error: errorMessage });
   }
 });
 
