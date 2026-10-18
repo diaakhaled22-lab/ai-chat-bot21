@@ -2,7 +2,7 @@ import { google, sheets_v4 } from "googleapis";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "./aiModels";
+import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel } from "./aiModels";
 import { logger } from "./logger";
 import type { companiesTable } from "@workspace/db";
 
@@ -129,6 +129,8 @@ async function extractFieldsWithAI(
     ? sanitizeOpenRouterModel(rawModel)
     : provider === "openai"
     ? sanitizeOpenAiModel(rawModel)
+    : provider === "anthropic"
+    ? sanitizeAnthropicModel(rawModel)
     : rawModel;
 
   const instructions =
@@ -143,10 +145,23 @@ async function extractFieldsWithAI(
   try {
     if (provider === "anthropic") {
       const client = new Anthropic({ apiKey: company.aiAgentApiKey });
-      const resp = await client.messages.create({
-        model, max_tokens: 512,
-        messages: [{ role: "user", content: instructions }],
-      });
+      const effectiveModel = sanitizeAnthropicModel(model);
+      let resp;
+      try {
+        resp = await client.messages.create({
+          model: effectiveModel, max_tokens: 512,
+          messages: [{ role: "user", content: instructions }],
+        });
+      } catch (err: any) {
+        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+          resp = await client.messages.create({
+            model: "claude-3-5-haiku-20241022", max_tokens: 512,
+            messages: [{ role: "user", content: instructions }],
+          });
+        } else {
+          throw err;
+        }
+      }
       raw = (resp.content[0] as { type: string; text: string })?.text ?? "";
     } else if (provider === "google") {
       const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);

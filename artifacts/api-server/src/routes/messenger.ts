@@ -13,7 +13,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -53,14 +53,29 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
 
   if (provider === "anthropic") {
     const client = new Anthropic({ apiKey });
-    const resp = await client.messages.create({
-      model, max_tokens: 1024,
-      system: sysContent || undefined,
-      messages: [
-        ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
-        { role: "user" as const, content: userMessage },
-      ],
-    });
+    const effectiveModel = sanitizeAnthropicModel(model);
+    const anthropicMsgs = formatAnthropicMessages(history, userMessage);
+    let resp;
+    try {
+      resp = await client.messages.create({
+        model: effectiveModel,
+        max_tokens: 1024,
+        system: sysContent || undefined,
+        messages: anthropicMsgs,
+      });
+    } catch (err: any) {
+      if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+        logger.warn({ effectiveModel, err: err?.message }, "Anthropic free model error in Messenger; falling back to claude-3-5-haiku-20241022");
+        resp = await client.messages.create({
+          model: "claude-3-5-haiku-20241022",
+          max_tokens: 1024,
+          system: sysContent || undefined,
+          messages: anthropicMsgs,
+        });
+      } else {
+        throw err;
+      }
+    }
     return (resp.content?.[0] as any)?.text || "";
 
   } else if (provider === "google") {

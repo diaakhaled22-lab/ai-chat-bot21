@@ -37,7 +37,10 @@ const PROVIDERS = [
     label: "Anthropic",
     models: [
       { id: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", tier: "free" },
+      { id: "claude-3-haiku-20240307", label: "Claude 3 Haiku", tier: "free" },
       { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", tier: "paid" },
+      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet", tier: "paid" },
+      { id: "claude-3-opus-20240229", label: "Claude 3 Opus", tier: "paid" },
     ],
   },
   {

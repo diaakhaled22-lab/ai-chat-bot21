@@ -23,7 +23,7 @@ import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, buildOpenAiChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
 import { maskApiKey } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
@@ -1859,7 +1859,16 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
   } else if (provider === "anthropic") {
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey, timeout: timeoutMs });
-    await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+    const effectiveModel = sanitizeAnthropicModel(model);
+    try {
+      await client.messages.create({ model: effectiveModel, max_tokens: 10, messages: [{ role: "user", content: "hi" }] });
+    } catch (err: any) {
+      if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+        await client.messages.create({ model: "claude-3-5-haiku-20241022", max_tokens: 10, messages: [{ role: "user", content: "hi" }] });
+      } else {
+        throw err;
+      }
+    }
   } else if (provider === "openrouter") {
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({
@@ -1921,6 +1930,8 @@ router.get("/client/company/ai-status", async (req, res) => {
         ? sanitizeOpenRouterModel(rawModel)
         : provider === "openai"
         ? sanitizeOpenAiModel(rawModel)
+        : provider === "anthropic"
+        ? sanitizeAnthropicModel(rawModel)
         : rawModel;
 
       const apiKey = company.aiAgentApiKey?.trim();
@@ -2094,6 +2105,8 @@ router.post("/client/company/test-ai", async (req, res) => {
       ? sanitizeOpenRouterModel(rawModel)
       : provider === "openai"
       ? sanitizeOpenAiModel(rawModel)
+      : provider === "anthropic"
+      ? sanitizeAnthropicModel(rawModel)
       : rawModel;
 
     let apiKey = bodyApiKey?.trim();
@@ -2324,13 +2337,31 @@ router.post("/client/multi-ai/chat", async (req, res) => {
     if (provider === "anthropic") {
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const client = new Anthropic({ apiKey });
-      const stream = client.messages.stream({
-        model, max_tokens: 2048, system: SYSTEM,
-        messages: formatted,
-      });
-      for await (const event of stream) {
-        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-          res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
+      const effectiveModel = sanitizeAnthropicModel(model);
+      const anthropicMessages = formatAnthropicMessages(formatted);
+      try {
+        const stream = client.messages.stream({
+          model: effectiveModel, max_tokens: 2048, system: SYSTEM,
+          messages: anthropicMessages,
+        });
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
+          }
+        }
+      } catch (anthropicErr: any) {
+        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+          const fallbackStream = client.messages.stream({
+            model: "claude-3-5-haiku-20241022", max_tokens: 2048, system: SYSTEM,
+            messages: anthropicMessages,
+          });
+          for await (const event of fallbackStream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
+            }
+          }
+        } else {
+          throw anthropicErr;
         }
       }
     } else if (provider === "google") {

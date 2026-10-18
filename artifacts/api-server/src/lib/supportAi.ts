@@ -2,7 +2,7 @@ import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/
 import { eq, sql, and, gte, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyQuota75PercentConsumed } from "./companyNotification";
-import { sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel } from "./aiModels";
+import { sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel } from "./aiModels";
 
 export interface ResolvedAiConfig {
   apiKey: string;
@@ -32,6 +32,8 @@ export async function getSupportAiSettings(): Promise<{
       ? sanitizeOpenRouterModel(rawModel)
       : provider === "openai"
       ? sanitizeOpenAiModel(rawModel)
+      : provider === "anthropic"
+      ? sanitizeAnthropicModel(rawModel)
       : rawModel;
 
     return {
@@ -72,6 +74,8 @@ export async function getQuotaAiModelInfo(): Promise<{
       ? sanitizeOpenRouterModel(rawModel)
       : provider === "openai"
       ? sanitizeOpenAiModel(rawModel)
+      : provider === "anthropic"
+      ? sanitizeAnthropicModel(rawModel)
       : rawModel;
 
     return { provider, model };
@@ -105,6 +109,8 @@ export async function getQuotaAiSettings(): Promise<{
       ? sanitizeOpenRouterModel(rawModel)
       : provider === "openai"
       ? sanitizeOpenAiModel(rawModel)
+      : provider === "anthropic"
+      ? sanitizeAnthropicModel(rawModel)
       : rawModel;
 
     // Resolve API key
@@ -160,6 +166,8 @@ export async function resolveCompanyAi(
         ? sanitizeOpenRouterModel(rawModel)
         : provider === "openai"
         ? sanitizeOpenAiModel(rawModel)
+        : provider === "anthropic"
+        ? sanitizeAnthropicModel(rawModel)
         : rawModel;
 
       return {
@@ -196,7 +204,15 @@ export async function resolveCompanyAi(
       provider === "google" ? "gemini-2.0-flash" :
       provider === "openrouter" ? "openrouter/free" : "gpt-4o-mini";
     const rawModel = company.aiModel || defaultModel;
-    const model = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
+    const model = provider === "google"
+      ? sanitizeGoogleModel(rawModel)
+      : provider === "openrouter"
+      ? sanitizeOpenRouterModel(rawModel)
+      : provider === "openai"
+      ? sanitizeOpenAiModel(rawModel)
+      : provider === "anthropic"
+      ? sanitizeAnthropicModel(rawModel)
+      : rawModel;
 
     return {
       apiKey: company.aiAgentApiKey,

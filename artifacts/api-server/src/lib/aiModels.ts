@@ -18,10 +18,21 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "o1", "o3",
   ].map((id) => ({ id, label: displayLabel(id), free: isOpenAiFreeModel(id) })),
   anthropic: [
-    "claude-3-haiku-20240307", "claude-3-5-haiku-20241022",
-    "claude-3-5-sonnet-20241022", "claude-3-opus-20240229",
-    "claude-3-sonnet-20240229", "claude-opus-4-5", "claude-sonnet-4-5",
-  ].map((id) => ({ id, label: id, free: id.includes("haiku") })),
+    "claude-3-5-haiku-20241022",
+    "claude-3-haiku-20240307",
+    "claude-3-7-sonnet-20250219",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-opus-20240229",
+    "claude-3-sonnet-20240229",
+  ].map((id) => ({
+    id,
+    label: id === "claude-3-5-haiku-20241022"
+      ? "Claude 3.5 Haiku ⭐ (Recommended Free Tier)"
+      : id === "claude-3-haiku-20240307"
+      ? "Claude 3 Haiku (Free Tier)"
+      : displayLabel(id),
+    free: isAnthropicFreeModel(id),
+  })),
   google: [
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
@@ -63,6 +74,100 @@ const FALLBACK_MODELS: AiModelCatalog = {
     free: isOpenRouterFreeModel(id),
   })),
 };
+
+export function isAnthropicFreeModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  const normalized = modelId.toLowerCase().trim().replace(/^anthropic\//i, "");
+  return normalized.includes("haiku");
+}
+
+export function sanitizeAnthropicModel(model?: string | null): string {
+  if (!model || !model.trim()) return "claude-3-5-haiku-20241022";
+  const trimmed = model.trim().replace(/^anthropic\//i, "");
+
+  // Haiku aliases (Free tier)
+  if (
+    trimmed === "claude-3-5-haiku" ||
+    trimmed === "claude-3.5-haiku" ||
+    trimmed === "claude-haiku" ||
+    trimmed === "claude-haiku-4-5" ||
+    trimmed === "haiku"
+  ) {
+    return "claude-3-5-haiku-20241022";
+  }
+  if (
+    trimmed === "claude-3-haiku" ||
+    trimmed === "claude-3.0-haiku"
+  ) {
+    return "claude-3-haiku-20240307";
+  }
+  // Sonnet & Opus aliases
+  if (
+    trimmed === "claude-3-7-sonnet" ||
+    trimmed === "claude-3.7-sonnet"
+  ) {
+    return "claude-3-7-sonnet-20250219";
+  }
+  if (
+    trimmed === "claude-3-5-sonnet" ||
+    trimmed === "claude-3.5-sonnet" ||
+    trimmed === "claude-sonnet"
+  ) {
+    return "claude-3-5-sonnet-20241022";
+  }
+  if (
+    trimmed === "claude-3-opus" ||
+    trimmed === "claude-3.0-opus" ||
+    trimmed === "claude-opus"
+  ) {
+    return "claude-3-opus-20240229";
+  }
+  return trimmed;
+}
+
+export function formatAnthropicMessages(
+  history: Array<{ role: string; content: string }>,
+  userMessage?: string
+): Array<{ role: "user" | "assistant"; content: string }> {
+  const rawList: Array<{ role: "user" | "assistant"; content: string }> = [];
+
+  for (const h of history) {
+    const text = (h.content || "").trim();
+    if (!text) continue;
+    const role: "user" | "assistant" = h.role === "assistant" ? "assistant" : "user";
+    rawList.push({ role, content: text });
+  }
+
+  if (userMessage && userMessage.trim()) {
+    rawList.push({ role: "user", content: userMessage.trim() });
+  }
+
+  if (rawList.length === 0) {
+    return [{ role: "user", content: "hi" }];
+  }
+
+  // Ensure first turn is from 'user'
+  while (rawList.length > 0 && rawList[0].role !== "user") {
+    rawList.shift();
+  }
+
+  if (rawList.length === 0) {
+    return [{ role: "user", content: userMessage?.trim() || "hi" }];
+  }
+
+  // Merge consecutive turns with the same role into one turn to maintain strict alternation
+  const consolidated: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const item of rawList) {
+    const prev = consolidated[consolidated.length - 1];
+    if (prev && prev.role === item.role) {
+      prev.content += `\n${item.content}`;
+    } else {
+      consolidated.push({ role: item.role, content: item.content });
+    }
+  }
+
+  return consolidated;
+}
 
 export function sanitizeGoogleModel(model?: string | null): string {
   if (!model || !model.trim()) return "gemini-2.0-flash";
@@ -488,7 +593,7 @@ async function syncAnthropic(apiKey: string): Promise<SyncedAiModel[]> {
   return (data.data ?? []).map((model: any) => ({
     id: String(model.id),
     label: displayLabel(String(model.id), model.display_name),
-    free: false,
+    free: isAnthropicFreeModel(String(model.id)),
   }));
 }
 

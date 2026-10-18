@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
@@ -1330,13 +1330,28 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
     if (provider === "anthropic") {
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const client = new Anthropic({ apiKey });
-      const message = await client.messages.create({
-        model,
-        max_tokens: 600,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: USER_PROMPT }],
-      });
-      aiResponse = (message.content[0] as any)?.text ?? "";
+      const effectiveModel = sanitizeAnthropicModel(model);
+      try {
+        const message = await client.messages.create({
+          model: effectiveModel,
+          max_tokens: 600,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: USER_PROMPT }],
+        });
+        aiResponse = (message.content[0] as any)?.text ?? "";
+      } catch (err: any) {
+        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+          const fallbackMsg = await client.messages.create({
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 600,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: "user", content: USER_PROMPT }],
+          });
+          aiResponse = (fallbackMsg.content[0] as any)?.text ?? "";
+        } else {
+          throw err;
+        }
+      }
     } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
@@ -1477,7 +1492,16 @@ router.get("/admin/support-ai-status", async (req, res) => {
         if (provider === "anthropic") {
           const Anthropic = (await import("@anthropic-ai/sdk")).default;
           const client = new Anthropic({ apiKey });
-          await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+          const effectiveModel = sanitizeAnthropicModel(model);
+          try {
+            await client.messages.create({ model: effectiveModel, max_tokens: 10, messages: [{ role: "user", content: "hi" }] });
+          } catch (err: any) {
+            if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+              await client.messages.create({ model: "claude-3-5-haiku-20241022", max_tokens: 10, messages: [{ role: "user", content: "hi" }] });
+            } else {
+              throw err;
+            }
+          }
         } else if (provider === "google") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genAI    = new GoogleGenerativeAI(apiKey);
@@ -1630,7 +1654,16 @@ router.get("/admin/quota-ai-status", async (req, res) => {
         if (provider === "anthropic") {
           const Anthropic = (await import("@anthropic-ai/sdk")).default;
           const client = new Anthropic({ apiKey });
-          await client.messages.create({ model, max_tokens: 1, messages: [{ role: "user", content: "hi" }] });
+          const effectiveModel = sanitizeAnthropicModel(model);
+          try {
+            await client.messages.create({ model: effectiveModel, max_tokens: 10, messages: [{ role: "user", content: "hi" }] });
+          } catch (err: any) {
+            if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+              await client.messages.create({ model: "claude-3-5-haiku-20241022", max_tokens: 10, messages: [{ role: "user", content: "hi" }] });
+            } else {
+              throw err;
+            }
+          }
         } else if (provider === "google") {
           const { GoogleGenerativeAI } = await import("@google/generative-ai");
           const genAI    = new GoogleGenerativeAI(apiKey);
@@ -1948,7 +1981,17 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
       } else if (provider === "anthropic") {
         const Anthropic = (await import("@anthropic-ai/sdk")).default;
         const client = new Anthropic({ apiKey: company.aiAgentApiKey });
-        const msg = await client.messages.create({ model, max_tokens: 64, messages: [{ role: "user", content: testPrompt }] });
+        const effectiveModel = sanitizeAnthropicModel(model);
+        let msg;
+        try {
+          msg = await client.messages.create({ model: effectiveModel, max_tokens: 64, messages: [{ role: "user", content: testPrompt }] });
+        } catch (err: any) {
+          if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+            msg = await client.messages.create({ model: "claude-3-5-haiku-20241022", max_tokens: 64, messages: [{ role: "user", content: testPrompt }] });
+          } else {
+            throw err;
+          }
+        }
         reply = (msg.content[0] as { type: string; text: string })?.text ?? "";
       } else if (provider === "openrouter") {
         const OpenAI = (await import("openai")).default;
@@ -2060,10 +2103,23 @@ router.post("/admin/ai-test", async (req, res) => {
     if (provider === "anthropic") {
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const client = new Anthropic({ apiKey });
-      const msg = await client.messages.create({
-        model, max_tokens: 100, system: SYSTEM,
-        messages: [{ role: "user", content: testMessage }],
-      });
+      const effectiveModel = sanitizeAnthropicModel(model);
+      let msg;
+      try {
+        msg = await client.messages.create({
+          model: effectiveModel, max_tokens: 100, system: SYSTEM,
+          messages: [{ role: "user", content: testMessage }],
+        });
+      } catch (err: any) {
+        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+          msg = await client.messages.create({
+            model: "claude-3-5-haiku-20241022", max_tokens: 100, system: SYSTEM,
+            messages: [{ role: "user", content: testMessage }],
+          });
+        } else {
+          throw err;
+        }
+      }
       response = (msg.content[0] as any)?.text ?? "";
     } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");

@@ -13,7 +13,7 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
@@ -206,15 +206,29 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     if (provider === "anthropic") {
       const anthropic = new Anthropic({ apiKey: aiConfig.apiKey });
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: 1024,
-        system: sysContent || undefined,
-        messages: [
-          ...conversationHistory.map((t) => ({ role: t.role as "user" | "assistant", content: t.content })),
-          { role: "user" as const, content: message.trim() },
-        ],
-      });
+      const effectiveModel = sanitizeAnthropicModel(model);
+      const anthropicMsgs = formatAnthropicMessages(conversationHistory, message.trim());
+      let response;
+      try {
+        response = await anthropic.messages.create({
+          model: effectiveModel,
+          max_tokens: 1024,
+          system: sysContent || undefined,
+          messages: anthropicMsgs,
+        });
+      } catch (err: any) {
+        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+          logger.warn({ effectiveModel, err: err?.message }, "Anthropic free model error in widget; falling back to claude-3-5-haiku-20241022");
+          response = await anthropic.messages.create({
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 1024,
+            system: sysContent || undefined,
+            messages: anthropicMsgs,
+          });
+        } else {
+          throw err;
+        }
+      }
       aiReply = (response.content?.[0] as { type: string; text: string })?.text ?? "";
 
     } else if (provider === "google") {
