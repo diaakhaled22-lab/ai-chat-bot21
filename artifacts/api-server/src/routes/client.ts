@@ -2350,9 +2350,13 @@ router.post("/client/multi-ai/chat", async (req, res) => {
           }
         }
       } catch (anthropicErr: any) {
-        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+        const fallbackStreamModel = isAnthropicFreeModel(effectiveModel)
+          ? (effectiveModel !== "claude-3-5-haiku-20241022" ? "claude-3-5-haiku-20241022" : null)
+          : (effectiveModel !== "claude-3-5-sonnet-20241022" ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022");
+
+        if (fallbackStreamModel) {
           const fallbackStream = client.messages.stream({
-            model: "claude-3-5-haiku-20241022", max_tokens: 2048, system: SYSTEM,
+            model: fallbackStreamModel, max_tokens: 2048, system: SYSTEM,
             messages: anthropicMessages,
           });
           for await (const event of fallbackStream) {

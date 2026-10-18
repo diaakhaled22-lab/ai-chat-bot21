@@ -40,10 +40,12 @@ export const AI_PROVIDERS = {
     freeTier: "Free tier: $5 credit on sign-up",
     hasFreeTier: true,
     models: [
-      { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku ⭐ Recommended (fast & affordable)", free: true },
-      { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (balanced)", free: false },
-      { value: "claude-3-opus-20240229", label: "Claude 3 Opus (most capable)", free: false },
-      { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku (cheapest)", free: true },
+      { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku ⭐ Recommended (Free Tier)", free: true },
+      { value: "claude-3-haiku-20240307", label: "Claude 3 Haiku (Free Tier)", free: true },
+      { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet ⭐ (Flagship Hybrid Reasoning)", free: false },
+      { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet (Advanced & Coding)", free: false },
+      { value: "claude-3-opus-20240229", label: "Claude 3 Opus (Deep Reasoning & Analysis)", free: false },
+      { value: "claude-3-sonnet-20240229", label: "Claude 3 Sonnet (Balanced)", free: false },
     ],
   },
   google: {

@@ -18,7 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail } from "../lib/email";
@@ -1338,16 +1338,19 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
           system: SYSTEM_PROMPT,
           messages: [{ role: "user", content: USER_PROMPT }],
         });
-        aiResponse = (message.content[0] as any)?.text ?? "";
+        aiResponse = extractAnthropicText(message.content);
       } catch (err: any) {
-        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+        const fallbackModel = isAnthropicFreeModel(effectiveModel)
+          ? (effectiveModel !== "claude-3-5-haiku-20241022" ? "claude-3-5-haiku-20241022" : null)
+          : (effectiveModel !== "claude-3-5-sonnet-20241022" ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022");
+        if (fallbackModel) {
           const fallbackMsg = await client.messages.create({
-            model: "claude-3-5-haiku-20241022",
+            model: fallbackModel,
             max_tokens: 600,
             system: SYSTEM_PROMPT,
             messages: [{ role: "user", content: USER_PROMPT }],
           });
-          aiResponse = (fallbackMsg.content[0] as any)?.text ?? "";
+          aiResponse = extractAnthropicText(fallbackMsg.content);
         } else {
           throw err;
         }
@@ -1992,7 +1995,7 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
             throw err;
           }
         }
-        reply = (msg.content[0] as { type: string; text: string })?.text ?? "";
+        reply = extractAnthropicText(msg?.content);
       } else if (provider === "openrouter") {
         const OpenAI = (await import("openai")).default;
         const openrouter = new OpenAI({
@@ -2120,7 +2123,7 @@ router.post("/admin/ai-test", async (req, res) => {
           throw err;
         }
       }
-      response = (msg.content[0] as any)?.text ?? "";
+      response = extractAnthropicText(msg?.content);
     } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);

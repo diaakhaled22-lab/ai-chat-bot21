@@ -2,7 +2,7 @@ import { google, sheets_v4 } from "googleapis";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel } from "./aiModels";
+import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText } from "./aiModels";
 import { logger } from "./logger";
 import type { companiesTable } from "@workspace/db";
 
@@ -153,16 +153,19 @@ async function extractFieldsWithAI(
           messages: [{ role: "user", content: instructions }],
         });
       } catch (err: any) {
-        if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
+        const fallbackModel = isAnthropicFreeModel(effectiveModel)
+          ? (effectiveModel !== "claude-3-5-haiku-20241022" ? "claude-3-5-haiku-20241022" : null)
+          : (effectiveModel !== "claude-3-5-sonnet-20241022" ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022");
+        if (fallbackModel) {
           resp = await client.messages.create({
-            model: "claude-3-5-haiku-20241022", max_tokens: 512,
+            model: fallbackModel, max_tokens: 512,
             messages: [{ role: "user", content: instructions }],
           });
         } else {
           throw err;
         }
       }
-      raw = (resp.content[0] as { type: string; text: string })?.text ?? "";
+      raw = extractAnthropicText(resp.content);
     } else if (provider === "google") {
       const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);
       const genModel = genAI.getGenerativeModel({ model });

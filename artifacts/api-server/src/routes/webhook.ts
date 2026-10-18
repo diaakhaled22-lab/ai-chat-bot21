@@ -8,7 +8,7 @@ import { notifyNewConversation } from "../lib/companyNotification";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, extractAnthropicText } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
@@ -167,19 +167,32 @@ router.post("/webhook/message", webhookLimiter, async (req, res) => {
               messages: anthropicMsgs,
             });
           } catch (err: any) {
-            if (isAnthropicFreeModel(effectiveModel) && effectiveModel !== "claude-3-5-haiku-20241022") {
-              logger.warn({ effectiveModel, err: err?.message }, "Anthropic free model error in webhook; falling back to claude-3-5-haiku-20241022");
+            if (isAnthropicFreeModel(effectiveModel)) {
+              if (effectiveModel !== "claude-3-5-haiku-20241022") {
+                logger.warn({ effectiveModel, err: err?.message }, "Anthropic free model error in webhook; falling back to claude-3-5-haiku-20241022");
+                response = await anthropic.messages.create({
+                  model: "claude-3-5-haiku-20241022",
+                  max_tokens: 1024,
+                  system: sysContent || undefined,
+                  messages: anthropicMsgs,
+                });
+              } else {
+                throw err;
+              }
+            } else {
+              const fallbackPaidModel = effectiveModel !== "claude-3-5-sonnet-20241022"
+                ? "claude-3-5-sonnet-20241022"
+                : "claude-3-5-haiku-20241022";
+              logger.warn({ effectiveModel, fallbackPaidModel, err: err?.message }, "Anthropic paid model error in webhook; falling back to resilient tier");
               response = await anthropic.messages.create({
-                model: "claude-3-5-haiku-20241022",
+                model: fallbackPaidModel,
                 max_tokens: 1024,
                 system: sysContent || undefined,
                 messages: anthropicMsgs,
               });
-            } else {
-              throw err;
             }
           }
-          aiReply = (response.content[0] as { type: string; text: string })?.text ?? "";
+          aiReply = extractAnthropicText(response.content);
 
         } else if (provider === "google") {
           const genAI = new GoogleGenerativeAI(company.aiAgentApiKey);

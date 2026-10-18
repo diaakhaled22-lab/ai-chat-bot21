@@ -40,12 +40,12 @@ const PROVIDERS: AIProvider[] = [
     color: "text-orange-400", tabActive: "border-orange-400 text-orange-400",
     keyHint: "sk-ant-…",
     models: [
-      { id: "claude-3-haiku-20240307",    label: "Claude 3 Haiku",    tier: "free", description: "Fastest Claude",            contextWindow: "200K" },
-      { id: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku",  tier: "free", description: "Improved Haiku",            contextWindow: "200K" },
-      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet", tier: "paid", description: "Speed + intelligence",      contextWindow: "200K" },
-      { id: "claude-3-opus-20240229",     label: "Claude 3 Opus",     tier: "paid", description: "Most powerful Claude",      contextWindow: "200K" },
-      { id: "claude-sonnet-4-5",          label: "Claude Sonnet 4.5", tier: "paid", description: "Latest Sonnet, strong",     contextWindow: "200K" },
-      { id: "claude-opus-4-5",            label: "Claude Opus 4.5",   tier: "paid", description: "Latest Opus, exceptional",  contextWindow: "200K" },
+      { id: "claude-3-5-haiku-20241022",  label: "Claude 3.5 Haiku ⭐", tier: "free", description: "Improved Haiku, strong performance at low cost", contextWindow: "200K" },
+      { id: "claude-3-haiku-20240307",    label: "Claude 3 Haiku",      tier: "free", description: "Fastest Claude, great value",                   contextWindow: "200K" },
+      { id: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet ⭐", tier: "paid", description: "Flagship hybrid reasoning, premier intelligence", contextWindow: "200K" },
+      { id: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet",   tier: "paid", description: "Speed + intelligence, coding powerhouse",      contextWindow: "200K" },
+      { id: "claude-3-opus-20240229",     label: "Claude 3 Opus",       tier: "paid", description: "Most powerful Claude 3, deep research",         contextWindow: "200K" },
+      { id: "claude-3-sonnet-20240229",   label: "Claude 3 Sonnet",     tier: "paid", description: "Balanced performance and speed",                 contextWindow: "200K" },
     ],
   },
   {

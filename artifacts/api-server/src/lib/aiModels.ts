@@ -30,6 +30,14 @@ const FALLBACK_MODELS: AiModelCatalog = {
       ? "Claude 3.5 Haiku ⭐ (Recommended Free Tier)"
       : id === "claude-3-haiku-20240307"
       ? "Claude 3 Haiku (Free Tier)"
+      : id === "claude-3-7-sonnet-20250219"
+      ? "Claude 3.7 Sonnet ⭐ (Flagship Hybrid Reasoning)"
+      : id === "claude-3-5-sonnet-20241022"
+      ? "Claude 3.5 Sonnet (Advanced & Coding)"
+      : id === "claude-3-opus-20240229"
+      ? "Claude 3 Opus (Deep Reasoning & Analysis)"
+      : id === "claude-3-sonnet-20240229"
+      ? "Claude 3 Sonnet (Balanced)"
       : displayLabel(id),
     free: isAnthropicFreeModel(id),
   })),
@@ -81,6 +89,11 @@ export function isAnthropicFreeModel(modelId?: string | null): boolean {
   return normalized.includes("haiku");
 }
 
+export function isAnthropicPaidModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  return !isAnthropicFreeModel(modelId);
+}
+
 export function sanitizeAnthropicModel(model?: string | null): string {
   if (!model || !model.trim()) return "claude-3-5-haiku-20241022";
   const trimmed = model.trim().replace(/^anthropic\//i, "");
@@ -91,38 +104,72 @@ export function sanitizeAnthropicModel(model?: string | null): string {
     trimmed === "claude-3.5-haiku" ||
     trimmed === "claude-haiku" ||
     trimmed === "claude-haiku-4-5" ||
-    trimmed === "haiku"
+    trimmed === "haiku" ||
+    trimmed === "claude-3-5-haiku-latest"
   ) {
     return "claude-3-5-haiku-20241022";
   }
   if (
     trimmed === "claude-3-haiku" ||
-    trimmed === "claude-3.0-haiku"
+    trimmed === "claude-3.0-haiku" ||
+    trimmed === "claude-3-haiku-latest"
   ) {
     return "claude-3-haiku-20240307";
   }
-  // Sonnet & Opus aliases
+
+  // Sonnet & Opus aliases (Advanced & Paid models)
   if (
     trimmed === "claude-3-7-sonnet" ||
-    trimmed === "claude-3.7-sonnet"
+    trimmed === "claude-3.7-sonnet" ||
+    trimmed === "claude-3-7-sonnet-latest" ||
+    trimmed === "claude-sonnet-4-5" ||
+    trimmed === "claude-3-7-sonnet-20250219"
   ) {
     return "claude-3-7-sonnet-20250219";
   }
   if (
     trimmed === "claude-3-5-sonnet" ||
     trimmed === "claude-3.5-sonnet" ||
-    trimmed === "claude-sonnet"
+    trimmed === "claude-sonnet" ||
+    trimmed === "claude-3-5-sonnet-latest" ||
+    trimmed === "claude-sonnet-latest" ||
+    trimmed === "claude-3-5-sonnet-20241022"
   ) {
     return "claude-3-5-sonnet-20241022";
   }
   if (
     trimmed === "claude-3-opus" ||
     trimmed === "claude-3.0-opus" ||
-    trimmed === "claude-opus"
+    trimmed === "claude-opus" ||
+    trimmed === "claude-3-opus-latest" ||
+    trimmed === "claude-opus-latest" ||
+    trimmed === "claude-opus-4-5" ||
+    trimmed === "claude-3-opus-20240229"
   ) {
     return "claude-3-opus-20240229";
   }
+  if (
+    trimmed === "claude-3-sonnet" ||
+    trimmed === "claude-3.0-sonnet" ||
+    trimmed === "claude-3-sonnet-latest" ||
+    trimmed === "claude-3-sonnet-20240229"
+  ) {
+    return "claude-3-sonnet-20240229";
+  }
   return trimmed;
+}
+
+export function extractAnthropicText(content: any): string {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    const textBlocks = content.filter((b: any) => b && (b.type === "text" || typeof b.text === "string"));
+    if (textBlocks.length > 0) {
+      return textBlocks.map((b: any) => b.text || "").join("\n").trim();
+    }
+    return (content[0] as any)?.text || (content[0] as any)?.value || "";
+  }
+  return "";
 }
 
 export function formatAnthropicMessages(
@@ -295,12 +342,19 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
   "o1-mini":                            { input: 3.00,  output: 12.00 },
   "o3":                                 { input: 15.00, output: 60.00 },
   "o3-mini":                            { input: 1.10,  output: 4.40  },
-  // Anthropic
+  // Anthropic Advanced, Paid & Free models
+  "claude-3-7-sonnet-20250219":         { input: 3.00,  output: 15.00 },
+  "claude-3-7-sonnet":                  { input: 3.00,  output: 15.00 },
   "claude-3-5-sonnet-20241022":         { input: 3.00,  output: 15.00 },
+  "claude-3-5-sonnet":                  { input: 3.00,  output: 15.00 },
   "claude-3-5-haiku-20241022":          { input: 0.80,  output: 4.00  },
+  "claude-3-5-haiku":                   { input: 0.80,  output: 4.00  },
   "claude-3-opus-20240229":             { input: 15.00, output: 75.00 },
+  "claude-3-opus":                      { input: 15.00, output: 75.00 },
   "claude-3-haiku-20240307":            { input: 0.25,  output: 1.25  },
+  "claude-3-haiku":                     { input: 0.25,  output: 1.25  },
   "claude-3-sonnet-20240229":           { input: 3.00,  output: 15.00 },
+  "claude-3-sonnet":                    { input: 3.00,  output: 15.00 },
   "claude-sonnet-4-5":                  { input: 3.00,  output: 15.00 },
   "claude-opus-4-5":                    { input: 15.00, output: 75.00 },
   // Google
@@ -340,6 +394,9 @@ export function getModelPricing(modelId?: string | null): { input: number; outpu
   const withoutPrefix = clean.replace(/^(openai|models|google|anthropic|mistralai|meta-llama|deepseek|qwen)\//i, "");
   if (isOpenRouterFreeModel(withoutPrefix)) return { input: 0, output: 0 };
   if (AI_MODEL_PRICING[withoutPrefix]) return AI_MODEL_PRICING[withoutPrefix];
+
+  const anthropicSanitized = sanitizeAnthropicModel(clean);
+  if (AI_MODEL_PRICING[anthropicSanitized]) return AI_MODEL_PRICING[anthropicSanitized];
 
   const lower = withoutPrefix.toLowerCase();
   if (lower.startsWith("gemini") || lower.includes("gemini")) {
