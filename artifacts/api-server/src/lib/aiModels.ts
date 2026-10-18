@@ -28,7 +28,9 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b",
     "gemini-1.5-pro",
-  ].map((id) => ({ id, label: displayLabel(id), free: true })),
+    "gemini-2.0-pro-exp-02-05",
+    "gemini-2.5-pro",
+  ].map((id) => ({ id, label: displayLabel(id), free: isGoogleFreeModel(id) })),
   openrouter: [
     "openrouter/free",
     "google/gemma-4-31b-it:free",
@@ -49,14 +51,11 @@ const FALLBACK_MODELS: AiModelCatalog = {
 export function sanitizeGoogleModel(model?: string | null): string {
   if (!model || !model.trim()) return "gemini-2.0-flash";
   const trimmed = model.trim().replace(/^models\//, "");
-  // Deprecated or non-existent models -> fallback to the recommended free tier model
-  if (
-    trimmed === "gemini-pro" ||
-    trimmed === "gemini-1.0-pro" ||
-    trimmed.startsWith("gemini-3") ||
-    trimmed.startsWith("gemini-2.5") ||
-    trimmed === "gemini-flash"
-  ) {
+  // Deprecated legacy models -> redirect to current active equivalents
+  if (trimmed === "gemini-pro" || trimmed === "gemini-1.0-pro") {
+    return "gemini-1.5-pro";
+  }
+  if (trimmed === "gemini-flash") {
     return "gemini-2.0-flash";
   }
   return trimmed;
@@ -64,12 +63,13 @@ export function sanitizeGoogleModel(model?: string | null): string {
 
 export function isGoogleFreeModel(modelId: string): boolean {
   const normalized = modelId.toLowerCase().replace(/^models\//, "");
+  // Pro models are Google's Advanced & Paid flagship models
+  if (normalized.includes("pro")) return false;
   return (
     normalized.includes("flash") ||
     normalized.includes("lite") ||
     normalized.includes("8b") ||
-    normalized.startsWith("gemini-2.0") ||
-    normalized.startsWith("gemini-1.5")
+    normalized.endsWith(":free")
   );
 }
 
@@ -184,10 +184,14 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
   "claude-opus-4-5":                    { input: 15.00, output: 75.00 },
   // Google
   "gemini-1.5-pro":                     { input: 1.25,  output: 5.00  },
+  "gemini-1.5-pro-latest":              { input: 1.25,  output: 5.00  },
+  "gemini-2.0-pro-exp-02-05":           { input: 1.25,  output: 5.00  },
+  "gemini-2.5-pro":                     { input: 1.25,  output: 5.00  },
   "gemini-1.5-flash":                   { input: 0.075, output: 0.30  },
   "gemini-1.5-flash-8b":                { input: 0.0375, output: 0.15 },
   "gemini-2.0-flash":                   { input: 0.10,  output: 0.40  },
   "gemini-2.0-flash-lite":              { input: 0.075, output: 0.30  },
+  "gemini-2.5-flash":                   { input: 0.10,  output: 0.40  },
   // OpenRouter & Others
   "deepseek/deepseek-r1":               { input: 0.55,  output: 2.19  },
   "deepseek/deepseek-v3":               { input: 0.27,  output: 1.10  },
@@ -196,6 +200,7 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
   "openai/gpt-4o":                      { input: 2.50,  output: 10.00 },
   "openai/gpt-4o-mini":                 { input: 0.15,  output: 0.60  },
   "google/gemini-pro-1.5":              { input: 1.25,  output: 5.00  },
+  "google/gemini-2.5-pro":              { input: 1.25,  output: 5.00  },
   "mistralai/mistral-large":            { input: 2.00,  output: 6.00  },
   "meta-llama/llama-3.3-70b-instruct":  { input: 0.12,  output: 0.30  },
 };
@@ -204,8 +209,17 @@ export function getModelPricing(modelId?: string | null): { input: number; outpu
   if (!modelId) return { input: 0.15, output: 0.60 };
   const clean = modelId.trim();
   if (AI_MODEL_PRICING[clean]) return AI_MODEL_PRICING[clean];
-  const withoutPrefix = clean.replace(/^(openai|models)\//i, "");
+  const withoutPrefix = clean.replace(/^(openai|models|google)\//i, "");
   if (AI_MODEL_PRICING[withoutPrefix]) return AI_MODEL_PRICING[withoutPrefix];
+
+  const lower = withoutPrefix.toLowerCase();
+  if (lower.startsWith("gemini") || lower.includes("gemini")) {
+    if (lower.includes("pro")) {
+      return { input: 1.25, output: 5.00 };
+    }
+    return { input: 0.10, output: 0.40 };
+  }
+
   return { input: 0.15, output: 0.60 };
 }
 

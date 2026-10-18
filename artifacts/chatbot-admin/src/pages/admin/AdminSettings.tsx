@@ -47,7 +47,10 @@ const PROVIDERS = [
       { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", tier: "free" },
       { id: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash Lite", tier: "free" },
       { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", tier: "free" },
-      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", tier: "free" },
+      { id: "gemini-1.5-flash-8b", label: "Gemini 1.5 Flash 8B", tier: "free" },
+      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", tier: "paid" },
+      { id: "gemini-2.0-pro-exp-02-05", label: "Gemini 2.0 Pro Exp", tier: "paid" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", tier: "paid" },
     ],
   },
   {

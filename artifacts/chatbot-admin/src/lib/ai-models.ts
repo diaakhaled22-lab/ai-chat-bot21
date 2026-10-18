@@ -59,7 +59,9 @@ export const AI_PROVIDERS = {
       { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash-Lite (Free Tier, Fast)", free: true },
       { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (Free Tier)", free: true },
       { value: "gemini-1.5-flash-8b", label: "Gemini 1.5 Flash-8B (Free Tier, Lightweight)", free: true },
-      { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (Complex Reasoning)", free: true },
+      { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (Flagship Reasoning, 2M Context)", free: false },
+      { value: "gemini-2.0-pro-exp-02-05", label: "Gemini 2.0 Pro Experimental (Frontier Coding)", free: false },
+      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (Next-Gen Reasoning & STEM)", free: false },
     ],
   },
   openrouter: {

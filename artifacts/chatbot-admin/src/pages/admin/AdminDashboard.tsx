@@ -75,8 +75,14 @@ const MODEL_COLORS: Record<string, string> = {
   "claude-3-opus-20240229":     "#6d28d9",
   "claude-3-haiku-20240307":    "#c4b5fd",
   "gemini-1.5-pro":             "#3b82f6",
+  "gemini-1.5-pro-latest":      "#2563eb",
+  "gemini-2.0-pro-exp-02-05":   "#1d4ed8",
+  "gemini-2.5-pro":             "#1e40af",
   "gemini-1.5-flash":           "#60a5fa",
-  "gemini-2.0-flash":           "#93c5fd",
+  "gemini-1.5-flash-8b":        "#93c5fd",
+  "gemini-2.0-flash":           "#38bdf8",
+  "gemini-2.0-flash-lite":      "#7dd3fc",
+  "gemini-2.5-flash":           "#0284c7",
   "unknown":                    "#6b7280",
 };
 
