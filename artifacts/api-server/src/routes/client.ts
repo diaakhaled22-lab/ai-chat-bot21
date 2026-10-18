@@ -9,7 +9,7 @@ import { sendMessengerMessage } from "./messenger";
 import bcrypt from "bcryptjs";
 import { google } from "googleapis";
 import { db, pool, usersTable, companiesTable, chatLogsTable, ticketsTable, notificationsTable, adminConfigTable, malfunctionsTable, leadsTable, cannedResponsesTable } from "@workspace/db";
-import { eq, and, or, sql, gte, lte, desc, inArray } from "drizzle-orm";
+import { eq, and, or, sql, gte, lte, desc, inArray, ne } from "drizzle-orm";
 import {
   CreateClientCompanyBody,
   UpdateClientCompanyBody,
@@ -1833,10 +1833,26 @@ router.post("/client/send-test-notification", async (req, res) => {
 // GET /client/notifications
 router.get("/client/notifications", async (req, res) => {
   try {
+    // Clean up any legacy per-message notifications so they don't linger in count or clutter the user's popover
+    await db
+      .delete(notificationsTable)
+      .where(
+        and(
+          eq(notificationsTable.userId, req.session.userId!),
+          eq(notificationsTable.type, "new_message")
+        )
+      )
+      .catch((e) => logger.warn({ err: e }, "Failed to clean up legacy new_message notifications"));
+
     const items = await db
       .select()
       .from(notificationsTable)
-      .where(eq(notificationsTable.userId, req.session.userId!))
+      .where(
+        and(
+          eq(notificationsTable.userId, req.session.userId!),
+          ne(notificationsTable.type, "new_message")
+        )
+      )
       .orderBy(desc(notificationsTable.createdAt))
       .limit(20);
     res.json(items.map((n) => ({

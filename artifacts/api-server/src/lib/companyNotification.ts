@@ -250,7 +250,7 @@ export async function sendCompanyNotification(
   companyId: number,
   subject: string,
   html: string,
-  options?: { eventType?: string }
+  options?: { eventType?: string; inAppTitle?: string; inAppMessage?: string }
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
     if (!companyId || isNaN(companyId)) {
@@ -282,11 +282,13 @@ export async function sendCompanyNotification(
       const skipDuplicates = ["New chatbot message", "Customer Service Request"];
       if (!skipDuplicates.includes(options.eventType)) {
         try {
+          const inAppTitle = options.inAppTitle || `[${options.eventType}] ${company.name}`;
+          const inAppMessage = options.inAppMessage || subject;
           await db.insert(notificationsTable).values({
             userId: company.clientId,
             type: options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
-            title: `[${options.eventType}] ${company.name}`,
-            message: subject,
+            title: inAppTitle,
+            message: inAppMessage,
             companyId: company.id,
             isRead: false,
           });
@@ -501,6 +503,9 @@ export async function notifyNewChatMessage(
     customerPhone?: string;
   }
 ) {
+  if (details.sessionId && details.sessionId.startsWith("preview_")) {
+    return;
+  }
   const eventType = "New chatbot message";
   const html = buildNotificationHtml({
     companyName: company.name,
@@ -534,27 +539,44 @@ export async function notifyNewConversation(
     customerPhone?: string;
   }
 ) {
+  if (details.sessionId && details.sessionId.startsWith("preview_")) {
+    return;
+  }
+  const channelNames: Record<string, string> = {
+    whatsapp: "WhatsApp",
+    telegram: "Telegram",
+    messenger: "Messenger",
+    website: "Website Widget",
+  };
+  const channelDisplay = channelNames[details.channel] || details.channel;
   const eventType = "New conversation";
   const html = buildNotificationHtml({
     companyName: company.name,
     eventType,
-    title: `New Conversation Started on ${details.channel}`,
+    title: `New Conversation Started on ${channelDisplay}`,
     customerDetails: {
-      Channel: details.channel,
+      Channel: channelDisplay,
       "Session ID": details.sessionId || "N/A",
       "Phone / Contact": details.customerPhone || "Visitor",
     },
     eventDetails: {
       "Initial Message": details.initialMessage,
-      Channel: details.channel,
+      Channel: channelDisplay,
       "Session ID": details.sessionId || "N/A",
     },
   });
+
+  const snippet = details.initialMessage.length > 70 ? details.initialMessage.substring(0, 70) + "..." : details.initialMessage;
+
   return sendCompanyNotification(
     company.id,
-    `[${eventType}] ${company.name} - New conversation on ${details.channel}`,
+    `[${eventType}] ${company.name} - New conversation on ${channelDisplay}`,
     html,
-    { eventType }
+    {
+      eventType,
+      inAppTitle: `New conversation (${channelDisplay})`,
+      inAppMessage: `User started a conversation: "${snippet}"`,
+    }
   );
 }
 

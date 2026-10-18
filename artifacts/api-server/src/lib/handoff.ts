@@ -95,8 +95,17 @@ import { notifyCustomerServiceRequest, notifyNewChatMessage } from "./companyNot
 
 export async function triggerHandoffNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string) {
   try {
-    const title = `New Human Handoff Request (${channel})`;
-    const message = `A customer on ${channel} wants to speak with a human agent. Please check the Universal Chat.\nSession: ${sessionId}`;
+    if (sessionId && sessionId.startsWith("preview_")) return;
+
+    const channelNames: Record<string, string> = {
+      whatsapp: "WhatsApp",
+      telegram: "Telegram",
+      messenger: "Messenger",
+      website: "Website Widget",
+    };
+    const channelDisplay = channelNames[channel] || channel;
+    const title = `Customer Service Requested (${channelDisplay})`;
+    const message = `A customer on ${channelDisplay} requested human customer service. Please check Universal Chat.`;
 
     let clientId = company.clientId;
     if (!clientId) {
@@ -137,68 +146,13 @@ export async function triggerHandoffNotification(company: { id: number, clientId
 
 export async function triggerNewMessageNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string, customerMessage: string) {
   try {
-    const channelNames: Record<string, string> = {
-      whatsapp: "WhatsApp",
-      telegram: "Telegram",
-      messenger: "Messenger",
-      website: "Website Widget",
-    };
-    const channelDisplay = channelNames[channel] || channel;
-    const title = `New message (${channelDisplay})`;
-    const snippet = customerMessage.length > 50 ? customerMessage.substring(0, 50) + "..." : customerMessage;
-    const sessionTag = sessionId ? sessionId.substring(0, 8) : "";
-    
-    let clientId = company.clientId;
-    if (!clientId) {
-      const [comp] = await db
-        .select({ clientId: companiesTable.clientId })
-        .from(companiesTable)
-        .where(eq(companiesTable.id, company.id))
-        .limit(1);
-      clientId = comp?.clientId ?? null;
-    }
+    // Skip preview sessions
+    if (sessionId && sessionId.startsWith("preview_")) return;
 
-    if (clientId) {
-      // Check if an unread notification for this exact session exists
-      const [existing] = await db
-        .select({ id: notificationsTable.id })
-        .from(notificationsTable)
-        .where(
-          and(
-            eq(notificationsTable.companyId, company.id),
-            eq(notificationsTable.type, 'new_message'),
-            eq(notificationsTable.isRead, false),
-            sql`${notificationsTable.message} LIKE ${'%' + sessionTag + '%'}`
-          )
-        )
-        .limit(1);
-
-      if (existing) {
-        await db
-          .update(notificationsTable)
-          .set({
-            title,
-            message: `[${sessionTag}] ${snippet}`,
-            createdAt: new Date(),
-          })
-          .where(eq(notificationsTable.id, existing.id));
-      } else {
-        await db.insert(notificationsTable).values({
-          userId: clientId,
-          type: 'new_message',
-          title,
-          message: `[${sessionTag}] ${snippet}`,
-          companyId: company.id,
-          isRead: false
-        });
-      }
-    }
-
-    // Send email notification for New chatbot message to company.notificationEmail
-    notifyNewChatMessage(
-      { id: company.id, name: company.name },
-      { customerMessage, channel, sessionId }
-    ).catch((e) => logger.warn({ err: e, companyId: company.id }, "New message notification email failed"));
+    // Per user requirement: In-app notification bell on client page triggers ONLY when:
+    // (1) A new user starts a conversation (handled in notifyNewConversation)
+    // (2) A user requests to contact customer service (handled in triggerHandoffNotification)
+    // It should NOT trigger for every single individual message in an existing conversation.
   } catch (err) {
     logger.error({ err }, 'Error triggering new message notification');
   }

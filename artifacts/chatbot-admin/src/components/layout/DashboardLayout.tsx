@@ -461,7 +461,7 @@ function ClientNotificationBell() {
                   className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors group ${!n.isRead ? "bg-amber-500/5" : ""}`}
                   onClick={() => {
                     setOpen(false);
-                    if (n.type === "new_message" || n.type === "handoff_request") {
+                    if (n.type === "new_message" || n.type === "new_conversation" || n.type === "handoff_request") {
                       setLocation("/client/universal-chat");
                     }
                   }}
