@@ -1870,11 +1870,10 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
     });
     const effectiveModel = sanitizeOpenRouterModel(model);
     try {
-      await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
+      await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
     } catch (err: any) {
-      if ((isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") ||
-          err?.status === 404 || err?.message?.includes("No endpoints found") || err?.message?.includes("not found")) {
-        await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
+      if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+        await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
       } else {
         throw err;
       }
@@ -1950,13 +1949,16 @@ router.get("/client/company/ai-status", async (req, res) => {
         const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
         const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
         const isAuth = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+        const isCredit = msg.includes("402") || msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("payment");
         res.json({
-          status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
+          status: isCredit ? "insufficient_credits" : isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
           mode: "tokens",
           provider,
           model,
           isSupportAgent: false,
-          detail: msg.slice(0, 300),
+          detail: isCredit
+            ? "رصيد حسابك في OpenRouter غير كافٍ لتشغيل هذا النموذج المدفوع. يرجى شحن رصيدك عبر openrouter.ai/credits أو اختيار نموذج مجاني."
+            : msg.slice(0, 300),
         });
       }
       return;
@@ -2021,13 +2023,16 @@ router.get("/client/company/ai-status", async (req, res) => {
       const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
       const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
       const isAuth = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+      const isCredit = msg.includes("402") || msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("payment");
       res.json({
-        status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
+        status: isCredit ? "insufficient_credits" : isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
         mode: "quota",
         provider: quotaAi.provider,
         model: quotaAi.model,
         isSupportAgent: true,
-        detail: msg.slice(0, 300),
+        detail: isCredit
+          ? "رصيد حساب OpenRouter للوكيل في المنصة غير كافٍ لتشغيل هذا النموذج. يرجى مراجعة إدارة المنصة لشحن الرصيد."
+          : msg.slice(0, 300),
       });
     }
   } catch (err) {
@@ -2115,9 +2120,12 @@ router.post("/client/company/test-ai", async (req, res) => {
     });
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : String(err);
+    const isCredit = msg.includes("402") || msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("payment");
     res.status(400).json({
       ok: false,
-      error: msg.slice(0, 300)
+      error: isCredit
+        ? "رصيد حساب OpenRouter الخاص بك غير كافٍ لتشغيل هذا النموذج المدفوع. يرجى شحن رصيدك عبر openrouter.ai/credits أو اختيار نموذج مجاني."
+        : msg.slice(0, 300)
     });
   }
 });
@@ -2353,8 +2361,7 @@ router.post("/client/multi-ai/chat", async (req, res) => {
           messages: [{ role: "system", content: SYSTEM }, ...formatted],
         });
       } catch (openRouterErr: any) {
-        if ((isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") ||
-            openRouterErr?.status === 404 || openRouterErr?.message?.includes("No endpoints found")) {
+        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
           stream = await openai.chat.completions.create({
             model: "openrouter/free", max_tokens: 2048, stream: true,
             messages: [{ role: "system", content: SYSTEM }, ...formatted],

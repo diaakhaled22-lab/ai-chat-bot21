@@ -1513,14 +1513,15 @@ router.get("/admin/support-ai-status", async (req, res) => {
       await Promise.race([checkPromise, timeoutPromise]);
       res.json({ status: "ok", provider, model });
     } catch (aiErr: unknown) {
-      const msg     = aiErr instanceof Error ? aiErr.message : String(aiErr);
-      const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
-      const isAuth  = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+      const msg      = aiErr instanceof Error ? aiErr.message : String(aiErr);
+      const isQuota  = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
+      const isAuth   = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+      const isCredit = msg.includes("402") || msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("payment");
       res.json({
-        status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
+        status: isCredit ? "insufficient_credits" : isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
         provider,
         model,
-        detail: msg.slice(0, 200),
+        detail: isCredit ? "رصيد OpenRouter غير كافٍ لتشغيل هذا النموذج المدفوع. يرجى شحن الرصيد في openrouter.ai/credits." : msg.slice(0, 200),
       });
     }
   } catch (err) {
@@ -1665,14 +1666,15 @@ router.get("/admin/quota-ai-status", async (req, res) => {
       await Promise.race([checkPromise, timeoutPromise]);
       res.json({ status: "ok", provider, model });
     } catch (aiErr: unknown) {
-      const msg     = aiErr instanceof Error ? aiErr.message : String(aiErr);
-      const isQuota = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
-      const isAuth  = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+      const msg      = aiErr instanceof Error ? aiErr.message : String(aiErr);
+      const isQuota  = msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate");
+      const isAuth   = msg.includes("401") || msg.includes("403") || msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("auth") || msg.toLowerCase().includes("invalid");
+      const isCredit = msg.includes("402") || msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("payment");
       res.json({
-        status: isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
+        status: isCredit ? "insufficient_credits" : isQuota ? "quota_exceeded" : isAuth ? "invalid_key" : "error",
         provider,
         model,
-        detail: msg.slice(0, 200),
+        detail: isCredit ? "رصيد OpenRouter غير كافٍ لتشغيل هذا النموذج المدفوع. يرجى شحن الرصيد في openrouter.ai/credits." : msg.slice(0, 200),
       });
     }
   } catch (err) {

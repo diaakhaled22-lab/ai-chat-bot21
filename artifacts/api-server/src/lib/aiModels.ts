@@ -43,14 +43,20 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "qwen/qwen3-8b:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
     "deepseek/deepseek-v4-flash",
-    "deepseek/deepseek-r1",
-    "deepseek/deepseek-v3",
+    "anthropic/claude-3.7-sonnet",
     "anthropic/claude-3.5-sonnet",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
+    "openai/o3-mini",
+    "openai/o1",
+    "deepseek/deepseek-r1",
+    "deepseek/deepseek-v3",
+    "google/gemini-2.5-pro",
     "google/gemini-pro-1.5",
+    "google/gemini-2.0-flash-001",
     "mistralai/mistral-large",
     "meta-llama/llama-3.3-70b-instruct",
+    "qwen/qwen-2.5-72b-instruct",
   ].map((id) => ({
     id,
     label: id === "openrouter/free" ? "OpenRouter Free Auto (Recommended)" : displayLabel(id),
@@ -203,16 +209,22 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
   "gemini-2.0-flash-lite":              { input: 0.075, output: 0.30  },
   "gemini-2.5-flash":                   { input: 0.10,  output: 0.40  },
   // OpenRouter & Others
-  "deepseek/deepseek-r1":               { input: 0.55,  output: 2.19  },
-  "deepseek/deepseek-v3":               { input: 0.27,  output: 1.10  },
-  "deepseek/deepseek-v4-flash":         { input: 0.14,  output: 0.28  },
+  "anthropic/claude-3.7-sonnet":        { input: 3.00,  output: 15.00 },
   "anthropic/claude-3.5-sonnet":        { input: 3.00,  output: 15.00 },
   "openai/gpt-4o":                      { input: 2.50,  output: 10.00 },
   "openai/gpt-4o-mini":                 { input: 0.15,  output: 0.60  },
-  "google/gemini-pro-1.5":              { input: 1.25,  output: 5.00  },
+  "openai/o1":                          { input: 15.00, output: 60.00 },
+  "openai/o3-mini":                     { input: 1.10,  output: 4.40  },
+  "deepseek/deepseek-r1":               { input: 0.55,  output: 2.19  },
+  "deepseek/deepseek-v3":               { input: 0.27,  output: 1.10  },
+  "deepseek/deepseek-chat":             { input: 0.27,  output: 1.10  },
+  "deepseek/deepseek-v4-flash":         { input: 0.14,  output: 0.28  },
   "google/gemini-2.5-pro":              { input: 1.25,  output: 5.00  },
+  "google/gemini-pro-1.5":              { input: 1.25,  output: 5.00  },
+  "google/gemini-2.0-flash-001":        { input: 0.10,  output: 0.40  },
   "mistralai/mistral-large":            { input: 2.00,  output: 6.00  },
   "meta-llama/llama-3.3-70b-instruct":  { input: 0.12,  output: 0.30  },
+  "qwen/qwen-2.5-72b-instruct":         { input: 0.35,  output: 0.40  },
 };
 
 export function getModelPricing(modelId?: string | null): { input: number; output: number } {
@@ -220,7 +232,7 @@ export function getModelPricing(modelId?: string | null): { input: number; outpu
   const clean = modelId.trim();
   if (isOpenRouterFreeModel(clean)) return { input: 0, output: 0 };
   if (AI_MODEL_PRICING[clean]) return AI_MODEL_PRICING[clean];
-  const withoutPrefix = clean.replace(/^(openai|models|google)\//i, "");
+  const withoutPrefix = clean.replace(/^(openai|models|google|anthropic|mistralai|meta-llama|deepseek|qwen)\//i, "");
   if (isOpenRouterFreeModel(withoutPrefix)) return { input: 0, output: 0 };
   if (AI_MODEL_PRICING[withoutPrefix]) return AI_MODEL_PRICING[withoutPrefix];
 
@@ -230,6 +242,21 @@ export function getModelPricing(modelId?: string | null): { input: number; outpu
       return { input: 1.25, output: 5.00 };
     }
     return { input: 0.10, output: 0.40 };
+  }
+  if (lower.startsWith("claude") || lower.includes("claude")) {
+    if (lower.includes("haiku")) return { input: 0.80, output: 4.00 };
+    if (lower.includes("opus")) return { input: 15.00, output: 75.00 };
+    return { input: 3.00, output: 15.00 };
+  }
+  if (lower.startsWith("gpt-4o-mini") || lower.includes("mini")) {
+    return { input: 0.15, output: 0.60 };
+  }
+  if (lower.startsWith("gpt-4") || lower.includes("gpt-4")) {
+    return { input: 2.50, output: 10.00 };
+  }
+  if (lower.startsWith("deepseek")) {
+    if (lower.includes("r1")) return { input: 0.55, output: 2.19 };
+    return { input: 0.27, output: 1.10 };
   }
 
   return { input: 0.15, output: 0.60 };
@@ -295,6 +322,46 @@ export function getOpenRouterHeaders(): Record<string, string> {
   };
 }
 
+const COMMON_OPENROUTER_ALIASES: Record<string, string> = {
+  // OpenAI
+  "gpt-4o": "openai/gpt-4o",
+  "gpt-4o-mini": "openai/gpt-4o-mini",
+  "gpt-4-turbo": "openai/gpt-4-turbo",
+  "gpt-4": "openai/gpt-4",
+  "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
+  "o1": "openai/o1",
+  "o1-mini": "openai/o1-mini",
+  "o3-mini": "openai/o3-mini",
+  // Anthropic
+  "claude-3.7-sonnet": "anthropic/claude-3.7-sonnet",
+  "claude-3-7-sonnet": "anthropic/claude-3.7-sonnet",
+  "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
+  "claude-3-5-sonnet": "anthropic/claude-3.5-sonnet",
+  "claude-3-5-sonnet-20241022": "anthropic/claude-3.5-sonnet",
+  "claude-3-5-haiku": "anthropic/claude-3.5-haiku",
+  "claude-3-5-haiku-20241022": "anthropic/claude-3.5-haiku",
+  "claude-3-opus": "anthropic/claude-3-opus",
+  "claude-3-opus-20240229": "anthropic/claude-3-opus",
+  // DeepSeek
+  "deepseek-r1": "deepseek/deepseek-r1",
+  "deepseek-v3": "deepseek/deepseek-v3",
+  "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek-chat": "deepseek/deepseek-chat",
+  // Google
+  "gemini-pro-1.5": "google/gemini-pro-1.5",
+  "gemini-1.5-pro": "google/gemini-pro-1.5",
+  "gemini-2.0-flash": "google/gemini-2.0-flash-001",
+  "gemini-2.0-flash-001": "google/gemini-2.0-flash-001",
+  "gemini-2.5-pro": "google/gemini-2.5-pro",
+  // Mistral & Meta & Qwen
+  "mistral-large": "mistralai/mistral-large",
+  "mistral-7b-instruct": "mistralai/mistral-7b-instruct",
+  "llama-3.3-70b-instruct": "meta-llama/llama-3.3-70b-instruct",
+  "llama-3.1-8b-instruct": "meta-llama/llama-3.1-8b-instruct",
+  "llama-3.1-70b-instruct": "meta-llama/llama-3.1-70b-instruct",
+  "qwen-2.5-72b-instruct": "qwen/qwen-2.5-72b-instruct",
+};
+
 export function sanitizeOpenRouterModel(model?: string | null): string {
   if (!model || !model.trim()) return "openrouter/free";
   const trimmed = model.trim();
@@ -309,6 +376,9 @@ export function sanitizeOpenRouterModel(model?: string | null): string {
     trimmed === "google/gemini-2.0-pro-exp-02-05:free"
   ) {
     return "nvidia/nemotron-3.5-lightning:free";
+  }
+  if (COMMON_OPENROUTER_ALIASES[trimmed]) {
+    return COMMON_OPENROUTER_ALIASES[trimmed];
   }
   return trimmed;
 }

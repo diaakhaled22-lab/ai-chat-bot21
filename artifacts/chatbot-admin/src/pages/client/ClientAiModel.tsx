@@ -488,6 +488,8 @@ export default function ClientAiModel() {
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/30 animate-pulse" />
             ) : aiStatus?.status === "ok" ? (
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,0.4)]" />
+            ) : aiStatus?.status === "insufficient_credits" ? (
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_2px_rgba(245,158,11,0.3)]" />
             ) : aiStatus?.status === "no_quota" || aiStatus?.status === "no_key" || aiStatus?.status === "no_platform_key" ? (
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_2px_rgba(245,158,11,0.3)]" />
             ) : aiStatus?.status === "quota_exceeded" ? (
@@ -508,6 +510,10 @@ export default function ClientAiModel() {
                   activeMode === "quota"
                     ? (lang === "ar" ? "وكيل حصة المنصة متصل وجاهز للعمل" : "Platform Quota AI is connected and ready")
                     : (lang === "ar" ? "مفتاح الـ API الخاص بشركتك متصل ويعمل بنجاح" : "Company API key is connected and working")
+                ) : aiStatus?.status === "insufficient_credits" ? (
+                  lang === "ar"
+                    ? "رصيد حسابك غير كافٍ لتشغيل هذا النموذج المدفوع (يرجى شحن رصيد OpenRouter)"
+                    : "Insufficient credits for this paid model — please top up OpenRouter balance"
                 ) : aiStatus?.status === "no_quota" ? (
                   lang === "ar" ? "لم يتم تخصيص حصة رموز لهذه الشركة من قِبل المسؤول حتى الآن" : "No token quota allocated yet by administrator"
                 ) : aiStatus?.status === "no_key" ? (
