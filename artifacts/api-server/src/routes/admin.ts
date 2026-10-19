@@ -36,16 +36,13 @@ let quotaColumnsEnsured = false;
 async function ensureQuotaColumns(): Promise<void> {
   if (quotaColumnsEnsured) return;
   try {
-    const { pool } = await import("@workspace/db");
-    if (pool) {
-      await pool.query(`
-        ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
-        ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
-      `);
-      quotaColumnsEnsured = true;
-    }
+    await db.execute(sql`
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
+    `);
+    quotaColumnsEnsured = true;
   } catch (err) {
-    logger.warn({ err }, "Could not ensure quota columns in companies table");
+    logger.warn({ err }, "Could not ensure quota columns in companies table via db.execute");
   }
 }
 
@@ -507,16 +504,38 @@ router.get("/admin/companies", async (req, res) => {
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
   try {
-    const rows = await db
-      .select({
-        company: companiesTable,
-        clientName: usersTable.name,
-        clientUsername: usersTable.username,
-        clientNotificationEmail: usersTable.notificationEmail,
-      })
-      .from(companiesTable)
-      .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id))
-      .orderBy(companiesTable.createdAt);
+    let rows;
+    try {
+      rows = await db
+        .select({
+          company: companiesTable,
+          clientName: usersTable.name,
+          clientUsername: usersTable.username,
+          clientNotificationEmail: usersTable.notificationEmail,
+        })
+        .from(companiesTable)
+        .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id))
+        .orderBy(companiesTable.createdAt);
+    } catch (dbErr: any) {
+      if (dbErr?.message?.includes("quota_start_date") || dbErr?.message?.includes("quota_end_date")) {
+        await db.execute(sql`
+          ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
+          ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
+        `);
+        rows = await db
+          .select({
+            company: companiesTable,
+            clientName: usersTable.name,
+            clientUsername: usersTable.username,
+            clientNotificationEmail: usersTable.notificationEmail,
+          })
+          .from(companiesTable)
+          .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id))
+          .orderBy(companiesTable.createdAt);
+      } else {
+        throw dbErr;
+      }
+    }
 
     res.json(
       rows.map(({ company, clientName, clientUsername, clientNotificationEmail }) => ({
@@ -945,11 +964,29 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       }
     }
 
-    const [updated] = await db
-      .update(companiesTable)
-      .set(updates)
-      .where(eq(companiesTable.id, id))
-      .returning();
+    let updated;
+    try {
+      [updated] = await db
+        .update(companiesTable)
+        .set(updates)
+        .where(eq(companiesTable.id, id))
+        .returning();
+    } catch (dbErr: any) {
+      if (dbErr?.message?.includes("quota_start_date") || dbErr?.message?.includes("quota_end_date")) {
+        logger.warn({ dbErr }, "Column missing during quota update, running ALTER TABLE and retrying...");
+        await db.execute(sql`
+          ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
+          ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
+        `);
+        [updated] = await db
+          .update(companiesTable)
+          .set(updates)
+          .where(eq(companiesTable.id, id))
+          .returning();
+      } else {
+        throw dbErr;
+      }
+    }
     if (!updated) {
       res.status(404).json({ error: "Company not found" });
       return;

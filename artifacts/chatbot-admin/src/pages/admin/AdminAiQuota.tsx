@@ -509,7 +509,20 @@ export default function AdminAiQuota() {
           quotaEndDate,
         }),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      queryClient.setQueryData<Company[]>(["admin-companies"], (old) => {
+        if (!old) return old;
+        return old.map((c) =>
+          c.id === variables.companyId
+            ? {
+                ...c,
+                monthlyTokenQuota: variables.quota,
+                quotaStartDate: variables.quotaStartDate,
+                quotaEndDate: variables.quotaEndDate,
+              }
+            : c
+        );
+      });
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
       toast({

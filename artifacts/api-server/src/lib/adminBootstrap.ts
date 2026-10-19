@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
 export async function ensureAdminExists(database: typeof db = db): Promise<void> {
@@ -39,9 +39,7 @@ export async function ensureAdminExists(database: typeof db = db): Promise<void>
 
 export async function ensureDataSourcePermissionsSchema(): Promise<void> {
   try {
-    const { pool } = await import("@workspace/db");
-    if (!pool) return;
-    await pool.query(`
+    await db.execute(sql`
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_website BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_files BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_wordpress BOOLEAN NOT NULL DEFAULT true;
