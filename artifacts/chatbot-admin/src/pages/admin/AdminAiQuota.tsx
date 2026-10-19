@@ -1494,18 +1494,18 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono text-xs whitespace-nowrap">
-                          {hasQuota && c.quotaStartDate ? (
-                            <span className="text-foreground">
-                              {new Date(c.quotaStartDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "short", day: "numeric" })}
+                          {c.quotaStartDate ? (
+                            <span className="text-foreground" title={c.quotaStartDate}>
+                              {c.quotaStartDate.slice(0, 10)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground/50">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono text-xs whitespace-nowrap">
-                          {hasQuota && c.quotaEndDate ? (
-                            <span className="text-foreground">
-                              {new Date(c.quotaEndDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "short", day: "numeric" })}
+                          {c.quotaEndDate ? (
+                            <span className="text-foreground" title={c.quotaEndDate}>
+                              {c.quotaEndDate.slice(0, 10)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground/50">—</span>
@@ -1682,9 +1682,14 @@ export default function AdminAiQuota() {
                   <Input
                     id="quota-end-date"
                     type="date"
+                    min={quotaStartDate || undefined}
                     value={quotaEndDate}
                     onChange={(e) => setQuotaEndDate(e.target.value)}
-                    className="h-8 text-xs font-mono"
+                    className={`h-8 text-xs font-mono ${
+                      quotaStartDate && quotaEndDate && quotaEndDate < quotaStartDate
+                        ? "border-destructive focus-visible:ring-destructive text-destructive font-semibold"
+                        : ""
+                    }`}
                   />
                 </div>
               </div>
@@ -1724,12 +1729,23 @@ export default function AdminAiQuota() {
               </div>
 
               {quotaStartDate && quotaEndDate && (
-                <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border/40 rounded px-2.5 py-1.5 flex items-center justify-between">
-                  <span>{lang === "ar" ? "مدة الصلاحية:" : "Active Duration:"}</span>
-                  <span className="font-medium text-foreground">
-                    {Math.max(0, Math.ceil((new Date(quotaEndDate).getTime() - new Date(quotaStartDate).getTime()) / (1000 * 60 * 60 * 24)))} {lang === "ar" ? "يوم" : "days"}
-                  </span>
-                </div>
+                quotaEndDate < quotaStartDate ? (
+                  <div className="text-[11px] text-destructive bg-destructive/10 border border-destructive/20 rounded px-2.5 py-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {lang === "ar"
+                        ? `⚠️ تاريخ الانتهاء (${quotaEndDate}) يسبق تاريخ البدء (${quotaStartDate})! يرجى تصحيح التاريخ أو السنة (مثلاً 2026 بدلاً من 2020).`
+                        : `⚠️ End date (${quotaEndDate}) is earlier than start date (${quotaStartDate})! Please correct the date or year (e.g. 2026 instead of 2020).`}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border/40 rounded px-2.5 py-1.5 flex items-center justify-between">
+                    <span>{lang === "ar" ? "مدة الصلاحية:" : "Active Duration:"}</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                      {Math.ceil((new Date(quotaEndDate).getTime() - new Date(quotaStartDate).getTime()) / (1000 * 60 * 60 * 24))} {lang === "ar" ? "يوم" : "days"}
+                    </span>
+                  </div>
+                )
               )}
             </div>
 
@@ -1757,7 +1773,10 @@ export default function AdminAiQuota() {
             <Button variant="outline" onClick={() => setQuotaTarget(null)}>
               {lang === "ar" ? "إلغاء" : "Cancel"}
             </Button>
-            <Button onClick={handleSaveQuota} disabled={setQuotaMutation.isPending}>
+            <Button
+              onClick={handleSaveQuota}
+              disabled={setQuotaMutation.isPending || Boolean(quotaStartDate && quotaEndDate && quotaEndDate < quotaStartDate)}
+            >
               {setQuotaMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1885,9 +1904,14 @@ export default function AdminAiQuota() {
                   <Input
                     id="new-quota-end-date"
                     type="date"
+                    min={newAssignStartDate || undefined}
                     value={newAssignEndDate}
                     onChange={(e) => setNewAssignEndDate(e.target.value)}
-                    className="h-8 text-xs font-mono"
+                    className={`h-8 text-xs font-mono ${
+                      newAssignStartDate && newAssignEndDate && newAssignEndDate < newAssignStartDate
+                        ? "border-destructive focus-visible:ring-destructive text-destructive font-semibold"
+                        : ""
+                    }`}
                   />
                 </div>
               </div>
@@ -1927,12 +1951,23 @@ export default function AdminAiQuota() {
               </div>
 
               {newAssignStartDate && newAssignEndDate && (
-                <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border/40 rounded px-2.5 py-1.5 flex items-center justify-between">
-                  <span>{lang === "ar" ? "مدة الصلاحية:" : "Active Duration:"}</span>
-                  <span className="font-medium text-foreground">
-                    {Math.max(0, Math.ceil((new Date(newAssignEndDate).getTime() - new Date(newAssignStartDate).getTime()) / (1000 * 60 * 60 * 24)))} {lang === "ar" ? "يوم" : "days"}
-                  </span>
-                </div>
+                newAssignEndDate < newAssignStartDate ? (
+                  <div className="text-[11px] text-destructive bg-destructive/10 border border-destructive/20 rounded px-2.5 py-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {lang === "ar"
+                        ? `⚠️ تاريخ الانتهاء (${newAssignEndDate}) يسبق تاريخ البدء (${newAssignStartDate})! يرجى تصحيح التاريخ أو السنة (مثلاً 2026 بدلاً من 2020).`
+                        : `⚠️ End date (${newAssignEndDate}) is earlier than start date (${newAssignStartDate})! Please correct the date or year (e.g. 2026 instead of 2020).`}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-muted-foreground bg-muted/50 border border-border/40 rounded px-2.5 py-1.5 flex items-center justify-between">
+                    <span>{lang === "ar" ? "مدة الصلاحية:" : "Active Duration:"}</span>
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                      {Math.ceil((new Date(newAssignEndDate).getTime() - new Date(newAssignStartDate).getTime()) / (1000 * 60 * 60 * 24))} {lang === "ar" ? "يوم" : "days"}
+                    </span>
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -1941,7 +1976,15 @@ export default function AdminAiQuota() {
             <Button variant="outline" onClick={() => setIsAssignNewOpen(false)}>
               {lang === "ar" ? "إلغاء" : "Cancel"}
             </Button>
-            <Button onClick={handleAssignNewQuota} disabled={setQuotaMutation.isPending || !newAssignCompanyId || !newAssignQuota}>
+            <Button
+              onClick={handleAssignNewQuota}
+              disabled={
+                setQuotaMutation.isPending ||
+                !newAssignCompanyId ||
+                !newAssignQuota ||
+                Boolean(newAssignStartDate && newAssignEndDate && newAssignEndDate < newAssignStartDate)
+              }
+            >
               {setQuotaMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

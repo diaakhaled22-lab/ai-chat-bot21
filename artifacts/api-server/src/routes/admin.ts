@@ -49,6 +49,13 @@ async function ensureQuotaColumns(): Promise<void> {
   }
 }
 
+function toIsoOrNull(val: Date | string | null | undefined): string | null {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val.toISOString();
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 // GET /admin/ai-models â€” provider catalogs are refreshed automatically every hour
 router.get("/admin/ai-models", async (req, res) => {
   try {
@@ -523,10 +530,10 @@ router.get("/admin/companies", async (req, res) => {
         resendApiKey: maskApiKey(company.resendApiKey),
         generalInfo: company.generalInfo,
         isActive: company.isActive,
-        activationStart: company.activationStart?.toISOString() ?? null,
-        activationEnd: company.activationEnd?.toISOString() ?? null,
-        quotaStartDate: company.quotaStartDate?.toISOString() ?? null,
-        quotaEndDate: company.quotaEndDate?.toISOString() ?? null,
+        activationStart: toIsoOrNull(company.activationStart),
+        activationEnd: toIsoOrNull(company.activationEnd),
+        quotaStartDate: toIsoOrNull(company.quotaStartDate),
+        quotaEndDate: toIsoOrNull(company.quotaEndDate),
         systemPrompt: company.systemPrompt,
           securityPrompt: company.securityPrompt,
         googleSheetsEnabled: company.googleSheetsEnabled,
@@ -648,10 +655,10 @@ router.get("/admin/companies/:id", async (req, res) => {
       resendApiKey: maskApiKey(company.resendApiKey),
       generalInfo: company.generalInfo,
       isActive: company.isActive,
-      activationStart: company.activationStart?.toISOString() ?? null,
-      activationEnd: company.activationEnd?.toISOString() ?? null,
-      quotaStartDate: company.quotaStartDate?.toISOString() ?? null,
-      quotaEndDate: company.quotaEndDate?.toISOString() ?? null,
+      activationStart: toIsoOrNull(company.activationStart),
+      activationEnd: toIsoOrNull(company.activationEnd),
+      quotaStartDate: toIsoOrNull(company.quotaStartDate),
+      quotaEndDate: toIsoOrNull(company.quotaEndDate),
       systemPrompt: company.systemPrompt,
           securityPrompt: company.securityPrompt,
         googleSheetsEnabled: company.googleSheetsEnabled,
@@ -950,10 +957,10 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
     res.json({
       ok: true,
       monthlyTokenQuota: updated.monthlyTokenQuota ?? null,
-      quotaStartDate: updated.quotaStartDate?.toISOString() ?? null,
-      quotaEndDate: updated.quotaEndDate?.toISOString() ?? null,
-      activationStart: updated.activationStart?.toISOString() ?? null,
-      activationEnd: updated.activationEnd?.toISOString() ?? null,
+      quotaStartDate: toIsoOrNull(updated.quotaStartDate),
+      quotaEndDate: toIsoOrNull(updated.quotaEndDate),
+      activationStart: toIsoOrNull(updated.activationStart),
+      activationEnd: toIsoOrNull(updated.activationEnd),
     });
   } catch (err: any) {
     logger.error({ err, message: err?.message, stack: err?.stack }, "Set company quota error");
