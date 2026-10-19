@@ -62,6 +62,8 @@ interface Company {
   isActive: boolean;
   activationStart?: string | null;
   activationEnd?: string | null;
+  quotaStartDate?: string | null;
+  quotaEndDate?: string | null;
   notificationEmail?: string | null;
 }
 
@@ -107,16 +109,17 @@ function formatQuota(num: number | null | undefined): string {
   return num.toLocaleString();
 }
 
-type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent";
+type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent" | "startDate" | "endDate";
 type SortDir = "asc" | "desc";
 
-type RangePreset = "today" | "7d" | "30d" | "month" | "all";
+type RangePreset = "today" | "7d" | "30d" | "month" | "quota_period" | "all";
 
 const RANGE_OPTIONS: { key: RangePreset; labelAr: string; labelEn: string }[] = [
   { key: "today",  labelAr: "اليوم", labelEn: "Today" },
   { key: "7d",     labelAr: "آخر 7 أيام", labelEn: "Last 7 days" },
   { key: "30d",    labelAr: "آخر 30 يوم", labelEn: "Last 30 days" },
   { key: "month",  labelAr: "هذا الشهر", labelEn: "This month" },
+  { key: "quota_period", labelAr: "فترة صلاحية الحصة", labelEn: "Quota Validity Period" },
   { key: "all",    labelAr: "كل الأوقات", labelEn: "All time" },
 ];
 
@@ -489,21 +492,21 @@ export default function AdminAiQuota() {
     mutationFn: ({
       companyId,
       quota,
-      startDate,
-      endDate,
+      quotaStartDate,
+      quotaEndDate,
     }: {
       companyId: number;
       quota: number | null;
-      startDate?: string | null;
-      endDate?: string | null;
+      quotaStartDate?: string | null;
+      quotaEndDate?: string | null;
     }) =>
       customFetch(`/api/admin/companies/${companyId}/quota`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           monthlyTokenQuota: quota,
-          startDate,
-          endDate,
+          quotaStartDate,
+          quotaEndDate,
         }),
       }),
     onSuccess: () => {
@@ -526,8 +529,8 @@ export default function AdminAiQuota() {
   const openQuotaDialog = (company: Company) => {
     setQuotaTarget(company);
     setQuotaInput(company.monthlyTokenQuota ? String(company.monthlyTokenQuota) : "");
-    setQuotaStartDate(company.activationStart ? company.activationStart.slice(0, 10) : "");
-    setQuotaEndDate(company.activationEnd ? company.activationEnd.slice(0, 10) : "");
+    setQuotaStartDate(company.quotaStartDate ? company.quotaStartDate.slice(0, 10) : "");
+    setQuotaEndDate(company.quotaEndDate ? company.quotaEndDate.slice(0, 10) : "");
   };
 
   const handleSaveQuota = () => {
@@ -553,8 +556,8 @@ export default function AdminAiQuota() {
     setQuotaMutation.mutate({
       companyId: quotaTarget.id,
       quota,
-      startDate: quotaStartDate ? new Date(quotaStartDate.length === 10 ? `${quotaStartDate}T00:00:00.000Z` : quotaStartDate).toISOString() : null,
-      endDate: quotaEndDate ? new Date(quotaEndDate.length === 10 ? `${quotaEndDate}T23:59:59.999Z` : quotaEndDate).toISOString() : null,
+      quotaStartDate: quotaStartDate ? new Date(quotaStartDate.length === 10 ? `${quotaStartDate}T00:00:00.000Z` : quotaStartDate).toISOString() : null,
+      quotaEndDate: quotaEndDate ? new Date(quotaEndDate.length === 10 ? `${quotaEndDate}T23:59:59.999Z` : quotaEndDate).toISOString() : null,
     });
   };
 
@@ -581,8 +584,8 @@ export default function AdminAiQuota() {
     setQuotaMutation.mutate({
       companyId: Number(newAssignCompanyId),
       quota,
-      startDate: newAssignStartDate ? new Date(newAssignStartDate.length === 10 ? `${newAssignStartDate}T00:00:00.000Z` : newAssignStartDate).toISOString() : null,
-      endDate: newAssignEndDate ? new Date(newAssignEndDate.length === 10 ? `${newAssignEndDate}T23:59:59.999Z` : newAssignEndDate).toISOString() : null,
+      quotaStartDate: newAssignStartDate ? new Date(newAssignStartDate.length === 10 ? `${newAssignStartDate}T00:00:00.000Z` : newAssignStartDate).toISOString() : null,
+      quotaEndDate: newAssignEndDate ? new Date(newAssignEndDate.length === 10 ? `${newAssignEndDate}T23:59:59.999Z` : newAssignEndDate).toISOString() : null,
     });
   };
 
@@ -659,6 +662,18 @@ export default function AdminAiQuota() {
         case "percent":
           cmp = aPercent - bPercent;
           break;
+        case "startDate": {
+          const aTime = a.quotaStartDate ? new Date(a.quotaStartDate).getTime() : 0;
+          const bTime = b.quotaStartDate ? new Date(b.quotaStartDate).getTime() : 0;
+          cmp = aTime - bTime;
+          break;
+        }
+        case "endDate": {
+          const aTime = a.quotaEndDate ? new Date(a.quotaEndDate).getTime() : 0;
+          const bTime = b.quotaEndDate ? new Date(b.quotaEndDate).getTime() : 0;
+          cmp = aTime - bTime;
+          break;
+        }
         default:
           cmp = 0;
       }
@@ -714,6 +729,8 @@ export default function AdminAiQuota() {
       "Input Tokens",
       "Output Tokens",
       "Assigned Quota",
+      "Quota Start Date",
+      "Quota End Date",
       "Total Tokens Used",
       "Usage %",
       "Cost (USD)"
@@ -738,6 +755,8 @@ export default function AdminAiQuota() {
         hasQuota ? (usage?.inputTokens ?? 0) : 0,
         hasQuota ? (usage?.outputTokens ?? 0) : 0,
         c.monthlyTokenQuota ?? "Unlimited",
+        c.quotaStartDate ? c.quotaStartDate.slice(0, 10) : "—",
+        c.quotaEndDate ? c.quotaEndDate.slice(0, 10) : "—",
         tokensUsed,
         hasQuota ? `${percent.toFixed(2)}%` : "N/A",
         cost.toFixed(4)
@@ -774,6 +793,9 @@ export default function AdminAiQuota() {
       `${lang === "ar" ? "العميل" : "Client"}: ${c.clientName || c.clientUsername || "—"}`,
       `${lang === "ar" ? "النموذج النشط" : "Active AI Model"}: ${effectiveModel}`,
       `${lang === "ar" ? "الحصة المخصصة" : "Allocated Quota"}: ${formatQuota(quota)} tokens`,
+      (c.quotaStartDate || c.quotaEndDate)
+        ? `${lang === "ar" ? "فترة صلاحية الحصة" : "Quota Validity"}: ${c.quotaStartDate ? c.quotaStartDate.slice(0, 10) : "—"} → ${c.quotaEndDate ? c.quotaEndDate.slice(0, 10) : "—"}`
+        : null,
       `-----------------------------------------`,
       `${lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}: ${(usage?.messages ?? 0).toLocaleString()}`,
       `${lang === "ar" ? "رموز المدخلات" : "Input Tokens"}: ${(usage?.inputTokens ?? 0).toLocaleString()}`,
@@ -783,7 +805,7 @@ export default function AdminAiQuota() {
       `${lang === "ar" ? "الرموز المتبقية" : "Remaining Quota"}: ${quota > 0 ? Math.max(0, quota - tokens).toLocaleString() : "Unlimited"}`,
       `-----------------------------------------`,
       `${lang === "ar" ? "إجمالي التكلفة التقديرية" : "Total Estimated Cost"}: $${cost.toFixed(4)} USD`,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     navigator.clipboard.writeText(text);
     setCopiedBill(true);
@@ -821,8 +843,8 @@ export default function AdminAiQuota() {
           effectiveProvider,
           quotaFormatted: formatQuota(quota),
           validityPeriod:
-            company.activationStart || company.activationEnd
-              ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
+            company.quotaStartDate || company.quotaEndDate
+              ? `${company.quotaStartDate ? new Date(company.quotaStartDate).toLocaleDateString() : "—"} → ${company.quotaEndDate ? new Date(company.quotaEndDate).toLocaleDateString() : "—"}`
               : undefined,
           messages: usage?.messages ?? 0,
           inputTokens: usage?.inputTokens ?? 0,
@@ -914,8 +936,8 @@ export default function AdminAiQuota() {
         effectiveProvider,
         quotaFormatted: formatQuota(quota),
         validityPeriod:
-          company.activationStart || company.activationEnd
-            ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
+          company.quotaStartDate || company.quotaEndDate
+            ? `${company.quotaStartDate ? new Date(company.quotaStartDate).toLocaleDateString() : "—"} → ${company.quotaEndDate ? new Date(company.quotaEndDate).toLocaleDateString() : "—"}`
             : undefined,
         messages: usage?.messages ?? 0,
         inputTokens: usage?.inputTokens ?? 0,
@@ -1331,6 +1353,22 @@ export default function AdminAiQuota() {
                     </span>
                   </th>
                   <th 
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none whitespace-nowrap"
+                    onClick={() => toggleSort("startDate")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "تاريخ البدء" : "Start Date"} <SortIcon col="startDate" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
+                    className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none whitespace-nowrap"
+                    onClick={() => toggleSort("endDate")}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {lang === "ar" ? "تاريخ الانتهاء" : "End Date"} <SortIcon col="endDate" sortKey={sortKey} sortDir={sortDir} />
+                    </span>
+                  </th>
+                  <th 
                     className="text-right px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
                     onClick={() => toggleSort("tokens")}
                   >
@@ -1360,14 +1398,14 @@ export default function AdminAiQuota() {
               <tbody className="divide-y border-border/30">
                 {companiesLoading || usageLoading ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={12} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                       {lang === "ar" ? "جاري تحميل البيانات..." : "Loading data..."}
                     </td>
                   </tr>
                 ) : filteredAndSortedCompanies.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <td colSpan={12} className="text-center py-8 text-muted-foreground">
                       {lang === "ar" ? "لا توجد شركات بحصص محددة حالياً." : "No companies with assigned quotas."}
                     </td>
                   </tr>
@@ -1429,19 +1467,29 @@ export default function AdminAiQuota() {
                               <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
                                 {formatQuota(c.monthlyTokenQuota)}
                               </span>
-                              {(c.activationStart || c.activationEnd) && (
-                                <span className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                                  <Calendar className="w-2.5 h-2.5" />
-                                  {c.activationStart ? new Date(c.activationStart).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "numeric", day: "numeric" }) : "—"}
-                                  {" - "}
-                                  {c.activationEnd ? new Date(c.activationEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "numeric", day: "numeric" }) : "—"}
-                                </span>
-                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground/60 text-[10px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">
                               {lang === "ar" ? "معطل" : "Disabled"}
                             </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-mono text-xs whitespace-nowrap">
+                          {hasQuota && c.quotaStartDate ? (
+                            <span className="text-foreground">
+                              {new Date(c.quotaStartDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-mono text-xs whitespace-nowrap">
+                          {hasQuota && c.quotaEndDate ? (
+                            <span className="text-foreground">
+                              {new Date(c.quotaEndDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums font-mono">
@@ -1672,13 +1720,13 @@ export default function AdminAiQuota() {
                   <span>{lang === "ar" ? "الحصة الحالية:" : "Current Quota:"}</span>
                   <span className="font-semibold text-foreground">{formatQuota(quotaTarget.monthlyTokenQuota)} tokens / month</span>
                 </div>
-                {(quotaTarget.activationStart || quotaTarget.activationEnd) && (
+                {(quotaTarget.quotaStartDate || quotaTarget.quotaEndDate) && (
                   <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
-                    <span>{lang === "ar" ? "فترة التفعيل السابقة:" : "Previous Period:"}</span>
+                    <span>{lang === "ar" ? "فترة صلاحية الحصة السابقة:" : "Previous Quota Period:"}</span>
                     <span className="font-mono text-foreground">
-                      {quotaTarget.activationStart ? quotaTarget.activationStart.slice(0, 10) : "—"}
+                      {quotaTarget.quotaStartDate ? quotaTarget.quotaStartDate.slice(0, 10) : "—"}
                       {" → "}
-                      {quotaTarget.activationEnd ? quotaTarget.activationEnd.slice(0, 10) : "—"}
+                      {quotaTarget.quotaEndDate ? quotaTarget.quotaEndDate.slice(0, 10) : "—"}
                     </span>
                   </div>
                 )}
@@ -2043,16 +2091,16 @@ export default function AdminAiQuota() {
                       </span>
                     </div>
 
-                    {(billTarget.activationStart || billTarget.activationEnd) && (
+                    {(billTarget.quotaStartDate || billTarget.quotaEndDate) && (
                       <div className="col-span-2 pt-2 border-t border-border/40 flex items-center justify-between text-[11px]">
                         <span className="text-muted-foreground flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-primary" />
                           {lang === "ar" ? "فترة صلاحية الحصة:" : "Quota Validity Period:"}
                         </span>
                         <span className="font-mono text-foreground font-medium">
-                          {billTarget.activationStart ? billTarget.activationStart.slice(0, 10) : "—"}
+                          {billTarget.quotaStartDate ? billTarget.quotaStartDate.slice(0, 10) : "—"}
                           {" → "}
-                          {billTarget.activationEnd ? billTarget.activationEnd.slice(0, 10) : "—"}
+                          {billTarget.quotaEndDate ? billTarget.quotaEndDate.slice(0, 10) : "—"}
                         </span>
                       </div>
                     )}
@@ -2366,6 +2414,8 @@ export default function AdminAiQuota() {
                   <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "العميل" : "Client"}</th>
                   <th className="text-left p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النموذج" : "Model"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الحصة" : "Quota"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground whitespace-nowrap">{lang === "ar" ? "تاريخ البدء" : "Start Date"}</th>
+                  <th className="text-right p-2.5 font-medium text-muted-foreground whitespace-nowrap">{lang === "ar" ? "تاريخ الانتهاء" : "End Date"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرموز المستهلكة" : "Tokens Used"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرسائل" : "Messages"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Quota %"}</th>
@@ -2388,6 +2438,12 @@ export default function AdminAiQuota() {
                       <td className="p-2.5 text-muted-foreground">{c.clientName || c.clientUsername || "—"}</td>
                       <td className="p-2.5 font-mono text-[11px] text-amber-500">{effectiveModel}</td>
                       <td className="p-2.5 text-right font-mono">{formatQuota(quota)}</td>
+                      <td className="p-2.5 text-right font-mono text-muted-foreground whitespace-nowrap">
+                        {c.quotaStartDate ? c.quotaStartDate.slice(0, 10) : "—"}
+                      </td>
+                      <td className="p-2.5 text-right font-mono text-muted-foreground whitespace-nowrap">
+                        {c.quotaEndDate ? c.quotaEndDate.slice(0, 10) : "—"}
+                      </td>
                       <td className="p-2.5 text-right font-mono font-medium">{tokens.toLocaleString()}</td>
                       <td className="p-2.5 text-right font-mono text-muted-foreground">{(usage?.messages ?? 0).toLocaleString()}</td>
                       <td className="p-2.5 text-right font-mono">
@@ -2431,6 +2487,7 @@ export default function AdminAiQuota() {
                 <tr className="bg-muted/30 font-bold border-t-2 border-border/60">
                   <td colSpan={3} className="p-2.5 text-foreground">{lang === "ar" ? "الإجمالي الكلي" : "Grand Total"}</td>
                   <td className="p-2.5 text-right font-mono">{formatQuota(totalAllocatedQuota)}</td>
+                  <td colSpan={2}></td>
                   <td className="p-2.5 text-right font-mono text-foreground">{totalTokensConsumedMonth.toLocaleString()}</td>
                   <td className="p-2.5 text-right font-mono text-muted-foreground">
                     {filteredAndSortedCompanies.reduce((s, c) => s + (companyUsageMap.get(c.id)?.messages ?? 0), 0).toLocaleString()}

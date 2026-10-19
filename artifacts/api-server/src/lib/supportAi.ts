@@ -1,5 +1,5 @@
 import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/db";
-import { eq, sql, and, gte, or } from "drizzle-orm";
+import { eq, sql, and, gte, lte, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyQuota75PercentConsumed } from "./companyNotification";
 import { sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel } from "./aiModels";
@@ -254,9 +254,31 @@ export async function assertCompanyQuotaNotExceeded(
     throw new Error("لم يتم تخصيص حصة رموز (Token Quota) لهذه الشركة. يرجى تحديد حصة من لوحة الإدارة أولاً لتفعيل الردود أو التبديل إلى نمط رموز API الخاصة.");
   }
 
+  // Quota Validity Period Check (Independent from Subscription activationStart/activationEnd):
+  const now = new Date();
+  if (company.quotaStartDate && now < new Date(company.quotaStartDate)) {
+    throw new Error(
+      `فترة صلاحية استخدام حصة الذكاء الاصطناعي (AI Quota) المخصصة لهذه الشركة لم تبدأ بعد (تبدأ بتاريخ ${new Date(company.quotaStartDate).toLocaleDateString("ar-EG")}).`
+    );
+  }
+  if (company.quotaEndDate && now > new Date(company.quotaEndDate)) {
+    throw new Error(
+      `انتهت فترة صلاحية استخدام حصة الذكاء الاصطناعي (AI Quota) المخصصة لهذه الشركة بتاريخ (${new Date(company.quotaEndDate).toLocaleDateString("ar-EG")}). يرجى تجديد أو تمديد صلاحية الحصة.`
+    );
+  }
+
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
+
+  // If company has quotaStartDate, respect it as the starting window if later than monthStart
+  let effectiveStart = monthStart;
+  if (company.quotaStartDate) {
+    const qStart = new Date(company.quotaStartDate);
+    if (!isNaN(qStart.getTime()) && qStart > effectiveStart) {
+      effectiveStart = qStart;
+    }
+  }
 
   // Check reset timestamps from admin_config
   const resetConfig = await db
@@ -267,7 +289,6 @@ export async function assertCompanyQuotaNotExceeded(
       eq(adminConfigTable.key, "quota_reset_all")
     ));
 
-  let effectiveStart = monthStart;
   for (const r of resetConfig) {
     if (r.value) {
       const d = new Date(r.value);
@@ -277,13 +298,21 @@ export async function assertCompanyQuotaNotExceeded(
     }
   }
 
+  const logConditions = [
+    eq(chatLogsTable.companyId, company.id),
+    gte(chatLogsTable.createdAt, effectiveStart),
+  ];
+  if (company.quotaEndDate) {
+    const qEnd = new Date(company.quotaEndDate);
+    if (!isNaN(qEnd.getTime())) {
+      logConditions.push(lte(chatLogsTable.createdAt, qEnd));
+    }
+  }
+
   const logs = await db
     .select({ customerMessage: chatLogsTable.customerMessage, botResponse: chatLogsTable.botResponse })
     .from(chatLogsTable)
-    .where(and(
-      eq(chatLogsTable.companyId, company.id),
-      gte(chatLogsTable.createdAt, effectiveStart),
-    ));
+    .where(and(...logConditions));
 
   const CHARS_PER_TOKEN = 4;
   let usedTokens = 0;

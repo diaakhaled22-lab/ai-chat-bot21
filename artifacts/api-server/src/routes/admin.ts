@@ -149,7 +149,7 @@ router.get("/admin/usage-cost", async (req, res) => {
       if (isNaN(toDate.getTime())) toDate = undefined;
     }
 
-    if (!fromDate && range && range !== "all") {
+    if (!fromDate && range && range !== "all" && range !== "quota_period") {
       const now = new Date();
       if (range === "month") {
         fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -169,6 +169,8 @@ router.get("/admin/usage-cost", async (req, res) => {
         aiProvider: companiesTable.aiProvider,
         aiModel: companiesTable.aiModel,
         monthlyTokenQuota: companiesTable.monthlyTokenQuota,
+        quotaStartDate: companiesTable.quotaStartDate,
+        quotaEndDate: companiesTable.quotaEndDate,
       })
       .from(companiesTable);
 
@@ -217,6 +219,15 @@ router.get("/admin/usage-cost", async (req, res) => {
       const companyReset = resetMap.get(`quota_reset_company_${log.companyId}`) || globalReset;
       if (companyReset && log.createdAt && new Date(log.createdAt) < companyReset) {
         continue;
+      }
+
+      if (range === "quota_period") {
+        if (company.quotaStartDate && log.createdAt && new Date(log.createdAt) < new Date(company.quotaStartDate)) {
+          continue;
+        }
+        if (company.quotaEndDate && log.createdAt && new Date(log.createdAt) > new Date(company.quotaEndDate)) {
+          continue;
+        }
       }
 
       const hasQuota = typeof company.monthlyTokenQuota === "number" && company.monthlyTokenQuota > 0;
@@ -495,6 +506,8 @@ router.get("/admin/companies", async (req, res) => {
         isActive: company.isActive,
         activationStart: company.activationStart?.toISOString() ?? null,
         activationEnd: company.activationEnd?.toISOString() ?? null,
+        quotaStartDate: company.quotaStartDate?.toISOString() ?? null,
+        quotaEndDate: company.quotaEndDate?.toISOString() ?? null,
         systemPrompt: company.systemPrompt,
           securityPrompt: company.securityPrompt,
         googleSheetsEnabled: company.googleSheetsEnabled,
@@ -617,6 +630,8 @@ router.get("/admin/companies/:id", async (req, res) => {
       isActive: company.isActive,
       activationStart: company.activationStart?.toISOString() ?? null,
       activationEnd: company.activationEnd?.toISOString() ?? null,
+      quotaStartDate: company.quotaStartDate?.toISOString() ?? null,
+      quotaEndDate: company.quotaEndDate?.toISOString() ?? null,
       systemPrompt: company.systemPrompt,
           securityPrompt: company.securityPrompt,
         googleSheetsEnabled: company.googleSheetsEnabled,
@@ -863,12 +878,12 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
 router.put("/admin/companies/:id/quota", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { monthlyTokenQuota, startDate, endDate, activationStart, activationEnd } = req.body as {
+    const { monthlyTokenQuota, quotaStartDate, quotaEndDate, startDate, endDate } = req.body as {
       monthlyTokenQuota: number | null;
+      quotaStartDate?: string | null;
+      quotaEndDate?: string | null;
       startDate?: string | null;
       endDate?: string | null;
-      activationStart?: string | null;
-      activationEnd?: string | null;
     };
     const quota = monthlyTokenQuota == null ? null : Number(monthlyTokenQuota);
     if (quota !== null && (isNaN(quota) || quota < 0)) {
@@ -880,14 +895,16 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       monthlyTokenQuota: quota,
     };
 
-    const sDate = startDate !== undefined ? startDate : activationStart;
-    const eDate = endDate !== undefined ? endDate : activationEnd;
+    // Quota Validity Period updates strictly quotaStartDate and quotaEndDate.
+    // It must NEVER touch or overwrite subscription activationStart or activationEnd!
+    const qStart = quotaStartDate !== undefined ? quotaStartDate : startDate;
+    const qEnd = quotaEndDate !== undefined ? quotaEndDate : endDate;
 
-    if (sDate !== undefined) {
-      updates.activationStart = sDate ? new Date(sDate) : null;
+    if (qStart !== undefined) {
+      updates.quotaStartDate = qStart ? new Date(qStart) : null;
     }
-    if (eDate !== undefined) {
-      updates.activationEnd = eDate ? new Date(eDate) : null;
+    if (qEnd !== undefined) {
+      updates.quotaEndDate = qEnd ? new Date(qEnd) : null;
     }
 
     const [updated] = await db
@@ -902,6 +919,8 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
     res.json({
       ok: true,
       monthlyTokenQuota: updated.monthlyTokenQuota ?? null,
+      quotaStartDate: updated.quotaStartDate?.toISOString() ?? null,
+      quotaEndDate: updated.quotaEndDate?.toISOString() ?? null,
       activationStart: updated.activationStart?.toISOString() ?? null,
       activationEnd: updated.activationEnd?.toISOString() ?? null,
     });
@@ -1109,9 +1128,11 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
     const quotaVal = billData?.quota ?? company.monthlyTokenQuota;
     const quotaFormatted = quotaVal ? (quotaVal >= 1000000 ? `${(quotaVal / 1000000).toFixed(1)}M` : quotaVal >= 1000 ? `${(quotaVal / 1000).toFixed(0)}K` : String(quotaVal)) : "غير محدود";
     const validityPeriod =
-      company.activationStart || company.activationEnd
-        ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
-        : "";
+      company.quotaStartDate || company.quotaEndDate
+        ? `${company.quotaStartDate ? new Date(company.quotaStartDate).toLocaleDateString() : "—"} → ${company.quotaEndDate ? new Date(company.quotaEndDate).toLocaleDateString() : "—"}`
+        : (company.activationStart || company.activationEnd
+          ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
+          : "");
 
     const emailHtml = buildBillEmailHtml({
       companyName: company.name,
