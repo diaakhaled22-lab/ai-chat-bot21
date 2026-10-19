@@ -1231,7 +1231,7 @@ export default function ClientCompany() {
                 const activeProvider = isQuotaMode ? quotaProvider : (hasOwnKey ? ownProvider : null);
                 const activeModel = isQuotaMode ? quotaModel : (hasOwnKey ? (ownModel || (lang === "ar" ? "النموذج الافتراضي" : "Default Model")) : null);
                 const isEngineReady = isQuotaMode
-                  ? (aiStatus?.status === "ok" || (quotaData && quotaData.quota > 0))
+                  ? (aiStatus?.status === "ok" || (Boolean(quotaData?.quota) && Number(quotaData?.quota) > 0))
                   : (hasOwnKey && Boolean(ownProvider));
 
                 return (

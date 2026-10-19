@@ -136,8 +136,8 @@ export default function ClientChannels() {
         fabEnabled:                company.fabEnabled                ?? false,
         fabPositionX:              company.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
         fabPositionY:              company.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
-        voiceReplyEnabled:         company.voiceReplyEnabled         ?? false,
-        voiceReplyVoice:           company.voiceReplyVoice           ?? "alloy",
+        voiceReplyEnabled:         (company as any).voiceReplyEnabled         ?? false,
+        voiceReplyVoice:           (company as any).voiceReplyVoice           ?? "alloy",
       });
       /*
        * The switch state is independent from whether credentials exist.
@@ -148,7 +148,7 @@ export default function ClientChannels() {
       setWhatsappOn(company.whatsappEnabled ?? false);
       setMessengerOn(company.messengerEnabled ?? false);
       setWidgetOn(company.widgetEnabled ?? false);
-      setVoiceReplyOn(company.voiceReplyEnabled ?? false);
+      setVoiceReplyOn((company as any).voiceReplyEnabled ?? false);
       initialized.current = true;
     }
   }, [company, form]);

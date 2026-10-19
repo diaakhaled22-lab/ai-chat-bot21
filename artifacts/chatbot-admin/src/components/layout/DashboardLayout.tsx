@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey, useGetClientCompany } from "@workspace/api-client-react";
+import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey, useGetClientCompany, getGetClientCompanyQueryKey } from "@workspace/api-client-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -720,6 +720,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const { data: clientCompany } = useGetClientCompany({
     query: {
+      queryKey: getGetClientCompanyQueryKey(),
       enabled: role === "client",
       staleTime: 5_000,
     },

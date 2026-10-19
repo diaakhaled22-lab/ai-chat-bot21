@@ -428,12 +428,12 @@ export default function AdminAiQuota() {
 
   const queryKeyParam = showCustom ? `custom:${customFrom}:${customTo}` : activeRange;
 
-  const rangeLabel = useMemo(() => {
+  const rangeLabel: string = useMemo(() => {
     if (showCustom) {
       return `${customFrom} → ${customTo}`;
     }
     const opt = RANGE_OPTIONS.find((o) => o.key === activeRange);
-    return lang === "ar" ? opt?.labelAr : opt?.labelEn;
+    return (lang === "ar" ? opt?.labelAr : opt?.labelEn) || (lang === "ar" ? "الشهر الحالي" : "Current Month");
   }, [showCustom, customFrom, customTo, activeRange, lang]);
 
   const toggleSort = (col: SortKey) => {
