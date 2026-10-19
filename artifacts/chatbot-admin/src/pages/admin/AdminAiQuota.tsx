@@ -502,15 +502,11 @@ export default function AdminAiQuota() {
     mutationFn: ({
       companyId,
       quota,
-      startDate,
-      endDate,
       quotaStartDate,
       quotaEndDate,
     }: {
       companyId: number;
       quota: number | null;
-      startDate?: string | null;
-      endDate?: string | null;
       quotaStartDate?: string | null;
       quotaEndDate?: string | null;
     }) =>
@@ -519,10 +515,8 @@ export default function AdminAiQuota() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           monthlyTokenQuota: quota,
-          quotaStartDate: quotaStartDate !== undefined ? quotaStartDate : startDate,
-          quotaEndDate: quotaEndDate !== undefined ? quotaEndDate : endDate,
-          startDate,
-          endDate,
+          quotaStartDate,
+          quotaEndDate,
         }),
       }),
     onSuccess: () => {
@@ -579,8 +573,6 @@ export default function AdminAiQuota() {
       quota,
       quotaStartDate: isoStart,
       quotaEndDate: isoEnd,
-      startDate: isoStart,
-      endDate: isoEnd,
     });
   };
 
@@ -611,8 +603,6 @@ export default function AdminAiQuota() {
       quota,
       quotaStartDate: isoStart,
       quotaEndDate: isoEnd,
-      startDate: isoStart,
-      endDate: isoEnd,
     });
   };
 
