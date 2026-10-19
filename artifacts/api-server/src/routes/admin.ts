@@ -29,8 +29,25 @@ import { authenticator } from "otplib";
 import QRCode from "qrcode";
 
 const router = Router();
-// Only enforce admin auth on /admin/* paths â€” other paths pass through this router unguarded
+// Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
 router.use("/admin", requireAdmin);
+
+let quotaColumnsEnsured = false;
+async function ensureQuotaColumns(): Promise<void> {
+  if (quotaColumnsEnsured) return;
+  try {
+    const { pool } = await import("@workspace/db");
+    if (pool) {
+      await pool.query(`
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
+      `);
+      quotaColumnsEnsured = true;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not ensure quota columns in companies table");
+  }
+}
 
 // GET /admin/ai-models â€” provider catalogs are refreshed automatically every hour
 router.get("/admin/ai-models", async (req, res) => {
@@ -127,6 +144,7 @@ router.post("/admin/attack-monitoring/test-alert", async (req, res) => {
 
 // GET /admin/usage-cost
 router.get("/admin/usage-cost", async (req, res) => {
+  await ensureQuotaColumns();
   try {
     const CHARS_PER_TOKEN = 4;
 
@@ -477,6 +495,7 @@ router.delete("/admin/clients/:id", async (req, res) => {
 
 // GET /admin/companies
 router.get("/admin/companies", async (req, res) => {
+  await ensureQuotaColumns();
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
@@ -598,6 +617,7 @@ router.get("/admin/companies/:id/data-sources", async (req, res) => {
 
 // GET /admin/companies/:id
 router.get("/admin/companies/:id", async (req, res) => {
+  await ensureQuotaColumns();
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
@@ -876,6 +896,7 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
 // GET /admin/companies/:id/logs
 // PUT /admin/companies/:id/quota
 router.put("/admin/companies/:id/quota", async (req, res) => {
+  await ensureQuotaColumns();
   try {
     const id = Number(req.params.id);
     const { monthlyTokenQuota, quotaStartDate, quotaEndDate, startDate, endDate } = req.body as {
@@ -901,10 +922,20 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
     const qEnd = quotaEndDate !== undefined ? quotaEndDate : endDate;
 
     if (qStart !== undefined) {
-      updates.quotaStartDate = qStart ? new Date(qStart) : null;
+      if (!qStart || qStart === "" || qStart === "null") {
+        updates.quotaStartDate = null;
+      } else {
+        const d = new Date(qStart);
+        updates.quotaStartDate = isNaN(d.getTime()) ? null : d;
+      }
     }
     if (qEnd !== undefined) {
-      updates.quotaEndDate = qEnd ? new Date(qEnd) : null;
+      if (!qEnd || qEnd === "" || qEnd === "null") {
+        updates.quotaEndDate = null;
+      } else {
+        const d = new Date(qEnd);
+        updates.quotaEndDate = isNaN(d.getTime()) ? null : d;
+      }
     }
 
     const [updated] = await db
@@ -924,9 +955,9 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       activationStart: updated.activationStart?.toISOString() ?? null,
       activationEnd: updated.activationEnd?.toISOString() ?? null,
     });
-  } catch (err) {
-    logger.error({ err }, "Set company quota error");
-    res.status(500).json({ error: "Internal server error" });
+  } catch (err: any) {
+    logger.error({ err, message: err?.message, stack: err?.stack }, "Set company quota error");
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 

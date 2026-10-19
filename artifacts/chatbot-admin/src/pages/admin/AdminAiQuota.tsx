@@ -511,6 +511,7 @@ export default function AdminAiQuota() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
       toast({
         title: lang === "ar" ? "تم تحديث الحصة بنجاح" : "Quota updated successfully",
       });
@@ -553,11 +554,20 @@ export default function AdminAiQuota() {
       });
       return;
     }
+    const safeStart = quotaStartDate ? (() => {
+      const d = new Date(quotaStartDate.length === 10 ? `${quotaStartDate}T00:00:00.000Z` : quotaStartDate);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    })() : null;
+    const safeEnd = quotaEndDate ? (() => {
+      const d = new Date(quotaEndDate.length === 10 ? `${quotaEndDate}T23:59:59.999Z` : quotaEndDate);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    })() : null;
+
     setQuotaMutation.mutate({
       companyId: quotaTarget.id,
       quota,
-      quotaStartDate: quotaStartDate ? new Date(quotaStartDate.length === 10 ? `${quotaStartDate}T00:00:00.000Z` : quotaStartDate).toISOString() : null,
-      quotaEndDate: quotaEndDate ? new Date(quotaEndDate.length === 10 ? `${quotaEndDate}T23:59:59.999Z` : quotaEndDate).toISOString() : null,
+      quotaStartDate: safeStart,
+      quotaEndDate: safeEnd,
     });
   };
 
@@ -581,11 +591,20 @@ export default function AdminAiQuota() {
       });
       return;
     }
+    const safeStart = newAssignStartDate ? (() => {
+      const d = new Date(newAssignStartDate.length === 10 ? `${newAssignStartDate}T00:00:00.000Z` : newAssignStartDate);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    })() : null;
+    const safeEnd = newAssignEndDate ? (() => {
+      const d = new Date(newAssignEndDate.length === 10 ? `${newAssignEndDate}T23:59:59.999Z` : newAssignEndDate);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    })() : null;
+
     setQuotaMutation.mutate({
       companyId: Number(newAssignCompanyId),
       quota,
-      quotaStartDate: newAssignStartDate ? new Date(newAssignStartDate.length === 10 ? `${newAssignStartDate}T00:00:00.000Z` : newAssignStartDate).toISOString() : null,
-      quotaEndDate: newAssignEndDate ? new Date(newAssignEndDate.length === 10 ? `${newAssignEndDate}T23:59:59.999Z` : newAssignEndDate).toISOString() : null,
+      quotaStartDate: safeStart,
+      quotaEndDate: safeEnd,
     });
   };
 
