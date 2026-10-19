@@ -1140,6 +1140,112 @@ function buildBillEmailHtml(data: {
   `;
 }
 
+function buildTopupBillEmailHtml(data: {
+  companyName: string;
+  clientName: string;
+  invoiceNumber: string;
+  addedTokens: number;
+  previousQuota: number;
+  newTotalQuota: number;
+  newEndDate?: string | null;
+  price: number;
+  notes?: string;
+  hasImageAttachment: boolean;
+}) {
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاتورة شحن باقة إضافية</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937;">
+  <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); border: 1px solid #e5e7eb;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
+      <div style="font-size: 32px; margin-bottom: 6px;">⚡</div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">فاتورة شحن باقة إضافية (Top-up Quota Invoice)</h1>
+      <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-family: monospace;">رقم الفاتورة: ${escapeHtml(data.invoiceNumber)}</p>
+      <div style="margin-top: 10px; display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
+        الحالة: تم الشحن والتفعيل بنجاح ✅
+      </div>
+    </div>
+
+    <div style="padding: 24px;">
+      <!-- Meta Information Grid -->
+      <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 20px;">
+        <tr>
+          <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">الشركة:</span>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.companyName)}</strong>
+          </td>
+          <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">العميل:</span>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.clientName)}</strong>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Itemized Table -->
+      <h3 style="font-size: 14px; margin: 0 0 10px; color: #374151;">تفاصيل شحن الباقة:</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px;">
+        <thead>
+          <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb; text-align: right;">
+            <th style="padding: 10px 12px; color: #4b5563;">البند</th>
+            <th style="padding: 10px 12px; color: #4b5563; text-align: left;">القيمة</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px; font-weight: 600; color: #0d9488;">⚡ الباقة المضافة (Top-up Tokens)</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace; font-weight: bold; color: #0d9488;">+${data.addedTokens.toLocaleString()} tokens</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px;">الحصة الشهرية السابقة</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace;">${data.previousQuota.toLocaleString()} tokens</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px; font-weight: 600;">الحصة الإجمالية الجديدة بعد الشحن</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace; font-weight: bold; color: #2563eb;">${data.newTotalQuota.toLocaleString()} tokens</td>
+          </tr>
+          ${data.newEndDate ? `
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 10px 12px;">📅 تاريخ انتهاء الصلاحية المحدث</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace;">${escapeHtml(data.newEndDate)}</td>
+          </tr>` : ""}
+          <tr style="background: #f0fdf4; font-weight: bold; border-top: 2px solid #bbf7d0;">
+            <td style="padding: 12px; color: #166534;">المبلغ الإجمالي المدفوع</td>
+            <td style="padding: 12px; text-align: left; color: #166534; font-size: 16px; font-family: monospace;">$${data.price.toFixed(2)} USD</td>
+          </tr>
+        </tbody>
+      </table>
+
+      ${data.notes ? `
+      <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: #92400e;">
+        <strong>ملاحظات:</strong> ${escapeHtml(data.notes)}
+      </div>` : ""}
+
+      ${data.hasImageAttachment ? `
+      <!-- Embedded Visual Bill Image -->
+      <div style="margin: 24px 0; text-align: center;">
+        <p style="font-size: 12px; color: #6b7280; margin-bottom: 8px;">📷 نسخة طبق الأصل من بطاقة الفاتورة:</p>
+        <img src="cid:bill-image" alt="Bill Screenshot" style="max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.08);" />
+      </div>` : ""}
+
+      <!-- Footer Info -->
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; text-align: center; font-size: 12px; color: #9ca3af;">
+        <p style="margin: 0;">تم إرسال هذه الفاتورة تلقائياً من نظام <strong>Bot Manager</strong> لتأكيد إضافة الباقة وتحديث الحصة بنجاح.</p>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
 // POST /admin/companies/:id/send-bill-email — Send bill invoice with image to notification email
 router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
   try {
@@ -1172,7 +1278,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
       (typeof req.body?.recipientEmail === "string" && req.body.recipientEmail.trim()) ||
       company.notificationEmail?.trim() ||
       clientUser?.notificationEmail?.trim() ||
-      emailConfig.recipientEmail?.trim();
+      (emailConfig && typeof (emailConfig as any).recipientEmail === "string" ? (emailConfig as any).recipientEmail.trim() : undefined);
 
     if (!recipient) {
       res.status(400).json({
@@ -1197,7 +1303,8 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
       billData?: any;
     };
 
-    const invoiceNumber = billData?.invoiceNumber || `INV-Q-${company.id}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+    const isTopup = Boolean(billData?.isTopup);
+    const invoiceNumber = billData?.invoiceNumber || (isTopup ? `INV-TOPUP-${company.id}-${Date.now().toString().slice(-6)}` : `INV-Q-${company.id}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`);
     const rangeLabel = billData?.rangeLabel || "الشهر الحالي";
     const effectiveModel = billData?.effectiveModel || company.aiModel || "gpt-4o-mini";
     const quotaVal = billData?.quota ?? company.monthlyTokenQuota;
@@ -1209,23 +1316,40 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
           : "");
 
-    const emailHtml = buildBillEmailHtml({
-      companyName: company.name,
-      clientName: clientUser?.name || "—",
-      invoiceNumber,
-      rangeLabel,
-      effectiveModel,
-      quotaFormatted,
-      validityPeriod,
-      totalMessages: billData?.messages ?? 0,
-      inputTokens: billData?.inputTokens ?? 0,
-      outputTokens: billData?.outputTokens ?? 0,
-      totalTokens: billData?.totalTokens ?? 0,
-      quotaPercent: billData?.percent != null ? `${Number(billData.percent).toFixed(1)}%` : "0%",
-      remainingTokens: billData?.remaining != null ? `${Number(billData.remaining).toLocaleString()} tokens` : "غير محدود",
-      totalCost: billData?.cost != null ? Number(billData.cost).toFixed(4) : "0.0000",
-      hasImageAttachment: !!imageDataUrl,
-    });
+    const emailSubject = isTopup
+      ? (billData?.subject || `[فاتورة شحن باقة إضافية] ${company.name} - #${invoiceNumber}`)
+      : `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`;
+
+    const emailHtml = isTopup
+      ? buildTopupBillEmailHtml({
+          companyName: company.name,
+          clientName: clientUser?.name || "—",
+          invoiceNumber,
+          addedTokens: Number(billData?.addedTokens || 0),
+          previousQuota: Number(billData?.previousQuota || 0),
+          newTotalQuota: Number(billData?.newTotalQuota || 0),
+          newEndDate: billData?.newEndDate || null,
+          price: Number(billData?.price || 0),
+          notes: billData?.notes || undefined,
+          hasImageAttachment: !!imageDataUrl,
+        })
+      : buildBillEmailHtml({
+          companyName: company.name,
+          clientName: clientUser?.name || "—",
+          invoiceNumber,
+          rangeLabel,
+          effectiveModel,
+          quotaFormatted,
+          validityPeriod,
+          totalMessages: billData?.messages ?? 0,
+          inputTokens: billData?.inputTokens ?? 0,
+          outputTokens: billData?.outputTokens ?? 0,
+          totalTokens: billData?.totalTokens ?? 0,
+          quotaPercent: billData?.percent != null ? `${Number(billData.percent).toFixed(1)}%` : "0%",
+          remainingTokens: billData?.remaining != null ? `${Number(billData.remaining).toLocaleString()} tokens` : "غير محدود",
+          totalCost: billData?.cost != null ? Number(billData.cost).toFixed(4) : "0.0000",
+          hasImageAttachment: !!imageDataUrl,
+        });
 
     let sentVia = "";
     let sendError: string | null = null;
@@ -1247,7 +1371,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
         const resendPayload: any = {
           from: fromEmail,
           to: [recipient],
-          subject: `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`,
+          subject: emailSubject,
           html: emailHtml,
         };
         if (resendAttachments.length > 0) {
@@ -1293,7 +1417,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
         await transporter.sendMail({
           from: `"Bot Manager" <${emailConfig.smtpUser}>`,
           to: recipient,
-          subject: `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`,
+          subject: emailSubject,
           html: emailHtml,
           attachments: mailAttachments,
         });
