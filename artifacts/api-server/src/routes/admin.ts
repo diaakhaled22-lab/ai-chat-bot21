@@ -149,20 +149,6 @@ router.get("/admin/usage-cost", async (req, res) => {
       if (isNaN(toDate.getTime())) toDate = undefined;
     }
 
-    const companies = await db
-      .select({
-        id: companiesTable.id,
-        name: companiesTable.name,
-        aiProvider: companiesTable.aiProvider,
-        aiModel: companiesTable.aiModel,
-        monthlyTokenQuota: companiesTable.monthlyTokenQuota,
-        quotaStartDate: companiesTable.quotaStartDate,
-        quotaEndDate: companiesTable.quotaEndDate,
-        activationStart: companiesTable.activationStart,
-        activationEnd: companiesTable.activationEnd,
-      })
-      .from(companiesTable);
-
     if (!fromDate && range && range !== "all") {
       const now = new Date();
       if (range === "month") {
@@ -173,20 +159,18 @@ router.get("/admin/usage-cost", async (req, res) => {
         fromDate = new Date(now.getTime() - 7 * 864e5);
       } else if (range === "30d") {
         fromDate = new Date(now.getTime() - 30 * 864e5);
-      } else if (range === "quota_period") {
-        let earliest: Date | undefined;
-        for (const c of companies) {
-          const s = c.quotaStartDate || c.activationStart;
-          if (s) {
-            const dt = new Date(s);
-            if (!earliest || dt < earliest) earliest = dt;
-          }
-        }
-        if (earliest) {
-          fromDate = earliest;
-        }
       }
     }
+
+    const companies = await db
+      .select({
+        id: companiesTable.id,
+        name: companiesTable.name,
+        aiProvider: companiesTable.aiProvider,
+        aiModel: companiesTable.aiModel,
+        monthlyTokenQuota: companiesTable.monthlyTokenQuota,
+      })
+      .from(companiesTable);
 
     const conditions = [];
     if (fromDate) conditions.push(gte(chatLogsTable.createdAt, fromDate));
@@ -229,17 +213,6 @@ router.get("/admin/usage-cost", async (req, res) => {
     for (const log of logs) {
       const company = companyMap.get(log.companyId);
       if (!company) continue;
-
-      if (range === "quota_period") {
-        const qStart = company.quotaStartDate || company.activationStart;
-        const qEnd = company.quotaEndDate || company.activationEnd;
-        if (qStart && log.createdAt && new Date(log.createdAt) < new Date(qStart)) {
-          continue;
-        }
-        if (qEnd && log.createdAt && new Date(log.createdAt) > new Date(qEnd)) {
-          continue;
-        }
-      }
 
       const companyReset = resetMap.get(`quota_reset_company_${log.companyId}`) || globalReset;
       if (companyReset && log.createdAt && new Date(log.createdAt) < companyReset) {
@@ -520,8 +493,6 @@ router.get("/admin/companies", async (req, res) => {
         resendApiKey: maskApiKey(company.resendApiKey),
         generalInfo: company.generalInfo,
         isActive: company.isActive,
-        quotaStartDate: company.quotaStartDate?.toISOString() ?? null,
-        quotaEndDate: company.quotaEndDate?.toISOString() ?? null,
         activationStart: company.activationStart?.toISOString() ?? null,
         activationEnd: company.activationEnd?.toISOString() ?? null,
         systemPrompt: company.systemPrompt,
@@ -644,8 +615,6 @@ router.get("/admin/companies/:id", async (req, res) => {
       resendApiKey: maskApiKey(company.resendApiKey),
       generalInfo: company.generalInfo,
       isActive: company.isActive,
-      quotaStartDate: company.quotaStartDate?.toISOString() ?? null,
-      quotaEndDate: company.quotaEndDate?.toISOString() ?? null,
       activationStart: company.activationStart?.toISOString() ?? null,
       activationEnd: company.activationEnd?.toISOString() ?? null,
       systemPrompt: company.systemPrompt,
@@ -894,12 +863,12 @@ router.patch("/admin/companies/:id/status", async (req, res) => {
 router.put("/admin/companies/:id/quota", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { monthlyTokenQuota, startDate, endDate, quotaStartDate, quotaEndDate } = req.body as {
+    const { monthlyTokenQuota, startDate, endDate, activationStart, activationEnd } = req.body as {
       monthlyTokenQuota: number | null;
       startDate?: string | null;
       endDate?: string | null;
-      quotaStartDate?: string | null;
-      quotaEndDate?: string | null;
+      activationStart?: string | null;
+      activationEnd?: string | null;
     };
     const quota = monthlyTokenQuota == null ? null : Number(monthlyTokenQuota);
     if (quota !== null && (isNaN(quota) || quota < 0)) {
@@ -911,14 +880,14 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       monthlyTokenQuota: quota,
     };
 
-    const sDate = quotaStartDate !== undefined ? quotaStartDate : startDate;
-    const eDate = quotaEndDate !== undefined ? quotaEndDate : endDate;
+    const sDate = startDate !== undefined ? startDate : activationStart;
+    const eDate = endDate !== undefined ? endDate : activationEnd;
 
     if (sDate !== undefined) {
-      updates.quotaStartDate = sDate ? new Date(sDate) : null;
+      updates.activationStart = sDate ? new Date(sDate) : null;
     }
     if (eDate !== undefined) {
-      updates.quotaEndDate = eDate ? new Date(eDate) : null;
+      updates.activationEnd = eDate ? new Date(eDate) : null;
     }
 
     const [updated] = await db
@@ -933,8 +902,6 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
     res.json({
       ok: true,
       monthlyTokenQuota: updated.monthlyTokenQuota ?? null,
-      quotaStartDate: updated.quotaStartDate?.toISOString() ?? null,
-      quotaEndDate: updated.quotaEndDate?.toISOString() ?? null,
       activationStart: updated.activationStart?.toISOString() ?? null,
       activationEnd: updated.activationEnd?.toISOString() ?? null,
     });
@@ -1141,11 +1108,9 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
     const effectiveModel = billData?.effectiveModel || company.aiModel || "gpt-4o-mini";
     const quotaVal = billData?.quota ?? company.monthlyTokenQuota;
     const quotaFormatted = quotaVal ? (quotaVal >= 1000000 ? `${(quotaVal / 1000000).toFixed(1)}M` : quotaVal >= 1000 ? `${(quotaVal / 1000).toFixed(0)}K` : String(quotaVal)) : "غير محدود";
-    const qStart = company.quotaStartDate || company.activationStart;
-    const qEnd = company.quotaEndDate || company.activationEnd;
     const validityPeriod =
-      qStart || qEnd
-        ? `${qStart ? new Date(qStart).toLocaleDateString() : "—"} → ${qEnd ? new Date(qEnd).toLocaleDateString() : "—"}`
+      company.activationStart || company.activationEnd
+        ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
         : "";
 
     const emailHtml = buildBillEmailHtml({

@@ -28,8 +28,6 @@ export const companiesTable = pgTable("companies", {
   aiModel: text("ai_model"),
   aiExecutionMode: text("ai_execution_mode", { enum: ["quota", "tokens"] }).notNull().default("quota"),
   monthlyTokenQuota: integer("monthly_token_quota"),
-  quotaStartDate: timestamp("quota_start_date", { withTimezone: true }),
-  quotaEndDate: timestamp("quota_end_date", { withTimezone: true }),
   telegramBotApiKey: encryptedText("telegram_bot_api_key"),
   telegramBotUsername: text("telegram_bot_username"),
   telegramWebhookSecretHash: text("telegram_webhook_secret_hash"),
