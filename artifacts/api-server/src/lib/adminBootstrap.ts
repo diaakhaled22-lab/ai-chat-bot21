@@ -48,6 +48,17 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_rest_api BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS allow_source_shopify BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
+
+      -- Initialize quota_start_date and quota_end_date from activation dates for companies with quota
+      UPDATE companies
+      SET quota_start_date = activation_start
+      WHERE quota_start_date IS NULL AND activation_start IS NOT NULL AND monthly_token_quota > 0;
+
+      UPDATE companies
+      SET quota_end_date = activation_end
+      WHERE quota_end_date IS NULL AND activation_end IS NOT NULL AND monthly_token_quota > 0;
 
       -- Ensure all companies have an active monthly token quota assigned (default: 500,000)
       UPDATE companies
