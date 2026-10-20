@@ -35,25 +35,49 @@ export async function scrapeWebsite(url: string): Promise<string | null> {
 }
 
 /**
- * Scrapes the websiteDataUrl for a single company and persists the result to
- * websiteContentCache + websiteLastSynced.  Returns true on success.
+ * Splits rawUrls string (by newline, comma, or semicolon) and returns valid http/https URLs.
+ */
+export function extractUrls(rawUrls: string): string[] {
+  if (!rawUrls) return [];
+  return rawUrls
+    .split(/[\n,;]+/)
+    .map((u) => u.trim())
+    .filter((u) => u.startsWith("http://") || u.startsWith("https://"));
+}
+
+/**
+ * Scrapes the websiteDataUrl (supporting multiple URLs) for a single company and persists the result to
+ * websiteContentCache + websiteLastSynced. Returns true on success.
  */
 export async function syncCompanyWebsite(
   company: Pick<typeof companiesTable.$inferSelect, "id" | "websiteDataUrl">
 ): Promise<boolean> {
   if (!company.websiteDataUrl) return false;
-  const content = await scrapeWebsite(company.websiteDataUrl);
-  if (!content) return false;
+  const urls = extractUrls(company.websiteDataUrl);
+  if (urls.length === 0) return false;
+
+  const scrapedList: string[] = [];
+  for (const url of urls) {
+    const content = await scrapeWebsite(url);
+    if (content) {
+      scrapedList.push(`[Website Source: ${url}]\n${content}`);
+    }
+  }
+
+  if (scrapedList.length === 0) return false;
+
+  const combined = scrapedList.join("\n\n---\n\n").slice(0, 30000);
+
   await db
     .update(companiesTable)
-    .set({ websiteContentCache: content, websiteLastSynced: new Date() })
+    .set({ websiteContentCache: combined, websiteLastSynced: new Date() })
     .where(eq(companiesTable.id, company.id));
   return true;
 }
 
 /**
  * Scheduled job: sync all companies that have websiteAutoSync enabled and a
- * websiteDataUrl set.  Called every 6 hours from index.ts.
+ * websiteDataUrl set. Called every 6 hours from index.ts.
  */
 export async function syncAllAutoSyncCompanies(): Promise<void> {
   try {
@@ -85,7 +109,7 @@ export async function syncAllAutoSyncCompanies(): Promise<void> {
 /**
  * Returns the website knowledge section to inject into the AI system prompt.
  * Uses websiteContentCache when autoSync is enabled; falls back to a live
- * fetch when autoSync is off and a URL is configured.
+ * fetch when autoSync is off and one or more URLs are configured.
  */
 export async function getWebsiteKnowledgeSection(
   company: Pick<
@@ -101,10 +125,18 @@ export async function getWebsiteKnowledgeSection(
     // Use the pre-cached content
     content = company.websiteContentCache ?? null;
   } else {
-    // Live fetch (original behaviour)
-    content = await scrapeWebsite(company.websiteDataUrl);
+    // Live fetch (scrapes all configured URLs)
+    const urls = extractUrls(company.websiteDataUrl);
+    const scrapedList: string[] = [];
+    for (const url of urls) {
+      const text = await scrapeWebsite(url);
+      if (text) {
+        scrapedList.push(`[Website Source: ${url}]\n${text}`);
+      }
+    }
+    content = scrapedList.length > 0 ? scrapedList.join("\n\n---\n\n").slice(0, 30000) : null;
   }
 
   if (!content) return "";
-  return `\n\nWebsite Knowledge Base (from ${company.websiteDataUrl}):\n${content}`;
+  return `\n\nWebsite Knowledge Base:\n${content}`;
 }
