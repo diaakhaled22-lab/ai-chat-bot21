@@ -1,3 +1,19 @@
+export function cleanMarkdownStars(text: string): string {
+  if (!text) return text;
+  return text
+    // Replace bullet stars at start of line with clean bullet symbol
+    .replace(/^(\s*)[\*]\s+/gm, "$1• ")
+    // Replace markdown bold **text** with clean text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    // Remove any remaining stray asterisks
+    .replace(/\*{1,3}/g, "")
+    // Clean up spaces before punctuation
+    .replace(/[ \t]+([؟!\?.,،:])/g, "$1")
+    // Clean up multiple spaces left behind
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 export type ResponseLanguage = "Arabic" | "English";
 
 const ARABIC_SCRIPT = /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]/g;
@@ -112,7 +128,9 @@ export function enforceResponseLanguage(text: string, latestUserMessage: string,
     : detectResponseLanguage(latestUserMessage);
   const cleaned = removeHebrewScript(text, language);
 
-  if (cleaned) return cleaned;
+  if (cleaned) {
+    return cleanMarkdownStars(cleaned);
+  }
 
   // Smart fallback for greetings if AI model returned empty or stripped
   const normalizedUserMsg = latestUserMessage.trim().replace(/[!.,؟?]/g, "").trim().toLowerCase();

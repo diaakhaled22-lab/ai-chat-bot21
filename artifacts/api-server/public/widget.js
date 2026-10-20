@@ -284,6 +284,17 @@
     if (el) el.remove();
   }
 
+  function cleanMarkdownStars(text) {
+    if (!text) return "";
+    return text
+      .replace(/^(\s*)[\*]\s+/gm, "$1• ")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*{1,3}/g, "")
+      .replace(/[ \t]+([؟!\?.,،:])/g, "$1")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+  }
+
   function renderMessages() {
     var el = document.getElementById("cw-messages");
     if (!el) return;
@@ -294,7 +305,7 @@
 
       var bubble = document.createElement("div");
       bubble.className = "cw-msg " + m.role;
-      bubble.textContent = m.text;
+      bubble.textContent = cleanMarkdownStars(m.text);
       if (isArabicText(m.text)) bubble.setAttribute("dir", "rtl");
       row.appendChild(bubble);
 

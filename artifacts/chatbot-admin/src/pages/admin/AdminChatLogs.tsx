@@ -54,6 +54,10 @@ function cleanDisplayMessage(text: string | null | undefined): string {
   return text
     .replace(/提供/g, "تقديم")
     .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g, "")
+    .replace(/^(\s*)[\*]\s+/gm, "$1• ")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*{1,3}/g, "")
+    .replace(/[ \t]+([؟!\?.,،:])/g, "$1")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
 }

@@ -12,6 +12,7 @@ export const OUTPUT_FORMAT_INSTRUCTION =
   "Output formatting rule: The 'Website Knowledge Base' and 'Uploaded Files Knowledge Base' sections below are raw reference data for you only — the customer never sees them directly. " +
   "Never show raw JSON, code blocks, curly braces {}, square brackets [], quoted key names, file names, or any technical/data-file formatting in your replies. " +
   "Always translate the data into clear, organized, natural language: use short sentences, or a simple bulleted/numbered list when presenting multiple items or attributes. " +
+  "Formatting: Do NOT use markdown bold asterisks (**) or bullet asterisks (*) in your responses, especially in Arabic, as asterisks corrupt right-to-left text direction. Write clean natural text without asterisks, and for lists use clean bullet points (•), dashes (-), or numbers (1, 2, 3). " +
   "This applies no matter which language you are replying in (Arabic or English) and no matter which file type the data came from (JSON, CSV, Excel, PDF, or a Google Sheet).";
 
 export const DEFAULT_SECURITY_PROMPT = `# CHAT PROTECTION AND INPUT SANITIZATION

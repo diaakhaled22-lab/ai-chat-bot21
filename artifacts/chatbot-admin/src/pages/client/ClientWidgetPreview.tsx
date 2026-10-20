@@ -6,6 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/hooks/use-language";
 
+function cleanDisplayMessage(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/提供/g, "تقديم")
+    .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g, "")
+    .replace(/^(\s*)[\*]\s+/gm, "$1• ")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*{1,3}/g, "")
+    .replace(/[ \t]+([؟!\?.,،:])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 type ChatMessage = { role: "user" | "bot"; text: string };
 
 function WidgetPreview({ widgetKey, companyName, isActive, hasAi }: {
@@ -134,7 +147,7 @@ function WidgetPreview({ widgetKey, companyName, isActive, hasAi }: {
                 ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-br-sm"
                 : "bg-white dark:bg-card border border-border text-foreground rounded-bl-sm shadow-sm"
             }`}>
-              {m.text}
+              {cleanDisplayMessage(m.text)}
             </div>
           </div>
         ))}
