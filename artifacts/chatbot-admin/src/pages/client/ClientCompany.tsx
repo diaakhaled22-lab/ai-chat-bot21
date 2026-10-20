@@ -51,7 +51,7 @@ const formSchema = z.object({
   aiProvider: z.enum(["openai", "anthropic", "google", "openrouter"]).optional(),
   aiModel: z.string().optional().or(z.literal("")),
   aiExecutionMode: z.enum(["quota", "tokens"]).default("quota"),
-  websiteDataUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  websiteDataUrl: z.string().optional().or(z.literal("")),
   websiteAutoSync: z.boolean().default(false),
 });
 

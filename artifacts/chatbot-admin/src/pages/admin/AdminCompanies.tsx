@@ -197,19 +197,39 @@ function KnowledgeDataSources({ company }: { company: Company }) {
       </div>
 
       {/* Website Sync */}
-      <div className="flex items-center justify-between bg-muted/20 border border-border p-3 rounded-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+      <div className="flex items-start justify-between bg-muted/20 border border-border p-3 rounded-xl">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0 mt-0.5">
             <Globe className="w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium">Website Sync</p>
-            <p className="text-xs text-muted-foreground">
-              {company.websiteDataUrl ? company.websiteDataUrl : "Not configured"}
-            </p>
+            {company.websiteDataUrl ? (
+              <div className="flex flex-col gap-1 mt-1">
+                {company.websiteDataUrl
+                  .split(/[\n,;]+/)
+                  .map((url) => url.trim())
+                  .filter(Boolean)
+                  .map((url, idx) => (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 truncate max-w-sm sm:max-w-md group"
+                      title={url}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="truncate underline-offset-2 group-hover:underline">{url}</span>
+                    </a>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Not configured</p>
+            )}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right shrink-0 ml-3">
           {company.websiteDataUrl ? (
             company.websiteAutoSync ? (
               <Badge variant="outline" className="text-emerald-500 bg-emerald-500/10 border-emerald-500/20">Auto-sync ON</Badge>
