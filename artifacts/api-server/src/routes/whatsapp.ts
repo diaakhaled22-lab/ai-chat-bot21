@@ -377,7 +377,7 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
     if (isHandoffRequested(userText, rawReply, aiReply)) {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      triggerHandoffNotification(company, sessionId, "whatsapp");
+      await triggerHandoffNotification(company, sessionId, "whatsapp").catch((err) => logger.warn({ err, companyId: company.id }, "WhatsApp handoff notification failed"));
     }
 
     if (leadData && sessionId && typeof sessionId === "string") {
@@ -724,7 +724,7 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
           if (isHandoffRequested(userText, rawReply, aiReply)) {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      triggerHandoffNotification(company, sessionId, "whatsapp");
+      await triggerHandoffNotification(company, sessionId, "whatsapp").catch((err) => logger.warn({ err, companyId: company.id }, "WhatsApp handoff notification failed"));
     }
 
           if (leadData && sessionId && typeof sessionId === "string") {

@@ -420,7 +420,7 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
     if (isHandoffRequested(userText, rawReply, aiReply)) {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      triggerHandoffNotification(company, sessionId, "telegram");
+      await triggerHandoffNotification(company, sessionId, "telegram").catch((err) => logger.warn({ err, companyId: company.id }, "Telegram handoff notification failed"));
     }
 
     // Event 5: New order (detected via intent or keywords)

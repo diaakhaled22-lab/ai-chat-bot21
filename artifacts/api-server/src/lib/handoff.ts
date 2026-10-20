@@ -31,7 +31,23 @@ export function isHandoffRequested(userMessage: string, rawAiReply?: string, cle
     "contact someone", "reach an agent", "connect me with", "transfer to agent"
   ];
 
-  return keywords.some(k => text.includes(k));
+  const extraKeywords = [
+    "خدمة العملة", "خدمه العملة", "خدمة العملا", "خدمه العملا", "خدمة عملا", "خدمه عملا", "خدمه العمله", "خدمة العمله",
+    "الدعم المباشر", "ارغب في التواصل", "أرغب في التواصل", "ارغب بالتواصل", "أرغب بالتواصل",
+    "اريد التواصل", "أريد التواصل", "عاوز اتواصل", "عايز اتواصل", "محتاج اتواصل",
+    "محادثة مباشرة", "محادثه مباشره", "شات مباشر"
+  ];
+  if (keywords.some(k => text.includes(k)) || extraKeywords.some(k => text.includes(k))) return true;
+
+  const hasHelpService = (text.includes("خدمة") || text.includes("خدمه")) &&
+    (text.includes("عملاء") || text.includes("عملا") || text.includes("عملة") || text.includes("عمله") || text.includes("دعم") || text.includes("مساعدة") || text.includes("مساعده"));
+  if (hasHelpService) return true;
+
+  const hasHumanRequest = (text.includes("تواصل") || text.includes("اتصال") || text.includes("تحدث") || text.includes("كلم") || text.includes("تحويل")) &&
+    (text.includes("موظف") || text.includes("بشري") || text.includes("إنسان") || text.includes("انسان") || text.includes("ممثل") || text.includes("شخص"));
+  if (hasHumanRequest) return true;
+
+  return false;
 }
 
 type ChatLog = InferSelectModel<typeof chatLogsTable>;
@@ -95,7 +111,8 @@ import { notifyCustomerServiceRequest, notifyNewChatMessage } from "./companyNot
 
 export async function triggerHandoffNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string) {
   try {
-    if (sessionId && sessionId.startsWith("preview_")) return;
+    // Allow preview sessions so client testing immediately reflects in the notification bell
+    const isPreview = Boolean(sessionId && sessionId.startsWith("preview_"));
 
     const channelNames: Record<string, string> = {
       whatsapp: "WhatsApp",
@@ -104,8 +121,8 @@ export async function triggerHandoffNotification(company: { id: number, clientId
       website: "Website Widget",
     };
     const channelDisplay = channelNames[channel] || channel;
-    const title = `Customer Service Requested (${channelDisplay})`;
-    const message = `A customer on ${channelDisplay} requested human customer service. Please check Universal Chat.`;
+    const title = isPreview ? `[طلب خدمة العملاء - تجربة] Customer Service Requested (${channelDisplay})` : `[طلب خدمة العملاء] Customer Service Requested (${channelDisplay})`;
+    const message = `A customer on ${channelDisplay} requested human customer service. | طلب أحد العملاء على ${channelDisplay} التحدث مع خدمة العملاء. يرجى مراجعة الشات الشامل.`;
 
     let clientId = company.clientId;
     if (!clientId) {

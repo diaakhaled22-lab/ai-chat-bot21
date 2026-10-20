@@ -443,6 +443,7 @@ function ClientNotificationBell() {
   const unread = notifications.filter((n) => !n.isRead).length;
   const hasUnreadRed = notifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
   const hasUnreadAmber = notifications.some((n) => !n.isRead && (n.type === "quota_warning_amber" || n.type.includes("amber")));
+  const hasUnreadHandoff = notifications.some((n) => !n.isRead && (n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service")));
 
   const prevUnreadRef = useRef<number | null>(null);
   const [pulse, setPulse] = useState(false);
@@ -531,6 +532,7 @@ function ClientNotificationBell() {
               {notifications.map((n) => {
                 const isRedDepleted = n.type === "quota_depleted_red" || n.type.includes("depleted");
                 const isAmberWarning = n.type === "quota_warning_amber" || n.type.includes("amber");
+                const isHandoffAlert = n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service");
                 const isQuotaAlert = isRedDepleted || isAmberWarning;
 
                 return (
@@ -541,6 +543,8 @@ function ClientNotificationBell() {
                         ? "bg-rose-500/10 border-r-2 border-rose-500 dark:bg-rose-950/20"
                         : isAmberWarning
                         ? "bg-amber-500/10 border-r-2 border-amber-500 dark:bg-amber-950/20"
+                        : isHandoffAlert
+                        ? "bg-sky-500/10 border-r-2 border-sky-500 dark:bg-sky-950/20"
                         : !n.isRead
                         ? "bg-amber-500/5"
                         : ""
@@ -549,7 +553,7 @@ function ClientNotificationBell() {
                       setOpen(false);
                       if (isQuotaAlert) {
                         setLocation("/client/usage");
-                      } else if (n.type === "new_message" || n.type === "new_conversation" || n.type === "handoff_request") {
+                      } else if (isHandoffAlert || n.type === "new_message" || n.type === "new_conversation" || n.type.includes("lead")) {
                         setLocation("/client/universal-chat");
                       }
                     }}
@@ -558,6 +562,8 @@ function ClientNotificationBell() {
                       <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 animate-pulse" />
                     ) : isAmberWarning ? (
                       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    ) : isHandoffAlert ? (
+                      <LifeBuoy className="w-4 h-4 text-sky-400 shrink-0 mt-0.5 animate-pulse" />
                     ) : (
                       <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     )}
@@ -574,13 +580,18 @@ function ClientNotificationBell() {
                             {lang === "ar" ? "أقل من 20% 🟡" : "< 20% 🟡"}
                           </span>
                         )}
+                        {isHandoffAlert && (
+                          <span className="text-[9px] font-bold bg-sky-500/20 text-sky-500 dark:text-sky-400 px-1.5 py-0.2 rounded border border-sky-500/30">
+                            {lang === "ar" ? "خدمة عملاء 🎧" : "Support 🎧"}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">{n.message}</p>
                       <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
                     </div>
                     {!n.isRead && (
                       <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
-                        isRedDepleted ? "bg-rose-500 animate-ping" : "bg-amber-400"
+                        isRedDepleted ? "bg-rose-500 animate-ping" : isHandoffAlert ? "bg-sky-400 animate-pulse" : "bg-amber-400"
                       }`} />
                     )}
                     <button

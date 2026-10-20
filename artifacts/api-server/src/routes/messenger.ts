@@ -327,7 +327,7 @@ router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verify
     if (isHandoffRequested(userText, rawReply, aiReply)) {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      triggerHandoffNotification(company, sessionId, "messenger");
+      await triggerHandoffNotification(company, sessionId, "messenger").catch((err) => logger.warn({ err, companyId: company.id }, "Messenger handoff notification failed"));
     }
 
     if (leadData && sessionId && typeof sessionId === "string") {
@@ -619,7 +619,7 @@ router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhoo
         if (isHandoffRequested(userText, rawReply, aiReply)) {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      triggerHandoffNotification(company, sessionId, "messenger");
+      await triggerHandoffNotification(company, sessionId, "messenger").catch((err) => logger.warn({ err, companyId: company.id }, "Messenger handoff notification failed"));
     }
 
         if (leadData && sessionId && typeof sessionId === "string") {

@@ -387,7 +387,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     if (isHandoffRequested(message.trim(), typeof rawReply !== "undefined" ? rawReply : aiReply, aiReply)) {
       aiReply = localizedChannelMessage(message.trim(), "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      triggerHandoffNotification(company, sessionId, "website");
+      await triggerHandoffNotification(company, sessionId, "website").catch((err) => logger.warn({ err, companyId: company.id }, "Widget handoff notification failed"));
     }
 
     // Event 5: New order (detected via chat intent or keywords)
