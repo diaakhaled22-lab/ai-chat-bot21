@@ -2003,7 +2003,7 @@ export default function AdminAiQuota() {
 
       {/* Quota Modal */}
       <Dialog open={!!quotaTarget} onOpenChange={(open) => !open && setQuotaTarget(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -2495,7 +2495,7 @@ export default function AdminAiQuota() {
 
       {/* Top-up Invoice Modal */}
       <Dialog open={!!topupInvoice} onOpenChange={(open) => !open && setTopupInvoice(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
               <Receipt className="w-5 h-5" />
@@ -2653,7 +2653,7 @@ export default function AdminAiQuota() {
 
       {/* Assign New Quota Modal */}
       <Dialog open={isAssignNewOpen} onOpenChange={setIsAssignNewOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -2861,7 +2861,7 @@ export default function AdminAiQuota() {
 
       {/* Global Cost Breakdown Modal */}
       <Dialog open={showModelCostModal} onOpenChange={setShowModelCostModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PieChart className="w-5 h-5 text-purple-400" />
@@ -3233,7 +3233,7 @@ export default function AdminAiQuota() {
 
       {/* Share Bill Email Prompt Modal (when company doesn't have an email or admin wants to change it) */}
       <Dialog open={shareEmailPromptOpen} onOpenChange={setShareEmailPromptOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Share2 className="w-5 h-5 text-emerald-500" />
