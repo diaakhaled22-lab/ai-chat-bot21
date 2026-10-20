@@ -1983,64 +1983,74 @@ export default function ClientKnowledge() {
                 <CardContent>
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(onWebsiteSave)} className="space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <FormLabel className="text-sm font-semibold">{t("company_website_url")}</FormLabel>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setUrlList(prev => [...prev, ""])}
-                            className="h-8 px-2.5 text-xs flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all rounded-lg"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{lang === "ar" ? "إضافة رابط آخر (+)" : "Add URL (+)"}</span>
-                          </Button>
-                        </div>
-
-                        <div className="space-y-2">
-                          {urlList.map((url, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <div className="relative flex-1">
-                                <Input
-                                  value={url}
-                                  onChange={(e) => {
-                                    const next = [...urlList];
-                                    next[idx] = e.target.value;
-                                    setUrlList(next);
-                                  }}
-                                  className="bg-background pr-8"
-                                  placeholder={idx === 0 ? "https://www.noor-book.com/" : "https://www.example.com/page"}
-                                />
-                                {urlList.length > 1 && (
-                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/60 font-mono pointer-events-none">
-                                    #{idx + 1}
-                                  </span>
-                                )}
-                              </div>
-                              {urlList.length > 1 && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    const next = urlList.filter((_, i) => i !== idx);
-                                    setUrlList(next.length > 0 ? next : [""]);
-                                  }}
-                                  className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0 transition-colors"
-                                  title={lang === "ar" ? "حذف الرابط" : "Remove URL"}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
+                      <FormField
+                        control={form.control}
+                        name="websiteDataUrl"
+                        render={() => (
+                          <FormItem className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <FormLabel className="text-sm font-semibold">{t("company_website_url")}</FormLabel>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUrlList(prev => [...prev, ""])}
+                                className="h-8 px-2.5 text-xs flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all rounded-lg"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>{lang === "ar" ? "إضافة رابط آخر (+)" : "Add URL (+)"}</span>
+                              </Button>
                             </div>
-                          ))}
-                        </div>
 
-                        <FormDescription>
-                          {t("company_website_url_desc")}
-                        </FormDescription>
-                      </div>
+                            <div className="space-y-2">
+                              {urlList.map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                  <div className="relative flex-1">
+                                    <Input
+                                      value={url}
+                                      onChange={(e) => {
+                                        const next = [...urlList];
+                                        next[idx] = e.target.value;
+                                        setUrlList(next);
+                                        form.setValue("websiteDataUrl", next.filter(Boolean).join("\n"));
+                                      }}
+                                      className="bg-background pr-8"
+                                      placeholder={idx === 0 ? "https://www.noor-book.com/" : "https://www.example.com/page"}
+                                    />
+                                    {urlList.length > 1 && (
+                                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/60 font-mono pointer-events-none">
+                                        #{idx + 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {urlList.length > 1 && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        const next = urlList.filter((_, i) => i !== idx);
+                                        const updated = next.length > 0 ? next : [""];
+                                        setUrlList(updated);
+                                        form.setValue("websiteDataUrl", updated.filter(Boolean).join("\n"));
+                                      }}
+                                      className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg shrink-0 transition-colors"
+                                      title={lang === "ar" ? "حذف الرابط" : "Remove URL"}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            <FormDescription>
+                              {t("company_website_url_desc")}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <FormField
                         control={form.control}
