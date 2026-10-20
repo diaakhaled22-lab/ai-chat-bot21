@@ -268,7 +268,7 @@ export default function QuotaAICard() {
   const [aiApiKey,         setAiApiKey]         = useState("");
   const [selectedProvider, setSelectedProvider] = useState("openai");
   const [selectedModel,    setSelectedModel]    = useState("gpt-4o-mini");
-  const [collapsed,        setCollapsed]        = useState(false);
+  const [collapsed,        setCollapsed]        = useState(true);
 
   const { data: aiStatus, isLoading: aiStatusLoading, refetch: refetchAiStatus } =
     useQuery<QuotaAiStatus>({
