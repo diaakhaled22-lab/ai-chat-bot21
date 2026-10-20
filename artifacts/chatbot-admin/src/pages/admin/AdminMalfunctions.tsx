@@ -385,7 +385,7 @@ export default function AdminMalfunctions() {
                 {lang === "ar" ? "تسجيل عطل جديد" : "Report Malfunction"}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg w-[calc(100vw-2rem)] max-w-[95vw] overflow-hidden">
               <DialogHeader>
                 <DialogTitle>{lang === "ar" ? "تسجيل عطل جديد" : "Report New Malfunction"}</DialogTitle>
                 <DialogDescription>
@@ -433,7 +433,7 @@ export default function AdminMalfunctions() {
 
       {/* AI Settings Dialog (Gemini & OpenAI) */}
       <Dialog open={openAiConfig} onOpenChange={setOpenAiConfig}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg w-[calc(100vw-2rem)] max-w-[95vw] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedProvider === "openai" ? (
@@ -450,7 +450,7 @@ export default function AdminMalfunctions() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-3">
+          <div className="space-y-4 py-3 min-w-0">
             {/* Provider Selector Tabs */}
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-1.5">
@@ -486,7 +486,7 @@ export default function AdminMalfunctions() {
             </div>
 
             {/* Connection Status Box */}
-            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1 overflow-hidden">
               <div className="flex items-center justify-between text-xs font-medium">
                 <span className="text-muted-foreground">{lang === "ar" ? "حالة الربط الحالية:" : "Connection Status:"}</span>
                 {aiConfig?.provider === selectedProvider && aiConfig?.hasKey ? (
@@ -501,8 +501,8 @@ export default function AdminMalfunctions() {
                 )}
               </div>
               {aiConfig?.provider === selectedProvider && aiConfig?.hasKey && (
-                <div className="text-xs text-muted-foreground font-mono">
-                  {aiConfig.maskedKey}{" "}
+                <div className="text-xs text-muted-foreground font-mono break-all line-clamp-2">
+                  <span className="font-semibold">{aiConfig.maskedKey}</span>{" "}
                   {aiConfig.isInherited
                     ? lang === "ar"
                       ? "(مستمد من إعدادات الذكاء الاصطناعي العامة)"
@@ -836,7 +836,7 @@ export default function AdminMalfunctions() {
                       </div>
 
                       <div
-                        className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 font-sans"
+                        className="text-sm leading-relaxed whitespace-pre-wrap break-words text-foreground/90 font-sans"
                         dir="auto"
                       >
                         {m.aiAnalysis}

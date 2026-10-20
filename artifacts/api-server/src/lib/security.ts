@@ -170,12 +170,15 @@ export function escapeHtml(str: string): string {
 
 /**
  * Masks an API key or token, showing only the first 4 and last 4 characters.
+ * Limits the number of mask asterisks to prevent layout distortion and secret length leakage.
  * Returns empty string for null/undefined/empty values.
  */
 export function maskApiKey(key: string | null | undefined): string {
   if (!key) return "";
-  if (key.length <= 8) return "****";
-  return `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}`;
+  const trimmed = key.trim();
+  if (trimmed.length <= 8) return "****";
+  const maskLength = Math.min(Math.max(trimmed.length - 8, 4), 12);
+  return `${trimmed.slice(0, 4)}${"*".repeat(maskLength)}${trimmed.slice(-4)}`;
 }
 
 export function preserveMaskedSecret(

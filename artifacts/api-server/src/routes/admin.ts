@@ -2042,7 +2042,7 @@ router.get("/admin/support-settings", async (req, res) => {
       .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
     const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
     const key = cfg["support_ai_api_key"] ?? "";
-    const masked = key.length > 8 ? `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}` : key ? "****" : "";
+    const masked = maskApiKey(key);
     res.json({
       hasKey: !!key,
       maskedKey: masked,
@@ -2180,7 +2180,7 @@ router.get("/admin/quota-ai-settings", async (req, res) => {
       .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
     const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
     const key = cfg["quota_ai_api_key"] || cfg["support_ai_api_key"] || "";
-    const masked = key.length > 8 ? `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}` : key ? "****" : "";
+    const masked = maskApiKey(key);
     const provider = cfg["quota_ai_provider"] || "openai";
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
@@ -2799,7 +2799,7 @@ router.get("/admin/ai-keys", async (req, res) => {
     const result: Record<string, { hasKey: boolean; maskedKey: string }> = {};
     for (const p of providers) {
       const key = cfg[`ai_test_key_${p}`] ?? "";
-      const masked = key.length > 8 ? `${key.slice(0, 4)}${"*".repeat(key.length - 8)}${key.slice(-4)}` : key ? "****" : "";
+      const masked = maskApiKey(key);
       result[p] = { hasKey: !!key, maskedKey: masked };
     }
     res.json(result);
@@ -3004,7 +3004,7 @@ router.get("/admin/security/jwt-secret", async (req, res) => {
     }
 
     const v = row.value;
-    const maskedSecret = v.slice(0, 6) + "â€¢".repeat(Math.max(0, v.length - 10)) + v.slice(-4);
+    const maskedSecret = v.slice(0, 6) + "•".repeat(Math.min(Math.max(0, v.length - 10), 16)) + v.slice(-4);
     res.json({ exists: true, maskedSecret, lastRotated: row.updatedAt?.toISOString() ?? null });
   } catch (err) {
     logger.error({ err }, "Get JWT secret error");
@@ -3026,7 +3026,7 @@ router.post("/admin/security/jwt-secret/rotate", async (req, res) => {
         set: { value: secret },
       });
 
-    const maskedSecret = secret.slice(0, 6) + "â€¢".repeat(secret.length - 10) + secret.slice(-4);
+    const maskedSecret = secret.slice(0, 6) + "•".repeat(Math.min(Math.max(0, secret.length - 10), 16)) + secret.slice(-4);
     res.json({ success: true, maskedSecret, lastRotated: new Date().toISOString() });
   } catch (err) {
     logger.error({ err }, "Rotate JWT secret error");
