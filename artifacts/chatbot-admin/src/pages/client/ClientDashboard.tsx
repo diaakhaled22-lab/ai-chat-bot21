@@ -472,27 +472,39 @@ export default function ClientDashboard() {
               color={filterMode === "quota" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}
             />
             <StatCard
-              icon={DollarSign}
+              icon={filterMode === "quota" ? Sparkles : DollarSign}
               label={
                 filterMode === "quota"
-                  ? (lang === "ar" ? "التكلفة على العميل" : "Cost to Client")
+                  ? (lang === "ar" ? "الرصيد المتبقي من الحصة" : "Remaining Quota")
                   : (lang === "ar" ? "التكلفة التقديرية" : "Est. Cost")
               }
               value={
                 filterMode === "quota"
-                  ? "$0.00"
+                  ? (quota && quota > 0 ? fmt(Math.max(quota - totalTokens, 0)) : (lang === "ar" ? "غير محدد" : "None"))
                   : (data?.pricingPer1MTokens.input ?? 0) > 0
                   ? `$${data!.estimatedCostUsd.toFixed(4)}`
                   : "—"
               }
               sub={
                 filterMode === "quota"
-                  ? (lang === "ar" ? "مغطى بالكامل عبر الحصة المخصصة" : "Covered by assigned quota")
+                  ? (quota && quota > 0
+                      ? (lang === "ar"
+                          ? `${Math.max(100 - (quotaPercent ?? 0), 0).toFixed(1)}% متبقي من ${fmt(quota)}`
+                          : `${Math.max(100 - (quotaPercent ?? 0), 0).toFixed(1)}% left of ${fmt(quota)}`)
+                      : (lang === "ar" ? "لم يتم تعيين حصة" : "No quota assigned"))
                   : (data?.pricingPer1MTokens.input ?? 0) > 0
                   ? `$${data!.pricingPer1MTokens.input}/M in · $${data!.pricingPer1MTokens.output}/M out`
                   : (lang === "ar" ? "النموذج المجاني / حسب المزود" : "free / provider rates")
               }
-              color={filterMode === "quota" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}
+              color={
+                filterMode === "quota"
+                  ? (quota && quota > 0 && Math.max(quota - totalTokens, 0) === 0
+                      ? "bg-rose-500/10 text-rose-400"
+                      : quota && quota > 0 && Math.max(quota - totalTokens, 0) < quota * 0.2
+                      ? "bg-amber-500/10 text-amber-400"
+                      : "bg-emerald-500/10 text-emerald-400")
+                  : "bg-amber-500/10 text-amber-400"
+              }
             />
           </div>
 

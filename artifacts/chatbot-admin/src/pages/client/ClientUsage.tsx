@@ -163,7 +163,10 @@ export default function ClientUsage() {
 
   const totalTokens = (data?.estimatedInputTokens ?? 0) + (data?.estimatedOutputTokens ?? 0);
   const quota = data?.monthlyTokenQuota ?? null;
-  const quotaPercent = quota && quota > 0 ? Math.min(((data?.usedTokens ?? totalTokens) / quota) * 100, 100) : null;
+  const usedTokens = data?.usedTokens ?? totalTokens;
+  const quotaPercent = quota && quota > 0 ? Math.min((usedTokens / quota) * 100, 100) : null;
+  const remainingTokens = quota !== null && quota > 0 ? Math.max(quota - usedTokens, 0) : null;
+  const remainingPercent = quota !== null && quota > 0 && quotaPercent !== null ? Math.max(100 - quotaPercent, 0) : null;
   const hasQuota = !!(data?.hasQuota && quota !== null && quota > 0);
 
   const modelLabel = data?.quotaAiModel || data?.aiModel
@@ -391,11 +394,23 @@ export default function ClientUsage() {
               color="bg-amber-500/10 text-amber-400"
             />
             <StatCard
-              icon={DollarSign}
-              label={lang === "ar" ? "التكلفة على العميل" : "Cost to Client"}
-              value="$0.00"
-              sub={lang === "ar" ? "مغطى بالكامل عبر الحصة المخصصة" : "Covered by assigned quota"}
-              color="bg-emerald-500/10 text-emerald-400"
+              icon={Sparkles}
+              label={lang === "ar" ? "الرصيد المتبقي من الحصة" : "Remaining Quota"}
+              value={remainingTokens !== null ? fmt(remainingTokens) : (lang === "ar" ? "غير محدد" : "None")}
+              sub={
+                quota !== null && quota > 0
+                  ? (lang === "ar"
+                      ? `${remainingPercent?.toFixed(1)}% متبقي من ${fmt(quota)}`
+                      : `${remainingPercent?.toFixed(1)}% left of ${fmt(quota)}`)
+                  : (lang === "ar" ? "لم يتم تعيين حصة" : "No quota assigned")
+              }
+              color={
+                remainingTokens === 0
+                  ? "bg-rose-500/10 text-rose-400"
+                  : remainingTokens !== null && quota !== null && remainingTokens < quota * 0.2
+                  ? "bg-amber-500/10 text-amber-400"
+                  : "bg-emerald-500/10 text-emerald-400"
+              }
             />
           </div>
 
@@ -499,7 +514,7 @@ export default function ClientUsage() {
                         <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">{lang === "ar" ? "الرسائل" : "Messages"}</th>
                         <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("usage_stat_input_tokens")}</th>
                         <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("usage_stat_output_tokens")}</th>
-                        <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">{lang === "ar" ? "التكلفة على العميل" : "Cost"}</th>
+                        <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">{lang === "ar" ? "حالة الفوترة" : "Billing Status"}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -524,8 +539,11 @@ export default function ClientUsage() {
                             <td className="px-6 py-4 text-right tabular-nums">{ch.messages.toLocaleString()}</td>
                             <td className="px-6 py-4 text-right tabular-nums text-blue-400">{fmt(ch.inputTokens)}</td>
                             <td className="px-6 py-4 text-right tabular-nums text-emerald-400">{fmt(ch.outputTokens)}</td>
-                            <td className="px-6 py-4 text-right tabular-nums text-emerald-400 font-medium">
-                              $0.00
+                            <td className="px-6 py-4 text-right tabular-nums">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                                <CheckCircle2 className="w-3 h-3" />
+                                {lang === "ar" ? "مغطى بالحصة ($0.00)" : "Covered ($0.00)"}
+                              </span>
                             </td>
                           </tr>
                         );
