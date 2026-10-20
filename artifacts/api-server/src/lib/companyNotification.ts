@@ -286,7 +286,7 @@ export async function sendCompanyNotification(
           const inAppMessage = options.inAppMessage || subject;
           await db.insert(notificationsTable).values({
             userId: company.clientId,
-            type: options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+            type: (options as any)?.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
             title: inAppTitle,
             message: inAppMessage,
             companyId: company.id,
@@ -817,6 +817,125 @@ export async function notifyQuota75PercentConsumed(
     `[API.AI Alert] ${company.name} - 75% of monthly AI quota consumed`,
     html,
     { eventType }
+  );
+}
+
+/** Quota Alert (Amber 🟡): Triggers when remaining token quota drops below 20% */
+export async function notifyQuotaAmberLowBalance(
+  company: { id: number; name: string; clientId?: number },
+  quota: {
+    usedTokens: number;
+    monthlyQuota: number;
+    remainingTokens: number;
+    percentUsed: number;
+  }
+) {
+  const eventType = "Quota Warning: Balance Below 20%";
+  const inAppTitle = "🟡 تحذير: رصيد حصة الرموز أقل من 20%";
+  const inAppMessage = `رصيدك المتبقي من حصة الذكاء الاصطناعي أصبح أقل من 20% (متبقي ${quota.remainingTokens.toLocaleString()} رمز من أصل ${quota.monthlyQuota.toLocaleString()}). يرجى طلب زيادة أو شحن الرصيد لضمان استمرار الردود التلقائية.`;
+
+  // 1. Guaranteed in-app notification insertion:
+  if (company.clientId) {
+    try {
+      await db.insert(notificationsTable).values({
+        userId: company.clientId,
+        type: "quota_warning_amber",
+        title: inAppTitle,
+        message: inAppMessage,
+        companyId: company.id,
+        isRead: false,
+      });
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to directly insert quota_warning_amber notification");
+    }
+  }
+
+  // 2. Email notification via Resend:
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `AI Quota Warning: Balance below 20% (${quota.remainingTokens.toLocaleString()} tokens left)`,
+    customerDetails: {
+      "Company Name": company.name,
+    },
+    eventDetails: {
+      "Remaining Tokens (الرصيد المتبقي)": quota.remainingTokens.toLocaleString(),
+      "Usage Percentage (نسبة الاستهلاك)": `${quota.percentUsed}%`,
+      "Tokens Consumed (المستهلك)": quota.usedTokens.toLocaleString(),
+      "Total Monthly Quota (إجمالي الحصة)": quota.monthlyQuota.toLocaleString(),
+      Recommendation: "Your chatbot has consumed over 80% of its monthly AI token quota. Please request a quota top-up or upgrade to ensure uninterrupted service.",
+    },
+  });
+
+  return sendCompanyNotification(
+    company.id,
+    `[تنبيه الحصة 🟡] رصيد الرموز المتبقي لشركة ${company.name} أقل من 20%`,
+    html,
+    {
+      eventType,
+      inAppTitle,
+      inAppMessage,
+      inAppType: "quota_warning_amber",
+    }
+  );
+}
+
+/** Quota Alert (Red 🔴): Triggers when remaining token quota is completely depleted (0 remaining) */
+export async function notifyQuotaRedDepleted(
+  company: { id: number; name: string; clientId?: number },
+  quota: {
+    usedTokens: number;
+    monthlyQuota: number;
+    remainingTokens: number;
+    percentUsed: number;
+  }
+) {
+  const eventType = "Urgent: AI Quota Completely Depleted";
+  const inAppTitle = "🔴 تنبيه عاجل: تم استنفاد حصة الرموز بالكامل (0 متبقي)";
+  const inAppMessage = `لقد استنفدت كامل حصة الذكاء الاصطناعي الشهرية (${quota.monthlyQuota.toLocaleString()} رمز). توقفت الردود التلقائية للمساعد مؤقتاً حتى تجديد الحصة أو شحن رصيد إضافي.`;
+
+  // 1. Guaranteed in-app notification insertion:
+  if (company.clientId) {
+    try {
+      await db.insert(notificationsTable).values({
+        userId: company.clientId,
+        type: "quota_depleted_red",
+        title: inAppTitle,
+        message: inAppMessage,
+        companyId: company.id,
+        isRead: false,
+      });
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to directly insert quota_depleted_red notification");
+    }
+  }
+
+  // 2. Email notification via Resend:
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Urgent: Monthly AI Quota Depleted (0 Tokens Remaining)`,
+    customerDetails: {
+      "Company Name": company.name,
+    },
+    eventDetails: {
+      "Remaining Tokens (الرصيد المتبقي)": "0 tokens (100% depleted)",
+      "Tokens Consumed (المستهلك)": quota.usedTokens.toLocaleString(),
+      "Total Monthly Quota (إجمالي الحصة)": quota.monthlyQuota.toLocaleString(),
+      "Action Required": "Automated chatbot responses are currently paused. Please request an immediate quota top-up or upgrade from platform administration.",
+    },
+  });
+
+  return sendCompanyNotification(
+    company.id,
+    `[تنبيه عاجل 🔴] استنفاد حصة الرموز بالكامل لشركة ${company.name}`,
+    html,
+    {
+      eventType,
+      inAppTitle,
+      inAppMessage,
+      inAppType: "quota_depleted_red",
+    }
   );
 }
 

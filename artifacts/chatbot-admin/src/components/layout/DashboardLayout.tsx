@@ -441,6 +441,8 @@ function ClientNotificationBell() {
   });
 
   const unread = notifications.filter((n) => !n.isRead).length;
+  const hasUnreadRed = notifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
+  const hasUnreadAmber = notifications.some((n) => !n.isRead && (n.type === "quota_warning_amber" || n.type.includes("amber")));
 
   const prevUnreadRef = useRef<number | null>(null);
   const [pulse, setPulse] = useState(false);
@@ -465,12 +467,26 @@ function ClientNotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className={`relative p-2 rounded-lg transition-colors ${open ? "bg-muted" : "hover:bg-muted"} ${pulse ? "animate-bounce" : ""}`}
+          className={`relative p-2 rounded-lg transition-colors ${open ? "bg-muted" : "hover:bg-muted"} ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
           aria-label="Notifications"
         >
-          <Bell className={`w-5 h-5 ${unread > 0 ? "text-amber-400" : "text-muted-foreground"}`} />
+          <Bell className={`w-5 h-5 ${
+            hasUnreadRed
+              ? "text-rose-500 animate-pulse"
+              : hasUnreadAmber
+              ? "text-amber-500"
+              : unread > 0
+              ? "text-amber-400"
+              : "text-muted-foreground"
+          }`} />
           {unread > 0 && (
-            <span className={`absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none transition-all ${pulse ? "bg-amber-400 text-black scale-125" : "bg-amber-500 text-black"}`}>
+            <span className={`absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none transition-all ${
+              hasUnreadRed
+                ? "bg-rose-500 text-white animate-pulse"
+                : pulse
+                ? "bg-amber-400 text-black scale-125"
+                : "bg-amber-500 text-black"
+            }`}>
               {unread > 99 ? "99+" : unread}
             </span>
           )}
@@ -483,7 +499,9 @@ function ClientNotificationBell() {
             <Bell className="w-4 h-4 text-amber-400" />
             <span className="font-semibold text-sm">{t("notif_title")}</span>
             {unread > 0 && (
-              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                hasUnreadRed ? "bg-rose-500/20 text-rose-400" : "bg-amber-500/20 text-amber-400"
+              }`}>
                 {unread} {t("notif_new")}
               </span>
             )}
@@ -510,42 +528,87 @@ function ClientNotificationBell() {
             </div>
           ) : (
             <ul className="divide-y divide-border/40">
-              {notifications.map((n) => (
-                <li 
-                  key={n.id} 
-                  className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors group ${!n.isRead ? "bg-amber-500/5" : ""}`}
-                  onClick={() => {
-                    setOpen(false);
-                    if (n.type === "new_message" || n.type === "new_conversation" || n.type === "handoff_request") {
-                      setLocation("/client/universal-chat");
-                    }
-                  }}
-                >
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
-                  </div>
-                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />}
-                  <button
-                    type="button"
-                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMutation.mutate(n.id);
+              {notifications.map((n) => {
+                const isRedDepleted = n.type === "quota_depleted_red" || n.type.includes("depleted");
+                const isAmberWarning = n.type === "quota_warning_amber" || n.type.includes("amber");
+                const isQuotaAlert = isRedDepleted || isAmberWarning;
+
+                return (
+                  <li 
+                    key={n.id} 
+                    className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors group ${
+                      isRedDepleted
+                        ? "bg-rose-500/10 border-r-2 border-rose-500 dark:bg-rose-950/20"
+                        : isAmberWarning
+                        ? "bg-amber-500/10 border-r-2 border-amber-500 dark:bg-amber-950/20"
+                        : !n.isRead
+                        ? "bg-amber-500/5"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      setOpen(false);
+                      if (isQuotaAlert) {
+                        setLocation("/client/usage");
+                      } else if (n.type === "new_message" || n.type === "new_conversation" || n.type === "handoff_request") {
+                        setLocation("/client/universal-chat");
+                      }
                     }}
-                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </li>
-              ))}
+                    {isRedDepleted ? (
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 animate-pulse" />
+                    ) : isAmberWarning ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-semibold leading-tight">{n.title}</p>
+                        {isRedDepleted && (
+                          <span className="text-[9px] font-bold bg-rose-500/20 text-rose-500 dark:text-rose-400 px-1.5 py-0.2 rounded border border-rose-500/30">
+                            {lang === "ar" ? "نفد الرصيد 🔴" : "Depleted 🔴"}
+                          </span>
+                        )}
+                        {isAmberWarning && (
+                          <span className="text-[9px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded border border-amber-500/30">
+                            {lang === "ar" ? "أقل من 20% 🟡" : "< 20% 🟡"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">{n.message}</p>
+                      <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
+                    </div>
+                    {!n.isRead && (
+                      <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
+                        isRedDepleted ? "bg-rose-500 animate-ping" : "bg-amber-400"
+                      }`} />
+                    )}
+                    <button
+                      type="button"
+                      title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMutation.mutate(n.id);
+                      }}
+                      className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
 
         <div className="px-3 py-2 border-t border-border bg-muted/30 flex items-center justify-between text-xs">
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setLocation("/client/usage"); }}
+            className="text-xs text-primary hover:underline font-medium"
+          >
+            {lang === "ar" ? "عرض تفاصيل الحصة ←" : "View Quota Details →"}
+          </button>
           <a
             href="https://mail.google.com"
             target="_blank"

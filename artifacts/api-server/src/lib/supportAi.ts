@@ -1,7 +1,7 @@
 import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/db";
 import { eq, sql, and, gte, lte, or } from "drizzle-orm";
 import { logger } from "./logger";
-import { notifyQuota75PercentConsumed } from "./companyNotification";
+import { notifyQuota75PercentConsumed, notifyQuotaAmberLowBalance, notifyQuotaRedDepleted } from "./companyNotification";
 import { sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel } from "./aiModels";
 
 export interface ResolvedAiConfig {
@@ -321,40 +321,87 @@ export async function assertCompanyQuotaNotExceeded(
     usedTokens += Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
   }
 
-  if (usedTokens >= company.monthlyTokenQuota!) {
-    throw new Error(`تم تجاوز حصة الرموز الشهرية المحددة للشركة (${company.monthlyTokenQuota!.toLocaleString()} رمز). يرجى ترقية الحصة.`);
+  // Trigger automated threshold warnings for Client Notification Panel & Email:
+  if (company.monthlyTokenQuota && company.monthlyTokenQuota > 0 && company.clientId) {
+    await checkAndTriggerQuotaNotifications({
+      company: { id: company.id, name: company.name, clientId: company.clientId },
+      monthlyQuota: company.monthlyTokenQuota,
+      usedTokens,
+      effectiveStart,
+    });
   }
 
-  // Event 9: Upon consuming 75% of API.AI
-  if (company.monthlyTokenQuota && (usedTokens / company.monthlyTokenQuota) >= 0.75) {
-    const cycleKey = `quota_75_alert_${company.id}_${effectiveStart.toISOString().slice(0, 7)}`;
-    void (async () => {
-      try {
-        const [existingAlert] = await db
-          .select({ key: adminConfigTable.key })
-          .from(adminConfigTable)
-          .where(eq(adminConfigTable.key, cycleKey))
-          .limit(1);
-
-        if (!existingAlert) {
-          await db.insert(adminConfigTable).values({
-            key: cycleKey,
-            value: new Date().toISOString(),
-          }).onConflictDoNothing().catch(() => {});
-
-          const percentUsed = Math.round((usedTokens / company.monthlyTokenQuota!) * 100);
-          notifyQuota75PercentConsumed(
-            { id: company.id, name: company.name },
-            { usedTokens, monthlyQuota: company.monthlyTokenQuota!, percentUsed }
-          ).catch((err) => {
-            logger.warn({ err, companyId: company.id }, "Failed to send 75% quota notification email");
-          });
-        }
-      } catch (err) {
-        logger.warn({ err, companyId: company.id }, "Error checking 75% quota notification status");
-      }
-    })();
+  if (usedTokens >= company.monthlyTokenQuota!) {
+    throw new Error(`تم استنفاد كامل حصة الرموز الشهرية المحددة للشركة (${company.monthlyTokenQuota!.toLocaleString()} رمز). توقفت الردود التلقائية مؤقتاً حتى التجديد أو شحن رصيد إضافي.`);
   }
 
   return { usedTokens, quota: company.monthlyTokenQuota };
+}
+
+/**
+ * Checks quota threshold levels and sends in-app notifications + emails:
+ * 🟡 Amber: Automatically triggers a warning when the balance drops below 20% (>= 80% consumed).
+ * 🔴 Red: Triggers an urgent alert when the balance is completely depleted (0 remaining / >= 100% consumed).
+ */
+export async function checkAndTriggerQuotaNotifications(params: {
+  company: { id: number; name: string; clientId: number };
+  monthlyQuota: number;
+  usedTokens: number;
+  effectiveStart: Date;
+}) {
+  const { company, monthlyQuota, usedTokens, effectiveStart } = params;
+  if (!monthlyQuota || monthlyQuota <= 0 || !company.clientId) return;
+
+  const cycleTimestamp = effectiveStart.getTime();
+  const remainingTokens = Math.max(monthlyQuota - usedTokens, 0);
+  const percentUsed = Math.min(Math.round((usedTokens / monthlyQuota) * 100), 100);
+
+  // 1. Red Alert (🔴): Completely depleted (0 remaining / >= 100% used)
+  if (usedTokens >= monthlyQuota) {
+    const redKey = `quota_red_alert_${company.id}_${cycleTimestamp}`;
+    try {
+      const [existing] = await db
+        .select({ key: adminConfigTable.key })
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, redKey))
+        .limit(1);
+
+      if (!existing) {
+        await db.insert(adminConfigTable).values({ key: redKey, value: new Date().toISOString() }).onConflictDoNothing().catch(() => {});
+        await notifyQuotaRedDepleted(company, {
+          usedTokens,
+          monthlyQuota,
+          remainingTokens: 0,
+          percentUsed: 100,
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, companyId: company.id }, "Error checking/triggering red depleted quota alert");
+    }
+    return;
+  }
+
+  // 2. Amber Alert (🟡): Balance drops below 20% (>= 80% used)
+  if ((usedTokens / monthlyQuota) >= 0.80) {
+    const amberKey = `quota_amber_alert_${company.id}_${cycleTimestamp}`;
+    try {
+      const [existing] = await db
+        .select({ key: adminConfigTable.key })
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, amberKey))
+        .limit(1);
+
+      if (!existing) {
+        await db.insert(adminConfigTable).values({ key: amberKey, value: new Date().toISOString() }).onConflictDoNothing().catch(() => {});
+        await notifyQuotaAmberLowBalance(company, {
+          usedTokens,
+          monthlyQuota,
+          remainingTokens,
+          percentUsed,
+        });
+      }
+    } catch (err) {
+      logger.warn({ err, companyId: company.id }, "Error checking/triggering amber low quota alert");
+    }
+  }
 }

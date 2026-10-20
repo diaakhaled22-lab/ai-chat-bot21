@@ -25,7 +25,7 @@ import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
 import { maskApiKey, preserveMaskedSecret } from "../lib/security";
-import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
+import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT } from "../lib/promptInstructions";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
@@ -1177,6 +1177,16 @@ router.get("/client/dashboard", async (req, res) => {
       (totalInputTokens / 1_000_000) * modelPricing.input +
       (totalOutputTokens / 1_000_000) * modelPricing.output;
 
+    // Check & link automated threshold warnings to Client Notification Panel:
+    if (company.monthlyTokenQuota && company.monthlyTokenQuota > 0 && company.clientId) {
+      checkAndTriggerQuotaNotifications({
+        company: { id: company.id, name: company.name, clientId: company.clientId },
+        monthlyQuota: company.monthlyTokenQuota,
+        usedTokens: totalInputTokens + totalOutputTokens,
+        effectiveStart: monthStart,
+      }).catch((e) => logger.warn({ err: e }, "Failed to check quota notifications in /client/dashboard"));
+    }
+
     res.json({
       companyName: company.name,
       aiProvider: company.aiProvider,
@@ -1317,6 +1327,16 @@ router.get("/client/usage", async (req, res) => {
 
     const percentUsed = Math.min(Math.round((periodUsedTokens / quota) * 100), 100);
     const warning = periodUsedTokens >= quota ? "exceeded" : periodUsedTokens >= quota * 0.8 ? "near" : "ok";
+
+    // Link automated threshold warnings directly into Client Notification Bell:
+    if (company.monthlyTokenQuota && company.monthlyTokenQuota > 0 && company.clientId) {
+      checkAndTriggerQuotaNotifications({
+        company: { id: company.id, name: company.name, clientId: company.clientId },
+        monthlyQuota: company.monthlyTokenQuota,
+        usedTokens: periodUsedTokens,
+        effectiveStart,
+      }).catch((e) => logger.warn({ err: e }, "Failed to check quota notifications in /client/usage"));
+    }
 
     res.json({
       hasQuota: true,
