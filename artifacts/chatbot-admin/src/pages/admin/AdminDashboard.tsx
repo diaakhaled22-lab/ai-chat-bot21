@@ -82,6 +82,9 @@ const MODEL_COLORS: Record<string, string> = {
   "gemini-2.5-pro":             "#1e40af",
   "gemini-1.5-flash":           "#60a5fa",
   "gemini-1.5-flash-8b":        "#93c5fd",
+  "gemini-2.5-flash":           "#38bdf8",
+  "google/gemini-2.5-flash":    "#38bdf8",
+  "google/gemini-2.5-flash:free": "#38bdf8",
   "gemini-2.0-flash":           "#38bdf8",
   "gemini-2.0-flash-lite":      "#7dd3fc",
   "openrouter/free":                        "#ec4899",
@@ -196,6 +199,12 @@ export default function AdminDashboard() {
     refetchInterval: 5 * 60 * 1000,
   });
 
+  const { data: quotaSettings } = useQuery<{ aiProvider: string; aiModel: string }>({
+    queryKey: ["admin-quota-ai-settings"],
+    queryFn: () => customFetch("/api/admin/quota-ai-settings"),
+    refetchInterval: 5 * 60 * 1000,
+  });
+
   const pieData = useMemo(() => {
     return (usage?.byModel ?? []).map((m) => ({
       ...m,
@@ -207,14 +216,18 @@ export default function AdminDashboard() {
   const hasUsage = (usage?.totalTokens ?? 0) > 0;
 
   const quotaCompanies = useMemo(() => {
+    const defaultModel = quotaSettings?.aiModel || "gpt-4o-mini";
+    const defaultProvider = quotaSettings?.aiProvider || "openai";
     return (companies ?? [])
       .filter((c) => c.monthlyTokenQuota != null && Number(c.monthlyTokenQuota) > 0)
       .map((c) => {
         const u = (usage?.byCompany ?? []).find((x) => x.companyId === c.id);
+        const resolvedModel = c.aiModel || u?.model || defaultModel;
+        const resolvedProvider = (c.aiModel ? c.aiProvider : null) || u?.provider || defaultProvider;
         return {
           ...c,
-          model: u?.model || c.aiModel || "unknown",
-          provider: u?.provider || c.aiProvider || "unknown",
+          model: resolvedModel,
+          provider: resolvedProvider,
           messages: u?.messages ?? 0,
           inputTokens: u?.inputTokens ?? 0,
           outputTokens: u?.outputTokens ?? 0,
@@ -222,7 +235,7 @@ export default function AdminDashboard() {
         };
       })
       .sort((a, b) => Number(b.monthlyTokenQuota || 0) - Number(a.monthlyTokenQuota || 0));
-  }, [companies, usage]);
+  }, [companies, usage, quotaSettings]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
