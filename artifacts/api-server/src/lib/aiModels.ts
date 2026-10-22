@@ -510,10 +510,10 @@ const COMMON_OPENROUTER_ALIASES: Record<string, string> = {
   // DeepSeek
   "deepseek-r1": "deepseek/deepseek-r1",
   "deepseek-v3": "deepseek/deepseek-v3",
-  "deepseek-v4-flash": "google/gemini-2.5-flash",
-    "deepseek/deepseek-v4-flash",
+  "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
   "deepseek-chat": "deepseek/deepseek-chat",
   // Google
+  "gemini-2.5-flash": "google/gemini-2.5-flash",
   "gemini-pro-1.5": "google/gemini-pro-1.5",
   "gemini-1.5-pro": "google/gemini-pro-1.5",
   "gemini-2.0-flash": "google/gemini-2.0-flash-001",
@@ -690,7 +690,6 @@ async function syncOpenRouter(): Promise<SyncedAiModel[]> {
   if (!models.some((m) => m.id === "openrouter/free")) {
     models.unshift({
       id: "openrouter/free",
-    "google/gemini-2.5-flash:free",
       label: "OpenRouter Free Auto (Recommended)",
       free: true,
     });
