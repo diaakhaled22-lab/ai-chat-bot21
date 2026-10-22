@@ -3,6 +3,14 @@ import { exec, execSync } from "child_process";
 import { initWebSocket } from "./lib/ws";
 import app from "./app";
 import { logger } from "./lib/logger";
+
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "Unhandled Rejection at Promise");
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "Uncaught Exception thrown");
+});
 import { db } from "@workspace/db";
 import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTable, notificationsTable, usersTable, leadsTable } from "@workspace/db";
 import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
@@ -276,21 +284,11 @@ function freePortIfBusy(targetPort: number): Promise<void> {
   });
 }
 
-// Ensure the default admin is ready before accepting requests. This guards
-// against fresh database resets and avoids a login race during startup.
+// Start server listening immediately so reverse proxy (e.g. Vite proxy in dev/Replit)
+// never receives 502 Bad Gateway while database checks are in progress.
 async function startServer() {
-  await ensureAdminExists();
-  await ensureEmailNotificationSchema();
-  await ensureRagSchema();
-  await ensureVoiceSchema();
-  await ensureRestApiSchema();
-  await ensureShopifySchema();
-  await ensureDataSourcePermissionsSchema();
-  await loadBlockedIpsFromDb();
-  await loadTotpSecretsFromDb();
-
   let attempts = 0;
-  const maxRetries = 3;
+  const maxRetries = 5;
 
   function attemptListen() {
     attempts++;
@@ -334,7 +332,26 @@ async function startServer() {
     process.once("SIGINT", () => shutdown("SIGINT"));
   }
 
+  // Bind and listen to port 8080 right away
   attemptListen();
+
+  // Run database migrations and bootstrap safely with error catching
+  try {
+    await ensureAdminExists();
+    await ensureEmailNotificationSchema();
+    await ensureRagSchema();
+    await ensureVoiceSchema();
+    await ensureRestApiSchema();
+    await ensureShopifySchema();
+    await ensureDataSourcePermissionsSchema();
+    await loadBlockedIpsFromDb();
+    await loadTotpSecretsFromDb();
+    logger.info("Database schemas, bootstrap admin, and security rules initialized successfully");
+  } catch (err) {
+    logger.error({ err }, "Non-fatal warning during startup schema initialization");
+  }
 }
 
-void startServer();
+startServer().catch((err) => {
+  logger.error({ err }, "Fatal error starting server");
+});

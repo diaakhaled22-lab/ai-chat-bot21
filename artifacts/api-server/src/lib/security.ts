@@ -303,7 +303,9 @@ export async function loadBlockedIpsFromDb() {
     if (row && row.value) {
       const ips: Record<string, number> = JSON.parse(row.value);
       for (const [ip, timestamp] of Object.entries(ips)) {
-        blockedIps.set(ip, timestamp);
+        if (!isLoopbackIp(ip)) {
+          blockedIps.set(ip, timestamp);
+        }
       }
     }
   } catch (err) {
@@ -380,6 +382,11 @@ const SPIKE_ALERT_THRESHOLD = 10;
 let lastSpikeAlertAt = 0;
 
 const ipLoginAttempts = new Map<string, IpLoginAttempt>();
+
+export function isLoopbackIp(ip: string): boolean {
+  const clean = ip.replace(/^::ffff:/, "").trim().toLowerCase();
+  return clean === "127.0.0.1" || clean === "::1" || clean === "localhost" || clean === "unknown";
+}
 
 function normalizeIp(ip: string): string {
   return ip.trim() || "unknown";
@@ -461,7 +468,9 @@ export function isAccountLocked(username: string): number {
  * an account lockout.
  */
 export function isIpBlocked(ip: string): boolean {
-  return blockedIps.has(normalizeIp(ip));
+  const norm = normalizeIp(ip);
+  if (isLoopbackIp(norm)) return false;
+  return blockedIps.has(norm);
 }
 
 /**
@@ -476,7 +485,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
 
   if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
     const normalizedIp = normalizeIp(ip);
-    if (!blockedIps.has(normalizedIp)) {
+    if (!isLoopbackIp(normalizedIp) && !blockedIps.has(normalizedIp)) {
       blockedIps.set(normalizedIp, Date.now());
       void saveBlockedIpsToDb();
       void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);

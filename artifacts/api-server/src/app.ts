@@ -13,6 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
+app.set("trust proxy", 1);
 
 // ── Security Headers ─────────────────────────────────────────────────────
 app.use(securityHeaders);
@@ -97,22 +98,26 @@ if (!process.env.SESSION_SECRET) {
 }
 
 const PgStore = pgSession(session);
+const sessionStore = new PgStore({
+  pool: pool as any,
+  tableName: "session",
+  createTableIfMissing: true,
+});
+sessionStore.on("error", (err) => {
+  logger.error({ err }, "Session store error");
+});
 
 app.use(
   session({
-    store: new PgStore({
-      pool: pool as any,
-      tableName: "session", // Make sure this table exists or we need to manage it. Wait, does the db export pool? Let's check db package.
-      createTableIfMissing: true
-    }),
+    store: sessionStore,
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: "auto",
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      sameSite: "lax",
     },
   }),
 );
