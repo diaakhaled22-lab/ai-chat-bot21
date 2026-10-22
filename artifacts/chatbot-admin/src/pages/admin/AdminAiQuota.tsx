@@ -3364,8 +3364,6 @@ export default function AdminAiQuota() {
                   const usage = companyUsageMap.get(c.id);
                   const tokens = usage?.tokens ?? 0;
                   const cost = usage?.cost ?? 0;
-            const inCost = totalTokens > 0 && cost > 0 ? (inputTokens / totalTokens) * cost : 0;
-            const outCost = totalTokens > 0 && cost > 0 ? (outputTokens / totalTokens) * cost : 0;
                   const quota = c.monthlyTokenQuota ?? 0;
                   const pct = quota > 0 ? (tokens / quota) * 100 : 0;
                   const effectiveModel = (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
