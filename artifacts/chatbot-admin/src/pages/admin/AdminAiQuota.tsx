@@ -2093,59 +2093,8 @@ export default function AdminAiQuota() {
 
             {/* Base Quota Tab */}
             <TabsContent value="base" className="space-y-4 m-0">
-              <div className="space-y-1.5">
-                <Label htmlFor="quota-input-ai">
-                  {lang === "ar" ? "الحصة الشهرية (رموز / Tokens)" : "Monthly Token Quota"}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="quota-input-ai"
-                    placeholder={lang === "ar" ? "مثال: 1000000 أو اتركه فارغاً لتعطيل الحصة" : "e.g. 1000000 (leave blank to disable quota)"}
-                    value={quotaInput}
-                    onChange={(e) => setQuotaInput(e.target.value.replace(/[^0-9]/g, ""))}
-                    className="font-mono text-sm"
-                  />
-                  {quotaInput && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                      ≈ {formatQuota(Number(quotaInput))}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Presets */}
-              <div className="space-y-1.5">
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  {lang === "ar" ? "خيارات سريعة:" : "Quick presets:"}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {QUOTA_PRESETS.map((p) => (
-                    <Button
-                      key={p.value}
-                      type="button"
-                      size="sm"
-                      variant={quotaInput === String(p.value) ? "default" : "outline"}
-                      className="text-xs h-7"
-                      onClick={() => setQuotaInput(String(p.value))}
-                    >
-                      {p.label}
-                    </Button>
-                  ))}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="text-xs h-7 text-muted-foreground"
-                    onClick={() => setQuotaInput("")}
-                  >
-                    <X className="w-3 h-3 mr-1" />
-                    {lang === "ar" ? "تعطيل الحصة" : "Clear — Disable Quota"}
-                  </Button>
-                </div>
-              </div>
-
               {/* Associated AI Models */}
-              <div className="space-y-2.5 pt-2 border-t border-border/40">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-1.5 text-xs font-semibold">
                     <Cpu className="w-3.5 h-3.5 text-primary" />
@@ -2307,6 +2256,58 @@ export default function AdminAiQuota() {
                         : quotaModelInput}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Monthly Token Quota */}
+              <div className="space-y-1.5 pt-2 border-t border-border/40">
+                <Label htmlFor="quota-input-ai">
+                  {lang === "ar" ? "الحصة الشهرية (رموز / Tokens)" : "Monthly Token Quota"}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="quota-input-ai"
+                    placeholder={lang === "ar" ? "مثال: 1000000 أو اتركه فارغاً لتعطيل الحصة" : "e.g. 1000000 (leave blank to disable quota)"}
+                    value={quotaInput}
+                    onChange={(e) => setQuotaInput(e.target.value.replace(/[^0-9]/g, ""))}
+                    className="font-mono text-sm"
+                  />
+                  {quotaInput && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                      ≈ {formatQuota(Number(quotaInput))}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Presets */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  {lang === "ar" ? "خيارات سريعة:" : "Quick presets:"}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {QUOTA_PRESETS.map((p) => (
+                    <Button
+                      key={p.value}
+                      type="button"
+                      size="sm"
+                      variant={quotaInput === String(p.value) ? "default" : "outline"}
+                      className="text-xs h-7"
+                      onClick={() => setQuotaInput(String(p.value))}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs h-7 text-muted-foreground"
+                    onClick={() => setQuotaInput("")}
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    {lang === "ar" ? "تعطيل الحصة" : "Clear — Disable Quota"}
+                  </Button>
                 </div>
               </div>
 
