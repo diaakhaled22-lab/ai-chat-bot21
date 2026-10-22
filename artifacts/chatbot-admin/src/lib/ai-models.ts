@@ -57,7 +57,8 @@ export const AI_PROVIDERS = {
     freeTier: "Free tier: Generous free quota (no credit card needed)",
     hasFreeTier: true,
     models: [
-      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash ⭐ Recommended (Free Tier)", free: true },
+      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash ⭐ Recommended (Fast & Economic)", free: true },
+      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (Free Tier)", free: true },
       { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash-Lite (Free Tier, Fast)", free: true },
       { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (Free Tier)", free: true },
       { value: "gemini-1.5-flash-8b", label: "Gemini 1.5 Flash-8B (Free Tier, Lightweight)", free: true },
@@ -77,6 +78,7 @@ export const AI_PROVIDERS = {
     models: [
       // ── Free models ─────────────────────────────────────────────────────────
       { value: "openrouter/free",                       label: "OpenRouter Free Auto ⭐ Recommended", free: true  },
+      { value: "google/gemini-2.5-flash:free",          label: "Google Gemini 2.5 Flash (Free via OpenRouter)", free: true },
       { value: "google/gemma-4-31b-it:free",           label: "Google Gemma 4 31B (Free)",           free: true  },
       { value: "nvidia/nemotron-3.5-lightning:free",    label: "NVIDIA Nemotron 3.5 Lightning (Free)",free: true  },
       { value: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 Reasoning (Free)",        free: true  },
@@ -89,6 +91,7 @@ export const AI_PROVIDERS = {
       { value: "meta-llama/llama-4-maverick:free",      label: "Meta Llama 4 Maverick (Free)",        free: true  },
       { value: "nvidia/nemotron-3-super-120b-a12b:free",label: "NVIDIA Nemotron Super 120B (Free)",  free: true  },
       // ── Paid models ─────────────────────────────────────────────────────────
+      { value: "google/gemini-2.5-flash",               label: "Google Gemini 2.5 Flash ⭐ (via OpenRouter)", free: false },
       { value: "deepseek/deepseek-v4-flash",            label: "DeepSeek V4 Flash ⭐ Fast & affordable", free: false },
       { value: "anthropic/claude-3.7-sonnet",           label: "Claude 3.7 Sonnet (Hybrid Reasoning)", free: false },
       { value: "anthropic/claude-3.5-sonnet",           label: "Claude 3.5 Sonnet (via OpenRouter)",   free: false },

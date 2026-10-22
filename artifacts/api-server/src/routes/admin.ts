@@ -253,9 +253,9 @@ router.get("/admin/usage-cost", async (req, res) => {
       }
 
       const hasQuota = typeof company.monthlyTokenQuota === "number" && company.monthlyTokenQuota > 0;
-      // If company has quota, it executes via the Platform Quota AI Agent model!
-      const modelKey = hasQuota ? quotaModel : (company.aiModel ?? "unknown");
-      const provider = hasQuota ? quotaProvider : (company.aiProvider ?? "unknown");
+      // If company has dedicated aiModel, price that specific model; otherwise use Platform Quota AI Agent model:
+      const modelKey = company.aiModel || (hasQuota ? quotaModel : "gpt-4o-mini");
+      const provider = (company.aiModel ? company.aiProvider : null) || (hasQuota ? quotaProvider : (company.aiProvider ?? "openai"));
       const inputTokens = Math.ceil((log.customerMessage?.length ?? 0) / CHARS_PER_TOKEN);
       const outputTokens = Math.ceil((log.botResponse?.length ?? 0) / CHARS_PER_TOKEN);
       const mp = getModelPricing(modelKey);
@@ -925,12 +925,14 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
   await ensureQuotaColumns();
   try {
     const id = Number(req.params.id);
-    const { monthlyTokenQuota, quotaStartDate, quotaEndDate, startDate, endDate } = req.body as {
+    const { monthlyTokenQuota, quotaStartDate, quotaEndDate, startDate, endDate, aiModel, aiProvider } = req.body as {
       monthlyTokenQuota: number | null;
       quotaStartDate?: string | null;
       quotaEndDate?: string | null;
       startDate?: string | null;
       endDate?: string | null;
+      aiModel?: string | null;
+      aiProvider?: string | null;
     };
     const quota = monthlyTokenQuota == null ? null : Number(monthlyTokenQuota);
     if (quota !== null && (isNaN(quota) || quota < 0)) {
@@ -998,6 +1000,8 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       quotaEndDate: toIsoOrNull(updated.quotaEndDate),
       activationStart: toIsoOrNull(updated.activationStart),
       activationEnd: toIsoOrNull(updated.activationEnd),
+      aiProvider: updated.aiProvider ?? null,
+      aiModel: updated.aiModel ?? null,
     });
   } catch (err: any) {
     logger.error({ err, message: err?.message, stack: err?.stack }, "Set company quota error");

@@ -197,6 +197,51 @@ function ModelPicker({
         {syncedCatalog?.syncedAt && ` Last synced ${new Date(syncedCatalog.syncedAt).toLocaleString()}.`}
       </p>
 
+      {/* Associated AI Models Dropdown */}
+      <div className="space-y-1.5 p-3 rounded-lg border border-primary/20 bg-primary/5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            {lang === "ar" ? "النماذج المرتبطة (Associated AI Models):" : "Associated AI Models:"}
+          </label>
+          {selectedProvider === activeProvider && selectedModel && (
+            <span className="text-[11px] text-emerald-500 font-mono flex items-center gap-1 font-medium">
+              <CheckCircle2 className="w-3 h-3" /> {selectedModel}
+            </span>
+          )}
+        </div>
+        <div className="relative">
+          <select
+            value={selectedProvider === activeProvider ? selectedModel : ""}
+            onChange={(e) => {
+              if (e.target.value) onSelect(activeProvider, e.target.value);
+            }}
+            className={`${selectClass} border-primary/40`}
+          >
+            <option value="">{lang === "ar" ? "— اختر النموذج المرتبط بالمزود —" : "— Select Associated AI Model —"}</option>
+            {freeModels.length > 0 && (
+              <optgroup label={lang === "ar" ? "الخطة المجانية (Free Tier)" : "Free Tier"}>
+                {freeModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label} {m.free ? (lang === "ar" ? "• مجاني" : "• Free") : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {paidModels.length > 0 && (
+              <optgroup label={lang === "ar" ? "الخطة المدفوعة (Paid Tier)" : "Paid Tier"}>
+                {paidModels.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        </div>
+      </div>
+
       {/* Free Tier */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5">

@@ -185,10 +185,48 @@ export async function resolveCompanyAi(
   if (hasQuota) {
     const quotaAi = await getQuotaAiSettings();
     if (quotaAi && quotaAi.apiKey) {
+      let effectiveApiKey = quotaAi.apiKey;
+      let effectiveProvider = quotaAi.provider;
+      let effectiveModel = quotaAi.model;
+
+      if (company.aiModel && company.aiModel.trim()) {
+        const rawModel = company.aiModel.trim();
+        const customProvider = (company.aiProvider as any) || quotaAi.provider;
+
+        if (company.aiAgentApiKey) {
+          effectiveApiKey = company.aiAgentApiKey;
+          effectiveProvider = customProvider;
+        } else if (customProvider === quotaAi.provider) {
+          effectiveProvider = customProvider;
+        } else if (quotaAi.provider === "openrouter") {
+          effectiveProvider = "openrouter";
+        } else {
+          const envKey =
+            customProvider === "google" ? (process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY || process.env.GOOGLE_API_KEY) :
+            customProvider === "openai" ? process.env.OPENAI_API_KEY :
+            customProvider === "anthropic" ? process.env.ANTHROPIC_API_KEY :
+            customProvider === "openrouter" ? process.env.OPENROUTER_API_KEY : null;
+          if (envKey) {
+            effectiveApiKey = envKey;
+            effectiveProvider = customProvider;
+          }
+        }
+
+        effectiveModel = effectiveProvider === "google"
+          ? sanitizeGoogleModel(rawModel)
+          : effectiveProvider === "openrouter"
+          ? sanitizeOpenRouterModel(rawModel)
+          : effectiveProvider === "openai"
+          ? sanitizeOpenAiModel(rawModel)
+          : effectiveProvider === "anthropic"
+          ? sanitizeAnthropicModel(rawModel)
+          : rawModel;
+      }
+
       return {
-        apiKey: quotaAi.apiKey,
-        provider: quotaAi.provider,
-        model: quotaAi.model,
+        apiKey: effectiveApiKey,
+        provider: effectiveProvider,
+        model: effectiveModel,
         isSupportAgent: true,
       };
     } else {

@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import QuotaAICard from "@/components/QuotaAICard";
+import { AI_PROVIDERS, type AiProvider } from "@/lib/ai-models";
 import { useLanguage } from "@/hooks/use-language";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -662,6 +663,10 @@ export default function AdminAiQuota() {
   const [quotaInput, setQuotaInput] = useState("");
   const [quotaStartDate, setQuotaStartDate] = useState("");
   const [quotaEndDate, setQuotaEndDate] = useState("");
+  const [quotaProviderInput, setQuotaProviderInput] = useState<AiProvider>("google");
+  const [quotaModelInput, setQuotaModelInput] = useState<string>("default");
+  const [quotaCustomModel, setQuotaCustomModel] = useState<string>("");
+  const [quotaIsCustomModel, setQuotaIsCustomModel] = useState<boolean>(false);
   const [showModelCostModal, setShowModelCostModal] = useState(false);
 
   // Top-up Package & Bill State
@@ -719,11 +724,15 @@ export default function AdminAiQuota() {
       quota,
       quotaStartDate,
       quotaEndDate,
+      aiModel,
+      aiProvider,
     }: {
       companyId: number;
       quota: number | null;
       quotaStartDate?: string | null;
       quotaEndDate?: string | null;
+      aiModel?: string | null;
+      aiProvider?: string | null;
     }) =>
       customFetch(`/api/admin/companies/${companyId}/quota`, {
         method: "PUT",
@@ -732,6 +741,8 @@ export default function AdminAiQuota() {
           monthlyTokenQuota: quota,
           quotaStartDate,
           quotaEndDate,
+          aiModel,
+          aiProvider,
         }),
       }),
     onSuccess: (_data, variables) => {
@@ -744,6 +755,8 @@ export default function AdminAiQuota() {
                 monthlyTokenQuota: variables.quota,
                 quotaStartDate: variables.quotaStartDate,
                 quotaEndDate: variables.quotaEndDate,
+                aiModel: variables.aiModel !== undefined ? (variables.aiModel ?? undefined) : c.aiModel,
+                aiProvider: variables.aiProvider !== undefined ? (variables.aiProvider ?? undefined) : c.aiProvider,
               }
             : c
         );
@@ -777,6 +790,33 @@ export default function AdminAiQuota() {
     setTopupCustomEndDate("");
     setTopupNotes("");
     setTopupEmailOverride(company.notificationEmail || "");
+
+    const activeSupportAiProvider = (quotaSettings?.aiProvider && quotaSettings.aiProvider in AI_PROVIDERS)
+      ? (quotaSettings.aiProvider as AiProvider)
+      : "google";
+    const companyProvider = company.aiProvider as AiProvider;
+    const resolvedProvider = (companyProvider && companyProvider in AI_PROVIDERS)
+      ? companyProvider
+      : activeSupportAiProvider;
+
+    setQuotaProviderInput(resolvedProvider);
+
+    if (company.aiModel) {
+      const known = (AI_PROVIDERS[resolvedProvider]?.models || []).map((m) => m.value);
+      if (known.includes(company.aiModel)) {
+        setQuotaModelInput(company.aiModel);
+        setQuotaIsCustomModel(false);
+        setQuotaCustomModel("");
+      } else {
+        setQuotaModelInput("custom");
+        setQuotaIsCustomModel(true);
+        setQuotaCustomModel(company.aiModel);
+      }
+    } else {
+      setQuotaModelInput("default");
+      setQuotaIsCustomModel(false);
+      setQuotaCustomModel("");
+    }
   };
 
   const handleSaveQuota = () => {
@@ -808,11 +848,19 @@ export default function AdminAiQuota() {
       return isNaN(d.getTime()) ? null : d.toISOString();
     })() : null;
 
+    const finalModel = quotaModelInput === "default"
+      ? null
+      : quotaIsCustomModel
+      ? quotaCustomModel.trim() || null
+      : quotaModelInput;
+
     setQuotaMutation.mutate({
       companyId: quotaTarget.id,
       quota,
       quotaStartDate: safeStart,
       quotaEndDate: safeEnd,
+      aiModel: finalModel,
+      aiProvider: quotaProviderInput,
     });
   };
 
@@ -1186,9 +1234,9 @@ export default function AdminAiQuota() {
       const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
       const cost = hasQuota ? (usage?.cost ?? 0) : 0;
 
-      const effectiveModel = hasQuota
+      const effectiveModel = c.aiModel || (hasQuota
         ? (quotaSettings?.aiModel || usage?.model || "gpt-4o-mini")
-        : (c.aiModel || "—");
+        : "—");
 
       return [
         `"${c.name.replace(/"/g, '""')}"`,
@@ -1225,7 +1273,7 @@ export default function AdminAiQuota() {
     const tokens = usage?.tokens ?? 0;
     const cost = usage?.cost ?? 0;
     const quota = c.monthlyTokenQuota ?? 0;
-    const effectiveModel = (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
+    const effectiveModel = c.aiModel || (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : null) || "gpt-4o-mini";
     const invoiceNumber = `INV-Q-${c.id}-${toIso(new Date()).replace(/-/g, "")}`;
 
     const text = [
@@ -1272,8 +1320,8 @@ export default function AdminAiQuota() {
       const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
       const remaining = quota > 0 ? Math.max(0, quota - totalTokens) : null;
       const invoiceNumber = `INV-Q-${company.id}-${toIso(new Date()).replace(/-/g, "")}`;
-      const effectiveModel = (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : company.aiModel) || "gpt-4o-mini";
-      const effectiveProvider = (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
+      const effectiveModel = company.aiModel || (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : null) || "gpt-4o-mini";
+      const effectiveProvider = (company.aiModel ? company.aiProvider : null) || (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
 
       let imageDataUrl: string | undefined;
       try {
@@ -1367,8 +1415,8 @@ export default function AdminAiQuota() {
       const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
       const remaining = quota > 0 ? Math.max(0, quota - totalTokens) : null;
       const invoiceNumber = `INV-Q-${company.id}-${toIso(new Date()).replace(/-/g, "")}`;
-      const effectiveModel = (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : company.aiModel) || "gpt-4o-mini";
-      const effectiveProvider = (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
+      const effectiveModel = company.aiModel || (company.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : null) || "gpt-4o-mini";
+      const effectiveProvider = (company.aiModel ? company.aiProvider : null) || (company.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : company.aiProvider) || "openai";
 
       const dataUrl = generateBillInvoiceCanvas({
         companyName: company.name,
@@ -1874,8 +1922,8 @@ export default function AdminAiQuota() {
                       ? Math.min(100, Math.max(tokensUsed > 0 ? 1 : 0, Math.round(percentFloat)))
                       : 0;
 
-                    const effectiveModel = (hasQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
-                    const effectiveProvider = (hasQuota ? (quotaSettings?.aiProvider || usage?.provider) : c.aiProvider) || "openai";
+                    const effectiveModel = c.aiModel || (hasQuota ? (quotaSettings?.aiModel || usage?.model) : null) || "gpt-4o-mini";
+                    const effectiveProvider = (c.aiModel ? c.aiProvider : null) || (hasQuota ? (quotaSettings?.aiProvider || usage?.provider) : c.aiProvider) || "openai";
 
                     return (
                       <tr key={c.id} className="hover:bg-muted/20 transition-colors">
@@ -1887,9 +1935,16 @@ export default function AdminAiQuota() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-mono text-[11px] font-semibold text-amber-500 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded w-fit inline-block">
-                              {effectiveModel}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-[11px] font-semibold text-amber-500 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded w-fit inline-block">
+                                {effectiveModel}
+                              </span>
+                              {c.aiModel && (
+                                <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                  {lang === "ar" ? "مخصص" : "Dedicated"}
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                               {effectiveProvider}
                             </span>
@@ -2096,6 +2151,166 @@ export default function AdminAiQuota() {
                 </div>
               </div>
 
+              {/* Associated AI Models */}
+              <div className="space-y-2.5 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Cpu className="w-3.5 h-3.5 text-primary" />
+                    {lang === "ar" ? "نوع ومزود الذكاء الاصطناعي (AI Provider):" : "AI Model Provider:"}
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shadow-[0_0_4px_1px_rgba(16,185,129,0.5)]" />
+                    {lang === "ar" ? "المزود المختار بوكيل الدعم:" : "Support AI Provider:"} 
+                    <strong className="text-foreground capitalize">{quotaSettings?.aiProvider || "Google Gemini"}</strong>
+                  </span>
+                </div>
+
+                {/* AI Type / Provider Buttons */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(
+                    [
+                      { key: "google", label: "Google Gemini", icon: "🔵" },
+                      { key: "openai", label: "OpenAI", icon: "🟢" },
+                      { key: "anthropic", label: "Anthropic", icon: "🟠" },
+                      { key: "openrouter", label: "OpenRouter", icon: "🟣" },
+                    ] as const
+                  ).map((p) => {
+                    const isSelected = quotaProviderInput === p.key;
+                    const isSupportAiActive = (quotaSettings?.aiProvider || "google") === p.key;
+                    return (
+                      <Button
+                        key={p.key}
+                        type="button"
+                        size="sm"
+                        variant={isSelected ? "default" : "outline"}
+                        className={`h-8 px-2 text-xs flex items-center justify-center gap-1 font-medium relative transition-all ${
+                          isSelected
+                            ? "shadow-sm ring-1 ring-primary/40 font-semibold"
+                            : "hover:bg-muted/70 text-muted-foreground"
+                        }`}
+                        onClick={() => {
+                          const newProvider = p.key as AiProvider;
+                          setQuotaProviderInput(newProvider);
+                          if (quotaModelInput !== "default" && quotaModelInput !== "custom") {
+                            const exists = AI_PROVIDERS[newProvider]?.models.some((m) => m.value === quotaModelInput);
+                            if (!exists) {
+                              setQuotaModelInput("default");
+                              setQuotaIsCustomModel(false);
+                            }
+                          }
+                        }}
+                      >
+                        <span className="text-xs">{p.icon}</span>
+                        <span className="truncate">{p.label}</span>
+                        {isSupportAiActive && (
+                          <span
+                            className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background"
+                            title={lang === "ar" ? "المزود النشط في وكيل الدعم" : "Active in Support AI"}
+                          />
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {/* Dropdown Menu labeled 'Associated AI Models' */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      {lang === "ar" ? "النماذج المرتبطة (Associated AI Models):" : "Associated AI Models:"}
+                    </Label>
+                    {quotaModelInput !== "default" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuotaModelInput("default");
+                          setQuotaIsCustomModel(false);
+                          setQuotaCustomModel("");
+                        }}
+                        className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                      >
+                        {lang === "ar" ? "استعادة افتراضي وكيل الدعم" : "Reset to Support AI Default"}
+                      </button>
+                    )}
+                  </div>
+
+                  <Select
+                    value={quotaModelInput}
+                    onValueChange={(val) => {
+                      if (val === "custom") {
+                        setQuotaModelInput("custom");
+                        setQuotaIsCustomModel(true);
+                      } else {
+                        setQuotaModelInput(val);
+                        setQuotaIsCustomModel(false);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 text-xs font-medium">
+                      <SelectValue placeholder={lang === "ar" ? "اختر النموذج المرتبط..." : "Select Associated AI Model..."} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      <SelectItem value="default" className="text-xs font-semibold text-foreground">
+                        🌟 {lang === "ar" ? "الافتراضي لوكيل الدعم (Support AI Default)" : "Support AI Default Model"} ({quotaSettings?.aiModel || "gpt-4o-mini"})
+                      </SelectItem>
+                      {AI_PROVIDERS[quotaProviderInput]?.models.map((m) => (
+                        <SelectItem key={m.value} value={m.value} className="text-xs">
+                          <div className="flex items-center justify-between gap-3 w-full">
+                            <span className="font-medium">{m.label}</span>
+                            {m.free && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                                {lang === "ar" ? "مجاني" : "Free"}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom" className="text-xs text-blue-500 font-medium">
+                        ✏️ {lang === "ar" ? "إدخال معرف نموذج مخصص (Custom Model ID)..." : "Enter Custom Model ID..."}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {quotaIsCustomModel && (
+                    <div className="space-y-1 pt-1 animate-in fade-in">
+                      <Input
+                        type="text"
+                        value={quotaCustomModel}
+                        onChange={(e) => setQuotaCustomModel(e.target.value)}
+                        placeholder={
+                          quotaProviderInput === "openrouter"
+                            ? "e.g. google/gemini-2.5-flash or meta-llama/llama-3.3-70b-instruct"
+                            : quotaProviderInput === "google"
+                            ? "e.g. gemini-2.5-flash"
+                            : "e.g. gpt-4o"
+                        }
+                        className="h-8 text-xs font-mono"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {lang === "ar"
+                          ? "اكتب معرف النموذج بدقة كما يوفره المزود المختار."
+                          : "Enter the exact model identifier from the chosen provider."}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Effective model preview indicator */}
+                  <div className="text-[11px] px-2.5 py-1.5 rounded-md border bg-muted/30 border-border/40 flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      {lang === "ar" ? "النموذج النشط للعميل:" : "Assigned Model for this Company:"}
+                    </span>
+                    <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
+                      {quotaModelInput === "default"
+                        ? `${quotaSettings?.aiModel || "gpt-4o-mini"} (${lang === "ar" ? "افتراضي وكيل الدعم" : "Support AI Default"})`
+                        : quotaIsCustomModel
+                        ? quotaCustomModel.trim() || (lang === "ar" ? "مخصص (فارغ)" : "Custom (empty)")
+                        : quotaModelInput}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Start & End Dates */}
               <div className="space-y-2.5 pt-2 border-t border-border/40">
                 <div className="flex items-center justify-between">
@@ -2204,11 +2419,19 @@ export default function AdminAiQuota() {
                 )}
               </div>
 
-              {quotaTarget?.monthlyTokenQuota && (
+              {quotaTarget && (
                 <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg space-y-1">
                   <div className="flex items-center justify-between">
-                    <span>{lang === "ar" ? "الحصة الحالية:" : "Current Quota:"}</span>
-                    <span className="font-semibold text-foreground">{formatQuota(quotaTarget.monthlyTokenQuota)} tokens / month</span>
+                    <span>{lang === "ar" ? "الحصة المسجلة حالياً:" : "Current Quota:"}</span>
+                    <span className="font-semibold text-foreground">
+                      {quotaTarget.monthlyTokenQuota ? `${formatQuota(quotaTarget.monthlyTokenQuota)} tokens / month` : (lang === "ar" ? "غير محددة (غير محدود)" : "Unlimited")}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
+                    <span>{lang === "ar" ? "النموذج المسجل حالياً:" : "Current Saved Model:"}</span>
+                    <span className="font-mono text-foreground font-semibold">
+                      {quotaTarget.aiModel ? `${quotaTarget.aiModel} (${quotaTarget.aiProvider || "default"})` : (lang === "ar" ? "الافتراضي لوكيل الدعم" : "Support AI Default")}
+                    </span>
                   </div>
                   {(quotaTarget.quotaStartDate || quotaTarget.quotaEndDate) && (
                     <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
@@ -2961,8 +3184,8 @@ export default function AdminAiQuota() {
             const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
             const isExceeded = quota > 0 && totalTokens > quota;
             const remaining = quota > 0 ? Math.max(0, quota - totalTokens) : null;
-            const effectiveModel = (billTarget.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : billTarget.aiModel) || "gpt-4o-mini";
-            const effectiveProvider = (billTarget.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : billTarget.aiProvider) || "openai";
+            const effectiveModel = billTarget.aiModel || (billTarget.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : null) || "gpt-4o-mini";
+            const effectiveProvider = (billTarget.aiModel ? billTarget.aiProvider : null) || (billTarget.monthlyTokenQuota ? (quotaSettings?.aiProvider || usage?.provider) : billTarget.aiProvider) || "openai";
             const invoiceNumber = `INV-Q-${billTarget.id}-${toIso(new Date()).replace(/-/g, "")}`;
 
             return (
@@ -3366,7 +3589,7 @@ export default function AdminAiQuota() {
                   const cost = usage?.cost ?? 0;
                   const quota = c.monthlyTokenQuota ?? 0;
                   const pct = quota > 0 ? (tokens / quota) * 100 : 0;
-                  const effectiveModel = (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
+                  const effectiveModel = c.aiModel || (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : null) || "gpt-4o-mini";
 
                   return (
                     <tr key={c.id} className="hover:bg-muted/10 transition-colors">

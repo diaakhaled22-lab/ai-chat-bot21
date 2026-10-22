@@ -42,6 +42,7 @@ const FALLBACK_MODELS: AiModelCatalog = {
     free: isAnthropicFreeModel(id),
   })),
   google: [
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
@@ -52,6 +53,7 @@ const FALLBACK_MODELS: AiModelCatalog = {
   ].map((id) => ({ id, label: displayLabel(id), free: isGoogleFreeModel(id) })),
   openrouter: [
     "openrouter/free",
+    "google/gemini-2.5-flash:free",
     "google/gemma-4-31b-it:free",
     "nvidia/nemotron-3.5-lightning:free",
     "meta-llama/llama-3.3-70b-instruct:free",
@@ -61,6 +63,7 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "mistralai/mistral-7b-instruct:free",
     "qwen/qwen3-8b:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemini-2.5-flash",
     "deepseek/deepseek-v4-flash",
     "anthropic/claude-3.7-sonnet",
     "anthropic/claude-3.5-sonnet",
@@ -507,7 +510,8 @@ const COMMON_OPENROUTER_ALIASES: Record<string, string> = {
   // DeepSeek
   "deepseek-r1": "deepseek/deepseek-r1",
   "deepseek-v3": "deepseek/deepseek-v3",
-  "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek-v4-flash": "google/gemini-2.5-flash",
+    "deepseek/deepseek-v4-flash",
   "deepseek-chat": "deepseek/deepseek-chat",
   // Google
   "gemini-pro-1.5": "google/gemini-pro-1.5",
@@ -686,6 +690,7 @@ async function syncOpenRouter(): Promise<SyncedAiModel[]> {
   if (!models.some((m) => m.id === "openrouter/free")) {
     models.unshift({
       id: "openrouter/free",
+    "google/gemini-2.5-flash:free",
       label: "OpenRouter Free Auto (Recommended)",
       free: true,
     });
