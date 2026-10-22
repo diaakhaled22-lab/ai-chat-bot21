@@ -146,6 +146,14 @@ function formatQuota(num: number | null | undefined): string {
   return num.toLocaleString();
 }
 
+function formatCost(amount: number | null | undefined): string {
+  if (amount == null || isNaN(amount) || amount === 0) return "$0.0000";
+  if (amount > 0 && amount < 0.0001) {
+    return `$${amount.toFixed(6)}`;
+  }
+  return `$${amount.toFixed(4)}`;
+}
+
 type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent" | "startDate" | "endDate";
 type SortDir = "asc" | "desc";
 
@@ -387,10 +395,13 @@ function generateBillInvoiceCanvas(data: {
     currentY += 30;
   };
 
+  const inCost = data.totalTokens > 0 && data.cost > 0 ? (data.inputTokens / data.totalTokens) * data.cost : 0;
+  const outCost = data.totalTokens > 0 && data.cost > 0 ? (data.outputTokens / data.totalTokens) * data.cost : 0;
+
   drawRow("رسائل المحادثة (Total Messages)", `${data.messages.toLocaleString()} msgs`, "—");
-  drawRow("رموز المدخلات (Input Tokens)", `${data.inputTokens.toLocaleString()} tokens`, `$${(data.inputTokens * 0.00000015).toFixed(4)}`);
-  drawRow("رموز المخرجات (Output Tokens)", `${data.outputTokens.toLocaleString()} tokens`, `$${(data.outputTokens * 0.0000006).toFixed(4)}`);
-  drawRow("إجمالي الاستهلاك والتكلفة", `${data.totalTokens.toLocaleString()} tokens`, `$${data.cost.toFixed(4)} USD`, true);
+  drawRow("رموز المدخلات (Input Tokens)", `${data.inputTokens.toLocaleString()} tokens`, formatCost(inCost));
+  drawRow("رموز المخرجات (Output Tokens)", `${data.outputTokens.toLocaleString()} tokens`, formatCost(outCost));
+  drawRow("إجمالي الاستهلاك والتكلفة", `${data.totalTokens.toLocaleString()} tokens`, `${formatCost(data.cost)} USD`, true);
 
   currentY += 12;
   ctx.fillStyle = "#ecfdf5";
@@ -410,7 +421,7 @@ function generateBillInvoiceCanvas(data: {
   ctx.textAlign = "left";
   ctx.fillStyle = "#059669";
   ctx.font = "bold 22px monospace";
-  ctx.fillText(`$${data.cost.toFixed(4)}`, tableX + 16, currentY + 34);
+  ctx.fillText(formatCost(data.cost), tableX + 16, currentY + 34);
   ctx.font = "10px system-ui, sans-serif";
   ctx.fillText("USD", tableX + 16, currentY + 47);
 
@@ -1236,7 +1247,7 @@ export default function AdminAiQuota() {
       `${lang === "ar" ? "نسبة استهلاك الحصة" : "Quota Usage %"}: ${quota > 0 ? ((tokens / quota) * 100).toFixed(2) : 0}%`,
       `${lang === "ar" ? "الرموز المتبقية" : "Remaining Quota"}: ${quota > 0 ? Math.max(0, quota - tokens).toLocaleString() : "Unlimited"}`,
       `-----------------------------------------`,
-      `${lang === "ar" ? "إجمالي التكلفة التقديرية" : "Total Estimated Cost"}: $${cost.toFixed(4)} USD`,
+      `${lang === "ar" ? "إجمالي التكلفة التقديرية" : "Total Estimated Cost"}: ${formatCost(cost)} USD`,
     ].filter(Boolean).join("\n");
 
     navigator.clipboard.writeText(text);
@@ -1587,7 +1598,7 @@ export default function AdminAiQuota() {
               {totalTokensConsumedMonth.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              ${totalCostConsumedMonth.toFixed(4)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
+              {formatCost(totalCostConsumedMonth)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
             </p>
           </CardContent>
         </Card>
@@ -1932,7 +1943,7 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-emerald-500/90 font-medium">
-                          {hasQuota ? `$${cost.toFixed(4)}` : "—"}
+                          {hasQuota ? formatCost(cost) : "—"}
                         </td>
                         <td className="px-4 py-3">
                           {percentDisplay !== null ? (
@@ -2896,7 +2907,7 @@ export default function AdminAiQuota() {
                       <td className="p-3 text-right tabular-nums">{m.inputTokens.toLocaleString()}</td>
                       <td className="p-3 text-right tabular-nums">{m.outputTokens.toLocaleString()}</td>
                       <td className="p-3 text-right font-semibold text-emerald-400 tabular-nums">
-                        ${m.costUsd.toFixed(4)}
+                        {formatCost(m.costUsd)}
                       </td>
                     </tr>
                   ))
@@ -2918,7 +2929,7 @@ export default function AdminAiQuota() {
                       {modelCostBreakdown.reduce((acc, m) => acc + m.outputTokens, 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right text-emerald-400 tabular-nums">
-                      ${modelCostBreakdown.reduce((acc, m) => acc + m.costUsd, 0).toFixed(4)}
+                      {formatCost(modelCostBreakdown.reduce((acc, m) => acc + m.costUsd, 0))}
                     </td>
                   </tr>
                 )}
@@ -2944,6 +2955,8 @@ export default function AdminAiQuota() {
             const outputTokens = usage?.outputTokens ?? 0;
             const messages = usage?.messages ?? 0;
             const cost = usage?.cost ?? 0;
+            const inCost = totalTokens > 0 && cost > 0 ? (inputTokens / totalTokens) * cost : 0;
+            const outCost = totalTokens > 0 && cost > 0 ? (outputTokens / totalTokens) * cost : 0;
             const quota = billTarget.monthlyTokenQuota ?? 0;
             const percent = quota > 0 ? (totalTokens / quota) * 100 : 0;
             const isExceeded = quota > 0 && totalTokens > quota;
@@ -3117,8 +3130,8 @@ export default function AdminAiQuota() {
                           {lang === "ar" ? "رموز المدخلات (Input Tokens)" : "Input Tokens"}
                         </td>
                         <td className="px-3.5 py-2 text-right font-mono tabular-nums">{inputTokens.toLocaleString()} tokens</td>
-                        <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums">
-                          ${((inputTokens / 1_000_000) * (cost > 0 && totalTokens > 0 ? (cost / totalTokens) * 1_000_000 : 0)).toFixed(4)}
+                        <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums font-mono">
+                          {formatCost(inCost)}
                         </td>
                       </tr>
                       <tr>
@@ -3126,8 +3139,8 @@ export default function AdminAiQuota() {
                           {lang === "ar" ? "رموز المخرجات (Output Tokens)" : "Output Tokens"}
                         </td>
                         <td className="px-3.5 py-2 text-right font-mono tabular-nums">{outputTokens.toLocaleString()} tokens</td>
-                        <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums">
-                          ${((outputTokens / 1_000_000) * (cost > 0 && totalTokens > 0 ? (cost / totalTokens) * 1_000_000 : 0)).toFixed(4)}
+                        <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums font-mono">
+                          {formatCost(outCost)}
                         </td>
                       </tr>
                       <tr className="bg-muted/10 font-medium">
@@ -3137,8 +3150,8 @@ export default function AdminAiQuota() {
                         <td className="px-3.5 py-2 text-right font-mono tabular-nums font-bold text-foreground">
                           {totalTokens.toLocaleString()} tokens
                         </td>
-                        <td className="px-3.5 py-2 text-right font-bold text-emerald-400 tabular-nums">
-                          ${cost.toFixed(4)}
+                        <td className="px-3.5 py-2 text-right font-bold text-emerald-400 tabular-nums font-mono">
+                          {formatCost(cost)}
                         </td>
                       </tr>
                     </tbody>
@@ -3159,7 +3172,7 @@ export default function AdminAiQuota() {
                   </div>
                   <div className="text-right">
                     <span className="text-2xl font-black text-emerald-500 font-mono">
-                      ${cost.toFixed(4)}
+                      {formatCost(cost)}
                     </span>
                     <span className="text-[11px] text-muted-foreground block">USD</span>
                   </div>
@@ -3351,6 +3364,8 @@ export default function AdminAiQuota() {
                   const usage = companyUsageMap.get(c.id);
                   const tokens = usage?.tokens ?? 0;
                   const cost = usage?.cost ?? 0;
+            const inCost = totalTokens > 0 && cost > 0 ? (inputTokens / totalTokens) * cost : 0;
+            const outCost = totalTokens > 0 && cost > 0 ? (outputTokens / totalTokens) * cost : 0;
                   const quota = c.monthlyTokenQuota ?? 0;
                   const pct = quota > 0 ? (tokens / quota) * 100 : 0;
                   const effectiveModel = (c.monthlyTokenQuota ? (quotaSettings?.aiModel || usage?.model) : c.aiModel) || "gpt-4o-mini";
@@ -3375,7 +3390,7 @@ export default function AdminAiQuota() {
                         </span>
                       </td>
                       <td className="p-2.5 text-right font-bold text-emerald-400 font-mono">
-                        ${cost.toFixed(4)}
+                        {formatCost(cost)}
                       </td>
                       <td className="p-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -3419,7 +3434,7 @@ export default function AdminAiQuota() {
                     {totalAllocatedQuota > 0 ? `${((totalTokensConsumedMonth / totalAllocatedQuota) * 100).toFixed(1)}%` : "0%"}
                   </td>
                   <td className="p-2.5 text-right text-emerald-400 font-mono text-sm">
-                    ${totalCostConsumedMonth.toFixed(4)}
+                    {formatCost(totalCostConsumedMonth)}
                   </td>
                   <td></td>
                 </tr>

@@ -482,7 +482,9 @@ export default function ClientDashboard() {
                 filterMode === "quota"
                   ? (quota && quota > 0 ? fmt(Math.max(quota - totalTokens, 0)) : (lang === "ar" ? "غير محدد" : "None"))
                   : (data?.pricingPer1MTokens.input ?? 0) > 0
-                  ? `$${data!.estimatedCostUsd.toFixed(4)}`
+                  ? (data!.estimatedCostUsd > 0 && data!.estimatedCostUsd < 0.0001
+                      ? `$${data!.estimatedCostUsd.toFixed(6)}`
+                      : `$${data!.estimatedCostUsd.toFixed(4)}`)
                   : "—"
               }
               sub={

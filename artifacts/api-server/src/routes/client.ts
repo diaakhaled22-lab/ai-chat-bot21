@@ -1204,7 +1204,7 @@ router.get("/client/dashboard", async (req, res) => {
       totalMessages: logs.length,
       estimatedInputTokens: totalInputTokens,
       estimatedOutputTokens: totalOutputTokens,
-      estimatedCostUsd: Math.round(estimatedCostUsd * 10000) / 10000,
+      estimatedCostUsd: Math.round(estimatedCostUsd * 1000000) / 1000000,
       pricingPer1MTokens: modelPricing,
       byChannel: Object.entries(byChannelMap).map(([channel, d]) => ({ channel, ...d })),
       sentiments,
@@ -1437,7 +1437,7 @@ router.get("/client/api-tokens", async (req, res) => {
       estimatedInputTokens: totalInputTokens,
       estimatedOutputTokens: totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
-      estimatedCostUsd: Math.round(estimatedCostUsd * 10000) / 10000,
+      estimatedCostUsd: Math.round(estimatedCostUsd * 1000000) / 1000000,
       pricingPer1MTokens: modelPricing,
       byChannel: Object.entries(byChannelMap).map(([channel, data]) => {
         const cost =
@@ -1446,7 +1446,7 @@ router.get("/client/api-tokens", async (req, res) => {
         return {
           channel,
           ...data,
-          costUsd: Math.round(cost * 10000) / 10000,
+          costUsd: Math.round(cost * 1000000) / 1000000,
         };
       }),
     });

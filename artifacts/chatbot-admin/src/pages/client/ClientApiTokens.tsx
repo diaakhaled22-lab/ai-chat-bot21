@@ -342,7 +342,9 @@ export default function ClientApiTokens() {
               label={t("usage_stat_cost")}
               value={
                 hasModel
-                  ? `$${data!.estimatedCostUsd.toFixed(4)}`
+                  ? (data!.estimatedCostUsd > 0 && data!.estimatedCostUsd < 0.0001
+                      ? `$${data!.estimatedCostUsd.toFixed(6)}`
+                      : `$${data!.estimatedCostUsd.toFixed(4)}`)
                   : "—"
               }
               sub={

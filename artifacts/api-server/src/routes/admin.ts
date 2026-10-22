@@ -278,15 +278,15 @@ router.get("/admin/usage-cost", async (req, res) => {
     }
 
     const byCompanyList = Object.values(byCompany)
-      .map((c) => ({ ...c, costUsd: Math.round(c.costUsd * 10000) / 10000 }))
+      .map((c) => ({ ...c, costUsd: Math.round(c.costUsd * 1000000) / 1000000 }))
       .sort((a, b) => b.costUsd - a.costUsd);
 
     res.json({
       totalInputTokens,
       totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
-      totalCostUsd: Math.round(totalCostUsd * 10000) / 10000,
-      byModel: Object.values(byModel).map((m) => ({ ...m, costUsd: Math.round(m.costUsd * 10000) / 10000 })),
+      totalCostUsd: Math.round(totalCostUsd * 1000000) / 1000000,
+      byModel: Object.values(byModel).map((m) => ({ ...m, costUsd: Math.round(m.costUsd * 1000000) / 1000000 })),
       byCompany: byCompanyList,
     });
   } catch (err) {
@@ -1347,7 +1347,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           totalTokens: billData?.totalTokens ?? 0,
           quotaPercent: billData?.percent != null ? `${Number(billData.percent).toFixed(1)}%` : "0%",
           remainingTokens: billData?.remaining != null ? `${Number(billData.remaining).toLocaleString()} tokens` : "غير محدود",
-          totalCost: billData?.cost != null ? Number(billData.cost).toFixed(4) : "0.0000",
+          totalCost: billData?.cost != null ? (Number(billData.cost) > 0 && Number(billData.cost) < 0.0001 ? Number(billData.cost).toFixed(6) : Number(billData.cost).toFixed(4)) : "0.0000",
           hasImageAttachment: !!imageDataUrl,
         });
 
