@@ -944,6 +944,17 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       monthlyTokenQuota: quota,
     };
 
+    if (aiProvider !== undefined) {
+      updates.aiProvider = (aiProvider && typeof aiProvider === "string" && aiProvider.trim())
+        ? (aiProvider.trim() as any)
+        : null;
+    }
+    if (aiModel !== undefined) {
+      updates.aiModel = (aiModel && typeof aiModel === "string" && aiModel.trim())
+        ? aiModel.trim()
+        : null;
+    }
+
     // Quota Validity Period updates strictly quotaStartDate and quotaEndDate.
     // It must NEVER touch or overwrite subscription activationStart or activationEnd!
     const qStart = quotaStartDate !== undefined ? quotaStartDate : startDate;

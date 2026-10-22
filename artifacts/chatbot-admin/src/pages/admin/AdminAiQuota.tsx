@@ -745,18 +745,18 @@ export default function AdminAiQuota() {
           aiProvider,
         }),
       }),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data: any, variables) => {
       queryClient.setQueryData<Company[]>(["admin-companies"], (old) => {
         if (!old) return old;
         return old.map((c) =>
           c.id === variables.companyId
             ? {
                 ...c,
-                monthlyTokenQuota: variables.quota,
-                quotaStartDate: variables.quotaStartDate,
-                quotaEndDate: variables.quotaEndDate,
-                aiModel: variables.aiModel !== undefined ? (variables.aiModel ?? undefined) : c.aiModel,
-                aiProvider: variables.aiProvider !== undefined ? (variables.aiProvider ?? undefined) : c.aiProvider,
+                monthlyTokenQuota: data.monthlyTokenQuota !== undefined ? data.monthlyTokenQuota : variables.quota,
+                quotaStartDate: data.quotaStartDate !== undefined ? data.quotaStartDate : variables.quotaStartDate,
+                quotaEndDate: data.quotaEndDate !== undefined ? data.quotaEndDate : variables.quotaEndDate,
+                aiModel: data.aiModel !== undefined ? (data.aiModel ?? null) : (variables.aiModel ?? null),
+                aiProvider: data.aiProvider !== undefined ? (data.aiProvider ?? null) : (variables.aiProvider ?? null),
               }
             : c
         );
@@ -802,16 +802,9 @@ export default function AdminAiQuota() {
     setQuotaProviderInput(resolvedProvider);
 
     if (company.aiModel) {
-      const known = (AI_PROVIDERS[resolvedProvider]?.models || []).map((m) => m.value);
-      if (known.includes(company.aiModel)) {
-        setQuotaModelInput(company.aiModel);
-        setQuotaIsCustomModel(false);
-        setQuotaCustomModel("");
-      } else {
-        setQuotaModelInput("custom");
-        setQuotaIsCustomModel(true);
-        setQuotaCustomModel(company.aiModel);
-      }
+      setQuotaModelInput(company.aiModel);
+      setQuotaIsCustomModel(false);
+      setQuotaCustomModel("");
     } else {
       setQuotaModelInput("default");
       setQuotaIsCustomModel(false);
@@ -2254,6 +2247,12 @@ export default function AdminAiQuota() {
                       <SelectItem value="default" className="text-xs font-semibold text-foreground">
                         🌟 {lang === "ar" ? "الافتراضي لوكيل الدعم (Support AI Default)" : "Support AI Default Model"} ({quotaSettings?.aiModel || "gpt-4o-mini"})
                       </SelectItem>
+                      {quotaTarget?.aiModel &&
+                        !AI_PROVIDERS[quotaProviderInput]?.models.some((m) => m.value === quotaTarget.aiModel) && (
+                          <SelectItem value={quotaTarget.aiModel} className="text-xs font-mono text-purple-600 dark:text-purple-400 font-medium">
+                            💾 {quotaTarget.aiModel} ({lang === "ar" ? "النموذج المحفوظ حالياً" : "Current Saved Model"})
+                          </SelectItem>
+                        )}
                       {AI_PROVIDERS[quotaProviderInput]?.models.map((m) => (
                         <SelectItem key={m.value} value={m.value} className="text-xs">
                           <div className="flex items-center justify-between gap-3 w-full">
