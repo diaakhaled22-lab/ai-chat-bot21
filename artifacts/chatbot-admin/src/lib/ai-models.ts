@@ -133,3 +133,118 @@ export function mergeDynamicModels<T extends { value: string; label: string; fre
     return (a.label || a.value || "").localeCompare(b.label || b.value || "");
   });
 }
+
+export interface ModelPricingDetails {
+  inputPer1M: number;
+  outputPer1M: number;
+  blendedPer1M: number;
+  isFree: boolean;
+  rateLabel: string;
+}
+
+export const AI_MODEL_STANDARD_PRICES: Record<string, { input: number; output: number; blended: number }> = {
+  // Google
+  "gemini-2.5-flash": { input: 0.10, output: 0.40, blended: 0.25 },
+  "google/gemini-2.5-flash": { input: 0.10, output: 0.40, blended: 0.25 },
+  "google/gemini-2.5-flash:free": { input: 0, output: 0, blended: 0 },
+  "gemini-2.0-flash": { input: 0.10, output: 0.40, blended: 0.25 },
+  "gemini-2.0-flash-lite": { input: 0.075, output: 0.30, blended: 0.1875 },
+  "gemini-1.5-flash": { input: 0.075, output: 0.30, blended: 0.1875 },
+  "gemini-1.5-flash-8b": { input: 0.0375, output: 0.15, blended: 0.0938 },
+  "gemini-1.5-pro": { input: 1.25, output: 5.00, blended: 3.125 },
+  "gemini-2.5-pro": { input: 1.25, output: 5.00, blended: 3.125 },
+  "gemini-2.0-pro-exp-02-05": { input: 1.25, output: 5.00, blended: 3.125 },
+  "google/gemini-2.5-pro": { input: 1.25, output: 5.00, blended: 3.125 },
+  "google/gemini-pro-1.5": { input: 1.25, output: 5.00, blended: 3.125 },
+  "google/gemini-2.0-flash-001": { input: 0.10, output: 0.40, blended: 0.25 },
+
+  // OpenAI
+  "gpt-4o-mini": { input: 0.15, output: 0.60, blended: 0.375 },
+  "openai/gpt-4o-mini": { input: 0.15, output: 0.60, blended: 0.375 },
+  "gpt-3.5-turbo": { input: 0.50, output: 1.50, blended: 1.00 },
+  "o3-mini": { input: 1.10, output: 4.40, blended: 2.75 },
+  "openai/o3-mini": { input: 1.10, output: 4.40, blended: 2.75 },
+  "o1-mini": { input: 3.00, output: 12.00, blended: 7.50 },
+  "gpt-4o": { input: 2.50, output: 10.00, blended: 6.25 },
+  "openai/gpt-4o": { input: 2.50, output: 10.00, blended: 6.25 },
+  "chatgpt-4o-latest": { input: 5.00, output: 15.00, blended: 10.00 },
+  "gpt-4-turbo": { input: 10.00, output: 30.00, blended: 20.00 },
+  "gpt-4": { input: 30.00, output: 60.00, blended: 45.00 },
+  "o1": { input: 15.00, output: 60.00, blended: 37.50 },
+  "openai/o1": { input: 15.00, output: 60.00, blended: 37.50 },
+  "o3": { input: 15.00, output: 60.00, blended: 37.50 },
+
+  // Anthropic
+  "claude-3-5-haiku-20241022": { input: 0.80, output: 4.00, blended: 2.40 },
+  "claude-3-5-haiku": { input: 0.80, output: 4.00, blended: 2.40 },
+  "claude-3-haiku-20240307": { input: 0.25, output: 1.25, blended: 0.75 },
+  "claude-3-haiku": { input: 0.25, output: 1.25, blended: 0.75 },
+  "claude-3-7-sonnet-20250219": { input: 3.00, output: 15.00, blended: 9.00 },
+  "claude-3-7-sonnet": { input: 3.00, output: 15.00, blended: 9.00 },
+  "anthropic/claude-3.7-sonnet": { input: 3.00, output: 15.00, blended: 9.00 },
+  "claude-3-5-sonnet-20241022": { input: 3.00, output: 15.00, blended: 9.00 },
+  "claude-3-5-sonnet": { input: 3.00, output: 15.00, blended: 9.00 },
+  "anthropic/claude-3.5-sonnet": { input: 3.00, output: 15.00, blended: 9.00 },
+  "claude-3-opus-20240229": { input: 15.00, output: 75.00, blended: 45.00 },
+  "claude-3-opus": { input: 15.00, output: 75.00, blended: 45.00 },
+  "claude-3-sonnet-20240229": { input: 3.00, output: 15.00, blended: 9.00 },
+
+  // OpenRouter & Others
+  "deepseek/deepseek-v4-flash": { input: 0.14, output: 0.28, blended: 0.21 },
+  "deepseek/deepseek-v3": { input: 0.27, output: 1.10, blended: 0.685 },
+  "deepseek/deepseek-chat": { input: 0.27, output: 1.10, blended: 0.685 },
+  "deepseek/deepseek-r1": { input: 0.55, output: 2.19, blended: 1.37 },
+  "mistralai/mistral-large": { input: 2.00, output: 6.00, blended: 4.00 },
+  "meta-llama/llama-3.3-70b-instruct": { input: 0.12, output: 0.30, blended: 0.21 },
+  "qwen/qwen-2.5-72b-instruct": { input: 0.35, output: 0.40, blended: 0.375 },
+};
+
+export function getModelPricingDetails(modelId?: string | null): ModelPricingDetails {
+  if (!modelId) {
+    return { inputPer1M: 0.10, outputPer1M: 0.40, blendedPer1M: 0.25, isFree: true, rateLabel: "Free Tier" };
+  }
+  const clean = modelId.trim().toLowerCase();
+  if (clean.endsWith(":free") || clean === "openrouter/free" || clean.endsWith("/free")) {
+    return { inputPer1M: 0, outputPer1M: 0, blendedPer1M: 0, isFree: true, rateLabel: "Free ($0.00)" };
+  }
+
+  // Exact match
+  for (const [key, val] of Object.entries(AI_MODEL_STANDARD_PRICES)) {
+    if (key.toLowerCase() === clean) {
+      return {
+        inputPer1M: val.input,
+        outputPer1M: val.output,
+        blendedPer1M: val.blended,
+        isFree: val.blended === 0,
+        rateLabel: `$${val.blended.toFixed(val.blended < 0.1 ? 4 : 2)} / 1M tokens`,
+      };
+    }
+  }
+
+  // Prefix stripped match (e.g. "openai/gpt-4o" -> "gpt-4o")
+  const stripped = clean.replace(/^(openai|google|anthropic|models|deepseek|mistralai|meta-llama|qwen)\//i, "");
+  for (const [key, val] of Object.entries(AI_MODEL_STANDARD_PRICES)) {
+    if (key.toLowerCase() === stripped || key.toLowerCase().endsWith(`/${stripped}`)) {
+      return {
+        inputPer1M: val.input,
+        outputPer1M: val.output,
+        blendedPer1M: val.blended,
+        isFree: val.blended === 0,
+        rateLabel: `$${val.blended.toFixed(val.blended < 0.1 ? 4 : 2)} / 1M tokens`,
+      };
+    }
+  }
+
+  // Heuristics
+  if (stripped.includes("pro")) {
+    return { inputPer1M: 1.25, outputPer1M: 5.00, blendedPer1M: 3.125, isFree: false, rateLabel: "$3.125 / 1M tokens" };
+  }
+  if (stripped.includes("flash") || stripped.includes("mini") || stripped.includes("lite")) {
+    return { inputPer1M: 0.10, outputPer1M: 0.40, blendedPer1M: 0.25, isFree: false, rateLabel: "$0.25 / 1M tokens" };
+  }
+  if (stripped.includes("sonnet") || stripped.includes("gpt-4") || stripped.includes("opus")) {
+    return { inputPer1M: 3.00, outputPer1M: 15.00, blendedPer1M: 9.00, isFree: false, rateLabel: "$9.00 / 1M tokens" };
+  }
+
+  return { inputPer1M: 0.15, outputPer1M: 0.60, blendedPer1M: 0.375, isFree: false, rateLabel: "$0.375 / 1M tokens" };
+}
