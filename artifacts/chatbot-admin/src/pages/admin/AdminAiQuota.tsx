@@ -616,26 +616,29 @@ function formatTokenPrice(num: number): string {
   return clean;
 }
 
-const CUSTOM_RATES_STORAGE_KEY = "ai_custom_model_rates_per_token";
+const BASE_RATES_STORAGE_KEY = "ai_custom_model_rates_base_token";
+const TOPUP_RATES_STORAGE_KEY = "ai_custom_model_rates_topup_token";
 
-function getSavedCustomRates(): Record<string, number> {
+function getSavedCustomRates(scope: "base" | "topup" = "base"): Record<string, number> {
   try {
-    const s = localStorage.getItem(CUSTOM_RATES_STORAGE_KEY);
+    const key = scope === "base" ? BASE_RATES_STORAGE_KEY : TOPUP_RATES_STORAGE_KEY;
+    const s = localStorage.getItem(key);
     return s ? JSON.parse(s) : {};
   } catch {
     return {};
   }
 }
 
-function saveCustomRate(modelId: string, rate: number | null) {
+function saveCustomRate(modelId: string, rate: number | null, scope: "base" | "topup" = "base") {
   try {
-    const map = getSavedCustomRates();
+    const key = scope === "base" ? BASE_RATES_STORAGE_KEY : TOPUP_RATES_STORAGE_KEY;
+    const map = getSavedCustomRates(scope);
     if (rate === null || isNaN(rate)) {
       delete map[modelId];
     } else {
       map[modelId] = rate;
     }
-    localStorage.setItem(CUSTOM_RATES_STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(key, JSON.stringify(map));
   } catch {
     // ignore
   }
@@ -718,6 +721,8 @@ export default function AdminAiQuota() {
   const [quotaModalTab, setQuotaModalTab] = useState<"base" | "topup">("base");
   const [topupTokens, setTopupTokens] = useState<number>(50_000);
   const [topupPrice, setTopupPrice] = useState<string>("10.00");
+  const [topupPricePerToken, setTopupPricePerToken] = useState<string>("0.00000025");
+  const [isCustomTopupTokenRate, setIsCustomTopupTokenRate] = useState<boolean>(false);
   const [topupValidityChoice, setTopupValidityChoice] = useState<"keep" | "extend30" | "extend90" | "custom">("keep");
   const [topupCustomEndDate, setTopupCustomEndDate] = useState<string>("");
   const [topupNotes, setTopupNotes] = useState<string>("");
@@ -861,21 +866,25 @@ export default function AdminAiQuota() {
     const effectiveForPricing = initialModel === "default"
       ? (quotaSettings?.aiModel || "gemini-2.5-flash")
       : initialModel;
-    const { ratePerToken, isCustom } = resolveModelRate(effectiveForPricing);
-    setQuotaPricePerToken(formatTokenPrice(ratePerToken));
-    setIsCustomTokenRate(isCustom);
+    const { ratePerToken: baseRate, isCustom: baseCustom } = resolveModelRate(effectiveForPricing, "base");
+    setQuotaPricePerToken(formatTokenPrice(baseRate));
+    setIsCustomTokenRate(baseCustom);
 
     const initialTokens = company.monthlyTokenQuota ? Number(company.monthlyTokenQuota) : 0;
-    if (initialTokens > 0 && ratePerToken > 0) {
-      setQuotaPrice(formatPriceValue(initialTokens * ratePerToken));
+    if (initialTokens > 0 && baseRate > 0) {
+      setQuotaPrice(formatPriceValue(initialTokens * baseRate));
     } else {
       setQuotaPrice("0.00");
     }
 
+    const { ratePerToken: topupRate, isCustom: topupCustom } = resolveModelRate(effectiveForPricing, "topup");
+    setTopupPricePerToken(formatTokenPrice(topupRate));
+    setIsCustomTopupTokenRate(topupCustom);
+
     const initialTopupTokens = 50_000;
     setTopupTokens(initialTopupTokens);
-    if (ratePerToken > 0) {
-      setTopupPrice(formatPriceValue(initialTopupTokens * ratePerToken));
+    if (topupRate > 0) {
+      setTopupPrice(formatPriceValue(initialTopupTokens * topupRate));
     } else {
       setTopupPrice("10.00");
     }
@@ -889,8 +898,8 @@ export default function AdminAiQuota() {
       : quotaModelInput;
   };
 
-  const resolveModelRate = (modelId: string): { ratePerToken: number; isCustom: boolean } => {
-    const savedRates = getSavedCustomRates();
+  const resolveModelRate = (modelId: string, scope: "base" | "topup" = "base"): { ratePerToken: number; isCustom: boolean } => {
+    const savedRates = getSavedCustomRates(scope);
     if (typeof savedRates[modelId] === "number" && !isNaN(savedRates[modelId])) {
       return { ratePerToken: savedRates[modelId], isCustom: true };
     }
@@ -943,13 +952,9 @@ export default function AdminAiQuota() {
     setIsCustomTokenRate(true);
     const rate = Number(clean) || 0;
     const modelId = getEffectiveModelId();
-    saveCustomRate(modelId, rate);
+    saveCustomRate(modelId, rate, "base");
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, rate));
-
-    if (topupTokens > 0 && rate > 0) {
-      setTopupPrice(formatPriceValue(topupTokens * rate));
-    }
   };
 
   const resetTokenRateToStandard = () => {
@@ -958,24 +963,49 @@ export default function AdminAiQuota() {
     const stdRate = pr.isFree ? 0 : pr.pricePerToken;
     setQuotaPricePerToken(formatTokenPrice(stdRate));
     setIsCustomTokenRate(false);
-    saveCustomRate(modelId, null);
+    saveCustomRate(modelId, null, "base");
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, stdRate));
+  };
 
+  const handleTopupTokenRateChange = (newRateStr: string) => {
+    const clean = newRateStr.replace(/[^0-9.]/g, "");
+    setTopupPricePerToken(clean);
+    setIsCustomTopupTokenRate(true);
+    const rate = Number(clean) || 0;
+    const modelId = getEffectiveModelId();
+    saveCustomRate(modelId, rate, "topup");
+    if (topupTokens > 0 && rate > 0) {
+      setTopupPrice(formatPriceValue(topupTokens * rate));
+    }
+  };
+
+  const resetTopupTokenRateToStandard = () => {
+    const modelId = getEffectiveModelId();
+    const pr = getModelPricingDetails(modelId);
+    const stdRate = pr.isFree ? 0 : pr.pricePerToken;
+    setTopupPricePerToken(formatTokenPrice(stdRate));
+    setIsCustomTopupTokenRate(false);
+    saveCustomRate(modelId, null, "topup");
     if (topupTokens > 0 && stdRate > 0) {
       setTopupPrice(formatPriceValue(topupTokens * stdRate));
     }
   };
 
   const syncModelChangePricing = (targetModelId: string) => {
-    const { ratePerToken, isCustom } = resolveModelRate(targetModelId);
-    setQuotaPricePerToken(formatTokenPrice(ratePerToken));
-    setIsCustomTokenRate(isCustom);
+    const { ratePerToken: baseRate, isCustom: baseCustom } = resolveModelRate(targetModelId, "base");
+    setQuotaPricePerToken(formatTokenPrice(baseRate));
+    setIsCustomTokenRate(baseCustom);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
-    setQuotaPrice(syncPriceFromTokens(tokens, ratePerToken));
+    setQuotaPrice(syncPriceFromTokens(tokens, baseRate));
 
-    if (topupTokens > 0 && ratePerToken > 0) {
-      setTopupPrice(formatPriceValue(topupTokens * ratePerToken));
+    if (!isCustomTopupTokenRate) {
+      const { ratePerToken: topupRate, isCustom: topupCustom } = resolveModelRate(targetModelId, "topup");
+      setTopupPricePerToken(formatTokenPrice(topupRate));
+      setIsCustomTopupTokenRate(topupCustom);
+      if (topupTokens > 0 && topupRate > 0) {
+        setTopupPrice(formatPriceValue(topupTokens * topupRate));
+      }
     }
   };
 
@@ -2850,16 +2880,16 @@ export default function AdminAiQuota() {
                   </div>
                 </div>
 
-                {/* Interactive Model Base Rate Editor (Per 1 Token) */}
+                {/* Interactive Model Base Rate Editor (Per 1 Token) - Dedicated for Top-up */}
                 <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <Label htmlFor="topup-token-rate" className="text-xs font-semibold flex items-center gap-1 text-foreground">
                       <Coins className="w-3.5 h-3.5 text-amber-500" />
                       {lang === "ar" ? "التحكم في سعر الرمز (لكل 1 توكن):" : "Control Price per 1 Token:"}
                     </Label>
-                    {isCustomTokenRate && (
+                    {isCustomTopupTokenRate && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
-                        {lang === "ar" ? "سعر مخصص" : "Custom Rate"}
+                        {lang === "ar" ? "سعر مخصص للشحن" : "Custom Top-up Rate"}
                       </span>
                     )}
                   </div>
@@ -2870,8 +2900,8 @@ export default function AdminAiQuota() {
                       <Input
                         id="topup-token-rate"
                         type="text"
-                        value={quotaPricePerToken}
-                        onChange={(e) => handleTokenRateChange(e.target.value)}
+                        value={topupPricePerToken}
+                        onChange={(e) => handleTopupTokenRateChange(e.target.value)}
                         className="h-8 pl-6 pr-14 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
                         placeholder="0.00000025"
                       />
@@ -2880,18 +2910,18 @@ export default function AdminAiQuota() {
                       </span>
                     </div>
 
-                    {Number(quotaPricePerToken) > 0 && (
+                    {Number(topupPricePerToken) > 0 && (
                       <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                        ≈ ${(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                        ≈ ${(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
                       </span>
                     )}
 
-                    {isCustomTokenRate && (
+                    {isCustomTopupTokenRate && (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={resetTokenRateToStandard}
+                        onClick={resetTopupTokenRateToStandard}
                         className="h-8 text-[11px] px-2 text-muted-foreground hover:text-foreground"
                         title={lang === "ar" ? "استعادة السعر القياسي للنموذج" : "Reset to model standard rate"}
                       >
@@ -2925,7 +2955,7 @@ export default function AdminAiQuota() {
                         }`}
                         onClick={() => {
                           setTopupTokens(p.tokens);
-                          const rate = Number(quotaPricePerToken) || 0;
+                          const rate = Number(topupPricePerToken) || 0;
                           if (rate > 0) {
                             setTopupPrice(formatPriceValue(p.tokens * rate));
                           } else {
@@ -2955,7 +2985,7 @@ export default function AdminAiQuota() {
                       onChange={(e) => {
                         const num = Number(e.target.value.replace(/[^0-9]/g, ""));
                         setTopupTokens(num);
-                        const rate = Number(quotaPricePerToken) || 0;
+                        const rate = Number(topupPricePerToken) || 0;
                         if (rate > 0 && num > 0) {
                           setTopupPrice(formatPriceValue(num * rate));
                         }
@@ -3015,11 +3045,11 @@ export default function AdminAiQuota() {
                     {((quotaTarget?.monthlyTokenQuota || 0) + topupTokens).toLocaleString()} tokens ({formatQuota((quotaTarget?.monthlyTokenQuota || 0) + topupTokens)})
                   </span>
                 </div>
-                {Number(quotaPricePerToken) > 0 && topupTokens > 0 && (
+                {Number(topupPricePerToken) > 0 && topupTokens > 0 && (
                   <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[10px] text-muted-foreground font-mono">
                     <span>{lang === "ar" ? "معادلة الحساب للرموز المضافة:" : "Top-up cost formula:"}</span>
                     <span>
-                      {topupTokens.toLocaleString()} tokens × ${Number(quotaPricePerToken || 0).toFixed(8)} / token
+                      {topupTokens.toLocaleString()} tokens × ${Number(topupPricePerToken || 0).toFixed(8)} / token
                     </span>
                   </div>
                 )}
