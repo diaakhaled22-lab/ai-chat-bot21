@@ -871,6 +871,14 @@ export default function AdminAiQuota() {
     } else {
       setQuotaPrice("0.00");
     }
+
+    const initialTopupTokens = 50_000;
+    setTopupTokens(initialTopupTokens);
+    if (ratePerToken > 0) {
+      setTopupPrice(formatPriceValue(initialTopupTokens * ratePerToken));
+    } else {
+      setTopupPrice("10.00");
+    }
   };
 
   const getEffectiveModelId = () => {
@@ -938,6 +946,10 @@ export default function AdminAiQuota() {
     saveCustomRate(modelId, rate);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, rate));
+
+    if (topupTokens > 0 && rate > 0) {
+      setTopupPrice(formatPriceValue(topupTokens * rate));
+    }
   };
 
   const resetTokenRateToStandard = () => {
@@ -949,6 +961,10 @@ export default function AdminAiQuota() {
     saveCustomRate(modelId, null);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, stdRate));
+
+    if (topupTokens > 0 && stdRate > 0) {
+      setTopupPrice(formatPriceValue(topupTokens * stdRate));
+    }
   };
 
   const syncModelChangePricing = (targetModelId: string) => {
@@ -957,6 +973,10 @@ export default function AdminAiQuota() {
     setIsCustomTokenRate(isCustom);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, ratePerToken));
+
+    if (topupTokens > 0 && ratePerToken > 0) {
+      setTopupPrice(formatPriceValue(topupTokens * ratePerToken));
+    }
   };
 
   const handleSaveQuota = () => {
@@ -2798,6 +2818,91 @@ export default function AdminAiQuota() {
                 );
               })()}
 
+              {/* Assigned Model & Control Price per 1 Token (Top-up Section) */}
+              <div className="p-2.5 rounded-lg border bg-muted/40 border-border/60 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground font-medium">
+                      {lang === "ar" ? "النموذج النشط للعميل:" : "Assigned Model:"}
+                    </span>
+                    <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
+                      {quotaModelInput === "default"
+                        ? `${quotaSettings?.aiModel || "gpt-4o-mini"} (${lang === "ar" ? "افتراضي وكيل الدعم" : "Support AI Default"})`
+                        : quotaIsCustomModel
+                        ? quotaCustomModel.trim() || (lang === "ar" ? "مخصص (فارغ)" : "Custom (empty)")
+                        : quotaModelInput}
+                    </span>
+                  </div>
+
+                  {/* Catalog Reference Info */}
+                  <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 self-end sm:self-auto">
+                    {currentModelPricing.isFree ? (
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                        {lang === "ar" ? "نموذج مجاني ($0.00)" : "Free Tier Model ($0.00)"}
+                      </span>
+                    ) : (
+                      <span>
+                        {lang === "ar" ? "السعر القياسي للمزود:" : "Provider Standard:"}{" "}
+                        <strong className="text-foreground">${currentModelPricing.pricePerToken.toFixed(8)}</strong> / token
+                        <span className="text-[9px] text-muted-foreground ml-1">(${currentModelPricing.blendedPer1M.toFixed(2)}/1M)</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Interactive Model Base Rate Editor (Per 1 Token) */}
+                <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="topup-token-rate" className="text-xs font-semibold flex items-center gap-1 text-foreground">
+                      <Coins className="w-3.5 h-3.5 text-amber-500" />
+                      {lang === "ar" ? "التحكم في سعر الرمز (لكل 1 توكن):" : "Control Price per 1 Token:"}
+                    </Label>
+                    {isCustomTokenRate && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
+                        {lang === "ar" ? "سعر مخصص" : "Custom Rate"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <div className="relative w-44">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                      <Input
+                        id="topup-token-rate"
+                        type="text"
+                        value={quotaPricePerToken}
+                        onChange={(e) => handleTokenRateChange(e.target.value)}
+                        className="h-8 pl-6 pr-14 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
+                        placeholder="0.00000025"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
+                        / token
+                      </span>
+                    </div>
+
+                    {Number(quotaPricePerToken) > 0 && (
+                      <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
+                        ≈ ${(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                      </span>
+                    )}
+
+                    {isCustomTokenRate && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={resetTokenRateToStandard}
+                        className="h-8 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                        title={lang === "ar" ? "استعادة السعر القياسي للنموذج" : "Reset to model standard rate"}
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" />
+                        {lang === "ar" ? "استعادة القياسي" : "Reset"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Quick Presets */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold flex items-center justify-between">
@@ -2820,7 +2925,12 @@ export default function AdminAiQuota() {
                         }`}
                         onClick={() => {
                           setTopupTokens(p.tokens);
-                          setTopupPrice(p.defaultPrice);
+                          const rate = Number(quotaPricePerToken) || 0;
+                          if (rate > 0) {
+                            setTopupPrice(formatPriceValue(p.tokens * rate));
+                          } else {
+                            setTopupPrice(p.defaultPrice);
+                          }
                         }}
                       >
                         <span>{p.label}</span>
@@ -2845,6 +2955,10 @@ export default function AdminAiQuota() {
                       onChange={(e) => {
                         const num = Number(e.target.value.replace(/[^0-9]/g, ""));
                         setTopupTokens(num);
+                        const rate = Number(quotaPricePerToken) || 0;
+                        if (rate > 0 && num > 0) {
+                          setTopupPrice(formatPriceValue(num * rate));
+                        }
                       }}
                       className="h-8 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400"
                       placeholder="50,000"
@@ -2901,6 +3015,14 @@ export default function AdminAiQuota() {
                     {((quotaTarget?.monthlyTokenQuota || 0) + topupTokens).toLocaleString()} tokens ({formatQuota((quotaTarget?.monthlyTokenQuota || 0) + topupTokens)})
                   </span>
                 </div>
+                {Number(quotaPricePerToken) > 0 && topupTokens > 0 && (
+                  <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[10px] text-muted-foreground font-mono">
+                    <span>{lang === "ar" ? "معادلة الحساب للرموز المضافة:" : "Top-up cost formula:"}</span>
+                    <span>
+                      {topupTokens.toLocaleString()} tokens × ${Number(quotaPricePerToken || 0).toFixed(8)} / token
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Validity Extension Choice */}
