@@ -138,8 +138,26 @@ export interface ModelPricingDetails {
   inputPer1M: number;
   outputPer1M: number;
   blendedPer1M: number;
+  pricePerToken: number;
+  inputPerToken: number;
+  outputPerToken: number;
   isFree: boolean;
   rateLabel: string;
+}
+
+function makePricingDetails(input: number, output: number, blended: number, isFreeOverride?: boolean): ModelPricingDetails {
+  const isFree = isFreeOverride !== undefined ? isFreeOverride : blended === 0;
+  const pricePerToken = blended / 1_000_000;
+  return {
+    inputPer1M: input,
+    outputPer1M: output,
+    blendedPer1M: blended,
+    pricePerToken,
+    inputPerToken: input / 1_000_000,
+    outputPerToken: output / 1_000_000,
+    isFree,
+    rateLabel: isFree ? "Free ($0.00)" : `$${pricePerToken.toFixed(8)} / token ($${blended.toFixed(2)}/1M)`,
+  };
 }
 
 export const AI_MODEL_STANDARD_PRICES: Record<string, { input: number; output: number; blended: number }> = {
@@ -201,23 +219,17 @@ export const AI_MODEL_STANDARD_PRICES: Record<string, { input: number; output: n
 
 export function getModelPricingDetails(modelId?: string | null): ModelPricingDetails {
   if (!modelId) {
-    return { inputPer1M: 0.10, outputPer1M: 0.40, blendedPer1M: 0.25, isFree: true, rateLabel: "Free Tier" };
+    return makePricingDetails(0.10, 0.40, 0.25, true);
   }
   const clean = modelId.trim().toLowerCase();
   if (clean.endsWith(":free") || clean === "openrouter/free" || clean.endsWith("/free")) {
-    return { inputPer1M: 0, outputPer1M: 0, blendedPer1M: 0, isFree: true, rateLabel: "Free ($0.00)" };
+    return makePricingDetails(0, 0, 0, true);
   }
 
   // Exact match
   for (const [key, val] of Object.entries(AI_MODEL_STANDARD_PRICES)) {
     if (key.toLowerCase() === clean) {
-      return {
-        inputPer1M: val.input,
-        outputPer1M: val.output,
-        blendedPer1M: val.blended,
-        isFree: val.blended === 0,
-        rateLabel: `$${val.blended.toFixed(val.blended < 0.1 ? 4 : 2)} / 1M tokens`,
-      };
+      return makePricingDetails(val.input, val.output, val.blended);
     }
   }
 
@@ -225,26 +237,20 @@ export function getModelPricingDetails(modelId?: string | null): ModelPricingDet
   const stripped = clean.replace(/^(openai|google|anthropic|models|deepseek|mistralai|meta-llama|qwen)\//i, "");
   for (const [key, val] of Object.entries(AI_MODEL_STANDARD_PRICES)) {
     if (key.toLowerCase() === stripped || key.toLowerCase().endsWith(`/${stripped}`)) {
-      return {
-        inputPer1M: val.input,
-        outputPer1M: val.output,
-        blendedPer1M: val.blended,
-        isFree: val.blended === 0,
-        rateLabel: `$${val.blended.toFixed(val.blended < 0.1 ? 4 : 2)} / 1M tokens`,
-      };
+      return makePricingDetails(val.input, val.output, val.blended);
     }
   }
 
   // Heuristics
   if (stripped.includes("pro")) {
-    return { inputPer1M: 1.25, outputPer1M: 5.00, blendedPer1M: 3.125, isFree: false, rateLabel: "$3.125 / 1M tokens" };
+    return makePricingDetails(1.25, 5.00, 3.125);
   }
   if (stripped.includes("flash") || stripped.includes("mini") || stripped.includes("lite")) {
-    return { inputPer1M: 0.10, outputPer1M: 0.40, blendedPer1M: 0.25, isFree: false, rateLabel: "$0.25 / 1M tokens" };
+    return makePricingDetails(0.10, 0.40, 0.25);
   }
   if (stripped.includes("sonnet") || stripped.includes("gpt-4") || stripped.includes("opus")) {
-    return { inputPer1M: 3.00, outputPer1M: 15.00, blendedPer1M: 9.00, isFree: false, rateLabel: "$9.00 / 1M tokens" };
+    return makePricingDetails(3.00, 15.00, 9.00);
   }
 
-  return { inputPer1M: 0.15, outputPer1M: 0.60, blendedPer1M: 0.375, isFree: false, rateLabel: "$0.375 / 1M tokens" };
+  return makePricingDetails(0.15, 0.60, 0.375);
 }
