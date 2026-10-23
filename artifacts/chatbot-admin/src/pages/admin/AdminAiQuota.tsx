@@ -2560,7 +2560,7 @@ export default function AdminAiQuota() {
 
       {/* Quota Modal */}
       <Dialog open={!!quotaTarget} onOpenChange={(open) => !open && setQuotaTarget(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl sm:max-w-3xl w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-hidden p-5 sm:p-7">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -2636,7 +2636,7 @@ export default function AdminAiQuota() {
                 </div>
 
                 {/* AI Type / Provider Buttons */}
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(
                     [
                       { key: "google", label: "Google Gemini", icon: "🔵" },
@@ -2653,7 +2653,7 @@ export default function AdminAiQuota() {
                         type="button"
                         size="sm"
                         variant={isSelected ? "default" : "outline"}
-                        className={`h-8 px-2 text-xs flex items-center justify-center gap-1 font-medium relative transition-all ${
+                        className={`h-8.5 px-2.5 text-xs flex items-center justify-center gap-1.5 font-medium relative transition-all ${
                           isSelected
                             ? "shadow-sm ring-1 ring-primary/40 font-semibold"
                             : "hover:bg-muted/70 text-muted-foreground"
@@ -2671,8 +2671,8 @@ export default function AdminAiQuota() {
                           }
                         }}
                       >
-                        <span className="text-xs">{p.icon}</span>
-                        <span className="truncate">{p.label}</span>
+                        <span className="text-xs shrink-0">{p.icon}</span>
+                        <span className="whitespace-nowrap">{p.label}</span>
                         {isSupportAiActive && (
                           <span
                             className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background"
@@ -2844,7 +2844,7 @@ export default function AdminAiQuota() {
 
                         {Number(quotaPricePerToken) > 0 && (
                           <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                            ≈ {CURRENCIES[selectedCurrency].symbol}${(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                            ≈ {CURRENCIES[selectedCurrency].symbol}{(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
                           </span>
                         )}
 
@@ -2986,9 +2986,9 @@ export default function AdminAiQuota() {
                     <span className="font-mono text-[11px] text-foreground/80">
                       {Number(quotaInput) > 0 ? (
                         <>
-                          {Number(quotaInput).toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}${Number(quotaPricePerToken || 0).toFixed(8)} / token ={" "}
+                          {Number(quotaInput).toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}{Number(quotaPricePerToken || 0).toFixed(8)} / token ={" "}
                           <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
-                            {CURRENCIES[selectedCurrency].symbol}${quotaPrice} {CURRENCIES[selectedCurrency].code}
+                            {CURRENCIES[selectedCurrency].symbol}{quotaPrice} {CURRENCIES[selectedCurrency].code}
                           </strong>
                         </>
                       ) : (
@@ -3237,7 +3237,7 @@ export default function AdminAiQuota() {
 
                     {Number(topupPricePerToken) > 0 && (
                       <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                        ≈ {CURRENCIES[selectedCurrency].symbol}${(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                        ≈ {CURRENCIES[selectedCurrency].symbol}{(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
                       </span>
                     )}
 
@@ -3375,7 +3375,7 @@ export default function AdminAiQuota() {
                   <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[10px] text-muted-foreground font-mono">
                     <span>{lang === "ar" ? "معادلة الحساب للرموز المضافة:" : "Top-up cost formula:"}</span>
                     <span>
-                      {topupTokens.toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}${Number(topupPricePerToken || 0).toFixed(8)} / token
+                      {topupTokens.toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}{Number(topupPricePerToken || 0).toFixed(8)} / token
                     </span>
                   </div>
                 )}
@@ -3520,7 +3520,7 @@ export default function AdminAiQuota() {
 
       {/* Top-up Invoice Modal */}
       <Dialog open={!!topupInvoice} onOpenChange={(open) => !open && setTopupInvoice(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl sm:max-w-2xl w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
               <Receipt className="w-5 h-5" />
@@ -3678,7 +3678,7 @@ export default function AdminAiQuota() {
 
       {/* Assign New Quota Modal */}
       <Dialog open={isAssignNewOpen} onOpenChange={setIsAssignNewOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl sm:max-w-xl w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-400" />
@@ -3961,7 +3961,7 @@ export default function AdminAiQuota() {
 
       {/* Individual Client Quota Bill Modal */}
       <Dialog open={!!billTarget} onOpenChange={(open) => !open && setBillTarget(null)}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl sm:max-w-3xl w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-hidden">
           {billTarget && (() => {
             const usage = companyUsageMap.get(billTarget.id);
             const totalTokens = usage?.tokens ?? 0;
@@ -4326,7 +4326,7 @@ export default function AdminAiQuota() {
 
       {/* All Client Bills Summary Modal */}
       <Dialog open={showAllBillsModal} onOpenChange={setShowAllBillsModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl sm:max-w-5xl w-[96vw] max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader className="border-b border-border/50 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <DialogTitle className="flex items-center gap-2 text-lg font-bold">
