@@ -135,23 +135,23 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   USD: {
     code: "USD",
     symbol: "$",
-    nameAr: "دولار أمريكي",
+    nameAr: "USD",
     nameEn: "US Dollar",
     flag: "🇺🇸",
     exchangeRate: 1.0,
   },
   SAR: {
     code: "SAR",
-    symbol: "ر.س",
-    nameAr: "ريال سعودي",
+    symbol: "SAR",
+    nameAr: "SAR",
     nameEn: "Saudi Riyal",
     flag: "🇸🇦",
     exchangeRate: 3.75,
   },
   EGP: {
     code: "EGP",
-    symbol: "ج.م",
-    nameAr: "جنيه مصري",
+    symbol: "EGP",
+    nameAr: "EGP",
     nameEn: "Egyptian Pound",
     flag: "🇪🇬",
     exchangeRate: 48.50,
@@ -199,12 +199,13 @@ function formatQuota(num: number | null | undefined): string {
 
 function formatCost(amount: number | null | undefined, currency: CurrencyCode = "USD"): string {
   const cfg = CURRENCIES[currency] || CURRENCIES.USD;
-  if (amount == null || isNaN(amount) || amount === 0) return `${cfg.symbol}0.0000 ${cfg.code}`;
+  const prefix = cfg.code === "USD" ? "$" : "";
+  if (amount == null || isNaN(amount) || amount === 0) return `${prefix}0.0000 ${cfg.code}`;
   const converted = amount * cfg.exchangeRate;
   if (converted > 0 && converted < 0.0001) {
-    return `${cfg.symbol}${converted.toFixed(6)} ${cfg.code}`;
+    return `${prefix}${converted.toFixed(6)} ${cfg.code}`;
   }
-  return `${cfg.symbol}${converted.toFixed(4)} ${cfg.code}`;
+  return `${prefix}${converted.toFixed(4)} ${cfg.code}`;
 }
 
 type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent" | "startDate" | "endDate";
@@ -606,7 +607,7 @@ function generateTopupInvoiceCanvas(data: TopupInvoiceData): string {
     currentY += 32;
   };
 
-  drawRow("⚡ الباقة المضافة (Top-up Tokens)", `+${data.addedTokens.toLocaleString()}`, `${invCurr.symbol}${data.price.toFixed(2)} ${invCurr.code}`, true);
+  drawRow("⚡ الباقة المضافة (Top-up Tokens)", `+${data.addedTokens.toLocaleString()}`, `${invCurr.code === "USD" ? "$" : ""}${data.price.toFixed(2)} ${invCurr.code}`, true);
   drawRow("الحصة الشهرية السابقة (Previous Quota)", `${data.previousQuota.toLocaleString()}`, "—");
   drawRow("الحصة الإجمالية الجديدة (New Total Quota)", `${data.newTotalQuota.toLocaleString()}`, "مفعلة ✅");
 
@@ -628,7 +629,7 @@ function generateTopupInvoiceCanvas(data: TopupInvoiceData): string {
   ctx.textAlign = "left";
   ctx.fillStyle = "#059669";
   ctx.font = "bold 22px monospace";
-  ctx.fillText(`${invCurr.symbol}${data.price.toFixed(2)}`, tableX + 16, currentY + 34);
+  ctx.fillText(`${invCurr.code === "USD" ? "$" : ""}${data.price.toFixed(2)}`, tableX + 16, currentY + 34);
   ctx.font = "10px system-ui, sans-serif";
   ctx.fillText(invCurr.code, tableX + 16, currentY + 47);
 
@@ -1296,7 +1297,7 @@ export default function AdminAiQuota() {
       `${lang === "ar" ? "الحصة الإجمالية الجديدة" : "New Total Quota"}: ${topupInvoice.newTotalQuota.toLocaleString()} tokens`,
       topupInvoice.newEndDate ? `${lang === "ar" ? "تاريخ انتهاء الصلاحية" : "Valid Until"}: ${topupInvoice.newEndDate}` : "",
       `-----------------------------------------`,
-      `${lang === "ar" ? "المبلغ الإجمالي" : "Total Paid"}: ${CURRENCIES[topupInvoice.currency as CurrencyCode || "USD"]?.symbol || "$"}${topupInvoice.price.toFixed(2)} ${topupInvoice.currency}`,
+      `${lang === "ar" ? "المبلغ الإجمالي" : "Total Paid"}: ${topupInvoice.currency === "USD" ? "$" : ""}${topupInvoice.price.toFixed(2)} ${topupInvoice.currency}`,
       topupInvoice.notes ? `${lang === "ar" ? "ملاحظات" : "Notes"}: ${topupInvoice.notes}` : "",
     ].filter(Boolean).join("\n");
 
@@ -2203,7 +2204,7 @@ export default function AdminAiQuota() {
                 <DropdownMenuSeparator />
 
                 <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground">
-                  {lang === "ar" ? "عملة التسعير" : "Currency"}: {CURRENCIES[selectedCurrency].flag} {CURRENCIES[selectedCurrency].code} ({CURRENCIES[selectedCurrency].symbol})
+                  {lang === "ar" ? "عملة التسعير" : "Currency"}: {CURRENCIES[selectedCurrency].flag} {CURRENCIES[selectedCurrency].code}
                 </DropdownMenuLabel>
                 {(["USD", "SAR", "EGP"] as CurrencyCode[]).map((cCode) => {
                   const c = CURRENCIES[cCode];
@@ -2215,8 +2216,8 @@ export default function AdminAiQuota() {
                       className={`text-xs cursor-pointer gap-2 py-1.5 ${isCurActive ? "font-bold text-primary bg-primary/10" : ""}`}
                     >
                       <span>{c.flag}</span>
-                      <span className="flex-1">{lang === "ar" ? c.nameAr : c.nameEn}</span>
-                      <span className="font-mono text-muted-foreground">{c.code} ({c.symbol})</span>
+                      <span className="flex-1 font-mono font-bold">{c.code}</span>
+                      <span className="text-[11px] text-muted-foreground">{c.nameEn}</span>
                       {isCurActive && <Check className="w-3.5 h-3.5 text-primary ml-auto" />}
                     </DropdownMenuItem>
                   );
@@ -2315,7 +2316,7 @@ export default function AdminAiQuota() {
                     onClick={() => toggleSort("cost")}
                   >
                     <span className="inline-flex items-center justify-end gap-1">
-                      {lang === "ar" ? `التكلفة (${CURRENCIES[selectedCurrency].symbol})` : `Cost (${CURRENCIES[selectedCurrency].code})`} <SortIcon col="cost" sortKey={sortKey} sortDir={sortDir} />
+                      {lang === "ar" ? `التكلفة (${CURRENCIES[selectedCurrency].code})` : `Cost (${CURRENCIES[selectedCurrency].code})`} <SortIcon col="cost" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </th>
                   <th 
@@ -2588,15 +2589,14 @@ export default function AdminAiQuota() {
                     key={cCode}
                     type="button"
                     onClick={() => handleCurrencyChange(cCode)}
-                    className={`px-2.5 py-1 text-xs rounded font-medium transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1 text-xs rounded font-medium transition-all flex items-center gap-1.5 ${
                       active
                         ? "bg-primary text-primary-foreground shadow-xs font-bold"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
                     <span>{c.flag}</span>
-                    <span>{c.code}</span>
-                    <span className="text-[10px] opacity-80">({c.symbol})</span>
+                    <span className="font-semibold">{c.code}</span>
                   </button>
                 );
               })}
@@ -2800,13 +2800,13 @@ export default function AdminAiQuota() {
                       <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 self-end sm:self-auto">
                         {currentModelPricing.isFree ? (
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                            {lang === "ar" ? `نموذج مجاني (${CURRENCIES[selectedCurrency].symbol}0.00)` : `Free Tier Model (${CURRENCIES[selectedCurrency].symbol}0.00)`}
+                            {lang === "ar" ? `نموذج مجاني (${CURRENCIES[selectedCurrency].code} 0.00)` : `Free Tier Model (${CURRENCIES[selectedCurrency].code} 0.00)`}
                           </span>
                         ) : (
                           <span>
                             {lang === "ar" ? "السعر القياسي للمزود:" : "Provider Standard:"}{" "}
-                            <strong className="text-foreground">{CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.pricePerToken * CURRENCIES[selectedCurrency].exchangeRate).toFixed(8)}</strong> / token
-                            <span className="text-[9px] text-muted-foreground ml-1">({CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.blendedPer1M * CURRENCIES[selectedCurrency].exchangeRate).toFixed(2)}/1M)</span>
+                            <strong className="text-foreground">{(currentModelPricing.pricePerToken * CURRENCIES[selectedCurrency].exchangeRate).toFixed(8)} {CURRENCIES[selectedCurrency].code}</strong> / token
+                            <span className="text-[9px] text-muted-foreground ml-1">({(currentModelPricing.blendedPer1M * CURRENCIES[selectedCurrency].exchangeRate).toFixed(2)} {CURRENCIES[selectedCurrency].code}/1M)</span>
                           </span>
                         )}
                       </div>
@@ -2828,13 +2828,13 @@ export default function AdminAiQuota() {
 
                       <div className="flex items-center gap-2 self-end sm:self-auto">
                         <div className="relative w-44">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{CURRENCIES[selectedCurrency].symbol}</span>
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">{CURRENCIES[selectedCurrency].code === "USD" ? "$" : CURRENCIES[selectedCurrency].code}</span>
                           <Input
                             id="quota-token-rate"
                             type="text"
                             value={quotaPricePerToken}
                             onChange={(e) => handleTokenRateChange(e.target.value)}
-                            className="h-8 pl-6 pr-14 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
+                            className="h-8 pl-10 pr-14 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
                             placeholder="0.00000025"
                           />
                           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
@@ -2844,7 +2844,7 @@ export default function AdminAiQuota() {
 
                         {Number(quotaPricePerToken) > 0 && (
                           <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                            ≈ {CURRENCIES[selectedCurrency].symbol}{(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                            ≈ {(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)} {CURRENCIES[selectedCurrency].code}/1M
                           </span>
                         )}
 
@@ -2902,25 +2902,25 @@ export default function AdminAiQuota() {
                     <div className="flex items-center justify-between h-5">
                       <Label htmlFor="quota-model-price" className="flex items-center gap-1 text-xs font-semibold text-foreground whitespace-nowrap">
                         <Coins className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span>{lang === "ar" ? `سعر الحصة (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):` : `Total Quota Price (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):`}</span>
+                        <span>{lang === "ar" ? `سعر الحصة (${CURRENCIES[selectedCurrency].code}):` : `Total Quota Price (${CURRENCIES[selectedCurrency].code}):`}</span>
                       </Label>
                       <span className="text-[10px] text-muted-foreground font-mono shrink-0" title={lang === "ar" ? "السعر لكل 1 توكن" : "Price per 1 token"}>
                         {currentModelPricing.isFree ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{lang === "ar" ? "مجاني" : "Free"}</span>
                         ) : (
-                          `${CURRENCIES[selectedCurrency].symbol}${Number(quotaPricePerToken || 0).toFixed(8)}/tok`
+                          `${Number(quotaPricePerToken || 0).toFixed(8)} ${CURRENCIES[selectedCurrency].code}/tok`
                         )}
                       </span>
                     </div>
 
                     <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">{CURRENCIES[selectedCurrency].symbol}</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">{CURRENCIES[selectedCurrency].code === "USD" ? "$" : CURRENCIES[selectedCurrency].code}</span>
                       <Input
                         id="quota-model-price"
                         type="text"
                         value={quotaPrice}
                         onChange={(e) => handlePriceChange(e.target.value)}
-                        className="pl-6 pr-12 font-mono text-xs font-bold h-9 border-emerald-500/30 focus-visible:ring-emerald-500"
+                        className="pl-10 pr-12 font-mono text-xs font-bold h-9 border-emerald-500/30 focus-visible:ring-emerald-500"
                         placeholder="0.00"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
@@ -2970,9 +2970,9 @@ export default function AdminAiQuota() {
                     </span>
                     <span className="font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400">
                       {currentModelPricing.isFree ? (
-                        <span>{CURRENCIES[selectedCurrency].symbol}0.00 {CURRENCIES[selectedCurrency].code} <span className="text-xs font-normal text-muted-foreground">({lang === "ar" ? "مجاني" : "Free"})</span></span>
+                        <span>0.00 {CURRENCIES[selectedCurrency].code} <span className="text-xs font-normal text-muted-foreground">({lang === "ar" ? "مجاني" : "Free"})</span></span>
                       ) : Number(quotaInput) > 0 ? (
-                        `${CURRENCIES[selectedCurrency].symbol}${quotaPrice} ${CURRENCIES[selectedCurrency].code}`
+                        `${quotaPrice} ${CURRENCIES[selectedCurrency].code}`
                       ) : (
                         <span className="text-muted-foreground font-normal text-xs">{lang === "ar" ? "أدخل الحصة للحساب" : "Enter quota to calculate"}</span>
                       )}
@@ -2986,9 +2986,9 @@ export default function AdminAiQuota() {
                     <span className="font-mono text-[11px] text-foreground/80">
                       {Number(quotaInput) > 0 ? (
                         <>
-                          {Number(quotaInput).toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}{Number(quotaPricePerToken || 0).toFixed(8)} / token ={" "}
+                          {Number(quotaInput).toLocaleString()} tokens × {Number(quotaPricePerToken || 0).toFixed(8)} {CURRENCIES[selectedCurrency].code} / token ={" "}
                           <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
-                            {CURRENCIES[selectedCurrency].symbol}{quotaPrice} {CURRENCIES[selectedCurrency].code}
+                            {quotaPrice} {CURRENCIES[selectedCurrency].code}
                           </strong>
                         </>
                       ) : (
@@ -3193,13 +3193,13 @@ export default function AdminAiQuota() {
                   <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 self-end sm:self-auto">
                     {currentModelPricing.isFree ? (
                       <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                        {lang === "ar" ? `نموذج مجاني (${CURRENCIES[selectedCurrency].symbol}0.00)` : `Free Tier Model (${CURRENCIES[selectedCurrency].symbol}0.00)`}
+                        {lang === "ar" ? `نموذج مجاني (${CURRENCIES[selectedCurrency].code} 0.00)` : `Free Tier Model (${CURRENCIES[selectedCurrency].code} 0.00)`}
                       </span>
                     ) : (
                       <span>
                         {lang === "ar" ? "السعر القياسي للمزود:" : "Provider Standard:"}{" "}
-                        <strong className="text-foreground">{CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.pricePerToken * CURRENCIES[selectedCurrency].exchangeRate).toFixed(8)}</strong> / token
-                        <span className="text-[9px] text-muted-foreground ml-1">({CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.blendedPer1M * CURRENCIES[selectedCurrency].exchangeRate).toFixed(2)}/1M)</span>
+                        <strong className="text-foreground">{(currentModelPricing.pricePerToken * CURRENCIES[selectedCurrency].exchangeRate).toFixed(8)} {CURRENCIES[selectedCurrency].code}</strong> / token
+                        <span className="text-[9px] text-muted-foreground ml-1">({(currentModelPricing.blendedPer1M * CURRENCIES[selectedCurrency].exchangeRate).toFixed(2)} {CURRENCIES[selectedCurrency].code}/1M)</span>
                       </span>
                     )}
                   </div>
@@ -3221,13 +3221,13 @@ export default function AdminAiQuota() {
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <div className="relative w-44">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{CURRENCIES[selectedCurrency].symbol}</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground pointer-events-none">{CURRENCIES[selectedCurrency].code === "USD" ? "$" : CURRENCIES[selectedCurrency].code}</span>
                       <Input
                         id="topup-token-rate"
                         type="text"
                         value={topupPricePerToken}
                         onChange={(e) => handleTopupTokenRateChange(e.target.value)}
-                        className="h-8 pl-6 pr-14 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
+                        className="h-8 pl-10 pr-14 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
                         placeholder="0.00000025"
                       />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
@@ -3237,7 +3237,7 @@ export default function AdminAiQuota() {
 
                     {Number(topupPricePerToken) > 0 && (
                       <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                        ≈ {CURRENCIES[selectedCurrency].symbol}{(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                        ≈ {(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)} {CURRENCIES[selectedCurrency].code}/1M
                       </span>
                     )}
 
@@ -3289,7 +3289,7 @@ export default function AdminAiQuota() {
                           }
                         }}
                       >
-                        <span>+{formatQuota(p.tokens)} ({CURRENCIES[selectedCurrency].symbol}{presetPrice})</span>
+                        <span>+{formatQuota(p.tokens)} ({presetPrice} {CURRENCIES[selectedCurrency].code})</span>
                         {active && <Check className="w-3.5 h-3.5 ml-1 text-white shrink-0" />}
                       </Button>
                     );
@@ -3328,7 +3328,7 @@ export default function AdminAiQuota() {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="topup-price-input" className="text-xs font-semibold">
-                    {lang === "ar" ? `سعر الباقة للفاتورة (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):` : `Invoice Price (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):`}
+                    {lang === "ar" ? `سعر الباقة للفاتورة (${CURRENCIES[selectedCurrency].code}):` : `Invoice Price (${CURRENCIES[selectedCurrency].code}):`}
                   </Label>
                   <div className="relative">
                     <Input
@@ -3354,7 +3354,7 @@ export default function AdminAiQuota() {
                     {lang === "ar" ? "معاينة الحصة بعد الشحن:" : "Calculation Preview:"}
                   </span>
                   <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    {CURRENCIES[selectedCurrency].symbol}{Number(topupPrice || 0).toFixed(2)} {CURRENCIES[selectedCurrency].code}
+                    {Number(topupPrice || 0).toFixed(2)} {CURRENCIES[selectedCurrency].code}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[11px]">
@@ -3375,7 +3375,7 @@ export default function AdminAiQuota() {
                   <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[10px] text-muted-foreground font-mono">
                     <span>{lang === "ar" ? "معادلة الحساب للرموز المضافة:" : "Top-up cost formula:"}</span>
                     <span>
-                      {topupTokens.toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}{Number(topupPricePerToken || 0).toFixed(8)} / token
+                      {topupTokens.toLocaleString()} tokens × {Number(topupPricePerToken || 0).toFixed(8)} {CURRENCIES[selectedCurrency].code} / token
                     </span>
                   </div>
                 )}
@@ -3590,7 +3590,7 @@ export default function AdminAiQuota() {
                   <div className="flex items-center justify-between bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 font-bold text-sm">
                     <span className="text-emerald-700 dark:text-emerald-300">{lang === "ar" ? "المبلغ الإجمالي المدفوع:" : "Total Paid:"}</span>
                     <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                      {CURRENCIES[topupInvoice.currency as CurrencyCode || "USD"]?.symbol || "$"}{topupInvoice.price.toFixed(2)} {topupInvoice.currency || "USD"}
+                      {topupInvoice.currency === "USD" ? "$" : ""}{topupInvoice.price.toFixed(2)} {topupInvoice.currency || "USD"}
                     </span>
                   </div>
                 </div>
@@ -3907,7 +3907,7 @@ export default function AdminAiQuota() {
                   <th className="text-left p-3 font-medium text-muted-foreground">{lang === "ar" ? "المزود" : "Provider"}</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">{lang === "ar" ? "مدخلات (Input)" : "Input Tokens"}</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">{lang === "ar" ? "مخرجات (Output)" : "Output Tokens"}</th>
-                  <th className="text-right p-3 font-medium text-emerald-500/90">{lang === "ar" ? `التكلفة (${CURRENCIES[selectedCurrency].symbol})` : `Total Cost (${CURRENCIES[selectedCurrency].code})`}</th>
+                  <th className="text-right p-3 font-medium text-emerald-500/90">{lang === "ar" ? `التكلفة (${CURRENCIES[selectedCurrency].code})` : `Total Cost (${CURRENCIES[selectedCurrency].code})`}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
@@ -4369,7 +4369,7 @@ export default function AdminAiQuota() {
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرموز المستهلكة" : "Tokens Used"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرسائل" : "Messages"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Quota %"}</th>
-                  <th className="text-right p-2.5 font-medium text-emerald-500 font-bold">{lang === "ar" ? `الفاتورة (${CURRENCIES[selectedCurrency].symbol})` : `Bill (${CURRENCIES[selectedCurrency].code})`}</th>
+                  <th className="text-right p-2.5 font-medium text-emerald-500 font-bold">{lang === "ar" ? `الفاتورة (${CURRENCIES[selectedCurrency].code})` : `Bill (${CURRENCIES[selectedCurrency].code})`}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "إجراءات" : "Actions"}</th>
                 </tr>
               </thead>
