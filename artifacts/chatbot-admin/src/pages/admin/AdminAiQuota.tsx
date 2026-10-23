@@ -2705,22 +2705,28 @@ export default function AdminAiQuota() {
 
               {/* Monthly Token Quota & Synchronized Model Price Rate */}
               <div className="pt-2 border-t border-border/40 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                   {/* Monthly Token Quota Input */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="quota-input-ai" className="text-xs font-semibold text-foreground">
-                      {lang === "ar" ? "الحصة الشهرية (رموز / Tokens):" : "Monthly Token Quota (Tokens):"}
-                    </Label>
+                    <div className="flex items-center justify-between h-5">
+                      <Label htmlFor="quota-input-ai" className="text-xs font-semibold text-foreground flex items-center gap-1 whitespace-nowrap">
+                        <Calculator className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span>{lang === "ar" ? "الحصة الشهرية:" : "Monthly Token Quota:"}</span>
+                      </Label>
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                        {lang === "ar" ? "رموز / Tokens" : "Tokens"}
+                      </span>
+                    </div>
                     <div className="relative">
                       <Input
                         id="quota-input-ai"
-                        placeholder={lang === "ar" ? "مثال: 1000000 أو اتركه فارغاً" : "e.g. 1000000 (leave blank to disable)"}
+                        placeholder={lang === "ar" ? "مثال: 1000000 أو اتركه فارغاً" : "e.g. 1000000"}
                         value={quotaInput}
                         onChange={(e) => handleTokensChange(e.target.value)}
-                        className="font-mono text-sm"
+                        className="font-mono text-xs font-bold h-9 pr-14"
                       />
                       {quotaInput && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none font-medium">
                           ≈ {formatQuota(Number(quotaInput))}
                         </span>
                       )}
@@ -2729,31 +2735,31 @@ export default function AdminAiQuota() {
 
                   {/* Model Price Rate Field (Linked directly with Token Quota) */}
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="quota-model-price" className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                        <Coins className="w-3.5 h-3.5 text-emerald-500" />
-                        {lang === "ar" ? "إجمالي سعر الحصة (Total Quota Price):" : "Total Quota Price (USD):"}
+                    <div className="flex items-center justify-between h-5">
+                      <Label htmlFor="quota-model-price" className="flex items-center gap-1 text-xs font-semibold text-foreground whitespace-nowrap">
+                        <Coins className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span>{lang === "ar" ? "سعر الحصة (USD):" : "Total Quota Price:"}</span>
                       </Label>
-                      <span className="text-[10px] text-muted-foreground font-mono">
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0" title={lang === "ar" ? "السعر لكل 1 توكن" : "Price per 1 token"}>
                         {currentModelPricing.isFree ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{lang === "ar" ? "مجاني" : "Free"}</span>
                         ) : (
-                          `$${Number(quotaPricePerToken || 0).toFixed(8)} / token`
+                          `$${Number(quotaPricePerToken || 0).toFixed(8)}/tok`
                         )}
                       </span>
                     </div>
 
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">$</span>
                       <Input
                         id="quota-model-price"
                         type="text"
                         value={quotaPrice}
                         onChange={(e) => handlePriceChange(e.target.value)}
-                        className="pl-7 pr-12 font-mono text-xs font-bold h-9 border-emerald-500/30 focus-visible:ring-emerald-500"
+                        className="pl-6 pr-12 font-mono text-xs font-bold h-9 border-emerald-500/30 focus-visible:ring-emerald-500"
                         placeholder="0.00"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
                         USD
                       </span>
                     </div>
