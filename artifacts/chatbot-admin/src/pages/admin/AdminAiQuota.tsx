@@ -120,6 +120,44 @@ const QUOTA_PRESETS = [
   { label: "10M", value: 10_000_000 },
 ];
 
+export type CurrencyCode = "USD" | "SAR" | "EGP";
+
+export interface CurrencyConfig {
+  code: CurrencyCode;
+  symbol: string;
+  nameAr: string;
+  nameEn: string;
+  flag: string;
+  exchangeRate: number; // exchange rate relative to 1 USD
+}
+
+export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
+  USD: {
+    code: "USD",
+    symbol: "$",
+    nameAr: "دولار أمريكي",
+    nameEn: "US Dollar",
+    flag: "🇺🇸",
+    exchangeRate: 1.0,
+  },
+  SAR: {
+    code: "SAR",
+    symbol: "ر.س",
+    nameAr: "ريال سعودي",
+    nameEn: "Saudi Riyal",
+    flag: "🇸🇦",
+    exchangeRate: 3.75,
+  },
+  EGP: {
+    code: "EGP",
+    symbol: "ج.م",
+    nameAr: "جنيه مصري",
+    nameEn: "Egyptian Pound",
+    flag: "🇪🇬",
+    exchangeRate: 48.50,
+  },
+};
+
 export interface TopupPreset {
   label: string;
   tokens: number;
@@ -159,12 +197,14 @@ function formatQuota(num: number | null | undefined): string {
   return num.toLocaleString();
 }
 
-function formatCost(amount: number | null | undefined): string {
-  if (amount == null || isNaN(amount) || amount === 0) return "$0.0000";
-  if (amount > 0 && amount < 0.0001) {
-    return `$${amount.toFixed(6)}`;
+function formatCost(amount: number | null | undefined, currency: CurrencyCode = "USD"): string {
+  const cfg = CURRENCIES[currency] || CURRENCIES.USD;
+  if (amount == null || isNaN(amount) || amount === 0) return `${cfg.symbol}0.0000 ${cfg.code}`;
+  const converted = amount * cfg.exchangeRate;
+  if (converted > 0 && converted < 0.0001) {
+    return `${cfg.symbol}${converted.toFixed(6)} ${cfg.code}`;
   }
-  return `$${amount.toFixed(4)}`;
+  return `${cfg.symbol}${converted.toFixed(4)} ${cfg.code}`;
 }
 
 type SortKey = "name" | "messages" | "inputTokens" | "outputTokens" | "quota" | "tokens" | "cost" | "percent" | "startDate" | "endDate";
@@ -243,7 +283,9 @@ function generateBillInvoiceCanvas(data: {
   remaining: number | null;
   cost: number;
   isExceeded: boolean;
+  currency?: CurrencyCode;
 }): string {
+  const invCurr = CURRENCIES[data.currency || "USD"] || CURRENCIES.USD;
   const width = 640;
   const height = 660;
   const canvas = document.createElement("canvas");
@@ -412,9 +454,9 @@ function generateBillInvoiceCanvas(data: {
   const outCost = data.totalTokens > 0 && data.cost > 0 ? (data.outputTokens / data.totalTokens) * data.cost : 0;
 
   drawRow("رسائل المحادثة (Total Messages)", `${data.messages.toLocaleString()} msgs`, "—");
-  drawRow("رموز المدخلات (Input Tokens)", `${data.inputTokens.toLocaleString()} tokens`, formatCost(inCost));
-  drawRow("رموز المخرجات (Output Tokens)", `${data.outputTokens.toLocaleString()} tokens`, formatCost(outCost));
-  drawRow("إجمالي الاستهلاك والتكلفة", `${data.totalTokens.toLocaleString()} tokens`, `${formatCost(data.cost)} USD`, true);
+  drawRow("رموز المدخلات (Input Tokens)", `${data.inputTokens.toLocaleString()} tokens`, formatCost(inCost, invCurr.code));
+  drawRow("رموز المخرجات (Output Tokens)", `${data.outputTokens.toLocaleString()} tokens`, formatCost(outCost, invCurr.code));
+  drawRow("إجمالي الاستهلاك والتكلفة", `${data.totalTokens.toLocaleString()} tokens`, formatCost(data.cost, invCurr.code), true);
 
   currentY += 12;
   ctx.fillStyle = "#ecfdf5";
@@ -434,9 +476,9 @@ function generateBillInvoiceCanvas(data: {
   ctx.textAlign = "left";
   ctx.fillStyle = "#059669";
   ctx.font = "bold 22px monospace";
-  ctx.fillText(formatCost(data.cost), tableX + 16, currentY + 34);
+  ctx.fillText(formatCost(data.cost, invCurr.code), tableX + 16, currentY + 34);
   ctx.font = "10px system-ui, sans-serif";
-  ctx.fillText("USD", tableX + 16, currentY + 47);
+  ctx.fillText(invCurr.code, tableX + 16, currentY + 47);
 
   ctx.textAlign = "center";
   ctx.fillStyle = "#9ca3af";
@@ -447,6 +489,7 @@ function generateBillInvoiceCanvas(data: {
 }
 
 function generateTopupInvoiceCanvas(data: TopupInvoiceData): string {
+  const invCurr = CURRENCIES[(data.currency as CurrencyCode) || "USD"] || CURRENCIES.USD;
   const width = 640;
   const height = 580;
   const canvas = document.createElement("canvas");
@@ -563,7 +606,7 @@ function generateTopupInvoiceCanvas(data: TopupInvoiceData): string {
     currentY += 32;
   };
 
-  drawRow("⚡ الباقة المضافة (Top-up Tokens)", `+${data.addedTokens.toLocaleString()}`, `$${data.price.toFixed(2)}`, true);
+  drawRow("⚡ الباقة المضافة (Top-up Tokens)", `+${data.addedTokens.toLocaleString()}`, `${invCurr.symbol}${data.price.toFixed(2)} ${invCurr.code}`, true);
   drawRow("الحصة الشهرية السابقة (Previous Quota)", `${data.previousQuota.toLocaleString()}`, "—");
   drawRow("الحصة الإجمالية الجديدة (New Total Quota)", `${data.newTotalQuota.toLocaleString()}`, "مفعلة ✅");
 
@@ -585,9 +628,9 @@ function generateTopupInvoiceCanvas(data: TopupInvoiceData): string {
   ctx.textAlign = "left";
   ctx.fillStyle = "#059669";
   ctx.font = "bold 22px monospace";
-  ctx.fillText(`$${data.price.toFixed(2)}`, tableX + 16, currentY + 34);
+  ctx.fillText(`${invCurr.symbol}${data.price.toFixed(2)}`, tableX + 16, currentY + 34);
   ctx.font = "10px system-ui, sans-serif";
-  ctx.fillText("USD", tableX + 16, currentY + 47);
+  ctx.fillText(invCurr.code, tableX + 16, currentY + 47);
 
   if (data.notes) {
     currentY += 62;
@@ -630,20 +673,24 @@ function formatTokenPrice(num: number): string {
 const BASE_RATES_STORAGE_KEY = "ai_custom_model_rates_base_token";
 const TOPUP_RATES_STORAGE_KEY = "ai_custom_model_rates_topup_token";
 
-function getSavedCustomRates(scope: "base" | "topup" = "base"): Record<string, number> {
+function getSavedCustomRates(scope: "base" | "topup" = "base", curr: CurrencyCode = "USD"): Record<string, number> {
   try {
-    const key = scope === "base" ? BASE_RATES_STORAGE_KEY : TOPUP_RATES_STORAGE_KEY;
-    const s = localStorage.getItem(key);
+    const baseKey = scope === "base" ? BASE_RATES_STORAGE_KEY : TOPUP_RATES_STORAGE_KEY;
+    const key = `${baseKey}_${curr}`;
+    let s = localStorage.getItem(key);
+    if (!s && curr === "USD") {
+      s = localStorage.getItem(baseKey);
+    }
     return s ? JSON.parse(s) : {};
   } catch {
     return {};
   }
 }
 
-function saveCustomRate(modelId: string, rate: number | null, scope: "base" | "topup" = "base") {
+function saveCustomRate(modelId: string, rate: number | null, scope: "base" | "topup" = "base", curr: CurrencyCode = "USD") {
   try {
-    const key = scope === "base" ? BASE_RATES_STORAGE_KEY : TOPUP_RATES_STORAGE_KEY;
-    const map = getSavedCustomRates(scope);
+    const key = `${scope === "base" ? BASE_RATES_STORAGE_KEY : TOPUP_RATES_STORAGE_KEY}_${curr}`;
+    const map = getSavedCustomRates(scope, curr);
     if (rate === null || isNaN(rate)) {
       delete map[modelId];
     } else {
@@ -716,6 +763,13 @@ export default function AdminAiQuota() {
   };
 
   const [quotaTarget, setQuotaTarget] = useState<Company | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(() => {
+    try {
+      const s = localStorage.getItem("ai_quota_selected_currency");
+      if (s === "USD" || s === "SAR" || s === "EGP") return s as CurrencyCode;
+    } catch {}
+    return "USD";
+  });
   const [quotaInput, setQuotaInput] = useState("");
   const [quotaStartDate, setQuotaStartDate] = useState("");
   const [quotaEndDate, setQuotaEndDate] = useState("");
@@ -877,7 +931,7 @@ export default function AdminAiQuota() {
     const effectiveForPricing = initialModel === "default"
       ? (quotaSettings?.aiModel || "gemini-2.5-flash")
       : initialModel;
-    const { ratePerToken: baseRate, isCustom: baseCustom } = resolveModelRate(effectiveForPricing, "base");
+    const { ratePerToken: baseRate, isCustom: baseCustom } = resolveModelRate(effectiveForPricing, "base", selectedCurrency);
     setQuotaPricePerToken(formatTokenPrice(baseRate));
     setIsCustomTokenRate(baseCustom);
 
@@ -888,7 +942,7 @@ export default function AdminAiQuota() {
       setQuotaPrice("0.00");
     }
 
-    const { ratePerToken: topupRate, isCustom: topupCustom } = resolveModelRate(effectiveForPricing, "topup");
+    const { ratePerToken: topupRate, isCustom: topupCustom } = resolveModelRate(effectiveForPricing, "topup", selectedCurrency);
     setTopupPricePerToken(formatTokenPrice(topupRate));
     setIsCustomTopupTokenRate(topupCustom);
 
@@ -897,7 +951,7 @@ export default function AdminAiQuota() {
     if (topupRate > 0) {
       setTopupPrice(formatPriceValue(initialTopupTokens * topupRate));
     } else {
-      setTopupPrice("10.00");
+      setTopupPrice(formatPriceValue(10.0 * (CURRENCIES[selectedCurrency]?.exchangeRate || 1.0)));
     }
   };
 
@@ -909,13 +963,43 @@ export default function AdminAiQuota() {
       : quotaModelInput;
   };
 
-  const resolveModelRate = (modelId: string, scope: "base" | "topup" = "base"): { ratePerToken: number; isCustom: boolean } => {
-    const savedRates = getSavedCustomRates(scope);
+  const resolveModelRate = (
+    modelId: string,
+    scope: "base" | "topup" = "base",
+    curr: CurrencyCode = selectedCurrency
+  ): { ratePerToken: number; isCustom: boolean } => {
+    const savedRates = getSavedCustomRates(scope, curr);
     if (typeof savedRates[modelId] === "number" && !isNaN(savedRates[modelId])) {
       return { ratePerToken: savedRates[modelId], isCustom: true };
     }
     const pr = getModelPricingDetails(modelId);
-    return { ratePerToken: pr.isFree ? 0 : pr.pricePerToken, isCustom: false };
+    const exRate = CURRENCIES[curr]?.exchangeRate || 1.0;
+    const stdRate = pr.isFree ? 0 : pr.pricePerToken * exRate;
+    return { ratePerToken: stdRate, isCustom: false };
+  };
+
+  const handleCurrencyChange = (newCurr: CurrencyCode) => {
+    setSelectedCurrency(newCurr);
+    try {
+      localStorage.setItem("ai_quota_selected_currency", newCurr);
+    } catch {}
+
+    const modelId = getEffectiveModelId();
+
+    // Recalculate Base Quota pricing with new currency
+    const { ratePerToken: newBaseRate, isCustom: newBaseCustom } = resolveModelRate(modelId, "base", newCurr);
+    setQuotaPricePerToken(formatTokenPrice(newBaseRate));
+    setIsCustomTokenRate(newBaseCustom);
+    const baseTokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
+    setQuotaPrice(syncPriceFromTokens(baseTokens, newBaseRate));
+
+    // Recalculate Topup pricing with new currency
+    const { ratePerToken: newTopupRate, isCustom: newTopupCustom } = resolveModelRate(modelId, "topup", newCurr);
+    setTopupPricePerToken(formatTokenPrice(newTopupRate));
+    setIsCustomTopupTokenRate(newTopupCustom);
+    if (topupTokens > 0 && newTopupRate > 0) {
+      setTopupPrice(formatPriceValue(topupTokens * newTopupRate));
+    }
   };
 
   const syncPriceFromTokens = (tokensNum: number, tokenRate: number) => {
@@ -963,7 +1047,7 @@ export default function AdminAiQuota() {
     setIsCustomTokenRate(true);
     const rate = Number(clean) || 0;
     const modelId = getEffectiveModelId();
-    saveCustomRate(modelId, rate, "base");
+    saveCustomRate(modelId, rate, "base", selectedCurrency);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, rate));
   };
@@ -971,10 +1055,11 @@ export default function AdminAiQuota() {
   const resetTokenRateToStandard = () => {
     const modelId = getEffectiveModelId();
     const pr = getModelPricingDetails(modelId);
-    const stdRate = pr.isFree ? 0 : pr.pricePerToken;
+    const exRate = CURRENCIES[selectedCurrency]?.exchangeRate || 1.0;
+    const stdRate = pr.isFree ? 0 : pr.pricePerToken * exRate;
     setQuotaPricePerToken(formatTokenPrice(stdRate));
     setIsCustomTokenRate(false);
-    saveCustomRate(modelId, null, "base");
+    saveCustomRate(modelId, null, "base", selectedCurrency);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, stdRate));
   };
@@ -985,7 +1070,7 @@ export default function AdminAiQuota() {
     setIsCustomTopupTokenRate(true);
     const rate = Number(clean) || 0;
     const modelId = getEffectiveModelId();
-    saveCustomRate(modelId, rate, "topup");
+    saveCustomRate(modelId, rate, "topup", selectedCurrency);
     if (topupTokens > 0 && rate > 0) {
       setTopupPrice(formatPriceValue(topupTokens * rate));
     }
@@ -994,24 +1079,25 @@ export default function AdminAiQuota() {
   const resetTopupTokenRateToStandard = () => {
     const modelId = getEffectiveModelId();
     const pr = getModelPricingDetails(modelId);
-    const stdRate = pr.isFree ? 0 : pr.pricePerToken;
+    const exRate = CURRENCIES[selectedCurrency]?.exchangeRate || 1.0;
+    const stdRate = pr.isFree ? 0 : pr.pricePerToken * exRate;
     setTopupPricePerToken(formatTokenPrice(stdRate));
     setIsCustomTopupTokenRate(false);
-    saveCustomRate(modelId, null, "topup");
+    saveCustomRate(modelId, null, "topup", selectedCurrency);
     if (topupTokens > 0 && stdRate > 0) {
       setTopupPrice(formatPriceValue(topupTokens * stdRate));
     }
   };
 
   const syncModelChangePricing = (targetModelId: string) => {
-    const { ratePerToken: baseRate, isCustom: baseCustom } = resolveModelRate(targetModelId, "base");
+    const { ratePerToken: baseRate, isCustom: baseCustom } = resolveModelRate(targetModelId, "base", selectedCurrency);
     setQuotaPricePerToken(formatTokenPrice(baseRate));
     setIsCustomTokenRate(baseCustom);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, baseRate));
 
     if (!isCustomTopupTokenRate) {
-      const { ratePerToken: topupRate, isCustom: topupCustom } = resolveModelRate(targetModelId, "topup");
+      const { ratePerToken: topupRate, isCustom: topupCustom } = resolveModelRate(targetModelId, "topup", selectedCurrency);
       setTopupPricePerToken(formatTokenPrice(topupRate));
       setIsCustomTopupTokenRate(topupCustom);
       if (topupTokens > 0 && topupRate > 0) {
@@ -1127,7 +1213,7 @@ export default function AdminAiQuota() {
         addedTokens: topupTokens,
         newTotalQuota: newQuota,
         price: Number(topupPrice) || 0,
-        currency: "USD",
+        currency: selectedCurrency,
         date: new Date().toISOString(),
         previousEndDate: quotaTarget.quotaEndDate ? quotaTarget.quotaEndDate.slice(0, 10) : null,
         newEndDate: newEndDateStr || null,
@@ -1210,7 +1296,7 @@ export default function AdminAiQuota() {
       `${lang === "ar" ? "الحصة الإجمالية الجديدة" : "New Total Quota"}: ${topupInvoice.newTotalQuota.toLocaleString()} tokens`,
       topupInvoice.newEndDate ? `${lang === "ar" ? "تاريخ انتهاء الصلاحية" : "Valid Until"}: ${topupInvoice.newEndDate}` : "",
       `-----------------------------------------`,
-      `${lang === "ar" ? "المبلغ الإجمالي" : "Total Paid"}: $${topupInvoice.price.toFixed(2)} USD`,
+      `${lang === "ar" ? "المبلغ الإجمالي" : "Total Paid"}: ${CURRENCIES[topupInvoice.currency as CurrencyCode || "USD"]?.symbol || "$"}${topupInvoice.price.toFixed(2)} ${topupInvoice.currency}`,
       topupInvoice.notes ? `${lang === "ar" ? "ملاحظات" : "Notes"}: ${topupInvoice.notes}` : "",
     ].filter(Boolean).join("\n");
 
@@ -1425,7 +1511,7 @@ export default function AdminAiQuota() {
       "Quota End Date",
       "Total Tokens Used",
       "Usage %",
-      "Cost (USD)"
+      `Cost (${CURRENCIES[selectedCurrency].code})`
     ];
     
     const rows = filteredAndSortedCompanies.map(c => {
@@ -1451,7 +1537,7 @@ export default function AdminAiQuota() {
         c.quotaEndDate ? c.quotaEndDate.slice(0, 10) : "—",
         tokensUsed,
         hasQuota ? `${percent.toFixed(2)}%` : "N/A",
-        cost.toFixed(4)
+        (cost * CURRENCIES[selectedCurrency].exchangeRate).toFixed(4)
       ].join(",");
     });
 
@@ -1496,7 +1582,7 @@ export default function AdminAiQuota() {
       `${lang === "ar" ? "نسبة استهلاك الحصة" : "Quota Usage %"}: ${quota > 0 ? ((tokens / quota) * 100).toFixed(2) : 0}%`,
       `${lang === "ar" ? "الرموز المتبقية" : "Remaining Quota"}: ${quota > 0 ? Math.max(0, quota - tokens).toLocaleString() : "Unlimited"}`,
       `-----------------------------------------`,
-      `${lang === "ar" ? "إجمالي التكلفة التقديرية" : "Total Estimated Cost"}: ${formatCost(cost)} USD`,
+      `${lang === "ar" ? "إجمالي التكلفة التقديرية" : "Total Estimated Cost"}: ${formatCost(cost, selectedCurrency)}`,
     ].filter(Boolean).join("\n");
 
     navigator.clipboard.writeText(text);
@@ -1546,6 +1632,7 @@ export default function AdminAiQuota() {
           remaining,
           cost,
           isExceeded: quota > 0 && totalTokens > quota,
+          currency: selectedCurrency,
         });
       } catch (canvasErr) {
         console.warn("Could not generate bill canvas image:", canvasErr);
@@ -1639,6 +1726,7 @@ export default function AdminAiQuota() {
         remaining,
         cost,
         isExceeded: quota > 0 && totalTokens > quota,
+        currency: selectedCurrency,
       });
 
       if (!dataUrl) {
@@ -1876,7 +1964,7 @@ export default function AdminAiQuota() {
               {totalTokensConsumedMonth.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatCost(totalCostConsumedMonth)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
+              {formatCost(totalCostConsumedMonth, selectedCurrency)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
             </p>
           </CardContent>
         </Card>
@@ -2025,6 +2113,30 @@ export default function AdminAiQuota() {
               </SelectContent>
             </Select>
 
+            {/* Currency Selector (USD, SAR, EGP) */}
+            <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-lg border border-border h-9">
+              {(["USD", "SAR", "EGP"] as CurrencyCode[]).map((cCode) => {
+                const c = CURRENCIES[cCode];
+                const active = selectedCurrency === cCode;
+                return (
+                  <button
+                    key={cCode}
+                    type="button"
+                    onClick={() => handleCurrencyChange(cCode)}
+                    className={`px-2 py-1 text-xs rounded-md font-medium transition-all flex items-center gap-1 h-7.5 ${
+                      active
+                        ? "bg-background text-foreground shadow-xs font-bold border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={`${c.nameAr} (${c.nameEn})`}
+                  >
+                    <span>{c.flag}</span>
+                    <span className="font-mono text-[11px]">{c.code}</span>
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Section Actions Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2087,6 +2199,28 @@ export default function AdminAiQuota() {
                   <Download className="w-3.5 h-3.5 text-emerald-500" />
                   <span>{lang === "ar" ? "تصدير كشف الحصص (CSV)" : "Export CSV"}</span>
                 </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground">
+                  {lang === "ar" ? "عملة التسعير" : "Currency"}: {CURRENCIES[selectedCurrency].flag} {CURRENCIES[selectedCurrency].code} ({CURRENCIES[selectedCurrency].symbol})
+                </DropdownMenuLabel>
+                {(["USD", "SAR", "EGP"] as CurrencyCode[]).map((cCode) => {
+                  const c = CURRENCIES[cCode];
+                  const isCurActive = selectedCurrency === cCode;
+                  return (
+                    <DropdownMenuItem
+                      key={cCode}
+                      onClick={() => handleCurrencyChange(cCode)}
+                      className={`text-xs cursor-pointer gap-2 py-1.5 ${isCurActive ? "font-bold text-primary bg-primary/10" : ""}`}
+                    >
+                      <span>{c.flag}</span>
+                      <span className="flex-1">{lang === "ar" ? c.nameAr : c.nameEn}</span>
+                      <span className="font-mono text-muted-foreground">{c.code} ({c.symbol})</span>
+                      {isCurActive && <Check className="w-3.5 h-3.5 text-primary ml-auto" />}
+                    </DropdownMenuItem>
+                  );
+                })}
 
                 <DropdownMenuSeparator />
 
@@ -2181,7 +2315,7 @@ export default function AdminAiQuota() {
                     onClick={() => toggleSort("cost")}
                   >
                     <span className="inline-flex items-center justify-end gap-1">
-                      {lang === "ar" ? "التكلفة" : "Cost"} <SortIcon col="cost" sortKey={sortKey} sortDir={sortDir} />
+                      {lang === "ar" ? `التكلفة (${CURRENCIES[selectedCurrency].symbol})` : `Cost (${CURRENCIES[selectedCurrency].code})`} <SortIcon col="cost" sortKey={sortKey} sortDir={sortDir} />
                     </span>
                   </th>
                   <th 
@@ -2307,7 +2441,7 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-emerald-500/90 font-medium">
-                          {hasQuota ? formatCost(cost) : "—"}
+                          {hasQuota ? formatCost(cost, selectedCurrency) : "—"}
                         </td>
                         <td className="px-4 py-3">
                           {percentDisplay !== null ? (
@@ -2438,6 +2572,36 @@ export default function AdminAiQuota() {
                 : "Configure base monthly quota and validity period, or add an extra top-up package linked to an invoice."}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Currency Toggle Bar */}
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/60 border border-border/70 text-xs">
+            <div className="flex items-center gap-1.5 font-medium text-foreground">
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
+              <span>{lang === "ar" ? "عملة التسعير والحساب:" : "Pricing & Billing Currency:"}</span>
+            </div>
+            <div className="flex items-center gap-1 bg-background p-0.5 rounded-md border border-border shadow-xs">
+              {(["USD", "SAR", "EGP"] as CurrencyCode[]).map((cCode) => {
+                const c = CURRENCIES[cCode];
+                const active = selectedCurrency === cCode;
+                return (
+                  <button
+                    key={cCode}
+                    type="button"
+                    onClick={() => handleCurrencyChange(cCode)}
+                    className={`px-2.5 py-1 text-xs rounded font-medium transition-all flex items-center gap-1 ${
+                      active
+                        ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span>{c.flag}</span>
+                    <span>{c.code}</span>
+                    <span className="text-[10px] opacity-80">({c.symbol})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Tab Selector */}
           <Tabs value={quotaModalTab} onValueChange={(v) => setQuotaModalTab(v as any)} className="w-full pt-1">
@@ -2636,13 +2800,13 @@ export default function AdminAiQuota() {
                       <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 self-end sm:self-auto">
                         {currentModelPricing.isFree ? (
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                            {lang === "ar" ? "نموذج مجاني ($0.00)" : "Free Tier Model ($0.00)"}
+                            {lang === "ar" ? `نموذج مجاني (${CURRENCIES[selectedCurrency].symbol}0.00)` : `Free Tier Model (${CURRENCIES[selectedCurrency].symbol}0.00)`}
                           </span>
                         ) : (
                           <span>
                             {lang === "ar" ? "السعر القياسي للمزود:" : "Provider Standard:"}{" "}
-                            <strong className="text-foreground">${currentModelPricing.pricePerToken.toFixed(8)}</strong> / token
-                            <span className="text-[9px] text-muted-foreground ml-1">(${currentModelPricing.blendedPer1M.toFixed(2)}/1M)</span>
+                            <strong className="text-foreground">{CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.pricePerToken * CURRENCIES[selectedCurrency].exchangeRate).toFixed(8)}</strong> / token
+                            <span className="text-[9px] text-muted-foreground ml-1">({CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.blendedPer1M * CURRENCIES[selectedCurrency].exchangeRate).toFixed(2)}/1M)</span>
                           </span>
                         )}
                       </div>
@@ -2664,7 +2828,7 @@ export default function AdminAiQuota() {
 
                       <div className="flex items-center gap-2 self-end sm:self-auto">
                         <div className="relative w-44">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{CURRENCIES[selectedCurrency].symbol}</span>
                           <Input
                             id="quota-token-rate"
                             type="text"
@@ -2680,7 +2844,7 @@ export default function AdminAiQuota() {
 
                         {Number(quotaPricePerToken) > 0 && (
                           <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                            ≈ ${(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                            ≈ {CURRENCIES[selectedCurrency].symbol}${(Number(quotaPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
                           </span>
                         )}
 
@@ -2738,19 +2902,19 @@ export default function AdminAiQuota() {
                     <div className="flex items-center justify-between h-5">
                       <Label htmlFor="quota-model-price" className="flex items-center gap-1 text-xs font-semibold text-foreground whitespace-nowrap">
                         <Coins className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span>{lang === "ar" ? "سعر الحصة (USD):" : "Total Quota Price:"}</span>
+                        <span>{lang === "ar" ? `سعر الحصة (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):` : `Total Quota Price (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):`}</span>
                       </Label>
                       <span className="text-[10px] text-muted-foreground font-mono shrink-0" title={lang === "ar" ? "السعر لكل 1 توكن" : "Price per 1 token"}>
                         {currentModelPricing.isFree ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{lang === "ar" ? "مجاني" : "Free"}</span>
                         ) : (
-                          `$${Number(quotaPricePerToken || 0).toFixed(8)}/tok`
+                          `${CURRENCIES[selectedCurrency].symbol}${Number(quotaPricePerToken || 0).toFixed(8)}/tok`
                         )}
                       </span>
                     </div>
 
                     <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">{CURRENCIES[selectedCurrency].symbol}</span>
                       <Input
                         id="quota-model-price"
                         type="text"
@@ -2760,7 +2924,7 @@ export default function AdminAiQuota() {
                         placeholder="0.00"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
-                        USD
+                        {CURRENCIES[selectedCurrency].code}
                       </span>
                     </div>
                   </div>
@@ -2806,9 +2970,9 @@ export default function AdminAiQuota() {
                     </span>
                     <span className="font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400">
                       {currentModelPricing.isFree ? (
-                        <span>$0.00 USD <span className="text-xs font-normal text-muted-foreground">({lang === "ar" ? "مجاني" : "Free"})</span></span>
+                        <span>{CURRENCIES[selectedCurrency].symbol}0.00 {CURRENCIES[selectedCurrency].code} <span className="text-xs font-normal text-muted-foreground">({lang === "ar" ? "مجاني" : "Free"})</span></span>
                       ) : Number(quotaInput) > 0 ? (
-                        `$${quotaPrice} USD`
+                        `${CURRENCIES[selectedCurrency].symbol}${quotaPrice} ${CURRENCIES[selectedCurrency].code}`
                       ) : (
                         <span className="text-muted-foreground font-normal text-xs">{lang === "ar" ? "أدخل الحصة للحساب" : "Enter quota to calculate"}</span>
                       )}
@@ -2822,9 +2986,9 @@ export default function AdminAiQuota() {
                     <span className="font-mono text-[11px] text-foreground/80">
                       {Number(quotaInput) > 0 ? (
                         <>
-                          {Number(quotaInput).toLocaleString()} tokens × ${Number(quotaPricePerToken || 0).toFixed(8)} / token ={" "}
+                          {Number(quotaInput).toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}${Number(quotaPricePerToken || 0).toFixed(8)} / token ={" "}
                           <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
-                            ${quotaPrice} USD
+                            {CURRENCIES[selectedCurrency].symbol}${quotaPrice} {CURRENCIES[selectedCurrency].code}
                           </strong>
                         </>
                       ) : (
@@ -3029,13 +3193,13 @@ export default function AdminAiQuota() {
                   <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 self-end sm:self-auto">
                     {currentModelPricing.isFree ? (
                       <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                        {lang === "ar" ? "نموذج مجاني ($0.00)" : "Free Tier Model ($0.00)"}
+                        {lang === "ar" ? `نموذج مجاني (${CURRENCIES[selectedCurrency].symbol}0.00)` : `Free Tier Model (${CURRENCIES[selectedCurrency].symbol}0.00)`}
                       </span>
                     ) : (
                       <span>
                         {lang === "ar" ? "السعر القياسي للمزود:" : "Provider Standard:"}{" "}
-                        <strong className="text-foreground">${currentModelPricing.pricePerToken.toFixed(8)}</strong> / token
-                        <span className="text-[9px] text-muted-foreground ml-1">(${currentModelPricing.blendedPer1M.toFixed(2)}/1M)</span>
+                        <strong className="text-foreground">{CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.pricePerToken * CURRENCIES[selectedCurrency].exchangeRate).toFixed(8)}</strong> / token
+                        <span className="text-[9px] text-muted-foreground ml-1">({CURRENCIES[selectedCurrency].symbol}{(currentModelPricing.blendedPer1M * CURRENCIES[selectedCurrency].exchangeRate).toFixed(2)}/1M)</span>
                       </span>
                     )}
                   </div>
@@ -3057,7 +3221,7 @@ export default function AdminAiQuota() {
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <div className="relative w-44">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">{CURRENCIES[selectedCurrency].symbol}</span>
                       <Input
                         id="topup-token-rate"
                         type="text"
@@ -3073,7 +3237,7 @@ export default function AdminAiQuota() {
 
                     {Number(topupPricePerToken) > 0 && (
                       <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
-                        ≈ ${(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
+                        ≈ {CURRENCIES[selectedCurrency].symbol}${(Number(topupPricePerToken || 0) * 1_000_000).toFixed(4)}/1M
                       </span>
                     )}
 
@@ -3105,6 +3269,7 @@ export default function AdminAiQuota() {
                 <div className="grid grid-cols-3 gap-1.5">
                   {TOPUP_PRESETS.map((p) => {
                     const active = topupTokens === p.tokens;
+                    const presetPrice = formatPriceValue(Number(p.defaultPrice) * CURRENCIES[selectedCurrency].exchangeRate);
                     return (
                       <Button
                         key={p.tokens}
@@ -3120,11 +3285,11 @@ export default function AdminAiQuota() {
                           if (rate > 0) {
                             setTopupPrice(formatPriceValue(p.tokens * rate));
                           } else {
-                            setTopupPrice(p.defaultPrice);
+                            setTopupPrice(presetPrice);
                           }
                         }}
                       >
-                        <span>{p.label}</span>
+                        <span>+{formatQuota(p.tokens)} ({CURRENCIES[selectedCurrency].symbol}{presetPrice})</span>
                         {active && <Check className="w-3.5 h-3.5 ml-1 text-white shrink-0" />}
                       </Button>
                     );
@@ -3163,7 +3328,7 @@ export default function AdminAiQuota() {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="topup-price-input" className="text-xs font-semibold">
-                    {lang === "ar" ? "سعر الباقة للفاتورة ($ USD):" : "Invoice Price ($ USD):"}
+                    {lang === "ar" ? `سعر الباقة للفاتورة (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):` : `Invoice Price (${CURRENCIES[selectedCurrency].symbol} ${CURRENCIES[selectedCurrency].code}):`}
                   </Label>
                   <div className="relative">
                     <Input
@@ -3174,8 +3339,8 @@ export default function AdminAiQuota() {
                       className="h-8 text-xs font-mono font-bold"
                       placeholder="10.00"
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
-                      USD
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
+                      {CURRENCIES[selectedCurrency].code}
                     </span>
                   </div>
                 </div>
@@ -3189,7 +3354,7 @@ export default function AdminAiQuota() {
                     {lang === "ar" ? "معاينة الحصة بعد الشحن:" : "Calculation Preview:"}
                   </span>
                   <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    ${Number(topupPrice || 0).toFixed(2)} USD
+                    {CURRENCIES[selectedCurrency].symbol}{Number(topupPrice || 0).toFixed(2)} {CURRENCIES[selectedCurrency].code}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[11px]">
@@ -3210,7 +3375,7 @@ export default function AdminAiQuota() {
                   <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-[10px] text-muted-foreground font-mono">
                     <span>{lang === "ar" ? "معادلة الحساب للرموز المضافة:" : "Top-up cost formula:"}</span>
                     <span>
-                      {topupTokens.toLocaleString()} tokens × ${Number(topupPricePerToken || 0).toFixed(8)} / token
+                      {topupTokens.toLocaleString()} tokens × {CURRENCIES[selectedCurrency].symbol}${Number(topupPricePerToken || 0).toFixed(8)} / token
                     </span>
                   </div>
                 )}
@@ -3425,7 +3590,7 @@ export default function AdminAiQuota() {
                   <div className="flex items-center justify-between bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 font-bold text-sm">
                     <span className="text-emerald-700 dark:text-emerald-300">{lang === "ar" ? "المبلغ الإجمالي المدفوع:" : "Total Paid:"}</span>
                     <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                      ${topupInvoice.price.toFixed(2)} USD
+                      {CURRENCIES[topupInvoice.currency as CurrencyCode || "USD"]?.symbol || "$"}{topupInvoice.price.toFixed(2)} {topupInvoice.currency || "USD"}
                     </span>
                   </div>
                 </div>
@@ -3742,7 +3907,7 @@ export default function AdminAiQuota() {
                   <th className="text-left p-3 font-medium text-muted-foreground">{lang === "ar" ? "المزود" : "Provider"}</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">{lang === "ar" ? "مدخلات (Input)" : "Input Tokens"}</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">{lang === "ar" ? "مخرجات (Output)" : "Output Tokens"}</th>
-                  <th className="text-right p-3 font-medium text-emerald-500/90">{lang === "ar" ? "التكلفة" : "Total Cost"}</th>
+                  <th className="text-right p-3 font-medium text-emerald-500/90">{lang === "ar" ? `التكلفة (${CURRENCIES[selectedCurrency].symbol})` : `Total Cost (${CURRENCIES[selectedCurrency].code})`}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border/30">
@@ -3756,7 +3921,7 @@ export default function AdminAiQuota() {
                       <td className="p-3 text-right tabular-nums">{m.inputTokens.toLocaleString()}</td>
                       <td className="p-3 text-right tabular-nums">{m.outputTokens.toLocaleString()}</td>
                       <td className="p-3 text-right font-semibold text-emerald-400 tabular-nums">
-                        {formatCost(m.costUsd)}
+                        {formatCost(m.costUsd, selectedCurrency)}
                       </td>
                     </tr>
                   ))
@@ -3778,7 +3943,7 @@ export default function AdminAiQuota() {
                       {modelCostBreakdown.reduce((acc, m) => acc + m.outputTokens, 0).toLocaleString()}
                     </td>
                     <td className="p-3 text-right text-emerald-400 tabular-nums">
-                      {formatCost(modelCostBreakdown.reduce((acc, m) => acc + m.costUsd, 0))}
+                      {formatCost(modelCostBreakdown.reduce((acc, m) => acc + m.costUsd, 0), selectedCurrency)}
                     </td>
                   </tr>
                 )}
@@ -3980,7 +4145,7 @@ export default function AdminAiQuota() {
                         </td>
                         <td className="px-3.5 py-2 text-right font-mono tabular-nums">{inputTokens.toLocaleString()} tokens</td>
                         <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums font-mono">
-                          {formatCost(inCost)}
+                          {formatCost(inCost, selectedCurrency)}
                         </td>
                       </tr>
                       <tr>
@@ -3989,7 +4154,7 @@ export default function AdminAiQuota() {
                         </td>
                         <td className="px-3.5 py-2 text-right font-mono tabular-nums">{outputTokens.toLocaleString()} tokens</td>
                         <td className="px-3.5 py-2 text-right text-muted-foreground tabular-nums font-mono">
-                          {formatCost(outCost)}
+                          {formatCost(outCost, selectedCurrency)}
                         </td>
                       </tr>
                       <tr className="bg-muted/10 font-medium">
@@ -4000,7 +4165,7 @@ export default function AdminAiQuota() {
                           {totalTokens.toLocaleString()} tokens
                         </td>
                         <td className="px-3.5 py-2 text-right font-bold text-emerald-400 tabular-nums font-mono">
-                          {formatCost(cost)}
+                          {formatCost(cost, selectedCurrency)}
                         </td>
                       </tr>
                     </tbody>
@@ -4021,9 +4186,9 @@ export default function AdminAiQuota() {
                   </div>
                   <div className="text-right">
                     <span className="text-2xl font-black text-emerald-500 font-mono">
-                      {formatCost(cost)}
+                      {formatCost(cost, selectedCurrency)}
                     </span>
-                    <span className="text-[11px] text-muted-foreground block">USD</span>
+                    <span className="text-[11px] text-muted-foreground block">{CURRENCIES[selectedCurrency].code}</span>
                   </div>
                 </div>
                 </div>
@@ -4204,7 +4369,7 @@ export default function AdminAiQuota() {
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرموز المستهلكة" : "Tokens Used"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "الرسائل" : "Messages"}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "النسبة" : "Quota %"}</th>
-                  <th className="text-right p-2.5 font-medium text-emerald-500 font-bold">{lang === "ar" ? "الفاتورة" : "Bill (USD)"}</th>
+                  <th className="text-right p-2.5 font-medium text-emerald-500 font-bold">{lang === "ar" ? `الفاتورة (${CURRENCIES[selectedCurrency].symbol})` : `Bill (${CURRENCIES[selectedCurrency].code})`}</th>
                   <th className="text-right p-2.5 font-medium text-muted-foreground">{lang === "ar" ? "إجراءات" : "Actions"}</th>
                 </tr>
               </thead>
@@ -4237,7 +4402,7 @@ export default function AdminAiQuota() {
                         </span>
                       </td>
                       <td className="p-2.5 text-right font-bold text-emerald-400 font-mono">
-                        {formatCost(cost)}
+                        {formatCost(cost, selectedCurrency)}
                       </td>
                       <td className="p-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -4281,7 +4446,7 @@ export default function AdminAiQuota() {
                     {totalAllocatedQuota > 0 ? `${((totalTokensConsumedMonth / totalAllocatedQuota) * 100).toFixed(1)}%` : "0%"}
                   </td>
                   <td className="p-2.5 text-right text-emerald-400 font-mono text-sm">
-                    {formatCost(totalCostConsumedMonth)}
+                    {formatCost(totalCostConsumedMonth, selectedCurrency)}
                   </td>
                   <td></td>
                 </tr>
