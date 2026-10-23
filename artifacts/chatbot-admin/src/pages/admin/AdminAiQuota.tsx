@@ -11,6 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   TrendingUp,
@@ -44,7 +52,10 @@ import {
   FileText,
   Share2,
   Send,
-  Mail
+  Mail,
+  MoreVertical,
+  SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import {
   BarChart,
@@ -1663,6 +1674,23 @@ export default function AdminAiQuota() {
     }
   };
 
+  const handleClearCompanyQuota = (company: Company) => {
+    const confirmMsg = lang === "ar"
+      ? `هل أنت متأكد من إلغاء حصة الرموز لشركة "${company.name}" وجعلها غير محددة؟`
+      : `Are you sure you want to clear the token quota for "${company.name}" and make it unlimited?`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+    setQuotaMutation.mutate({
+      companyId: company.id,
+      quota: null,
+      quotaStartDate: null,
+      quotaEndDate: null,
+      aiModel: company.aiModel,
+      aiProvider: company.aiProvider,
+    });
+  };
+
   const totalAllocatedQuota = useMemo(() => {
     return companies.reduce((sum, c) => sum + (c.monthlyTokenQuota ?? 0), 0);
   }, [companies]);
@@ -1996,6 +2024,85 @@ export default function AdminAiQuota() {
                 <SelectItem value="name-asc">{lang === "ar" ? "الاسم (أبجدي)" : "Name (A-Z)"}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Section Actions Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 text-xs border-border/70 hover:bg-muted shadow-xs"
+                  title={lang === "ar" ? "إجراءات الحصص والاستهلاك" : "All Quota Actions"}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                  <span className="hidden sm:inline">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-56 shadow-lg">
+                <DropdownMenuLabel className="text-xs font-semibold">
+                  {lang === "ar" ? "إجراءات الحصص والفواتير" : "Quota & Billing Actions"}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                {companiesWithoutQuota.length > 0 && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setNewAssignCompanyId(String(companiesWithoutQuota[0].id));
+                      setNewAssignQuota("");
+                      setNewAssignStartDate(toIso(new Date()));
+                      const end = new Date();
+                      end.setDate(end.getDate() + 30);
+                      setNewAssignEndDate(toIso(end));
+                      setIsAssignNewOpen(true);
+                    }}
+                    className="text-xs cursor-pointer gap-2 py-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-blue-500" />
+                    <span>{lang === "ar" ? "تعيين حصة لشركة" : "Assign Quota"}</span>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuItem
+                  onClick={() => setShowAllBillsModal(true)}
+                  className="text-xs cursor-pointer gap-2 py-1.5"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{lang === "ar" ? "كشف فواتير العملاء" : "Client Invoices"}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => setShowModelCostModal(true)}
+                  disabled={!modelCostBreakdown.length}
+                  className="text-xs cursor-pointer gap-2 py-1.5"
+                >
+                  <PieChart className="w-3.5 h-3.5 text-purple-500" />
+                  <span>{lang === "ar" ? "تفاصيل التكلفة" : "Cost Breakdown"}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={exportToCSV}
+                  disabled={!filteredAndSortedCompanies.length}
+                  className="text-xs cursor-pointer gap-2 py-1.5"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{lang === "ar" ? "تصدير كشف الحصص (CSV)" : "Export CSV"}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => {
+                    refetchCompanies();
+                    refetchUsage();
+                  }}
+                  disabled={isFetchingCompanies || isFetchingUsage}
+                  className="text-xs cursor-pointer gap-2 py-1.5"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 text-muted-foreground ${isFetchingCompanies || isFetchingUsage ? "animate-spin" : ""}`} />
+                  <span>{lang === "ar" ? "تحديث البيانات" : "Refresh Data"}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -2237,26 +2344,110 @@ export default function AdminAiQuota() {
                               title={lang === "ar" ? "شحن باقة إضافية وفاتورة" : "Add Top-up Package & Bill"}
                             >
                               <PackagePlus className="w-3 h-3" />
-                              {lang === "ar" ? "+ باقة" : "+ Top-up"}
+                              <span className="hidden sm:inline">{lang === "ar" ? "+ باقة" : "+ Top-up"}</span>
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               className="h-7 text-[11px] gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
                               onClick={() => setBillTarget(c)}
+                              title={lang === "ar" ? "عرض الفاتورة" : "View Invoice"}
                             >
                               <Receipt className="w-3 h-3 text-emerald-500" />
-                              {lang === "ar" ? "الفاتورة" : "Bill"}
+                              <span className="hidden sm:inline">{lang === "ar" ? "الفاتورة" : "Bill"}</span>
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               className="h-7 text-[11px] gap-1 text-blue-500 hover:text-blue-600 border-blue-500/30 hover:border-blue-500/50"
                               onClick={() => openQuotaDialog(c, "base")}
+                              title={lang === "ar" ? "إدارة الحصة والنموذج" : "Manage Quota & Model"}
                             >
                               <TrendingUp className="w-3 h-3 text-blue-400" />
-                              {lang === "ar" ? "الحصة" : "Quota"}
+                              <span className="hidden sm:inline">{lang === "ar" ? "الحصة" : "Quota"}</span>
                             </Button>
+
+                            {/* All Actions Dropdown Menu Icon */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-border/70 shadow-xs"
+                                  title={lang === "ar" ? "جميع الإجراءات المتاحة" : "All Available Actions"}
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                  <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-lg">
+                                <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1">
+                                  <span className="truncate max-w-[130px] font-bold">{c.name}</span>
+                                  <span className="text-[10px] text-muted-foreground font-mono font-normal">
+                                    {formatQuota(c.monthlyTokenQuota)} tokens
+                                  </span>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem
+                                  onClick={() => openQuotaDialog(c, "base")}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                >
+                                  <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+                                  <span>{lang === "ar" ? "إدارة الحصة والنموذج" : "Manage Quota & Model"}</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => openQuotaDialog(c, "topup")}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                >
+                                  <PackagePlus className="w-3.5 h-3.5 text-purple-500" />
+                                  <span>{lang === "ar" ? "شحن باقة إضافية وفاتورة" : "Add Top-up & Bill"}</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => setBillTarget(c)}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                >
+                                  <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => handleShareBill(c)}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                >
+                                  <Mail className="w-3.5 h-3.5 text-amber-500" />
+                                  <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => handleCopyBill(c)}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                >
+                                  <Copy className="w-3.5 h-3.5 text-cyan-500" />
+                                  <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => handleDownloadInvoiceImage(c)}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                >
+                                  <Download className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span>{lang === "ar" ? "تحميل صورة الفاتورة (PNG)" : "Download Invoice Card"}</span>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem
+                                  onClick={() => handleClearCompanyQuota(c)}
+                                  className="text-xs cursor-pointer gap-2.5 py-1.5 text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-500/10 font-medium"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                  <span>{lang === "ar" ? "إلغاء حصة الشركة" : "Clear Quota"}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>
