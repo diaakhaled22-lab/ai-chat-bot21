@@ -609,6 +609,31 @@ function formatPriceValue(num: number): string {
   return str.replace(/(\.\d\d[1-9]?)0+$/, "$1");
 }
 
+const CUSTOM_RATES_STORAGE_KEY = "ai_custom_model_rates";
+
+function getSavedCustomRates(): Record<string, number> {
+  try {
+    const s = localStorage.getItem(CUSTOM_RATES_STORAGE_KEY);
+    return s ? JSON.parse(s) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCustomRate(modelId: string, rate: number | null) {
+  try {
+    const map = getSavedCustomRates();
+    if (rate === null || isNaN(rate)) {
+      delete map[modelId];
+    } else {
+      map[modelId] = rate;
+    }
+    localStorage.setItem(CUSTOM_RATES_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
   if (col !== sortKey) return <ArrowUpDown className="w-3 h-3 opacity-30 inline ml-1" />;
   return sortDir === "desc"
@@ -829,17 +854,33 @@ export default function AdminAiQuota() {
     const effectiveForPricing = initialModel === "default"
       ? (quotaSettings?.aiModel || "gemini-2.5-flash")
       : initialModel;
-    const initialPricing = getModelPricingDetails(effectiveForPricing);
-    const initialRate = initialPricing.isFree ? 0 : initialPricing.blendedPer1M;
-    setQuotaUnitRate(initialPricing.isFree ? "0.00" : String(initialRate));
-    setIsCustomUnitRate(false);
+    const { rate: resolvedRate, isCustom } = resolveModelRate(effectiveForPricing);
+    setQuotaUnitRate(String(resolvedRate));
+    setIsCustomUnitRate(isCustom);
 
     const initialTokens = company.monthlyTokenQuota ? Number(company.monthlyTokenQuota) : 0;
-    if (initialTokens > 0 && initialRate > 0) {
-      setQuotaPrice(formatPriceValue((initialTokens / 1_000_000) * initialRate));
+    if (initialTokens > 0 && resolvedRate > 0) {
+      setQuotaPrice(formatPriceValue((initialTokens / 1_000_000) * resolvedRate));
     } else {
       setQuotaPrice("0.00");
     }
+  };
+
+  const getEffectiveModelId = () => {
+    return quotaModelInput === "default"
+      ? (quotaSettings?.aiModel || "gemini-2.5-flash")
+      : quotaIsCustomModel
+      ? quotaCustomModel.trim() || (quotaSettings?.aiModel || "gemini-2.5-flash")
+      : quotaModelInput;
+  };
+
+  const resolveModelRate = (modelId: string): { rate: number; isCustom: boolean } => {
+    const savedRates = getSavedCustomRates();
+    if (typeof savedRates[modelId] === "number" && !isNaN(savedRates[modelId])) {
+      return { rate: savedRates[modelId], isCustom: true };
+    }
+    const pr = getModelPricingDetails(modelId);
+    return { rate: pr.isFree ? 0 : pr.blendedPer1M, isCustom: false };
   };
 
   const syncPriceFromTokens = (tokensNum: number, rateNum: number) => {
@@ -886,17 +927,29 @@ export default function AdminAiQuota() {
     setQuotaUnitRate(clean);
     setIsCustomUnitRate(true);
     const rate = Number(clean) || 0;
+    const modelId = getEffectiveModelId();
+    saveCustomRate(modelId, rate);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
     setQuotaPrice(syncPriceFromTokens(tokens, rate));
   };
 
-  const syncModelChangePricing = (targetModelId: string) => {
-    const pr = getModelPricingDetails(targetModelId);
-    const newRate = pr.isFree ? 0 : pr.blendedPer1M;
-    setQuotaUnitRate(pr.isFree ? "0.00" : String(newRate));
+  const resetUnitRateToStandard = () => {
+    const modelId = getEffectiveModelId();
+    const pr = getModelPricingDetails(modelId);
+    const stdRate = pr.isFree ? 0 : pr.blendedPer1M;
+    setQuotaUnitRate(String(stdRate));
     setIsCustomUnitRate(false);
+    saveCustomRate(modelId, null);
     const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
-    setQuotaPrice(syncPriceFromTokens(tokens, newRate));
+    setQuotaPrice(syncPriceFromTokens(tokens, stdRate));
+  };
+
+  const syncModelChangePricing = (targetModelId: string) => {
+    const { rate: resolvedRate, isCustom } = resolveModelRate(targetModelId);
+    setQuotaUnitRate(String(resolvedRate));
+    setIsCustomUnitRate(isCustom);
+    const tokens = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
+    setQuotaPrice(syncPriceFromTokens(tokens, resolvedRate));
   };
 
   const handleSaveQuota = () => {
@@ -2351,47 +2404,81 @@ export default function AdminAiQuota() {
                     </div>
                   )}
 
-                  {/* Effective model preview indicator & Standard Rate */}
-                  <div className="text-[11px] p-2 rounded-md border bg-muted/30 border-border/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-muted-foreground">
-                        {lang === "ar" ? "النموذج النشط للعميل:" : "Assigned Model:"}
-                      </span>
-                      <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
-                        {quotaModelInput === "default"
-                          ? `${quotaSettings?.aiModel || "gpt-4o-mini"} (${lang === "ar" ? "افتراضي وكيل الدعم" : "Support AI Default"})`
-                          : quotaIsCustomModel
-                          ? quotaCustomModel.trim() || (lang === "ar" ? "مخصص (فارغ)" : "Custom (empty)")
-                          : quotaModelInput}
-                      </span>
+                  {/* Effective model preview indicator & Interactive Model Base Rate Control */}
+                  <div className="p-2.5 rounded-lg border bg-muted/40 border-border/60 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground font-medium">
+                          {lang === "ar" ? "النموذج النشط للعميل:" : "Assigned Model:"}
+                        </span>
+                        <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
+                          {quotaModelInput === "default"
+                            ? `${quotaSettings?.aiModel || "gpt-4o-mini"} (${lang === "ar" ? "افتراضي وكيل الدعم" : "Support AI Default"})`
+                            : quotaIsCustomModel
+                            ? quotaCustomModel.trim() || (lang === "ar" ? "مخصص (فارغ)" : "Custom (empty)")
+                            : quotaModelInput}
+                        </span>
+                      </div>
+
+                      {/* Catalog Reference Info */}
+                      <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 self-end sm:self-auto">
+                        {currentModelPricing.isFree ? (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                            {lang === "ar" ? "نموذج مجاني ($0.00)" : "Free Tier Model ($0.00)"}
+                          </span>
+                        ) : (
+                          <span>
+                            {lang === "ar" ? "السعر القياسي للمزود:" : "Provider Standard:"}{" "}
+                            <strong className="text-foreground">${currentModelPricing.blendedPer1M.toFixed(4)}</strong> / 1M
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                      {currentModelPricing.isFree ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-                          {lang === "ar" ? "نموذج مجاني ($0.00)" : "Free Tier Model ($0.00)"}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {lang === "ar" ? "معدل التسعير:" : "Model Base Rate:"}{" "}
-                          <strong className="text-foreground">${Number(quotaUnitRate || 0).toFixed(4)}</strong> / 1M
-                        </span>
-                      )}
-                      {isCustomUnitRate && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const std = currentModelPricing.isFree ? 0 : currentModelPricing.blendedPer1M;
-                            setQuotaUnitRate(currentModelPricing.isFree ? "0.00" : String(std));
-                            setIsCustomUnitRate(false);
-                            const t = Number(quotaInput.replace(/[^0-9]/g, "")) || 0;
-                            setQuotaPrice(syncPriceFromTokens(t, std));
-                          }}
-                          className="text-[10px] text-primary hover:underline"
-                        >
-                          {lang === "ar" ? "استعادة القياسي" : "Reset Rate"}
-                        </button>
-                      )}
+                    {/* Interactive Model Base Rate Editor */}
+                    <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Label htmlFor="quota-unit-rate" className="text-xs font-semibold flex items-center gap-1 text-foreground">
+                          <Coins className="w-3.5 h-3.5 text-amber-500" />
+                          {lang === "ar" ? "التحكم في سعر النموذج (لكل 1 مليون رمز):" : "Control Model Base Rate (per 1M Tokens):"}
+                        </Label>
+                        {isCustomUnitRate && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
+                            {lang === "ar" ? "سعر مخصص" : "Custom Rate"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                        <div className="relative w-36">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">$</span>
+                          <Input
+                            id="quota-unit-rate"
+                            type="text"
+                            value={quotaUnitRate}
+                            onChange={(e) => handleUnitRateChange(e.target.value)}
+                            className="h-8 pl-6 pr-12 font-mono text-xs font-bold bg-background border-amber-500/40 focus-visible:ring-amber-500"
+                            placeholder="0.00"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none font-semibold">
+                            / 1M
+                          </span>
+                        </div>
+
+                        {isCustomUnitRate && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={resetUnitRateToStandard}
+                            className="h-8 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                            title={lang === "ar" ? "استعادة السعر القياسي للنموذج" : "Reset to model standard rate"}
+                          >
+                            <RotateCcw className="w-3 h-3 mr-1" />
+                            {lang === "ar" ? "استعادة القياسي" : "Reset"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
