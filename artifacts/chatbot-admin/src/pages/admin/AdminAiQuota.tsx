@@ -1291,13 +1291,13 @@ export default function AdminAiQuota() {
 
   const companiesWithQuota = useMemo(() => {
     return companies.filter(
-      (c) => typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0
+      (c) => c.monthlyTokenQuota != null && Number(c.monthlyTokenQuota) > 0
     );
   }, [companies]);
 
   const companiesWithoutQuota = useMemo(() => {
     return companies.filter(
-      (c) => !c.monthlyTokenQuota || c.monthlyTokenQuota <= 0
+      (c) => c.monthlyTokenQuota == null || Number(c.monthlyTokenQuota) <= 0
     );
   }, [companies]);
 
@@ -1418,7 +1418,7 @@ export default function AdminAiQuota() {
     ];
     
     const rows = filteredAndSortedCompanies.map(c => {
-      const hasQuota = typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0;
+      const hasQuota = c.monthlyTokenQuota != null && Number(c.monthlyTokenQuota) > 0;
       const usage = companyUsageMap.get(c.id);
       const tokensUsed = hasQuota ? (usage?.tokens ?? 0) : 0;
       const percent = hasQuota && c.monthlyTokenQuota ? (tokensUsed / c.monthlyTokenQuota) * 100 : 0;
@@ -2104,7 +2104,7 @@ export default function AdminAiQuota() {
                   </tr>
                 ) : (
                   filteredAndSortedCompanies.map((c) => {
-                    const hasQuota = typeof c.monthlyTokenQuota === "number" && c.monthlyTokenQuota > 0;
+                    const hasQuota = c.monthlyTokenQuota != null && Number(c.monthlyTokenQuota) > 0;
                     const usage = companyUsageMap.get(c.id);
                     const rawTokens = usage?.tokens ?? 0;
                     const tokensUsed = hasQuota ? rawTokens : 0;
