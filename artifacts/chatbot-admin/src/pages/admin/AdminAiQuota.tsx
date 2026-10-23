@@ -2331,52 +2331,16 @@ export default function AdminAiQuota() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={`h-7 text-[11px] gap-1 font-medium ${
-                                percentFloat! >= 100
-                                  ? "text-amber-500 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 animate-pulse"
-                                  : "text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50"
-                              }`}
-                              onClick={() => openQuotaDialog(c, "topup")}
-                              title={lang === "ar" ? "شحن باقة إضافية وفاتورة" : "Add Top-up Package & Bill"}
-                            >
-                              <PackagePlus className="w-3 h-3" />
-                              <span className="hidden sm:inline">{lang === "ar" ? "+ باقة" : "+ Top-up"}</span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-[11px] gap-1 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                              onClick={() => setBillTarget(c)}
-                              title={lang === "ar" ? "عرض الفاتورة" : "View Invoice"}
-                            >
-                              <Receipt className="w-3 h-3 text-emerald-500" />
-                              <span className="hidden sm:inline">{lang === "ar" ? "الفاتورة" : "Bill"}</span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-[11px] gap-1 text-blue-500 hover:text-blue-600 border-blue-500/30 hover:border-blue-500/50"
-                              onClick={() => openQuotaDialog(c, "base")}
-                              title={lang === "ar" ? "إدارة الحصة والنموذج" : "Manage Quota & Model"}
-                            >
-                              <TrendingUp className="w-3 h-3 text-blue-400" />
-                              <span className="hidden sm:inline">{lang === "ar" ? "الحصة" : "Quota"}</span>
-                            </Button>
-
-                            {/* All Actions Dropdown Menu Icon */}
+                          <div className="flex items-center justify-end">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 border-border/70 shadow-xs"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md"
                                   title={lang === "ar" ? "جميع الإجراءات المتاحة" : "All Available Actions"}
                                 >
-                                  <MoreVertical className="w-3.5 h-3.5" />
+                                  <MoreVertical className="w-4 h-4" />
                                   <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
                                 </Button>
                               </DropdownMenuTrigger>
