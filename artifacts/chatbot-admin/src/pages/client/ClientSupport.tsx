@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import {
   AlertCircle, CheckCircle2, SendHorizonal, Bot, ChevronDown, ChevronUp,
-  Loader2, Plus, X, LifeBuoy, Clock,
+  Loader2, Plus, X, LifeBuoy, Clock, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -20,7 +21,13 @@ interface Ticket {
   createdAt: string;
 }
 
-function TicketRow({ ticket }: { ticket: Ticket }) {
+function TicketRow({
+  ticket,
+  onDelete,
+}: {
+  ticket: Ticket;
+  onDelete: (id: number) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const { t, lang } = useLanguage();
   const isOpen = ticket.status === "open";
@@ -56,6 +63,20 @@ function TicketRow({ ticket }: { ticket: Ticket }) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <ConfirmDeleteDialog
+            title={lang === "ar" ? "حذف تذكرة المشكلة" : "Delete Problem Ticket"}
+            description={lang === "ar" ? "هل أنت متأكد من حذف هذه التذكرة والرسالة الخاصة بها نهائياً؟" : "Are you sure you want to permanently delete this problem ticket and message?"}
+            onConfirm={() => onDelete(ticket.id)}
+          >
+            <button
+              type="button"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title={lang === "ar" ? "حذف المشكلة" : "Delete problem"}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </ConfirmDeleteDialog>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
@@ -65,7 +86,23 @@ function TicketRow({ ticket }: { ticket: Ticket }) {
       {expanded && (
         <div className="px-5 pb-5 space-y-4 border-t border-border/60 pt-4 bg-muted/10">
           <div>
-            <p className="text-xs text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider">{t("support_your_problem")}</p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t("support_your_problem")}</p>
+              <ConfirmDeleteDialog
+                title={lang === "ar" ? "حذف تذكرة المشكلة" : "Delete Problem Ticket"}
+                description={lang === "ar" ? "هل أنت متأكد من حذف هذه التذكرة والرسالة الخاصة بها نهائياً؟" : "Are you sure you want to delete this problem ticket?"}
+                onConfirm={() => onDelete(ticket.id)}
+              >
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors px-2 py-0.5 rounded hover:bg-destructive/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{lang === "ar" ? "حذف التذكرة" : "Delete Ticket"}</span>
+                </button>
+              </ConfirmDeleteDialog>
+            </div>
             <div className="text-sm leading-relaxed bg-background border border-border/80 rounded-xl p-4 whitespace-pre-wrap text-foreground">
               {ticket.description}
             </div>
@@ -119,6 +156,20 @@ export default function ClientSupport() {
       setShowForm(false);
     },
     onError: () => toast({ title: lang === "ar" ? "فشل إرسال المشكلة" : "Failed to submit problem", variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/client/tickets/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
+      toast({ title: lang === "ar" ? "تم حذف التذكرة بنجاح" : "Problem ticket deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: lang === "ar" ? "فشل حذف التذكرة" : "Failed to delete ticket", variant: "destructive" });
+    },
   });
 
   const openCount = tickets.filter((t) => t.status === "open").length;
@@ -226,7 +277,13 @@ export default function ClientSupport() {
         </div>
       ) : (
         <div className="space-y-3 w-full">
-          {tickets.map((t) => <TicketRow key={t.id} ticket={t} />)}
+          {tickets.map((t) => (
+            <TicketRow
+              key={t.id}
+              ticket={t}
+              onDelete={(id) => deleteMutation.mutate(id)}
+            />
+          ))}
         </div>
       )}
     </div>

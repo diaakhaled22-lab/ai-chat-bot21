@@ -2044,6 +2044,38 @@ router.get("/client/tickets", async (req, res) => {
   }
 });
 
+// DELETE /client/tickets/:id
+router.delete("/client/tickets/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ticket id" });
+      return;
+    }
+
+    const [deleted] = await db
+      .delete(ticketsTable)
+      .where(and(eq(ticketsTable.id, id), eq(ticketsTable.clientId, req.session.userId!)))
+      .returning();
+
+    if (!deleted) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    // Also delete any mirrored chat log for this ticket
+    await db
+      .delete(chatLogsTable)
+      .where(eq(chatLogsTable.sessionId, `ticket_${id}`))
+      .catch(() => {});
+
+    res.json({ ok: true, id });
+  } catch (err) {
+    logger.error({ err }, "Delete client ticket error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /client/chat-log-retention
 router.get("/client/chat-log-retention", async (req, res) => {
   try {
