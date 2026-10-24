@@ -194,7 +194,10 @@ export default function ClientSupport() {
       }
       return res.json().catch(() => ({ ok: true }));
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData<Ticket[]>(["client-tickets"], (old = []) =>
+        old.filter((t) => t.id !== id)
+      );
       queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["client-chat-logs"] });
       queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });

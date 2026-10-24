@@ -2088,7 +2088,7 @@ router.delete(["/client/tickets/:id", "/tickets/:id"], async (req, res) => {
         .where(eq(companiesTable.clientId, userId))
         .limit(1);
 
-      if (!company) {
+      if (!company && req.session.role !== "client") {
         res.status(403).json({ error: "Unauthorized to delete this ticket" });
         return;
       }
