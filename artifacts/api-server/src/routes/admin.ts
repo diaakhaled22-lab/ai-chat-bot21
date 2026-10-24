@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable } from "@workspace/db";
-import { eq, count, and, sql, desc, gte, lte } from "drizzle-orm";
+import { eq, count, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
 import OpenAI from "openai";
 import {
   CreateClientBody,
@@ -1925,6 +1925,118 @@ router.put("/admin/tickets/:id/admin-note", async (req, res) => {
   }
 });
 
+// Helper for solving a ticket with AI
+async function solveTicketWithAiCore(
+  ticket: { id: number; title: string; description: string },
+  apiKey: string,
+  provider: string,
+  model: string
+): Promise<string> {
+  const SYSTEM_PROMPT =
+    "You are a professional, polite, and helpful customer support technical assistant. " +
+    "Carefully analyze the customer's problem and provide a clear, structured, actionable, and friendly solution. " +
+    "Always detect the language of the problem (Arabic or English) and reply in the same language. " +
+    "Use step-by-step instructions and bullet points where helpful. " +
+    "Keep the response well-formatted and easy to read in plain text.";
+
+  const USER_PROMPT = `Problem Title: ${ticket.title}\n\nProblem Description:\n${ticket.description}`;
+
+  let aiResponse = "";
+
+  if (provider === "anthropic") {
+    const Anthropic = (await import("@anthropic-ai/sdk")).default;
+    const client = new Anthropic({ apiKey });
+    const effectiveModel = sanitizeAnthropicModel(model);
+    try {
+      const message = await client.messages.create({
+        model: effectiveModel,
+        max_tokens: 800,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: USER_PROMPT }],
+      });
+      aiResponse = extractAnthropicText(message.content);
+    } catch (err: any) {
+      const fallbackModel = isAnthropicFreeModel(effectiveModel)
+        ? (effectiveModel !== "claude-3-5-haiku-20241022" ? "claude-3-5-haiku-20241022" : null)
+        : (effectiveModel !== "claude-3-5-sonnet-20241022" ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022");
+      if (fallbackModel) {
+        const fallbackMsg = await client.messages.create({
+          model: fallbackModel,
+          max_tokens: 800,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: USER_PROMPT }],
+        });
+        aiResponse = extractAnthropicText(fallbackMsg.content);
+      } else {
+        throw err;
+      }
+    }
+  } else if (provider === "google") {
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const effectiveModel = sanitizeGoogleModel(model);
+    const gemini = genAI.getGenerativeModel({ model: effectiveModel, systemInstruction: SYSTEM_PROMPT });
+    const result = await gemini.generateContent(USER_PROMPT);
+    aiResponse = result.response.text();
+  } else if (provider === "openrouter") {
+    const openai = new OpenAI({
+      apiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: getOpenRouterHeaders(),
+    });
+    const effectiveModel = sanitizeOpenRouterModel(model);
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: effectiveModel,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: USER_PROMPT },
+        ],
+        max_tokens: 800,
+      });
+    } catch (err: any) {
+      const errMsg = err?.message || "";
+      const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
+      if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+        completion = await openai.chat.completions.create({
+          model: "openrouter/free",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: USER_PROMPT },
+          ],
+          max_tokens: 800,
+        });
+      } else if (isUnavailable) {
+        const fallbackModel = effectiveModel.includes("anthropic") ? "anthropic/claude-sonnet-4.5" : "openrouter/free";
+        completion = await openai.chat.completions.create({
+          model: fallbackModel,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: USER_PROMPT },
+          ],
+          max_tokens: 800,
+        });
+      } else {
+        throw err;
+      }
+    }
+    aiResponse = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
+  } else {
+    // openai (default)
+    const openai = new OpenAI({ apiKey });
+    const completion = await openai.chat.completions.create(
+      buildOpenAiChatParams(model, [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: USER_PROMPT },
+      ], { maxTokens: 800 })
+    );
+    aiResponse = completion.choices[0]?.message?.content ?? "";
+  }
+
+  return aiResponse;
+}
+
 // POST /admin/tickets/:id/ai-solve
 router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
   try {
@@ -1951,102 +2063,7 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
       return;
     }
 
-    const SYSTEM_PROMPT = "You are a helpful customer support assistant. Provide a clear, concise, and friendly solution to the customer's problem. Format your response in plain text.";
-    const USER_PROMPT   = `Problem Title: ${ticket.title}\n\nProblem Description:\n${ticket.description}`;
-
-    let aiResponse = "";
-
-    if (provider === "anthropic") {
-      const Anthropic = (await import("@anthropic-ai/sdk")).default;
-      const client = new Anthropic({ apiKey });
-      const effectiveModel = sanitizeAnthropicModel(model);
-      try {
-        const message = await client.messages.create({
-          model: effectiveModel,
-          max_tokens: 600,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: USER_PROMPT }],
-        });
-        aiResponse = extractAnthropicText(message.content);
-      } catch (err: any) {
-        const fallbackModel = isAnthropicFreeModel(effectiveModel)
-          ? (effectiveModel !== "claude-3-5-haiku-20241022" ? "claude-3-5-haiku-20241022" : null)
-          : (effectiveModel !== "claude-3-5-sonnet-20241022" ? "claude-3-5-sonnet-20241022" : "claude-3-5-haiku-20241022");
-        if (fallbackModel) {
-          const fallbackMsg = await client.messages.create({
-            model: fallbackModel,
-            max_tokens: 600,
-            system: SYSTEM_PROMPT,
-            messages: [{ role: "user", content: USER_PROMPT }],
-          });
-          aiResponse = extractAnthropicText(fallbackMsg.content);
-        } else {
-          throw err;
-        }
-      }
-    } else if (provider === "google") {
-      const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const effectiveModel = sanitizeGoogleModel(model);
-      const gemini = genAI.getGenerativeModel({ model: effectiveModel, systemInstruction: SYSTEM_PROMPT });
-      const result = await gemini.generateContent(USER_PROMPT);
-      aiResponse = result.response.text();
-    } else if (provider === "openrouter") {
-      const openai = new OpenAI({
-        apiKey,
-        baseURL: "https://openrouter.ai/api/v1",
-        defaultHeaders: getOpenRouterHeaders(),
-      });
-      const effectiveModel = sanitizeOpenRouterModel(model);
-      let completion;
-      try {
-        completion = await openai.chat.completions.create({
-          model: effectiveModel,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user",   content: USER_PROMPT   },
-          ],
-          max_tokens: 600,
-        });
-      } catch (err: any) {
-        const errMsg = err?.message || "";
-        const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
-        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
-          completion = await openai.chat.completions.create({
-            model: "openrouter/free",
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user",   content: USER_PROMPT   },
-            ],
-            max_tokens: 600,
-          });
-        } else if (isUnavailable) {
-          logger.warn({ effectiveModel, err: errMsg }, "OpenRouter model unavailable in chat; retrying with fallback active model");
-          const fallbackModel = effectiveModel.includes("anthropic") ? "anthropic/claude-sonnet-4.5" : "openrouter/free";
-          completion = await openai.chat.completions.create({
-            model: fallbackModel,
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user",   content: USER_PROMPT   },
-            ],
-            max_tokens: 600,
-          });
-        } else {
-          throw err;
-        }
-      }
-      aiResponse = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
-    } else {
-      // openai (default)
-      const openai = new OpenAI({ apiKey });
-      const completion = await openai.chat.completions.create(
-        buildOpenAiChatParams(model, [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user",   content: USER_PROMPT   },
-        ], { maxTokens: 600 })
-      );
-      aiResponse = completion.choices[0]?.message?.content ?? "";
-    }
+    const aiResponse = await solveTicketWithAiCore(ticket, apiKey, provider, model);
 
     const [updated] = await db
       .update(ticketsTable)
@@ -2058,6 +2075,128 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "AI solve ticket error");
     res.status(500).json({ error: err?.message ?? "Internal server error" });
+  }
+});
+
+// POST /admin/tickets/ai-solve-batch — solve multiple or all open tickets with Support AI
+router.post("/admin/tickets/ai-solve-batch", async (req, res) => {
+  try {
+    const { ids } = (req.body || {}) as { ids?: number[] };
+
+    const configRows = await db
+      .select()
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+
+    const apiKey   = cfg["support_ai_api_key"]  ?? "";
+    const provider = cfg["support_ai_provider"] ?? "openai";
+    const model    = cfg["support_ai_model"]    ?? "gpt-4o-mini";
+
+    if (!apiKey) {
+      res.status(400).json({ error: "No AI API key configured. Set it in Support AI settings." });
+      return;
+    }
+
+    let ticketsToSolve: (typeof ticketsTable.$inferSelect)[] = [];
+    if (Array.isArray(ids) && ids.length > 0) {
+      const numericIds = ids.map(Number).filter((n) => !isNaN(n));
+      ticketsToSolve = await db
+        .select()
+        .from(ticketsTable)
+        .where(inArray(ticketsTable.id, numericIds));
+    } else {
+      ticketsToSolve = await db
+        .select()
+        .from(ticketsTable)
+        .where(eq(ticketsTable.status, "open"));
+    }
+
+    if (ticketsToSolve.length === 0) {
+      res.json({ ok: true, solvedCount: 0, message: "No open tickets to solve." });
+      return;
+    }
+
+    let solvedCount = 0;
+    const errors: { id: number; error: string }[] = [];
+
+    for (const ticket of ticketsToSolve) {
+      try {
+        const aiResponse = await solveTicketWithAiCore(ticket, apiKey, provider, model);
+        await db
+          .update(ticketsTable)
+          .set({ aiResponse, aiProvider: provider, aiModel: model, status: "resolved" })
+          .where(eq(ticketsTable.id, ticket.id));
+        solvedCount++;
+      } catch (err: any) {
+        logger.error({ err, ticketId: ticket.id }, "Batch solve error for ticket");
+        errors.push({ id: ticket.id, error: err?.message ?? "Error" });
+      }
+    }
+
+    res.json({
+      ok: true,
+      solvedCount,
+      totalRequested: ticketsToSolve.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "AI solve batch error");
+    res.status(500).json({ error: err?.message ?? "Internal server error" });
+  }
+});
+
+// PUT /admin/tickets/:id/solution — allows admin to edit AI response or Admin note directly
+router.put("/admin/tickets/:id/solution", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { aiResponse, adminNote, status } = req.body as {
+      aiResponse?: string;
+      adminNote?: string;
+      status?: "open" | "resolved";
+    };
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (aiResponse !== undefined) updates.aiResponse = aiResponse ? aiResponse.trim() : null;
+    if (adminNote !== undefined) updates.adminNote = adminNote ? adminNote.trim() : null;
+    if (status !== undefined && ["open", "resolved"].includes(status)) updates.status = status;
+
+    const [ticket] = await db
+      .update(ticketsTable)
+      .set(updates)
+      .where(eq(ticketsTable.id, id))
+      .returning();
+
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    res.json({ ok: true, ticket });
+  } catch (err) {
+    logger.error({ err }, "Update ticket solution error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /admin/tickets/:id — admin permanently deletes a ticket
+router.delete("/admin/tickets/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const [deleted] = await db
+      .delete(ticketsTable)
+      .where(eq(ticketsTable.id, id))
+      .returning();
+
+    if (!deleted) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    res.json({ ok: true, id });
+  } catch (err) {
+    logger.error({ err }, "Delete ticket error");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
