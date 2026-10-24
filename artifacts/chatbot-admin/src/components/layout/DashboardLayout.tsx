@@ -30,7 +30,7 @@ import {
   Database,
   Cpu,
   Coins,
-  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, ChevronDown, ChevronRight, type LucideIcon,
+  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -824,6 +824,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           href: "/client/tools/calendar",
           label: t("nav_google_calendar") || (lang === "ar" ? "تقويم Google" : "Google Calendar"),
           icon: CalendarIcon,
+        },
+        {
+          href: "/client/tools/sheets",
+          label: t("nav_google_sheets") || (lang === "ar" ? "جداول Google" : "Google Sheets"),
+          icon: FileSpreadsheet,
         },
       ],
     },

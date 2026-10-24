@@ -185,6 +185,9 @@ function Router() {
       <Route path="/client/tools/calendar">
         {() => <ProtectedRoute component={ClientTools} allowedRole="client" />}
       </Route>
+      <Route path="/client/tools/sheets">
+        {() => <ProtectedRoute component={ClientTools} allowedRole="client" />}
+      </Route>
       <Route path="/client/channels">
         {() => <ProtectedRoute component={ClientChannels} allowedRole="client" />}
       </Route>

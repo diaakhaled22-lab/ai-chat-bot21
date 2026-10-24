@@ -1088,6 +1088,216 @@ router.post("/client/tools/calendar/events", async (req, res) => {
 });
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Google Sheets Tool Endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /client/tools/sheets/config
+router.get("/client/tools/sheets/config", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    let serviceAccountEmail: string | null = null;
+    if (company.serviceAccountKey) {
+      try {
+        const parsed = JSON.parse(company.serviceAccountKey);
+        serviceAccountEmail = parsed.client_email || null;
+      } catch {}
+    }
+
+    res.json({
+      googleSheetsEnabled: company.googleSheetsEnabled ?? false,
+      googleSheetsLink: company.googleSheetsLink || "",
+      googleSheetsName: company.googleSheetsName || "",
+      googleSheetsPage: company.googleSheetsPage || "",
+      hasServiceAccountKey: Boolean(company.serviceAccountKey),
+      serviceAccountEmail,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Get sheets config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /client/tools/sheets/config
+router.put("/client/tools/sheets/config", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const {
+      googleSheetsEnabled,
+      googleSheetsLink,
+      googleSheetsName,
+      googleSheetsPage,
+      serviceAccountKey,
+    } = req.body || {};
+
+    const updates: Record<string, any> = {};
+
+    if (googleSheetsEnabled !== undefined) {
+      updates.googleSheetsEnabled = Boolean(googleSheetsEnabled);
+    }
+    if (googleSheetsLink !== undefined) {
+      updates.googleSheetsLink = String(googleSheetsLink).trim() || null;
+    }
+    if (googleSheetsName !== undefined) {
+      updates.googleSheetsName = String(googleSheetsName).trim() || null;
+    }
+    if (googleSheetsPage !== undefined) {
+      updates.googleSheetsPage = String(googleSheetsPage).trim() || null;
+    }
+    if (serviceAccountKey !== undefined) {
+      const raw = typeof serviceAccountKey === "string" ? serviceAccountKey.trim() : "";
+      if (!raw) {
+        updates.serviceAccountKey = null;
+      } else {
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed.client_email || !parsed.private_key) {
+            res.status(400).json({ error: "Service account JSON is missing client_email or private_key" });
+            return;
+          }
+          updates.serviceAccountKey = raw;
+        } catch {
+          res.status(400).json({ error: "Service account key must be valid JSON" });
+          return;
+        }
+      }
+    }
+
+    await db
+      .update(companiesTable)
+      .set(updates)
+      .where(eq(companiesTable.id, company.id));
+
+    res.json({ ok: true, message: "Google Sheets settings saved successfully" });
+  } catch (err: any) {
+    logger.error({ err }, "Update sheets config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /client/tools/sheets/test
+router.post("/client/tools/sheets/test", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const { googleSheetsLink, googleSheetsPage, serviceAccountKey } = req.body || {};
+    const targetLink = googleSheetsLink || company.googleSheetsLink;
+    const targetPage = googleSheetsPage || company.googleSheetsPage;
+    const rawKey = serviceAccountKey || company.serviceAccountKey;
+
+    if (!targetLink) {
+      res.status(400).json({ success: false, message: "Google Sheet URL is required" });
+      return;
+    }
+
+    if (!rawKey) {
+      res.status(400).json({ success: false, message: "No service account JSON configured. Please add one first." });
+      return;
+    }
+
+    const spreadsheetId = extractSpreadsheetId(targetLink);
+    if (!spreadsheetId) {
+      res.status(400).json({ success: false, message: "Invalid Google Sheet URL format." });
+      return;
+    }
+
+    let credentials: { client_email?: string; private_key?: string };
+    try {
+      credentials = JSON.parse(rawKey);
+    } catch {
+      res.status(400).json({ success: false, message: "Service account key is not valid JSON." });
+      return;
+    }
+
+    if (!credentials.client_email || !credentials.private_key) {
+      res.status(400).json({ success: false, message: "Service account JSON missing client_email or private_key." });
+      return;
+    }
+
+    try {
+      const auth = new google.auth.JWT({
+        email: credentials.client_email,
+        key: credentials.private_key,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
+      const sheets = google.sheets({ version: "v4", auth });
+      const { data } = await sheets.spreadsheets.get({
+        spreadsheetId,
+        fields: "properties.title,sheets.properties.title",
+      });
+
+      const tabTitles = (data.sheets ?? []).map((s) => s.properties?.title).filter((t) => !!t);
+      const trimmedPage = targetPage?.trim();
+
+      if (trimmedPage) {
+        const found = tabTitles.some((t) => t.toLowerCase() === trimmedPage.toLowerCase());
+        if (!found) {
+          res.json({
+            success: false,
+            sheetTitle: data.properties?.title ?? "Spreadsheet",
+            availableTabs: tabTitles,
+            message: `Connected to "${data.properties?.title ?? "the spreadsheet"}", but no page named "${trimmedPage}" was found. Available pages: ${tabTitles.join(", ") || "none"}.`,
+          });
+          return;
+        }
+      }
+
+      res.json({
+        success: true,
+        sheetTitle: data.properties?.title ?? "Spreadsheet",
+        availableTabs: tabTitles,
+        message: trimmedPage
+          ? `Connected successfully! Found page "${trimmedPage}" in "${data.properties?.title ?? "the spreadsheet"}".`
+          : `Connected successfully to "${data.properties?.title ?? "the spreadsheet"}". Available pages: ${tabTitles.join(", ")}.`,
+      });
+    } catch (apiErr) {
+      const status = apiErr?.code ?? apiErr?.response?.status;
+      if (status === 404) {
+        res.status(400).json({ success: false, message: "Spreadsheet not found. Check the URL and try again." });
+      } else if (status === 403) {
+        res.status(400).json({
+          success: false,
+          message: `Access denied. Share the sheet with ${credentials.client_email} as an Editor.`,
+        });
+      } else {
+        res.status(400).json({ success: false, message: apiErr.message || "Failed to connect to Google Sheets." });
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Test sheets error");
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 // GET /client/chat-logs
 router.get("/client/chat-logs", async (req, res) => {
   try {

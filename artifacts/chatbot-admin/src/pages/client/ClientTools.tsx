@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
@@ -11,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Calendar as CalendarIcon,
+  FileSpreadsheet,
   Clock,
   Globe,
   CheckCircle2,
@@ -26,6 +28,10 @@ import {
   Wrench,
   Loader2,
   CalendarCheck2,
+  TableProperties,
+  ArrowRight,
+  Database,
+  Link as LinkIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -47,6 +53,15 @@ interface CalendarConfig {
   hasCompanyKey: boolean;
   serviceAccountEmail: string | null;
   credentialsSource: "custom" | "company" | "none";
+}
+
+interface SheetsConfig {
+  googleSheetsEnabled: boolean;
+  googleSheetsLink: string;
+  googleSheetsName: string;
+  googleSheetsPage: string;
+  hasServiceAccountKey: boolean;
+  serviceAccountEmail: string | null;
 }
 
 interface CalendarEvent {
@@ -75,21 +90,35 @@ const COMMON_TIMEZONES = [
 ];
 
 export default function ClientTools() {
+  const [location, setLocation] = useLocation();
   const { lang } = useLanguage();
   const isAr = lang === "ar";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Local form state
-  const [activeTab, setActiveTab] = useState<"calendar">("calendar");
+  // Active tab: 'calendar' | 'sheets'
+  const [activeTab, setActiveTab] = useState<"calendar" | "sheets">(() => {
+    if (location.includes("sheets")) return "sheets";
+    return "calendar";
+  });
+
+  useEffect(() => {
+    if (location.includes("sheets")) {
+      setActiveTab("sheets");
+    } else if (location.includes("calendar")) {
+      setActiveTab("calendar");
+    }
+  }, [location]);
+
+  // ── Calendar Local State ──────────────────────────────────────────────────
   const [calendarId, setCalendarId] = useState("primary");
-  const [enabled, setEnabled] = useState(false);
+  const [calEnabled, setCalEnabled] = useState(false);
   const [timezone, setTimezone] = useState("UTC");
   const [duration, setDuration] = useState(30);
   const [bookingRules, setBookingRules] = useState("");
-  const [customKeyJson, setCustomKeyJson] = useState("");
-  const [useCustomKey, setUseCustomKey] = useState(false);
-  const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const [calCustomKeyJson, setCalCustomKeyJson] = useState("");
+  const [useCustomCalKey, setUseCustomCalKey] = useState(false);
+  const [isCalFormInitialized, setIsCalFormInitialized] = useState(false);
 
   // New Event Modal state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -99,25 +128,40 @@ export default function ClientTools() {
   const [eventEmail, setEventEmail] = useState("");
   const [eventDesc, setEventDesc] = useState("");
 
-  // Fetch config
-  const { data: config, isLoading: loadingConfig, refetch: refetchConfig } = useQuery<CalendarConfig>({
+  // ── Sheets Local State ────────────────────────────────────────────────────
+  const [sheetsEnabled, setSheetsEnabled] = useState(false);
+  const [sheetsLink, setSheetsLink] = useState("");
+  const [sheetsName, setSheetsName] = useState("");
+  const [sheetsPage, setSheetsPage] = useState("");
+  const [sheetsCustomKey, setSheetsCustomKey] = useState("");
+  const [showSheetsKeyEdit, setShowSheetsKeyEdit] = useState(false);
+  const [isSheetsInitialized, setIsSheetsInitialized] = useState(false);
+  const [sheetsTestResult, setSheetsTestResult] = useState<{
+    success: boolean;
+    message: string;
+    sheetTitle?: string;
+    availableTabs?: string[];
+  } | null>(null);
+
+  // ── Fetch Calendar Config ────────────────────────────────────────────────
+  const { data: calConfig, isLoading: loadingCalConfig } = useQuery<CalendarConfig>({
     queryKey: ["client-calendar-config"],
     queryFn: async () => {
       const res = await customFetch<CalendarConfig>("/api/client/tools/calendar/config");
-      if (!isFormInitialized && res) {
-        setEnabled(res.googleCalendarEnabled ?? false);
+      if (!isCalFormInitialized && res) {
+        setCalEnabled(res.googleCalendarEnabled ?? false);
         setCalendarId(res.googleCalendarId || "primary");
         setTimezone(res.googleCalendarTimezone || "UTC");
         setDuration(res.googleCalendarDuration || 30);
         setBookingRules(res.googleCalendarBookingRules || "");
-        setUseCustomKey(res.hasCustomKey);
-        setIsFormInitialized(true);
+        setUseCustomCalKey(res.hasCustomKey);
+        setIsCalFormInitialized(true);
       }
       return res;
     },
   });
 
-  // Fetch upcoming events
+  // ── Fetch Upcoming Calendar Events ───────────────────────────────────────
   const {
     data: eventsData,
     isLoading: loadingEvents,
@@ -126,12 +170,28 @@ export default function ClientTools() {
   } = useQuery<{ ok: boolean; events: CalendarEvent[]; error?: string }>({
     queryKey: ["client-calendar-events"],
     queryFn: () => customFetch<{ ok: boolean; events: CalendarEvent[]; error?: string }>("/api/client/tools/calendar/events"),
-    enabled: Boolean(config?.googleCalendarEnabled && (config?.hasCompanyKey || config?.hasCustomKey)),
+    enabled: Boolean(calConfig?.googleCalendarEnabled && (calConfig?.hasCompanyKey || calConfig?.hasCustomKey)),
     retry: false,
   });
 
-  // Save Config Mutation
-  const saveMutation = useMutation({
+  // ── Fetch Sheets Config ──────────────────────────────────────────────────
+  const { data: sheetsConfig, isLoading: loadingSheetsConfig } = useQuery<SheetsConfig>({
+    queryKey: ["client-sheets-config"],
+    queryFn: async () => {
+      const res = await customFetch<SheetsConfig>("/api/client/tools/sheets/config");
+      if (!isSheetsInitialized && res) {
+        setSheetsEnabled(res.googleSheetsEnabled ?? false);
+        setSheetsLink(res.googleSheetsLink || "");
+        setSheetsName(res.googleSheetsName || "");
+        setSheetsPage(res.googleSheetsPage || "");
+        setIsSheetsInitialized(true);
+      }
+      return res;
+    },
+  });
+
+  // ── Save Calendar Mutation ───────────────────────────────────────────────
+  const saveCalMutation = useMutation({
     mutationFn: (payload: any) =>
       customFetch("/api/client/tools/calendar/config", {
         method: "PUT",
@@ -156,8 +216,8 @@ export default function ClientTools() {
     },
   });
 
-  // Test Connection Mutation
-  const testMutation = useMutation({
+  // ── Test Calendar Mutation ───────────────────────────────────────────────
+  const testCalMutation = useMutation({
     mutationFn: () =>
       customFetch<{ ok: boolean; calendarSummary: string; timeZone: string; message: string }>(
         "/api/client/tools/calendar/test",
@@ -165,7 +225,7 @@ export default function ClientTools() {
           method: "POST",
           body: JSON.stringify({
             calendarId: calendarId.trim() || "primary",
-            serviceAccountKey: useCustomKey && customKeyJson.trim() ? customKeyJson.trim() : undefined,
+            serviceAccountKey: useCustomCalKey && calCustomKeyJson.trim() ? calCustomKeyJson.trim() : undefined,
           }),
         }
       ),
@@ -185,7 +245,7 @@ export default function ClientTools() {
     },
   });
 
-  // Create Event Mutation
+  // ── Create Event Mutation ────────────────────────────────────────────────
   const createEventMutation = useMutation({
     mutationFn: (payload: any) =>
       customFetch<{ ok: boolean; event: CalendarEvent }>("/api/client/tools/calendar/events", {
@@ -213,14 +273,81 @@ export default function ClientTools() {
     },
   });
 
-  const handleSave = () => {
-    saveMutation.mutate({
-      googleCalendarEnabled: enabled,
+  // ── Save Sheets Mutation ─────────────────────────────────────────────────
+  const saveSheetsMutation = useMutation({
+    mutationFn: (payload: any) =>
+      customFetch("/api/client/tools/sheets/config", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      toast({
+        title: isAr ? "تم الحفظ بنجاح" : "Settings Saved",
+        description: isAr
+          ? "تم تحديث إعدادات جداول Google بنجاح"
+          : "Google Sheets configuration updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["client-sheets-config"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: isAr ? "فشل الحفظ" : "Save Failed",
+        description: err?.message || (isAr ? "حدث خطأ أثناء الحفظ" : "Error saving settings"),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // ── Test Sheets Mutation ─────────────────────────────────────────────────
+  const testSheetsMutation = useMutation({
+    mutationFn: () =>
+      customFetch<{ success: boolean; message: string; sheetTitle?: string; availableTabs?: string[] }>(
+        "/api/client/tools/sheets/test",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            googleSheetsLink: sheetsLink.trim(),
+            googleSheetsPage: sheetsPage.trim() || undefined,
+            serviceAccountKey: sheetsCustomKey.trim() || undefined,
+          }),
+        }
+      ),
+    onSuccess: (data) => {
+      setSheetsTestResult(data);
+      toast({
+        title: isAr ? "الاتصال ناجح!" : "Connection Successful!",
+        description: data.message,
+      });
+    },
+    onError: (err: any) => {
+      const msg = err?.message || (isAr ? "تعذر الاتصال بجدول Google" : "Could not connect to Google Sheet");
+      setSheetsTestResult({ success: false, message: msg });
+      toast({
+        title: isAr ? "فشل الاتصال" : "Connection Failed",
+        description: msg,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveCalendar = () => {
+    saveCalMutation.mutate({
+      googleCalendarEnabled: calEnabled,
       googleCalendarId: calendarId.trim() || "primary",
       googleCalendarTimezone: timezone,
       googleCalendarDuration: Number(duration) || 30,
       googleCalendarBookingRules: bookingRules,
-      googleCalendarServiceAccountKey: useCustomKey ? (customKeyJson.trim() || null) : null,
+      googleCalendarServiceAccountKey: useCustomCalKey ? (calCustomKeyJson.trim() || null) : null,
+    });
+  };
+
+  const handleSaveSheets = () => {
+    saveSheetsMutation.mutate({
+      googleSheetsEnabled: sheetsEnabled,
+      googleSheetsLink: sheetsLink.trim(),
+      googleSheetsName: sheetsName.trim() || null,
+      googleSheetsPage: sheetsPage.trim() || null,
+      serviceAccountKey: sheetsCustomKey.trim() || undefined,
     });
   };
 
@@ -244,8 +371,11 @@ export default function ClientTools() {
     });
   };
 
-  const isConfigured = Boolean(config?.hasCompanyKey || config?.hasCustomKey);
-  const isConnected = Boolean(config?.googleCalendarEnabled && isConfigured);
+  const isCalConfigured = Boolean(calConfig?.hasCompanyKey || calConfig?.hasCustomKey);
+  const isCalConnected = Boolean(calConfig?.googleCalendarEnabled && isCalConfigured);
+
+  const isSheetsConfigured = Boolean(sheetsConfig?.hasServiceAccountKey && sheetsConfig?.googleSheetsLink);
+  const isSheetsConnected = Boolean(sheetsConfig?.googleSheetsEnabled && isSheetsConfigured);
 
   return (
     <div className="space-y-6">
@@ -258,34 +388,53 @@ export default function ClientTools() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isAr
-              ? "إدارة الأدوات الخارجية وربطها مع المساعد الذكي لتنفيذ المهام وحجز المواعيد تلقائياً."
-              : "Manage external productivity tools and integrate them with your AI Chatbot for automated booking."}
+              ? "إدارة الأدوات الخارجية وربطها مع المساعد الذكي لتنفيذ المهام والمزامنة التلقائية."
+              : "Manage external business tools and connect them with your AI Chatbot for seamless automation."}
           </p>
         </div>
 
-        {/* Tab Pills */}
+        {/* Tab Switcher Pills */}
         <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border">
           <Button
             variant={activeTab === "calendar" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setActiveTab("calendar")}
+            onClick={() => {
+              setActiveTab("calendar");
+              setLocation("/client/tools/calendar");
+            }}
             className="flex items-center gap-2 text-xs font-semibold h-8"
           >
             <CalendarIcon className="w-3.5 h-3.5" />
-            {isAr ? "تقويم Google (Calendar)" : "Google Calendar"}
-            {isConnected && (
+            {isAr ? "تقويم Google" : "Google Calendar"}
+            {isCalConnected && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </Button>
+
+          <Button
+            variant={activeTab === "sheets" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => {
+              setActiveTab("sheets");
+              setLocation("/client/tools/sheets");
+            }}
+            className="flex items-center gap-2 text-xs font-semibold h-8"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            {isAr ? "جداول Google" : "Google Sheets"}
+            {isSheetsConnected && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             )}
           </Button>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* ── GOOGLE CALENDAR VIEW ────────────────────────────────────────── */}
       {activeTab === "calendar" && (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
           <Card className="border-border bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
-            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 bg-gradient-to-r from-primary/5 via-card to-background">
+            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 bg-gradient-to-r from-blue-500/5 via-card to-background">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
                   <CalendarIcon className="w-6 h-6 text-blue-500" />
@@ -295,7 +444,7 @@ export default function ClientTools() {
                     <h3 className="font-semibold text-lg">
                       {isAr ? "تكامل تقويم Google" : "Google Calendar Integration"}
                     </h3>
-                    {isConnected ? (
+                    {isCalConnected ? (
                       <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 flex items-center gap-1 font-medium text-xs">
                         <CheckCircle2 className="w-3 h-3" />
                         {isAr ? "مفعّل ومتصل" : "Connected & Active"}
@@ -308,9 +457,9 @@ export default function ClientTools() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {config?.serviceAccountEmail ? (
+                    {calConfig?.serviceAccountEmail ? (
                       <span className="font-mono text-[11px] text-foreground/80">
-                        {config.serviceAccountEmail}
+                        {calConfig.serviceAccountEmail}
                       </span>
                     ) : (
                       isAr ? "يتيح للمساعد الذكي الاطلاع على مواعيدك وحجز اجتماعات مع العملاء مباشرة." : "Allows the AI chatbot to view slots and book appointments directly with clients."
@@ -323,25 +472,23 @@ export default function ClientTools() {
               <div className="flex items-center gap-3 shrink-0">
                 <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-background border border-border">
                   <label htmlFor="calendar-toggle" className="text-xs font-medium cursor-pointer">
-                    {enabled ? (isAr ? "مفعّل" : "Enabled") : (isAr ? "معطّل" : "Disabled")}
+                    {calEnabled ? (isAr ? "مفعّل" : "Enabled") : (isAr ? "معطّل" : "Disabled")}
                   </label>
                   <Switch
                     id="calendar-toggle"
-                    checked={enabled}
-                    onCheckedChange={(val) => {
-                      setEnabled(val);
-                    }}
+                    checked={calEnabled}
+                    onCheckedChange={(val) => setCalEnabled(val)}
                   />
                 </div>
 
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => testMutation.mutate()}
-                  disabled={testMutation.isPending || !isConfigured}
+                  onClick={() => testCalMutation.mutate()}
+                  disabled={testCalMutation.isPending || !isCalConfigured}
                   className="flex items-center gap-1.5 text-xs h-9"
                 >
-                  {testMutation.isPending ? (
+                  {testCalMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -438,8 +585,8 @@ export default function ClientTools() {
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                         {isAr ? "بيانات اعتماد Google Service Account:" : "Google Service Account:"}
                       </label>
-                      {config?.hasCompanyKey && (
-                        <span className="text-[11px] text-emerald-500 flex items-center gap-1">
+                      {calConfig?.hasCompanyKey && (
+                        <span className="text-[11px] text-emerald-500 flex items-center gap-1 font-medium">
                           <CheckCircle2 className="w-3 h-3" />
                           {isAr ? "حساب الشركة متوفر" : "Company Key Available"}
                         </span>
@@ -450,32 +597,32 @@ export default function ClientTools() {
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input
                           type="radio"
-                          name="authSource"
-                          checked={!useCustomKey}
-                          onChange={() => setUseCustomKey(false)}
+                          name="calAuthSource"
+                          checked={!useCustomCalKey}
+                          onChange={() => setUseCustomCalKey(false)}
                           className="accent-primary"
                         />
-                        <span>{isAr ? "استخدام حساب خدمة الشركة (مشترك)" : "Use Company Service Account (Shared)"}</span>
+                        <span>{isAr ? "استخدام حساب خدمة الشركة (مشترك مع الجداول)" : "Use Company Service Account (Shared)"}</span>
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer">
                         <input
                           type="radio"
-                          name="authSource"
-                          checked={useCustomKey}
-                          onChange={() => setUseCustomKey(true)}
+                          name="calAuthSource"
+                          checked={useCustomCalKey}
+                          onChange={() => setUseCustomCalKey(true)}
                           className="accent-primary"
                         />
                         <span>{isAr ? "مفتاح JSON مخصص للتقويم" : "Custom Service Account JSON"}</span>
                       </label>
                     </div>
 
-                    {useCustomKey && (
+                    {useCustomCalKey && (
                       <div className="space-y-1.5 pt-1">
                         <Textarea
                           rows={4}
                           placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}'
-                          value={customKeyJson}
-                          onChange={(e) => setCustomKeyJson(e.target.value)}
+                          value={calCustomKeyJson}
+                          onChange={(e) => setCalCustomKeyJson(e.target.value)}
                           className="font-mono text-xs"
                         />
                         <p className="text-[11px] text-muted-foreground">
@@ -511,7 +658,7 @@ export default function ClientTools() {
 
                 <CardFooter className="flex justify-between items-center border-t border-border pt-4">
                   <div className="text-xs text-muted-foreground">
-                    {saveMutation.isSuccess && (
+                    {saveCalMutation.isSuccess && (
                       <span className="text-emerald-500 font-medium flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         {isAr ? "تم حفظ التعديلات" : "Saved"}
@@ -519,11 +666,11 @@ export default function ClientTools() {
                     )}
                   </div>
                   <Button
-                    onClick={handleSave}
-                    disabled={saveMutation.isPending}
+                    onClick={handleSaveCalendar}
+                    disabled={saveCalMutation.isPending}
                     className="flex items-center gap-2"
                   >
-                    {saveMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {saveCalMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                     {isAr ? "حفظ الإعدادات" : "Save Settings"}
                   </Button>
                 </CardFooter>
@@ -585,7 +732,7 @@ export default function ClientTools() {
                       variant="ghost"
                       size="icon"
                       onClick={() => refetchEvents()}
-                      disabled={fetchingEvents || !isConfigured}
+                      disabled={fetchingEvents || !isCalConfigured}
                       className="h-8 w-8 text-muted-foreground hover:text-foreground"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${fetchingEvents ? "animate-spin" : ""}`} />
@@ -595,7 +742,7 @@ export default function ClientTools() {
                       <DialogTrigger asChild>
                         <Button
                           size="sm"
-                          disabled={!isConfigured}
+                          disabled={!isCalConfigured}
                           className="flex items-center gap-1 text-xs h-8"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -702,7 +849,7 @@ export default function ClientTools() {
                 </CardHeader>
 
                 <CardContent className="flex-1 overflow-y-auto max-h-[500px] p-4 space-y-3">
-                  {!isConfigured ? (
+                  {!isCalConfigured ? (
                     <div className="py-12 text-center text-muted-foreground space-y-2">
                       <AlertCircle className="w-8 h-8 mx-auto text-amber-500 opacity-60" />
                       <p className="text-xs">
@@ -801,6 +948,359 @@ export default function ClientTools() {
                       </p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── GOOGLE SHEETS VIEW ──────────────────────────────────────────── */}
+      {activeTab === "sheets" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Top Status & Quick Actions Banner */}
+          <Card className="border-border bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
+            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 bg-gradient-to-r from-emerald-500/5 via-card to-background">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <FileSpreadsheet className="w-6 h-6 text-emerald-500" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-lg">
+                      {isAr ? "تكامل جداول بيانات Google (Sheets)" : "Google Sheets Integration"}
+                    </h3>
+                    {isSheetsConnected ? (
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 flex items-center gap-1 font-medium text-xs">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {isAr ? "مفعّل ومتصل" : "Connected & Active"}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-muted text-muted-foreground border-border flex items-center gap-1 font-medium text-xs">
+                        <AlertCircle className="w-3 h-3" />
+                        {isAr ? "غير مفعّل" : "Inactive"}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {sheetsConfig?.serviceAccountEmail ? (
+                      <span className="font-mono text-[11px] text-foreground/80">
+                        {sheetsConfig.serviceAccountEmail}
+                      </span>
+                    ) : (
+                      isAr ? "تسجيل ومزامنة بيانات العملاء والاستفسارات تلقائياً في ملف Google Sheet في الوقت الفعلي." : "Automatically log customer leads, inquiries, and chat details to Google Sheets in real-time."
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Controls */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-background border border-border">
+                  <label htmlFor="sheets-toggle" className="text-xs font-medium cursor-pointer">
+                    {sheetsEnabled ? (isAr ? "مفعّل" : "Enabled") : (isAr ? "معطّل" : "Disabled")}
+                  </label>
+                  <Switch
+                    id="sheets-toggle"
+                    checked={sheetsEnabled}
+                    onCheckedChange={(val) => setSheetsEnabled(val)}
+                  />
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => testSheetsMutation.mutate()}
+                  disabled={testSheetsMutation.isPending || !sheetsLink}
+                  className="flex items-center gap-1.5 text-xs h-9"
+                >
+                  {testSheetsMutation.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  )}
+                  {isAr ? "فحص الاتصال" : "Test Connection"}
+                </Button>
+
+                {sheetsLink && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(sheetsLink, "_blank")}
+                    className="flex items-center gap-1.5 text-xs h-9 text-muted-foreground hover:text-foreground"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    {isAr ? "فتح الجدول" : "Open Sheet"}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Test result banner if available */}
+            {sheetsTestResult && (
+              <div className={`px-6 py-3 border-b text-xs flex items-center justify-between gap-3 ${
+                sheetsTestResult.success
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  : "bg-destructive/10 border-destructive/20 text-destructive"
+              }`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  {sheetsTestResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  )}
+                  <span className="truncate">{sheetsTestResult.message}</span>
+                </div>
+                {sheetsTestResult.availableTabs && sheetsTestResult.availableTabs.length > 0 && (
+                  <span className="text-[11px] opacity-80 shrink-0 font-mono">
+                    {isAr ? "الصفحات المتوفرة:" : "Tabs:"} {sheetsTestResult.availableTabs.join(", ")}
+                  </span>
+                )}
+              </div>
+            )}
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Configuration Form Column */}
+            <div className="lg:col-span-7 space-y-6">
+              <Card className="border-border bg-card shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TableProperties className="w-4 h-4 text-emerald-500" />
+                    {isAr ? "بيانات ملف ورقة العمل (Google Sheet)" : "Spreadsheet Settings"}
+                  </CardTitle>
+                  <CardDescription>
+                    {isAr
+                      ? "أدخل رابط ملف Google Sheet واسم التبويب للمزامنة التلقائية."
+                      : "Provide your Google Sheet link and target tab for automatic lead & chat sync."}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Google Sheet URL */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <LinkIcon className="w-3.5 h-3.5 text-primary" />
+                        {isAr ? "رابط ملف جدول بيانات Google (Sheet Link):" : "Google Sheet URL:"}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-normal">
+                        {isAr ? "انسخ الرابط كاملاً من المتصفح" : "Full browser URL"}
+                      </span>
+                    </label>
+                    <Input
+                      placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit"
+                      value={sheetsLink}
+                      onChange={(e) => {
+                        setSheetsLink(e.target.value);
+                        setSheetsTestResult(null);
+                      }}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+
+                  {/* Sheet Name & Page Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold">
+                        {isAr ? "اسم توضيحي للجدول (اختياري):" : "Sheet Friendly Label:"}
+                      </label>
+                      <Input
+                        placeholder={isAr ? "مثال: تتبع عملاء الواتساب والموقع" : "e.g. Sales Leads Tracker"}
+                        value={sheetsName}
+                        onChange={(e) => setSheetsName(e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold">
+                        {isAr ? "اسم الصفحة / التبويب (Tab Name):" : "Sheet Tab Name (Page):"}
+                      </label>
+                      <Input
+                        placeholder={isAr ? "مثال: Sheet1 أو العملاء" : "e.g. Sheet1 or Leads"}
+                        value={sheetsPage}
+                        onChange={(e) => {
+                          setSheetsPage(e.target.value);
+                          setSheetsTestResult(null);
+                        }}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Service Account Credentials Card */}
+                  <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        {isAr ? "حساب خدمة Google (Service Account Key):" : "Google Service Account:"}
+                      </label>
+                      {sheetsConfig?.hasServiceAccountKey && (
+                        <span className="text-[11px] text-emerald-500 flex items-center gap-1 font-medium">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {isAr ? "المفتاح مضاف ومحفوظ" : "Key Configured"}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {sheetsConfig?.serviceAccountEmail ? (
+                        <span>
+                          {isAr ? "بريد حساب الخدمة المستخدم: " : "Service Account Email: "}
+                          <strong className="text-foreground font-mono">{sheetsConfig.serviceAccountEmail}</strong>
+                        </span>
+                      ) : (
+                        isAr
+                          ? "يلزم إضافة مفتاح Google Service Account JSON حتى يتمكن النظام من القراءة والكتابة في الجدول."
+                          : "Google Service Account JSON key is required to read and write to the spreadsheet."
+                      )}
+                    </p>
+
+                    <div className="pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowSheetsKeyEdit(!showSheetsKeyEdit)}
+                        className="text-xs h-7 text-primary hover:text-primary/80 px-0"
+                      >
+                        {showSheetsKeyEdit
+                          ? (isAr ? "إخفاء محرر المفتاح ▲" : "Hide Key Editor ▲")
+                          : (isAr ? "تعديل أو لصق مفتاح JSON جديد ▼" : "Edit / Paste Service Account Key ▼")}
+                      </Button>
+
+                      {showSheetsKeyEdit && (
+                        <div className="space-y-1.5 pt-2">
+                          <Textarea
+                            rows={4}
+                            placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}'
+                            value={sheetsCustomKey}
+                            onChange={(e) => setSheetsCustomKey(e.target.value)}
+                            className="font-mono text-xs bg-background"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            {isAr
+                              ? "الصق محتوى ملف JSON بالكامل من Google Cloud Console."
+                              : "Paste the complete JSON key content downloaded from Google Cloud Console."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="flex justify-between items-center border-t border-border pt-4">
+                  <div className="text-xs text-muted-foreground">
+                    {saveSheetsMutation.isSuccess && (
+                      <span className="text-emerald-500 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {isAr ? "تم حفظ التعديلات" : "Saved"}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleSaveSheets}
+                    disabled={saveSheetsMutation.isPending}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {saveSheetsMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {isAr ? "حفظ إعدادات الجدول" : "Save Sheet Settings"}
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              {/* Instructions Guide Card */}
+              <Card className="border-border bg-card/60">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                    <HelpCircle className="w-4 h-4 text-emerald-500" />
+                    {isAr ? "خطوات ربط ومشاركة جدول بيانات Google:" : "How to Connect Google Sheets:"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2.5 text-xs text-muted-foreground leading-relaxed">
+                  <div className="flex gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold flex items-center justify-center shrink-0 text-[11px]">1</span>
+                    <p>
+                      {isAr
+                        ? "أنشئ جدول بيانات جديد أو افتح جدولك الحالي في Google Sheets."
+                        : "Open your target Google Spreadsheet in Google Sheets."}
+                    </p>
+                  </div>
+                  <div className="flex gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold flex items-center justify-center shrink-0 text-[11px]">2</span>
+                    <p>
+                      {isAr
+                        ? "اضغط على زر 'مشاركة (Share)' في أعلى يمين الملف، وأضف بريد حساب الخدمة (Service Account Email) بصلاحية 'محرر (Editor)'."
+                        : "Click 'Share' at the top-right of your spreadsheet and add the Service Account Email with 'Editor' permissions."}
+                    </p>
+                  </div>
+                  <div className="flex gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 font-bold flex items-center justify-center shrink-0 text-[11px]">3</span>
+                    <p>
+                      {isAr
+                        ? "انسخ رابط الصفحة من شريط المتصفح والصقه في خانة الرابط أعلاه، ثم اضغط 'فحص الاتصال'."
+                        : "Copy the full URL from your browser address bar, paste it above, and click 'Test Connection'."}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Information & Synchronized Data Details Column */}
+            <div className="lg:col-span-5 space-y-6">
+              <Card className="border-border bg-card shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Database className="w-4 h-4 text-emerald-500" />
+                    {isAr ? "ما الذي تتم مزامنته تلقائياً؟" : "What Gets Synced Automatically?"}
+                  </CardTitle>
+                  <CardDescription>
+                    {isAr
+                      ? "تسجيل بيانات المحادثات والعملاء المحتملين في الوقت الفعلي"
+                      : "Real-time logging of customer inquiries and lead contacts"}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4 text-xs">
+                  <div className="p-3.5 rounded-xl border border-border/80 bg-background/60 space-y-2">
+                    <h5 className="font-semibold text-foreground flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      {isAr ? "تسجيل بيانات العملاء (Leads Capture)" : "Lead Capture Logging"}
+                    </h5>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {isAr
+                        ? "عندما يطلب العميل استفساراً أو يشارك بياناته في المحادثة (الاسم، رقم الهاتف، البريد الإلكتروني)، يقوم المساعد بتسجيل صف جديد فورياً داخل الجدول."
+                        : "When a customer shares contact details (Name, Phone, Email) or submits an inquiry, a new row is instantly appended to your Google Sheet."}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-border/80 bg-background/60 space-y-2">
+                    <h5 className="font-semibold text-foreground flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      {isAr ? "الأعمدة الموثقة في الجدول" : "Recorded Columns"}
+                    </h5>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      <li>{isAr ? "التاريخ والوقت (Date & Time)" : "Date & Timestamp"}</li>
+                      <li>{isAr ? "اسم العميل (Customer Name)" : "Customer Name"}</li>
+                      <li>{isAr ? "رقم الهاتف / واتساب (Phone Number)" : "Phone Number"}</li>
+                      <li>{isAr ? "البريد الإلكتروني (Email)" : "Email Address"}</li>
+                      <li>{isAr ? "القناة (WhatsApp, Telegram, Widget, Messenger)" : "Channel Source"}</li>
+                      <li>{isAr ? "ملخص الاستفسار / الطلب (Inquiry Summary)" : "Inquiry Summary & Topic"}</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1.5 text-emerald-700 dark:text-emerald-400">
+                    <p className="font-medium flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {isAr ? "مزامنة لحظية عبر جميع القنوات" : "Omnichannel Live Sync"}
+                    </p>
+                    <p className="text-[11px] opacity-90 leading-relaxed">
+                      {isAr
+                        ? "سواء تحدث العميل من خلال واتساب أو تيليجرام أو شات الموقع، يتم تجميع كل الاستفسارات في جدولك المركزي بسلاسة."
+                        : "Whether customers connect via WhatsApp, Telegram, or your Website Widget, all leads funnel into your unified Google Sheet."}
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
