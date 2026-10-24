@@ -3823,30 +3823,41 @@ router.post("/admin/malfunctions/:id/ai-analyze", async (req, res) => {
       return;
     }
 
-    // Resolve AI credentials and provider
+    // Resolve Support AI credentials and provider (unified with Customer Problems Support AI)
     const configRows = await db
       .select()
       .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_provider', 'malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
+      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model', 'malfunctions_ai_api_key', 'malfunctions_ai_provider', 'malfunctions_ai_model')`);
     const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
 
-    const provider = (cfg["malfunctions_ai_provider"] as "google" | "openai") || (cfg["support_ai_provider"] === "openai" ? "openai" : "google");
+    const provider = cfg["support_ai_provider"] || cfg["malfunctions_ai_provider"] || "openai";
 
-    let apiKey = cfg["malfunctions_ai_api_key"] || "";
+    let apiKey = cfg["support_ai_api_key"] || cfg["malfunctions_ai_api_key"] || "";
     if (!apiKey) {
-      if (provider === "openai") {
-        apiKey = (cfg["support_ai_provider"] === "openai" ? cfg["support_ai_api_key"] : "") || process.env.OPENAI_API_KEY || "";
-      } else {
-        apiKey = (cfg["support_ai_provider"] === "google" ? cfg["support_ai_api_key"] : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      if (provider === "openai" && process.env.OPENAI_API_KEY) {
+        apiKey = process.env.OPENAI_API_KEY;
+      } else if (provider === "google" && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) {
+        apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+        apiKey = process.env.ANTHROPIC_API_KEY;
+      } else if (provider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+        apiKey = process.env.OPENROUTER_API_KEY;
       }
     }
 
-    const defaultModel = provider === "openai" ? "gpt-4o" : "gemini-1.5-pro";
-    const model = cfg["malfunctions_ai_model"] || defaultModel;
+    const defaultModel =
+      provider === "google"
+        ? "gemini-1.5-pro"
+        : provider === "anthropic"
+        ? "claude-3-5-sonnet-20241022"
+        : provider === "openrouter"
+        ? "openrouter/free"
+        : "gpt-4o-mini";
+    const model = cfg["support_ai_model"] || cfg["malfunctions_ai_model"] || defaultModel;
 
     if (!apiKey) {
       res.status(400).json({
-        error: `لم يتم ربط مفتاح ${provider === "openai" ? "OpenAI" : "Gemini"} API Key بعد. يرجى الضغط على زر 'إعدادات الذكاء الاصطناعي' في أعلى الصفحة وتحديد المزود وإدخال المفتاح.`,
+        error: "لم يتم ربط مفتاح الـ API لوكيل الدعم الذكي (Support AI). يرجى ضبطه من قسم Support AI في أسفل الصفحة أو من صفحة Customer Problems.",
       });
       return;
     }
@@ -3877,17 +3888,18 @@ ${malfunction.description}
 
     let aiAnalysis = "";
 
-    if (provider === "openai") {
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({ apiKey });
-      const comp = await openai.chat.completions.create(
-        buildOpenAiChatParams(model, [
-          { role: "system", content: SYSTEM_INSTRUCTION },
-          { role: "user", content: USER_PROMPT },
-        ], { maxTokens: 1500 })
-      );
-      aiAnalysis = comp.choices[0]?.message?.content || "";
-    } else {
+    if (provider === "anthropic") {
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const client = new Anthropic({ apiKey });
+      const effectiveModel = sanitizeAnthropicModel(model);
+      const message = await client.messages.create({
+        model: effectiveModel,
+        max_tokens: 1500,
+        system: SYSTEM_INSTRUCTION,
+        messages: [{ role: "user", content: USER_PROMPT }],
+      });
+      aiAnalysis = extractAnthropicText(message.content);
+    } else if (provider === "google") {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
       const effectiveModel = sanitizeGoogleModel(model);
@@ -3897,6 +3909,34 @@ ${malfunction.description}
       });
       const result = await gemini.generateContent(USER_PROMPT);
       aiAnalysis = result.response.text();
+    } else if (provider === "openrouter") {
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        apiKey,
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: getOpenRouterHeaders(),
+      });
+      const effectiveModel = sanitizeOpenRouterModel(model);
+      const completion = await openai.chat.completions.create({
+        model: effectiveModel,
+        messages: [
+          { role: "system", content: SYSTEM_INSTRUCTION },
+          { role: "user", content: USER_PROMPT },
+        ],
+        max_tokens: 1500,
+      });
+      aiAnalysis = stripThinkingTags(completion.choices[0]?.message?.content ?? "");
+    } else {
+      // openai (default)
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey });
+      const comp = await openai.chat.completions.create(
+        buildOpenAiChatParams(model, [
+          { role: "system", content: SYSTEM_INSTRUCTION },
+          { role: "user", content: USER_PROMPT },
+        ], { maxTokens: 1500 })
+      );
+      aiAnalysis = comp.choices[0]?.message?.content || "";
     }
 
     // Save to database
