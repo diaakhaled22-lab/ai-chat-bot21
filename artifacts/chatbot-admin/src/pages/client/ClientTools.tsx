@@ -400,7 +400,7 @@ export default function ClientTools() {
             size="sm"
             onClick={() => {
               setActiveTab("calendar");
-              setLocation("/client/tools/calendar");
+              setLocation(location.startsWith("/admin") ? "/admin/tools/calendar" : "/client/tools/calendar");
             }}
             className="flex items-center gap-2 text-xs font-semibold h-8"
           >
@@ -416,7 +416,7 @@ export default function ClientTools() {
             size="sm"
             onClick={() => {
               setActiveTab("sheets");
-              setLocation("/client/tools/sheets");
+              setLocation(location.startsWith("/admin") ? "/admin/tools/sheets" : "/client/tools/sheets");
             }}
             className="flex items-center gap-2 text-xs font-semibold h-8"
           >

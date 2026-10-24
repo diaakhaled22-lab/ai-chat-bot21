@@ -872,14 +872,28 @@ router.post("/client/company/test-google-sheet", async (req, res) => {
   }
 });
 
+async function getEffectiveCompanyForTools(req: any) {
+  if (req.session.role === "admin") {
+    const targetCompanyId = req.query?.companyId ? Number(req.query.companyId) : undefined;
+    if (targetCompanyId && !isNaN(targetCompanyId)) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, targetCompanyId)).limit(1);
+      if (comp) return comp;
+    }
+    const [first] = await db.select().from(companiesTable).limit(1);
+    return first || null;
+  }
+  const [comp] = await db
+    .select()
+    .from(companiesTable)
+    .where(eq(companiesTable.clientId, req.session.userId!))
+    .limit(1);
+  return comp || null;
+}
+
 // GET /client/tools/calendar/config
 router.get("/client/tools/calendar/config", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -908,11 +922,7 @@ router.get("/client/tools/calendar/config", async (req, res) => {
 // PUT /client/tools/calendar/config
 router.put("/client/tools/calendar/config", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -976,11 +986,7 @@ router.put("/client/tools/calendar/config", async (req, res) => {
 // POST /client/tools/calendar/test
 router.post("/client/tools/calendar/test", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -1014,11 +1020,7 @@ router.post("/client/tools/calendar/test", async (req, res) => {
 // GET /client/tools/calendar/events
 router.get("/client/tools/calendar/events", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -1043,11 +1045,7 @@ router.get("/client/tools/calendar/events", async (req, res) => {
 // POST /client/tools/calendar/events
 router.post("/client/tools/calendar/events", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -1095,11 +1093,7 @@ router.post("/client/tools/calendar/events", async (req, res) => {
 // GET /client/tools/sheets/config
 router.get("/client/tools/sheets/config", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -1131,11 +1125,7 @@ router.get("/client/tools/sheets/config", async (req, res) => {
 // PUT /client/tools/sheets/config
 router.put("/client/tools/sheets/config", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
@@ -1198,11 +1188,7 @@ router.put("/client/tools/sheets/config", async (req, res) => {
 // POST /client/tools/sheets/test
 router.post("/client/tools/sheets/test", async (req, res) => {
   try {
-    const [company] = await db
-      .select()
-      .from(companiesTable)
-      .where(eq(companiesTable.clientId, req.session.userId!))
-      .limit(1);
+    const company = await getEffectiveCompanyForTools(req);
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });

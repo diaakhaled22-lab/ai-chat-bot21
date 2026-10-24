@@ -153,6 +153,15 @@ function Router() {
       <Route path="/admin/webhook-messenger">
         {() => <ProtectedRoute component={AdminWebhookMessenger} allowedRole="admin" />}
       </Route>
+      <Route path="/admin/tools">
+        {() => <ProtectedRoute component={ClientTools} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/tools/calendar">
+        {() => <ProtectedRoute component={ClientTools} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/tools/sheets">
+        {() => <ProtectedRoute component={ClientTools} allowedRole="admin" />}
+      </Route>
       <Route path="/admin/malfunctions">
         {() => <ProtectedRoute component={AdminMalfunctions} allowedRole="admin" />}
       </Route>

@@ -798,6 +798,23 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/tickets",            label: "Customer Problems",  icon: LifeBuoy, ticketBadge: true },
     { href: "/admin/broadcast",          label: "Broadcast",          icon: Megaphone },
     { href: "/admin/webhook-messenger",  label: "Webhook Channels",  icon: Webhook },
+    {
+      href: "/admin/tools",
+      label: t("nav_tools") || (lang === "ar" ? "الأدوات" : "Tools"),
+      icon: Wrench,
+      children: [
+        {
+          href: "/admin/tools/calendar",
+          label: t("nav_google_calendar") || (lang === "ar" ? "تقويم Google" : "Google Calendar"),
+          icon: CalendarIcon,
+        },
+        {
+          href: "/admin/tools/sheets",
+          label: t("nav_google_sheets") || (lang === "ar" ? "جداول Google" : "Google Sheets"),
+          icon: FileSpreadsheet,
+        },
+      ],
+    },
     { href: "/admin/ai-tester",          label: "AI Tester",          icon: Sparkles },
     { href: "/admin/audit-logs",         label: "Audit Logs",         icon: History },
     { href: "/admin/attack-monitoring",  label: "Attack Monitoring",  icon: ShieldAlert },
