@@ -1998,39 +1998,46 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
         defaultHeaders: getOpenRouterHeaders(),
       });
       const effectiveModel = sanitizeOpenRouterModel(model);
+      const isReasoning = isOpenRouterReasoningModel(effectiveModel);
       let completion;
       try {
-        completion = await openai.chat.completions.create({
-          model: effectiveModel,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user",   content: USER_PROMPT   },
-          ],
-          max_tokens: 600,
-        });
-      } catch (err: any) {
-        const errMsg = err?.message || "";
-        const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
-        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
-          completion = await openai.chat.completions.create({
-            model: "openrouter/free",
-            messages: [
+        completion = await openai.chat.completions.create(
+          buildOpenRouterChatParams(
+            effectiveModel,
+            [
               { role: "system", content: SYSTEM_PROMPT },
               { role: "user",   content: USER_PROMPT   },
             ],
-            max_tokens: 600,
-          });
+            { maxTokens: isReasoning ? 1000 : 600 }
+          )
+        );
+      } catch (err: any) {
+        const errMsg = err?.message || "";
+        const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model") || errMsg.includes("Provider returned error");
+        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+          completion = await openai.chat.completions.create(
+            buildOpenRouterChatParams(
+              "openrouter/free",
+              [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user",   content: USER_PROMPT   },
+              ],
+              { maxTokens: 600 }
+            )
+          );
         } else if (isUnavailable) {
           logger.warn({ effectiveModel, err: errMsg }, "OpenRouter model unavailable in chat; retrying with fallback active model");
           const fallbackModel = effectiveModel.includes("anthropic") ? "anthropic/claude-sonnet-4.5" : "openrouter/free";
-          completion = await openai.chat.completions.create({
-            model: fallbackModel,
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user",   content: USER_PROMPT   },
-            ],
-            max_tokens: 600,
-          });
+          completion = await openai.chat.completions.create(
+            buildOpenRouterChatParams(
+              fallbackModel,
+              [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user",   content: USER_PROMPT   },
+              ],
+              { maxTokens: 600 }
+            )
+          );
         } else {
           throw err;
         }
@@ -2161,11 +2168,14 @@ router.get("/admin/support-ai-status", async (req, res) => {
             defaultHeaders: getOpenRouterHeaders(),
           });
           const effectiveModel = sanitizeOpenRouterModel(model);
+          const isReasoning = isOpenRouterReasoningModel(effectiveModel);
           try {
-            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
+            await openai.chat.completions.create(
+              buildOpenRouterChatParams(effectiveModel, [{ role: "user", content: "hi" }], { maxTokens: isReasoning ? 1000 : 10 })
+            );
           } catch (err: any) {
             const errMsg = err?.message || "";
-            const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
+            const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model") || errMsg.includes("Provider returned error");
             if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
               await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
             } else if (isUnavailable) {
@@ -2328,11 +2338,14 @@ router.get("/admin/quota-ai-status", async (req, res) => {
             defaultHeaders: getOpenRouterHeaders(),
           });
           const effectiveModel = sanitizeOpenRouterModel(model);
+          const isReasoning = isOpenRouterReasoningModel(effectiveModel);
           try {
-            await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
+            await openai.chat.completions.create(
+              buildOpenRouterChatParams(effectiveModel, [{ role: "user", content: "hi" }], { maxTokens: isReasoning ? 1000 : 10 })
+            );
           } catch (err: any) {
             const errMsg = err?.message || "";
-            const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
+            const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model") || errMsg.includes("Provider returned error");
             if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
               await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 10 });
             } else if (isUnavailable) {
@@ -2656,16 +2669,19 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
           defaultHeaders: getOpenRouterHeaders(),
         });
         const effectiveModel = sanitizeOpenRouterModel(model);
+        const isReasoning = isOpenRouterReasoningModel(effectiveModel);
         let completion;
         try {
-          completion = await openrouter.chat.completions.create({
-            model: effectiveModel,
-            messages: [{ role: "user", content: testPrompt }],
-            max_tokens: 64,
-          });
+          completion = await openrouter.chat.completions.create(
+            buildOpenRouterChatParams(
+              effectiveModel,
+              [{ role: "user", content: testPrompt }],
+              { maxTokens: isReasoning ? 1000 : 64 }
+            )
+          );
         } catch (err: any) {
           const errMsg = err?.message || "";
-          const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
+          const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model") || errMsg.includes("Provider returned error");
           if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
             completion = await openrouter.chat.completions.create({
               model: "openrouter/free",
@@ -2678,13 +2694,17 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
               ? "anthropic/claude-sonnet-4.5"
               : effectiveModel.includes("gemini")
               ? "google/gemini-2.5-pro"
+              : effectiveModel.includes("deepseek")
+              ? "deepseek/deepseek-chat"
               : "openrouter/free";
             try {
-              completion = await openrouter.chat.completions.create({
-                model: fallbackModel,
-                messages: [{ role: "user", content: testPrompt }],
-                max_tokens: 64,
-              });
+              completion = await openrouter.chat.completions.create(
+                buildOpenRouterChatParams(
+                  fallbackModel,
+                  [{ role: "user", content: testPrompt }],
+                  { maxTokens: 64 }
+                )
+              );
             } catch {
               throw err;
             }
@@ -2808,35 +2828,44 @@ router.post("/admin/ai-test", async (req, res) => {
         defaultHeaders: getOpenRouterHeaders(),
       });
       const effectiveModel = sanitizeOpenRouterModel(model);
+      const isReasoning = isOpenRouterReasoningModel(effectiveModel);
       let completion;
       try {
-        completion = await openai.chat.completions.create({
-          model: effectiveModel,
-          max_tokens: 100,
-          messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
-        });
+        completion = await openai.chat.completions.create(
+          buildOpenRouterChatParams(
+            effectiveModel,
+            [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
+            { maxTokens: isReasoning ? 1000 : 150 }
+          )
+        );
       } catch (err: any) {
         const errMsg = err?.message || "";
-        const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
+        const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model") || errMsg.includes("Provider returned error");
         if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
-          completion = await openai.chat.completions.create({
-            model: "openrouter/free",
-            max_tokens: 100,
-            messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
-          });
+          completion = await openai.chat.completions.create(
+            buildOpenRouterChatParams(
+              "openrouter/free",
+              [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
+              { maxTokens: 150 }
+            )
+          );
         } else if (isUnavailable) {
           logger.warn({ effectiveModel, err: errMsg }, "OpenRouter model unavailable in test-model; retrying with fallback active model");
           const fallbackModel = effectiveModel.includes("anthropic")
             ? "anthropic/claude-sonnet-4.5"
             : effectiveModel.includes("gemini")
             ? "google/gemini-2.5-pro"
+            : effectiveModel.includes("deepseek")
+            ? "deepseek/deepseek-chat"
             : "openrouter/free";
           try {
-            completion = await openai.chat.completions.create({
-              model: fallbackModel,
-              max_tokens: 100,
-              messages: [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
-            });
+            completion = await openai.chat.completions.create(
+              buildOpenRouterChatParams(
+                fallbackModel,
+                [{ role: "system", content: SYSTEM }, { role: "user", content: testMessage }],
+                { maxTokens: 150 }
+              )
+            );
           } catch {
             throw err;
           }
