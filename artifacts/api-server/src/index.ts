@@ -20,7 +20,7 @@ import { syncAllRestApiIntegrations, ensureRestApiSchema } from "./lib/restApiSy
 import { syncAllShopifyIntegrations, ensureShopifySchema } from "./lib/shopifySync";
 import { refreshAiModels } from "./lib/aiModels";
 import { ensureAdminExists, ensureDataSourcePermissionsSchema } from "./lib/adminBootstrap";
-import { loadBlockedIpsFromDb, loadTotpSecretsFromDb } from "./lib/security";
+import { loadBlockedIpsFromDb, loadTotpSecretsFromDb, loadAttackLogsFromDb } from "./lib/security";
 import { ensureEmailNotificationSchema, notifySubscriptionExpiringSoon, notifySubscriptionExpired } from "./lib/companyNotification";
 import { ensureRagSchema } from "./lib/knowledgeRag";
 import { ensureVoiceSchema } from "./lib/audio";
@@ -346,6 +346,7 @@ async function startServer() {
     await ensureDataSourcePermissionsSchema();
     await loadBlockedIpsFromDb();
     await loadTotpSecretsFromDb();
+    await loadAttackLogsFromDb();
     logger.info("Database schemas, bootstrap admin, and security rules initialized successfully");
   } catch (err) {
     logger.error({ err }, "Non-fatal warning during startup schema initialization");

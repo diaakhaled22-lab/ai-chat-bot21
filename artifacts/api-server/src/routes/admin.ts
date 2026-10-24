@@ -20,7 +20,7 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, buildOpenRouterChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
-import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, clearAttackLogs, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
@@ -143,6 +143,18 @@ router.post("/admin/attack-monitoring/test-alert", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "Failed to send test security alert");
     res.status(500).json({ error: err.message || "Failed to send test alert" });
+  }
+});
+
+// DELETE /admin/attack-monitoring/logs
+router.delete("/admin/attack-monitoring/logs", async (req, res) => {
+  try {
+    await clearAttackLogs();
+    await logAdminActivity(req.session.userId!, "Clear Attack Logs", "Cleared all attack monitoring logs", req.ip || null);
+    res.json({ ok: true, message: "Attack logs cleared successfully" });
+  } catch (err: any) {
+    logger.error({ err }, "Failed to clear attack logs");
+    res.status(500).json({ error: err.message || "Failed to clear attack logs" });
   }
 });
 

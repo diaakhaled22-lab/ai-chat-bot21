@@ -297,6 +297,54 @@ const blockedIps = new Map<string, number>();
 const attackLogs: AttackLogEntry[] = [];
 let nextAttackLogId = 1;
 
+export async function loadAttackLogsFromDb() {
+  try {
+    const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "attack_logs"));
+    if (row && row.value) {
+      const savedLogs: AttackLogEntry[] = JSON.parse(row.value);
+      if (Array.isArray(savedLogs) && savedLogs.length > 0) {
+        attackLogs.length = 0;
+        attackLogs.push(...savedLogs.slice(-MAX_ATTACK_LOG_ENTRIES));
+        const maxId = attackLogs.reduce((max, log) => Math.max(max, log.id || 0), 0);
+        nextAttackLogId = maxId + 1;
+        logger.info({ count: attackLogs.length }, "Loaded attack logs from DB");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to load attack logs from DB");
+  }
+}
+
+let saveAttackLogsTimer: NodeJS.Timeout | null = null;
+export function saveAttackLogsToDb() {
+  if (saveAttackLogsTimer) return;
+  saveAttackLogsTimer = setTimeout(async () => {
+    saveAttackLogsTimer = null;
+    try {
+      const value = JSON.stringify(attackLogs.slice(-MAX_ATTACK_LOG_ENTRIES));
+      const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "attack_logs"));
+      if (existing) {
+        await db.update(adminConfigTable).set({ value }).where(eq(adminConfigTable.key, "attack_logs"));
+      } else {
+        await db.insert(adminConfigTable).values({ key: "attack_logs", value });
+      }
+    } catch (err) {
+      logger.error({ err }, "Failed to save attack logs to DB");
+    }
+  }, 500);
+}
+
+export async function clearAttackLogs(): Promise<void> {
+  attackLogs.length = 0;
+  nextAttackLogId = 1;
+  try {
+    await db.delete(adminConfigTable).where(eq(adminConfigTable.key, "attack_logs"));
+    logger.info("Cleared attack logs from DB");
+  } catch (err) {
+    logger.error({ err }, "Failed to clear attack logs from DB");
+  }
+}
+
 export async function loadBlockedIpsFromDb() {
   try {
     const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
@@ -411,6 +459,7 @@ function appendAttackLog(
   if (attackLogs.length > MAX_ATTACK_LOG_ENTRIES) {
     attackLogs.splice(0, attackLogs.length - MAX_ATTACK_LOG_ENTRIES);
   }
+  saveAttackLogsToDb();
 }
 
 function getOrCreateLoginAttempt(username: string): LoginAttempt {

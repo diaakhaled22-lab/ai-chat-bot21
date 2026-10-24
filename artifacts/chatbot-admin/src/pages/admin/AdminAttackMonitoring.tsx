@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Ban, Bell, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff } from "lucide-react";
+import { Activity, AlertTriangle, Ban, Bell, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff, Trash2 } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -133,6 +133,24 @@ export default function AdminAttackMonitoring() {
     },
   });
 
+  const clearLogsMutation = useMutation({
+    mutationFn: () =>
+      customFetch("/api/admin/attack-monitoring/logs", {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      toast({ title: "Attack logs cleared successfully" });
+      queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Failed to clear logs",
+        description: err.message || "Failed to clear attack logs",
+        variant: "destructive",
+      });
+    },
+  });
+
   const policy = data?.policy ?? {
     warningThreshold: 3,
     maxFailedAttempts: 5,
@@ -156,16 +174,34 @@ export default function AdminAttackMonitoring() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => testAlertMutation.mutate()}
-          disabled={testAlertMutation.isPending}
-        >
-          {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4 text-amber-500" />}
-          Send Test Security Alert
-        </Button>
+        <div className="flex items-center gap-2">
+          {data?.logs && data.logs.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                if (window.confirm("Are you sure you want to clear all recorded attack logs?")) {
+                  clearLogsMutation.mutate();
+                }
+              }}
+              disabled={clearLogsMutation.isPending}
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Logs
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => testAlertMutation.mutate()}
+            disabled={testAlertMutation.isPending}
+          >
+            {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4 text-amber-500" />}
+            Send Test Security Alert
+          </Button>
+        </div>
       </div>
 
       {analytics?.spikeAlert.active && (
@@ -328,7 +364,7 @@ export default function AdminAttackMonitoring() {
             Security Log
           </CardTitle>
           <CardDescription>
-            Every failed attempt and automatic protection event from the current server session.
+            Every failed attempt and automatic protection event, saved securely in the database.
           </CardDescription>
         </CardHeader>
         <CardContent>
