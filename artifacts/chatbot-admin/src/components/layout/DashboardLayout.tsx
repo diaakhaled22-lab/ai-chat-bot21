@@ -777,7 +777,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const { data: user } = useGetMe();
   const { t, lang } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({ "/client/tools": true });
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
 
   const handleLogout = () => {
@@ -895,7 +895,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             if (link.children && link.children.length > 0) {
               const isChildActive = link.children.some((c) => location === c.href);
               const isParentActive = isActive || isChildActive;
-              const isExpanded = openSubmenus[link.href] ?? isParentActive;
+              const isExpanded = openSubmenus[link.href] ?? false;
 
               return (
                 <div key={link.href} className="space-y-0.5">
