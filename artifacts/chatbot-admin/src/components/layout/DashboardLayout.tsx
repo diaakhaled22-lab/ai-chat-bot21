@@ -444,7 +444,9 @@ function ClientNotificationBell() {
   const unread = notifications.filter((n) => !n.isRead).length;
   const hasUnreadRed = notifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
   const hasUnreadAmber = notifications.some((n) => !n.isRead && (n.type === "quota_warning_amber" || n.type.includes("amber")));
-  const hasUnreadHandoff = notifications.some((n) => !n.isRead && (n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service")));
+  const hasUnreadHandoff = notifications.some(
+    (n) => !n.isRead && (n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service") || n.type === "ticket" || n.type === "problem_alert" || n.type.includes("problem"))
+  );
 
   const prevUnreadRef = useRef<number | null>(null);
   const [pulse, setPulse] = useState(false);
@@ -533,7 +535,8 @@ function ClientNotificationBell() {
               {notifications.map((n) => {
                 const isRedDepleted = n.type === "quota_depleted_red" || n.type.includes("depleted");
                 const isAmberWarning = n.type === "quota_warning_amber" || n.type.includes("amber");
-                const isHandoffAlert = n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service");
+                const isProblemAlert = n.type === "problem_alert" || n.type === "ticket" || n.type.includes("problem");
+                const isHandoffAlert = isProblemAlert || n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service");
                 const isQuotaAlert = isRedDepleted || isAmberWarning;
 
                 return (
@@ -544,6 +547,8 @@ function ClientNotificationBell() {
                         ? "bg-rose-500/10 border-r-2 border-rose-500 dark:bg-rose-950/20"
                         : isAmberWarning
                         ? "bg-amber-500/10 border-r-2 border-amber-500 dark:bg-amber-950/20"
+                        : isProblemAlert
+                        ? "bg-indigo-500/10 border-r-2 border-indigo-500 dark:bg-indigo-950/20"
                         : isHandoffAlert
                         ? "bg-sky-500/10 border-r-2 border-sky-500 dark:bg-sky-950/20"
                         : !n.isRead
@@ -554,7 +559,7 @@ function ClientNotificationBell() {
                       setOpen(false);
                       if (isQuotaAlert) {
                         setLocation("/client/usage");
-                      } else if (isHandoffAlert || n.type === "new_message" || n.type === "new_conversation" || n.type.includes("lead")) {
+                      } else if (isHandoffAlert || isProblemAlert || n.type === "new_message" || n.type === "new_conversation" || n.type.includes("lead")) {
                         setLocation("/client/universal-chat");
                       }
                     }}
@@ -563,6 +568,8 @@ function ClientNotificationBell() {
                       <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 animate-pulse" />
                     ) : isAmberWarning ? (
                       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    ) : isProblemAlert ? (
+                      <LifeBuoy className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
                     ) : isHandoffAlert ? (
                       <LifeBuoy className="w-4 h-4 text-sky-400 shrink-0 mt-0.5 animate-pulse" />
                     ) : (
@@ -571,6 +578,11 @@ function ClientNotificationBell() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-semibold leading-tight">{n.title}</p>
+                        {isProblemAlert && (
+                          <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-400 px-1.5 py-0.2 rounded border border-indigo-500/30">
+                            {lang === "ar" ? "مشكلة ⚠️" : "Problem ⚠️"}
+                          </span>
+                        )}
                         {isRedDepleted && (
                           <span className="text-[9px] font-bold bg-rose-500/20 text-rose-500 dark:text-rose-400 px-1.5 py-0.2 rounded border border-rose-500/30">
                             {lang === "ar" ? "نفد الرصيد 🔴" : "Depleted 🔴"}

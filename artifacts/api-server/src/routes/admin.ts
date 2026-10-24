@@ -1661,20 +1661,65 @@ router.get("/admin/chat-logs", async (req, res) => {
 
     const rows = await query.orderBy(sql`${chatLogsTable.createdAt} DESC`).limit(200);
 
-    res.json(
-      rows.map(({ log, companyName }) => ({
-        id: log.id,
-        companyId: log.companyId,
-        companyName: companyName ?? null,
-        channel: log.channel,
-        sessionId: log.sessionId,
-        customerMessage: log.customerMessage,
-        botResponse: log.botResponse,
-        isRead: log.isRead,
-        isHandoff: log.isHandoff,
-        createdAt: log.createdAt.toISOString(),
-      }))
-    );
+    const mappedRows: any[] = rows.map(({ log, companyName }) => ({
+      id: log.id,
+      companyId: log.companyId,
+      companyName: companyName ?? null,
+      channel: log.channel,
+      sessionId: log.sessionId,
+      customerMessage: log.customerMessage,
+      botResponse: log.botResponse,
+      isRead: log.isRead,
+      isHandoff: log.isHandoff,
+      createdAt: log.createdAt.toISOString(),
+    }));
+
+    // If not filtered to telegram/whatsapp/messenger, also merge tickets so customer problems appear in Inbox
+    if (!channelFilter || channelFilter === "website" || channelFilter === "tickets") {
+      let ticketQuery = db
+        .select({
+          ticket: ticketsTable,
+          companyName: companiesTable.name,
+          companyId: companiesTable.id,
+        })
+        .from(ticketsTable)
+        .leftJoin(companiesTable, eq(ticketsTable.clientId, companiesTable.clientId))
+        .$dynamic();
+
+      const ticketConditions = [];
+      if (companyIdFilter) ticketConditions.push(eq(companiesTable.id, companyIdFilter));
+      if (fromDate) ticketConditions.push(gte(ticketsTable.createdAt, fromDate));
+      if (toDate) ticketConditions.push(lte(ticketsTable.createdAt, toDate));
+      if (ticketConditions.length > 0) ticketQuery = ticketQuery.where(and(...ticketConditions));
+
+      const tickets = await ticketQuery.orderBy(sql`${ticketsTable.createdAt} DESC`).limit(100);
+
+      const existingSessionIds = new Set(mappedRows.map((r) => r.sessionId));
+      for (const { ticket, companyName, companyId } of tickets) {
+        const sessId = `ticket_${ticket.id}`;
+        if (!existingSessionIds.has(sessId)) {
+          mappedRows.push({
+            id: 9000000 + ticket.id,
+            companyId: companyId ?? 0,
+            companyName: companyName ?? "عميل",
+            channel: "website",
+            sessionId: sessId,
+            customerMessage: `[تذكرة مشكلة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`,
+            botResponse: ticket.aiResponse
+              ? `[حل الذكاء الاصطناعي]:\n${ticket.aiResponse}`
+              : ticket.adminNote
+              ? `[حل المشرف]:\n${ticket.adminNote}`
+              : null,
+            isRead: ticket.status === "resolved",
+            isHandoff: ticket.status === "open",
+            createdAt: ticket.createdAt.toISOString(),
+          });
+        }
+      }
+      mappedRows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    res.json(mappedRows);
   } catch (err) {
     logger.error({ err }, "List chat logs error");
     res.status(500).json({ error: "Internal server error" });
@@ -1875,6 +1920,47 @@ router.get("/admin/tickets", async (req, res) => {
   }
 });
 
+// Helper to sync ticket resolution or notes back into chat logs and push real-time notification
+async function syncTicketSolutionToChatAndNotify(
+  ticketId: number,
+  status: "open" | "resolved",
+  solutionText?: string | null
+) {
+  try {
+    const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+    if (!ticket) return;
+
+    const sol = solutionText !== undefined ? solutionText : (ticket.aiResponse || ticket.adminNote);
+    const isResolved = status === "resolved";
+    const sessionId = `ticket_${ticket.id}`;
+
+    const [existingLog] = await db.select().from(chatLogsTable).where(eq(chatLogsTable.sessionId, sessionId)).limit(1);
+
+    if (existingLog) {
+      await db
+        .update(chatLogsTable)
+        .set({
+          isHandoff: !isResolved,
+          isRead: isResolved,
+          botResponse: sol ? `[حل المشكلة]:\n${sol}` : existingLog.botResponse,
+        })
+        .where(eq(chatLogsTable.id, existingLog.id));
+    }
+
+    if (isResolved && sol) {
+      await db.insert(notificationsTable).values({
+        userId: ticket.clientId,
+        type: "ticket",
+        title: `✅ [تم حل المشكلة #${ticket.id}] ${ticket.title}`,
+        message: `قام الدعم الفني بحل مشكلتك: "${sol.slice(0, 120)}...". اضغط للاطلاع على التفاصيل في صندوق الوارد.`,
+        isRead: false,
+      }).catch(() => {});
+    }
+  } catch (e) {
+    logger.warn({ err: e, ticketId }, "Failed to sync ticket solution to chat or notify");
+  }
+}
+
 // PUT /admin/tickets/:id/resolve
 router.put("/admin/tickets/:id/resolve", async (req, res) => {
   try {
@@ -1893,6 +1979,7 @@ router.put("/admin/tickets/:id/resolve", async (req, res) => {
       res.status(404).json({ error: "Ticket not found" });
       return;
     }
+    await syncTicketSolutionToChatAndNotify(id, status);
     res.json({ ok: true, status: ticket.status });
   } catch (err) {
     logger.error({ err }, "Resolve ticket error");
@@ -1900,7 +1987,7 @@ router.put("/admin/tickets/:id/resolve", async (req, res) => {
   }
 });
 
-// PUT /admin/tickets/:id/admin-note  â€” admin manually solves the ticket
+// PUT /admin/tickets/:id/admin-note  — admin manually solves the ticket
 router.put("/admin/tickets/:id/admin-note", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -1918,6 +2005,7 @@ router.put("/admin/tickets/:id/admin-note", async (req, res) => {
       res.status(404).json({ error: "Ticket not found" });
       return;
     }
+    await syncTicketSolutionToChatAndNotify(id, "resolved", adminNote.trim());
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Admin note error");
@@ -2071,6 +2159,8 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
       .where(eq(ticketsTable.id, id))
       .returning();
 
+    await syncTicketSolutionToChatAndNotify(id, "resolved", aiResponse);
+
     res.json({ ok: true, aiResponse: updated.aiResponse, provider, model });
   } catch (err: any) {
     logger.error({ err }, "AI solve ticket error");
@@ -2127,6 +2217,7 @@ router.post("/admin/tickets/ai-solve-batch", async (req, res) => {
           .update(ticketsTable)
           .set({ aiResponse, aiProvider: provider, aiModel: model, status: "resolved" })
           .where(eq(ticketsTable.id, ticket.id));
+        await syncTicketSolutionToChatAndNotify(ticket.id, "resolved", aiResponse);
         solvedCount++;
       } catch (err: any) {
         logger.error({ err, ticketId: ticket.id }, "Batch solve error for ticket");
@@ -2172,6 +2263,8 @@ router.put("/admin/tickets/:id/solution", async (req, res) => {
       return;
     }
 
+    await syncTicketSolutionToChatAndNotify(id, ticket.status as any, ticket.aiResponse || ticket.adminNote);
+
     res.json({ ok: true, ticket });
   } catch (err) {
     logger.error({ err }, "Update ticket solution error");
@@ -2192,6 +2285,8 @@ router.delete("/admin/tickets/:id", async (req, res) => {
       res.status(404).json({ error: "Ticket not found" });
       return;
     }
+
+    await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, "ticket_" + id)).catch(() => {});
 
     res.json({ ok: true, id });
   } catch (err) {

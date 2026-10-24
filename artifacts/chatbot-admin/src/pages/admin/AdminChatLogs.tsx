@@ -24,6 +24,8 @@ import {
   Bot,
   Building2,
   Download, ArrowLeft,
+  LifeBuoy,
+  AlertTriangle,
 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
@@ -112,13 +114,14 @@ export default function AdminChatLogs() {
 
   const { data: companies } = useListCompanies();
 
+  const apiChannel = (channelFilter === "all" || channelFilter === "problems" || channelFilter === "tickets") ? undefined : (channelFilter as any);
   const {
     data: logs,
     isLoading,
     isFetching,
     refetch,
   } = useListAllChatLogs({
-    channel: channelFilter !== "all" ? (channelFilter as any) : undefined,
+    channel: apiChannel,
     companyId: companyFilter !== "all" ? Number(companyFilter) : undefined,
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
@@ -270,18 +273,29 @@ export default function AdminChatLogs() {
     }
   };
 
-  // Filter logs by search term
+  // Filter logs by search term and problem/ticket filters
   const filteredLogs = useMemo(() => {
     if (!logs) return [];
-    if (!search) return logs;
-    const s = search.toLowerCase();
-    return logs.filter(
-      (log) =>
+    return logs.filter((log) => {
+      if (channelFilter === "tickets" && !log.sessionId?.startsWith("ticket_")) return false;
+      if (channelFilter === "problems") {
+        const isProb =
+          log.sessionId?.startsWith("ticket_") ||
+          (log as any).isHandoff ||
+          (log.customerMessage &&
+            /مشكل|عطل|شكوى|توقف|خربان|معلق|تذكرة|problem|issue|broken|bug|error/i.test(log.customerMessage));
+        if (!isProb) return false;
+      }
+
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (
         log.customerMessage?.toLowerCase().includes(s) ||
         log.botResponse?.toLowerCase().includes(s) ||
-        log.companyName?.toLowerCase().includes(s),
-    );
-  }, [logs, search]);
+        log.companyName?.toLowerCase().includes(s)
+      );
+    });
+  }, [logs, search, channelFilter]);
 
   // Group into sessions
   const sessions = useMemo(() => {
@@ -517,6 +531,8 @@ export default function AdminChatLogs() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Channels</SelectItem>
+              <SelectItem value="problems">{lang === "ar" ? "⚠️ المشاكل والشكاوى" : "⚠️ Problems & Complaints"}</SelectItem>
+              <SelectItem value="tickets">{lang === "ar" ? "🎫 تذاكر الدعم" : "🎫 Support Tickets"}</SelectItem>
               <SelectItem value="telegram">Telegram</SelectItem>
               <SelectItem value="whatsapp">WhatsApp</SelectItem>
               <SelectItem value="messenger">Messenger</SelectItem>
@@ -575,6 +591,21 @@ export default function AdminChatLogs() {
               sessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
                 const userName = extractUserName(session.messages);
+                const isTicket = session.id.startsWith("ticket_");
+                let isProblem = isTicket;
+                if (!isProblem) {
+                  for (let i = session.messages.length - 1; i >= 0; i--) {
+                    if (session.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
+                    if (
+                      (session.messages[i] as any).isHandoff ||
+                      (session.messages[i].customerMessage &&
+                        /مشكل|عطل|شكوى|توقف|خربان|معلق|تذكرة|problem|issue|broken|bug|error/i.test(session.messages[i].customerMessage!))
+                    ) {
+                      isProblem = true;
+                      break;
+                    }
+                  }
+                }
                 return (
                   <div
                     key={session.id}
@@ -583,7 +614,11 @@ export default function AdminChatLogs() {
                     className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative group cursor-pointer ${isSelected ? "bg-muted border-l-4 border-l-primary" : ""}`}
                   >
                     <div className="mt-1 relative">
-                      {getChannelIcon(session.channel)}
+                      {isTicket ? (
+                        <LifeBuoy className="w-4 h-4 text-indigo-500" />
+                      ) : (
+                        getChannelIcon(session.channel)
+                      )}
                       {!localReadSessions.has(session.id) &&
                         session.messages.some((m) => !m.isRead) && (
                           <span
@@ -594,9 +629,20 @@ export default function AdminChatLogs() {
                     </div>
                     <div className="flex-1 min-w-0 pr-6">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-semibold truncate capitalize">
-                          {session.companyName} - {userName || "User"}
-                        </span>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-sm font-semibold truncate capitalize">
+                            {session.companyName} - {userName || "User"}
+                          </span>
+                          {isTicket ? (
+                            <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-500 border-indigo-500/20 font-semibold px-1 py-0 shrink-0">
+                              🎫 {lang === "ar" ? "تذكرة مشكلة" : "Ticket"}
+                            </Badge>
+                          ) : isProblem ? (
+                            <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-semibold px-1 py-0 shrink-0">
+                              ⚠️ {lang === "ar" ? "مشكلة / شكوى" : "Complaint"}
+                            </Badge>
+                          ) : null}
+                        </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             {new Date(session.updatedAt).toLocaleTimeString(

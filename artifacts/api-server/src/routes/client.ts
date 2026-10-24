@@ -1332,20 +1332,52 @@ router.get("/client/chat-logs", async (req, res) => {
 
     const rows = await query.orderBy(sql`${chatLogsTable.createdAt} DESC`).limit(200);
 
-    res.json(
-      rows.map((log) => ({
-        id: log.id,
-        companyId: log.companyId,
-        companyName: myCompany.name,
-        channel: log.channel,
-        sessionId: log.sessionId,
-        customerMessage: log.customerMessage,
-        botResponse: log.botResponse,
-        isRead: log.isRead,
-         isHandoff: log.isHandoff,
-        createdAt: log.createdAt.toISOString(),
-      }))
-    );
+    // Merge client tickets into chat logs so they appear directly in the Inbox
+    const clientTickets = await db
+      .select()
+      .from(ticketsTable)
+      .where(eq(ticketsTable.clientId, req.session.userId!))
+      .orderBy(sql`${ticketsTable.createdAt} DESC`);
+
+    const existingSessionIds = new Set(rows.map((r) => r.sessionId));
+    const mergedRows: any[] = rows.map((log) => ({
+      id: log.id,
+      companyId: log.companyId,
+      companyName: myCompany.name,
+      channel: log.channel,
+      sessionId: log.sessionId,
+      customerMessage: log.customerMessage,
+      botResponse: log.botResponse,
+      isRead: log.isRead,
+      isHandoff: log.isHandoff,
+      createdAt: log.createdAt.toISOString(),
+    }));
+
+    for (const t of clientTickets) {
+      const sessId = `ticket_${t.id}`;
+      if (!existingSessionIds.has(sessId)) {
+        mergedRows.push({
+          id: 9000000 + t.id,
+          companyId: myCompany.id,
+          companyName: myCompany.name,
+          channel: "website",
+          sessionId: sessId,
+          customerMessage: `[تذكرة مشكلة #${t.id}: ${t.title}]\n\n${t.description}`,
+          botResponse: t.aiResponse
+            ? `[حل الذكاء الاصطناعي]:\n${t.aiResponse}`
+            : t.adminNote
+            ? `[حل المشرف]:\n${t.adminNote}`
+            : null,
+          isRead: t.status === "resolved",
+          isHandoff: t.status === "open",
+          createdAt: t.createdAt.toISOString(),
+        });
+      }
+    }
+
+    mergedRows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json(mergedRows);
   } catch (err) {
     logger.error({ err }, "List client chat logs error");
     res.status(500).json({ error: "Internal server error" });
@@ -1416,7 +1448,22 @@ router.delete("/client/chat-logs/session/:sessionId", async (req, res) => {
       return;
     }
 
-    if (sessionId.startsWith("msg_")) {
+    if (sessionId.startsWith("ticket_")) {
+      const ticketId = parseInt(sessionId.replace("ticket_", ""), 10);
+      if (!isNaN(ticketId)) {
+        await db
+          .delete(ticketsTable)
+          .where(and(eq(ticketsTable.id, ticketId), eq(ticketsTable.clientId, req.session.userId!)));
+      }
+      await db
+        .delete(chatLogsTable)
+        .where(
+          and(
+            eq(chatLogsTable.companyId, myCompany.id),
+            eq(chatLogsTable.sessionId, sessionId)
+          )
+        );
+    } else if (sessionId.startsWith("msg_")) {
       const logId = parseInt(sessionId.replace("msg_", ""), 10);
       await db
         .delete(chatLogsTable)
@@ -1907,6 +1954,31 @@ router.post("/client/tickets", async (req, res) => {
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
 
+    // Also record into chatLogsTable so it appears in the Inbox (Chat Logs & Universal Chat)
+    if (company) {
+      await db.insert(chatLogsTable).values({
+        companyId: company.id,
+        channel: "website" as any,
+        sessionId: `ticket_${ticket.id}`,
+        customerMessage: `[تذكرة مشكلة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`,
+        botResponse: null,
+        isRead: false,
+        isHandoff: true,
+        intent: "support",
+        sentiment: "negative",
+      }).catch((e) => logger.warn({ err: e }, "Failed to mirror ticket into chat logs"));
+    }
+
+    // Instant notification for the client confirming receipt
+    await db.insert(notificationsTable).values({
+      userId: req.session.userId!,
+      type: "ticket",
+      title: `📨 [تم استلام مشكلتك #${ticket.id}] ${ticket.title}`,
+      message: `تم إرسال تذكرة المشكلة بنجاح إلى فريق الدعم الفني وصندوق الوارد (Inbox).`,
+      companyId: company?.id ?? null,
+      isRead: false,
+    }).catch(() => {});
+
     // Create notifications for all admins
     const admins = await db
       .select({ id: usersTable.id })
@@ -1918,8 +1990,8 @@ router.post("/client/tickets", async (req, res) => {
         admins.map(admin => ({
           userId: admin.id,
           type: "ticket",
-          title: `New Problem: ${ticket.title}`,
-          message: `Client ${user?.name ?? "Unknown"} reported a problem.`,
+          title: `⚠️ [مشكلة جديدة #${ticket.id}] ${ticket.title}`,
+          message: `أرسل العميل ${user?.name ?? "عميل"} بلاغاً عن مشكلة: "${ticket.description.slice(0, 100)}...". انقر للمراجعة في صندوق الوارد.`,
           companyId: company?.id ?? null,
         }))
       );
@@ -3099,6 +3171,69 @@ router.post("/client/chat/reply", async (req, res) => {
     }
 
     
+    if (sessionId.startsWith("ticket_")) {
+      const ticketId = parseInt(sessionId.replace("ticket_", ""), 10);
+      if (resolveHandoff) {
+        if (!isNaN(ticketId)) {
+          await db
+            .update(ticketsTable)
+            .set({ status: "resolved", updatedAt: new Date() })
+            .where(eq(ticketsTable.id, ticketId));
+        }
+
+        await db
+          .update(chatLogsTable)
+          .set({ isHandoff: false, isRead: true })
+          .where(eq(chatLogsTable.sessionId, sessionId));
+
+        await db.insert(chatLogsTable).values({
+          companyId: myCompany.id,
+          channel: "website" as any,
+          sessionId,
+          customerMessage: "",
+          botResponse: "[HANDOFF_RESOLVED] تم حل المشكلة وإغلاق التذكرة",
+          isHandoff: false,
+          isRead: true,
+        });
+
+        res.json({ success: true, ok: true });
+        return;
+      }
+
+      if (message) {
+        await db.insert(chatLogsTable).values({
+          companyId: myCompany.id,
+          channel: "website" as any,
+          sessionId,
+          customerMessage: "",
+          botResponse: "[Human] " + message,
+          isHandoff: true,
+          isRead: false,
+        });
+
+        // Notify admins about the new message on the ticket
+        const admins = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "admin"));
+        if (admins.length > 0) {
+          await db.insert(notificationsTable).values(
+            admins.map((a) => ({
+              userId: a.id,
+              type: "ticket",
+              title: `💬 [رد جديد على تذكرة مشكلة #${ticketId}]`,
+              message: `أضاف العميل رداً جديداً في صندوق الوارد: "${message.slice(0, 100)}..."`,
+              companyId: myCompany.id,
+              isRead: false,
+            }))
+          ).catch(() => {});
+        }
+
+        res.json({ success: true, ok: true });
+        return;
+      }
+
+      res.json({ success: true, ok: true });
+      return;
+    }
+
     const [log] = await db
       .select()
       .from(chatLogsTable)

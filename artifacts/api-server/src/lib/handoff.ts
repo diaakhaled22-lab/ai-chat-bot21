@@ -1,4 +1,3 @@
-
 import { eq, and, sql, type InferSelectModel } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { logger } from "./logger";
@@ -8,9 +7,26 @@ import { chatLogsTable, notificationsTable, usersTable, companiesTable } from "@
 export const WAITING_LIST_RESPONSE_AR = "سيتم وضعك في قائمة الانتظار.";
 export const WAITING_LIST_RESPONSE_EN = "You will be placed on the waiting list.";
 
+export function isComplaintOrProblem(userMessage: string): boolean {
+  const text = (userMessage || "").toLowerCase().trim();
+  const problemKeywords = [
+    "مشكلة", "مشكله", "شكوى", "شكوي", "عندي مشكلة", "عندي شكوى", "اريد اشتكي", "أريد أشتكي",
+    "الموقع معلق", "الموقع مش شغال", "مش راضي يشتغل", "الطلب تأخر", "الطلب خطأ", "المنتج خربان",
+    "المنتج تالف", "الفلوس اتسحبت", "مشكلة بالدفع", "خطأ في السحب", "عملية فاشلة", "سيء جدا",
+    "احتيال", "نصب", "غير راضي", "مستاء", "تطبيق سيء", "أريد استرجاع", "طلب استرجاع",
+    "استرجاع المبلغ", "الموقع عطلان", "فيه عطل", "عطل فني", "فيه خطأ", "في خطأ", "خطأ فني",
+    "ما يفتح", "لا يفتح", "تطبيق معلق", "لم يصلني شيء", "لم يصل الطلب", "خصم بدون خدمة",
+    "problem", "issue", "complaint", "file complaint", "broken", "not working", "payment failed",
+    "charged twice", "wrong item", "damaged item", "fraud", "scam", "terrible", "bad experience",
+    "need refund", "refund request", "glitch", "error code"
+  ];
+  return problemKeywords.some((k) => text.includes(k));
+}
+
 export function isHandoffRequested(userMessage: string, rawAiReply?: string, cleanAiReply?: string): boolean {
   if (rawAiReply && rawAiReply.includes("[HANDOFF_REQUESTED]")) return true;
   if (cleanAiReply && cleanAiReply.includes("[HANDOFF_REQUESTED]")) return true;
+  if (isComplaintOrProblem(userMessage)) return true;
 
   const text = (userMessage || "").toLowerCase().trim();
   const keywords = [
@@ -86,7 +102,6 @@ export function extractLeadData(botResponse: string): { cleanResponse: string, l
   return { cleanResponse: botResponse, leadData: null };
 }
 
-
 export const METRICS_SYSTEM_PROMPT = `\nCRITICAL INSTRUCTION: Analyze the user's latest message and determine their sentiment (positive, neutral, negative, angry) and intent (sales, support, complaint, general). Append EXACTLY this secret JSON block to the END of your response:\n[METRICS: {"sentiment": "...", "intent": "..."}]`;
 
 export function extractMetrics(botResponse: string): { cleanResponse: string, metrics: { sentiment?: string, intent?: string } | null } {
@@ -106,23 +121,30 @@ export function extractMetrics(botResponse: string): { cleanResponse: string, me
   return { cleanResponse: botResponse, metrics: null };
 }
 
-
 import { notifyCustomerServiceRequest, notifyNewChatMessage } from "./companyNotification";
 
-export async function triggerHandoffNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string) {
+export async function triggerHandoffNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string, customerMessage?: string) {
   try {
     // Allow preview sessions so client testing immediately reflects in the notification bell
     const isPreview = Boolean(sessionId && sessionId.startsWith("preview_"));
+    const isComplaint = customerMessage ? isComplaintOrProblem(customerMessage) : false;
 
     const channelNames: Record<string, string> = {
       whatsapp: "WhatsApp",
       telegram: "Telegram",
       messenger: "Messenger",
       website: "Website Widget",
+      tickets: "Support Ticket",
     };
     const channelDisplay = channelNames[channel] || channel;
-    const title = isPreview ? `[طلب خدمة العملاء - تجربة] Customer Service Requested (${channelDisplay})` : `[طلب خدمة العملاء] Customer Service Requested (${channelDisplay})`;
-    const message = `A customer on ${channelDisplay} requested human customer service. | طلب أحد العملاء على ${channelDisplay} التحدث مع خدمة العملاء. يرجى مراجعة الشات الشامل.`;
+
+    const title = isComplaint
+      ? (isPreview ? `[⚠️ شكوى / مشكلة جديدة - تجربة] Problem Alert (${channelDisplay})` : `[⚠️ شكوى / مشكلة جديدة] Problem Alert (${channelDisplay})`)
+      : (isPreview ? `[طلب خدمة العملاء - تجربة] Customer Service Requested (${channelDisplay})` : `[طلب خدمة العملاء] Customer Service Requested (${channelDisplay})`);
+
+    const message = isComplaint
+      ? `A customer reported a problem/complaint on ${channelDisplay}: "${(customerMessage || "").slice(0, 80)}...". Open Inbox to review. | أبلغ أحد العملاء عن مشكلة/شكوى على ${channelDisplay}. افتح صندوق الوارد للمراجعة والرد.`
+      : `A customer on ${channelDisplay} requested human customer service. | طلب أحد العملاء على ${channelDisplay} التحدث مع خدمة العملاء. يرجى مراجعة الشات الشامل.`;
 
     let clientId = company.clientId;
     if (!clientId) {
@@ -137,7 +159,7 @@ export async function triggerHandoffNotification(company: { id: number, clientId
     if (clientId) {
       await db.insert(notificationsTable).values({
         userId: clientId,
-        type: "handoff_request",
+        type: isComplaint ? "problem_alert" : "handoff_request",
         title,
         message,
         companyId: company.id,
@@ -160,16 +182,10 @@ export async function triggerHandoffNotification(company: { id: number, clientId
   }
 }
 
-
 export async function triggerNewMessageNotification(company: { id: number, clientId: number | null, name: string }, sessionId: string, channel: string, customerMessage: string) {
   try {
     // Skip preview sessions
     if (sessionId && sessionId.startsWith("preview_")) return;
-
-    // Per user requirement: In-app notification bell on client page triggers ONLY when:
-    // (1) A new user starts a conversation (handled in notifyNewConversation)
-    // (2) A user requests to contact customer service (handled in triggerHandoffNotification)
-    // It should NOT trigger for every single individual message in an existing conversation.
   } catch (err) {
     logger.error({ err }, 'Error triggering new message notification');
   }
