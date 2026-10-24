@@ -354,29 +354,6 @@ export default function AdminMalfunctions() {
           <p className="text-muted-foreground mt-2">{desc}</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* AI Settings Dialog Trigger */}
-          <Button
-            variant="outline"
-            className={`shrink-0 flex items-center gap-2 transition-all ${
-              isOpenAiActive
-                ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                : "border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-            }`}
-            onClick={handleOpenConfig}
-          >
-            {isOpenAiActive ? (
-              <Bot className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <Sparkles className="w-4 h-4 text-blue-400" />
-            )}
-            {lang === "ar"
-              ? `إعدادات الذكاء الاصطناعي (${isOpenAiActive ? "OpenAI" : "Gemini"})`
-              : `AI Settings (${isOpenAiActive ? "OpenAI" : "Gemini"})`}
-            {aiConfig?.hasKey && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" title="Connected" />
-            )}
-          </Button>
-
           {/* Report Malfunction Dialog */}
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
