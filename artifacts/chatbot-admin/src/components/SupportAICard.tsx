@@ -65,7 +65,6 @@ const PROVIDERS: AIProvider[] = [
       { id: "openrouter/free",                       label: "OpenRouter Free Auto ⭐",   tier: "free", description: "Auto-routes to available free model",             contextWindow: "128K" },
       { id: "google/gemma-4-31b-it:free",             label: "Google Gemma 4 31B",        tier: "free", description: "Recommended free model, strong general tasks",   contextWindow: "256K" },
       { id: "nvidia/nemotron-3.5-lightning:free",    label: "NVIDIA Nemotron 3.5 Light", tier: "free", description: "Fast NVIDIA free model, ultra-low latency",       contextWindow: "128K" },
-      { id: "deepseek/deepseek-r1:free",             label: "DeepSeek R1 (Free)",        tier: "free", description: "Frontier reasoning model, free tier",            contextWindow: "64K"  },
       { id: "meta-llama/llama-3.3-70b-instruct:free",label: "Llama 3.3 70B (Free)",      tier: "free", description: "Meta flagship open-weight model",                contextWindow: "128K" },
       { id: "deepseek/deepseek-v4-flash",             label: "DeepSeek V4 Flash ⭐",       tier: "paid", description: "Fast & affordable, great quality-to-cost ratio", contextWindow: "128K" },
       { id: "anthropic/claude-sonnet-4.5",            label: "Claude Sonnet 4.5 ⭐",        tier: "paid", description: "Flagship active Claude via OpenRouter",          contextWindow: "200K" },
