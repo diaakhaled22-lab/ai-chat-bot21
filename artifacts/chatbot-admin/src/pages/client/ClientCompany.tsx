@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, FileSpreadsheet, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, Sheet as SheetIcon, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Cpu } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Cpu } from "lucide-react";
 
 /** Compute the same SHA-256 based webhook secret as the backend (first 32 hex chars). */
 async function telegramWebhookSecret(token: string): Promise<string> {
@@ -13,7 +13,7 @@ async function telegramWebhookSecret(token: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 import {
-  useGetClientCompany, useCreateClientCompany, useUpdateClientCompany, useTestClientGoogleSheetConnection,
+  useGetClientCompany, useCreateClientCompany, useUpdateClientCompany,
   useListClientKnowledgeFiles, useCreateClientKnowledgeFile, useDeleteClientKnowledgeFile,
   getGetClientCompanyQueryKey, getListClientKnowledgeFilesQueryKey, customFetch,
 } from "@workspace/api-client-react";
@@ -33,7 +33,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -42,11 +41,6 @@ const formSchema = z.object({
   generalInfo: z.string().optional(),
   systemPrompt: z.string().optional(),
     
-  googleSheetsEnabled: z.boolean().default(false),
-  googleSheetsLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  googleSheetsName: z.string().optional().or(z.literal("")),
-  googleSheetsPage: z.string().optional().or(z.literal("")),
-  serviceAccountKey: z.string().optional().or(z.literal("")),
   aiAgentApiKey: z.string().optional().or(z.literal("")),
   aiProvider: z.enum(["openai", "anthropic", "google", "openrouter"]).optional(),
   aiModel: z.string().optional().or(z.literal("")),
@@ -403,9 +397,6 @@ export default function ClientCompany() {
   const [tgRegistering, setTgRegistering] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [tgWebhookHash, setTgWebhookHash] = useState<string>("");
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const testGoogleSheet = useTestClientGoogleSheetConnection();
-  const testingConnection = testGoogleSheet.isPending;
   const initialized = useRef(false);
   const fabOverlayRef = useRef<HTMLDivElement>(null);
 
@@ -416,11 +407,6 @@ export default function ClientCompany() {
       generalInfo: "",
       systemPrompt: "",
         
-      googleSheetsEnabled: false,
-      googleSheetsLink: "",
-      googleSheetsName: "",
-      googleSheetsPage: "",
-      serviceAccountKey: "",
       aiAgentApiKey: "",
       aiProvider: undefined,
       aiModel: "",
@@ -437,11 +423,6 @@ export default function ClientCompany() {
         generalInfo: company.generalInfo || "",
         systemPrompt: company.systemPrompt || "",
           
-        googleSheetsEnabled: company.googleSheetsEnabled || false,
-        googleSheetsLink: company.googleSheetsLink || "",
-        googleSheetsName: company.googleSheetsName || "",
-        googleSheetsPage: company.googleSheetsPage || "",
-        serviceAccountKey: company.serviceAccountKey || "",
         aiAgentApiKey: company.aiAgentApiKey || "",
         aiProvider: (company.aiProvider as AiProvider) || undefined,
         aiModel: (company.aiModel === "nvidia/nemotron-nano-9b-v2:free" || company.aiModel?.includes("nemotron-nano"))
@@ -490,10 +471,6 @@ export default function ClientCompany() {
     const data = {
       ...values,
       aiExecutionMode: values.aiExecutionMode || currentExecutionMode,
-      googleSheetsLink: values.googleSheetsLink || null,
-      googleSheetsName: values.googleSheetsName || null,
-      googleSheetsPage: values.googleSheetsPage || null,
-      serviceAccountKey: values.serviceAccountKey || null,
       aiAgentApiKey: values.aiAgentApiKey || company?.aiAgentApiKey || null,
       aiProvider: values.aiProvider || company?.aiProvider || null,
       aiModel: values.aiModel || company?.aiModel || null,
@@ -568,36 +545,6 @@ export default function ClientCompany() {
     : null;
   const shareWebsite = widgetConnected && Boolean(company?.websiteChatbotKey);
   const hasShareableChannel = Boolean(shareTelegramLink || shareWhatsappLink || shareMessengerLink || shareWebsite);
-
-  const handleTestConnection = async () => {
-    setTestResult(null);
-    const googleSheetsLink = form.getValues("googleSheetsLink");
-    const googleSheetsPage = form.getValues("googleSheetsPage");
-    if (!googleSheetsLink) return;
-
-    if (!company) {
-      setTestResult({
-        success: false,
-        message: lang === "ar" ? "احفظ الإعدادات أولاً ثم قم باختبار الاتصال." : "Save your configuration first, then test the connection.",
-      });
-      return;
-    }
-
-    try {
-      const result = await testGoogleSheet.mutateAsync({
-        data: { googleSheetsLink, googleSheetsPage: googleSheetsPage || undefined },
-      });
-      setTestResult(result);
-    } catch (err) {
-      const message =
-        (err && typeof err === "object" && "data" in err && err.data && typeof err.data === "object" && "error" in (err.data as Record<string, unknown>)
-          ? String((err.data as Record<string, unknown>).error)
-          : undefined) ||
-        (err instanceof Error ? err.message : undefined) ||
-        (lang === "ar" ? "خطأ في الاتصال. تأكد من صحة الرابط." : "Connection error. Check the sheet URL and try again.");
-      setTestResult({ success: false, message });
-    }
-  };
 
   const registerTelegramWebhook = async () => {
     if (!company?.telegramBotApiKey) return;
@@ -759,148 +706,6 @@ export default function ClientCompany() {
             </Link>
           </div>
 
-          <Accordion type="multiple" className="w-full space-y-4" defaultValue={["sheets"]}>
-            <AccordionItem value="sheets" className="bg-card border border-border/50 rounded-lg px-1">
-              <AccordionTrigger className="hover:no-underline px-4 py-4">
-                <div className="flex items-center gap-2 font-semibold">
-                  <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-                  {t("company_google_sheets")}
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4 space-y-4">
-                <FormField
-                  control={form.control}
-                  name="googleSheetsEnabled"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-4 bg-background">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">{t("company_gs_enable")}</FormLabel>
-                        <FormDescription>
-                          {t("company_google_sheets_desc")}
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {form.watch("googleSheetsEnabled") && (
-                  <div className="space-y-4 pt-4 border-t border-border mt-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                    <FormField
-                      control={form.control}
-                      name="googleSheetsLink"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("company_gs_link")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              className="bg-background"
-                              placeholder="https://docs.google.com/spreadsheets/d/..."
-                              onChange={(e) => { field.onChange(e); setTestResult(null); }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="googleSheetsName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{lang === "ar" ? "اسم الجدول" : "Sheet Name"}</FormLabel>
-                          <FormControl><Input {...field} className="bg-background" placeholder={lang === "ar" ? "مثال: تتبع العملاء" : "e.g. Q1 Leads Tracker"} /></FormControl>
-                          <FormDescription>{lang === "ar" ? "اسم توضيحي للجدول كمرجع لك." : "A friendly label for this spreadsheet (for your own reference)."}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="googleSheetsPage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("company_gs_tab")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              className="bg-background"
-                              placeholder={lang === "ar" ? "مثال: ورقة1 أو Leads" : "e.g. Leads or Sheet1"}
-                              onChange={(e) => { field.onChange(e); setTestResult(null); }}
-                            />
-                          </FormControl>
-                          <FormDescription>{lang === "ar" ? "اسم الصفحة (التبويب) داخل ملف الجدول للمزامنة معها." : "The tab (page) inside the spreadsheet to sync with."}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="serviceAccountKey"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("company_gs_json_key")}</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              {...field} 
-                              className="bg-background font-mono text-xs min-h-[100px]" 
-                              placeholder='{"type": "service_account", "project_id": "...", ...}'
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="space-y-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleTestConnection}
-                        disabled={testingConnection || !form.watch("googleSheetsLink")}
-                        className={
-                          testResult?.success
-                            ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
-                            : testResult && !testResult.success
-                            ? "border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            : undefined
-                        }
-                      >
-                        {testingConnection ? (
-                          t("btn_testing")
-                        ) : testResult?.success ? (
-                          <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5" /> {lang === "ar" ? "تم الاتصال" : "Connected"}</span>
-                        ) : (
-                          t("btn_test")
-                        )}
-                      </Button>
-                      {!company && !testResult && (
-                        <p className="text-xs text-muted-foreground">
-                          {lang === "ar" ? "احفظ الإعدادات أولاً حتى تتمكن من اختبار الاتصال." : "Save your configuration first so we can test the connection."}
-                        </p>
-                      )}
-                      {testResult && (
-                        <p className={`text-xs rounded-lg border p-2.5 ${
-                          testResult.success
-                            ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
-                            : "border-destructive/40 bg-destructive/5 text-destructive"
-                        }`}>
-                          {testResult.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
           <div className="flex justify-end pt-4 sticky bottom-6 z-10">
             <div className="bg-background/80 backdrop-blur-md p-2 rounded-full border border-border shadow-lg inline-block">
               <Button type="submit" size="lg" className="px-8 rounded-full shadow-[0_0_15px_rgba(var(--primary),0.3)]" disabled={isSaving}>
@@ -1013,7 +818,7 @@ export default function ClientCompany() {
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                 {lang === "ar" ? "مصادر المعرفة والبيانات" : "Knowledge & Data Sources"}
               </p>
-              <div className="grid grid-cols-2 min-[500px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 min-[500px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-center text-xs">
                 {/* 1. System Prompt */}
                 <div className={`rounded-lg border p-2.5 space-y-1 transition-all ${company.systemPrompt ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">📝</div>
@@ -1194,17 +999,6 @@ export default function ClientCompany() {
                     </div>
                   </div>
                 </Link>
-
-                {/* 7. Google Sheets */}
-                <div className={`rounded-lg border p-2.5 space-y-1 transition-all ${
-                  company.googleSheetsEnabled ? "border-emerald-500/40 bg-emerald-500/5" : "border-border/40 bg-background"
-                }`}>
-                  <div className="text-base">📊</div>
-                  <div className="font-medium truncate">Sheets</div>
-                  <div className={`text-[10px] ${company.googleSheetsEnabled ? "text-emerald-500 font-medium" : "text-muted-foreground"}`}>
-                    {company.googleSheetsEnabled ? (lang === "ar" ? "✓ مفعّل" : "✓ Enabled") : (lang === "ar" ? "معطل" : "Disabled")}
-                  </div>
-                </div>
               </div>
 
               {/* Arrow */}
