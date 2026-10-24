@@ -30,7 +30,7 @@ import {
   Database,
   Cpu,
   Coins,
-  PenTool, Menu, Trash2, Mail, type LucideIcon,
+  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, ChevronDown, ChevronRight, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ interface NavLink {
   badge?: boolean;
   ticketBadge?: boolean;
   clientChatBadge?: boolean;
+  children?: NavLink[];
 }
 
 interface Ticket {
@@ -764,6 +765,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const { data: user } = useGetMe();
   const { t, lang } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({ "/client/tools": true });
   const queryClient = useQueryClient();
 
   const handleLogout = () => {
@@ -813,6 +815,18 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/prompts",          label: t("nav_prompts") || "Prompts", icon: PenTool },
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
+    {
+      href: "/client/tools",
+      label: t("nav_tools") || (lang === "ar" ? "الأدوات" : "Tools"),
+      icon: Wrench,
+      children: [
+        {
+          href: "/client/tools/calendar",
+          label: t("nav_google_calendar") || (lang === "ar" ? "تقويم Google" : "Google Calendar"),
+          icon: CalendarIcon,
+        },
+      ],
+    },
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
     { href: "/client/leads",            label: lang === "ar" ? "العملاء المحتملين" : "Leads CRM", icon: Users },
     { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles, clientChatBadge: true },
@@ -824,7 +838,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   ];
 
   const links = role === "admin" ? adminLinks : clientLinks;
-  const currentPage = links.find((l) => l.href === location)?.label ?? "";
+  const allLinks = links.flatMap((l) => (l.children ? [l, ...l.children] : [l]));
+  const currentPage = allLinks.find((l) => l.href === location)?.label ?? "";
 
   const sidebarContent = (
     <>
@@ -859,6 +874,64 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           {links.map((link) => {
             const Icon = link.icon;
             const isActive = location === link.href;
+
+            if (link.children && link.children.length > 0) {
+              const isChildActive = link.children.some((c) => location === c.href);
+              const isParentActive = isActive || isChildActive;
+              const isExpanded = openSubmenus[link.href] ?? isParentActive;
+
+              return (
+                <div key={link.href} className="space-y-0.5">
+                  <div
+                    onClick={() => {
+                      setOpenSubmenus((prev) => ({
+                        ...prev,
+                        [link.href]: !isExpanded,
+                      }));
+                      setLocation(link.href);
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors cursor-pointer select-none ${
+                      isParentActive
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="flex-1">{link.label}</span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        isExpanded ? "rotate-0 text-foreground" : "-rotate-90 text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+
+                  {isExpanded && (
+                    <div className="ps-6 pe-1 space-y-0.5 pt-0.5">
+                      {link.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isSubActive = location === child.href;
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                              isSubActive
+                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            }`}
+                          >
+                            <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                            <span className="flex-1 truncate">{child.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={link.href}

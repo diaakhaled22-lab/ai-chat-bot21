@@ -48,6 +48,12 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_start_date TIMESTAMP WITH TIME ZONE;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS quota_end_date TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_enabled BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_id TEXT;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_timezone TEXT DEFAULT 'UTC';
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_duration INTEGER DEFAULT 30;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_service_account_key TEXT;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_booking_rules TEXT;
 
       -- Ensure all companies have an active monthly token quota assigned (default: 500,000)
       UPDATE companies

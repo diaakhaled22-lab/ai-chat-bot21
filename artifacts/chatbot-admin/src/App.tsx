@@ -46,6 +46,7 @@ import ClientWidgetPreview from "@/pages/client/ClientWidgetPreview";
 import ClientChannels from "@/pages/client/ClientChannels";
 import ClientDashboard from "@/pages/client/ClientDashboard";
 import ClientQuickReplies from "@/pages/client/ClientQuickReplies";
+import ClientTools from "@/pages/client/ClientTools";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -177,6 +178,12 @@ function Router() {
         </Route>
       <Route path="/client/knowledge">
         {() => <ProtectedRoute component={ClientKnowledge} allowedRole="client" />}
+      </Route>
+      <Route path="/client/tools">
+        {() => <ProtectedRoute component={ClientTools} allowedRole="client" />}
+      </Route>
+      <Route path="/client/tools/calendar">
+        {() => <ProtectedRoute component={ClientTools} allowedRole="client" />}
       </Route>
       <Route path="/client/channels">
         {() => <ProtectedRoute component={ClientChannels} allowedRole="client" />}

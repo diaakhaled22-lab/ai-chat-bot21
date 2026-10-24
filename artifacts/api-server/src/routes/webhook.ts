@@ -24,6 +24,7 @@ import {
   formatGeminiHistory,
   sanitizeOpenAiModel,
   buildOpenAiChatParams,
+  buildOpenRouterChatParams,
   sanitizeOpenRouterModel,
   isOpenRouterFreeModel,
   stripThinkingTags,
@@ -129,7 +130,7 @@ async function callAI(
       defaultHeaders: getOpenRouterHeaders(),
     });
     const effectiveModel = sanitizeOpenRouterModel(model);
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+    const messages: Array<{ role: string; content: string }> = [];
     if (sysContent) messages.push({ role: "system", content: sysContent });
     for (const turn of history) {
       messages.push({ role: turn.role, content: turn.content });
@@ -138,19 +139,13 @@ async function callAI(
 
     let completion;
     try {
-      completion = await openrouter.chat.completions.create({
-        model: effectiveModel,
-        messages,
-        max_tokens: 1024,
-      });
+      const chatParams = buildOpenRouterChatParams(effectiveModel, messages, { maxTokens: 1024 });
+      completion = await openrouter.chat.completions.create(chatParams);
     } catch (err: any) {
       if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
         logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in webhook; falling back to openrouter/free");
-        completion = await openrouter.chat.completions.create({
-          model: "openrouter/free",
-          messages,
-          max_tokens: 1024,
-        });
+        const fallbackParams = buildOpenRouterChatParams("openrouter/free", messages, { maxTokens: 1024 });
+        completion = await openrouter.chat.completions.create(fallbackParams);
       } else {
         throw err;
       }

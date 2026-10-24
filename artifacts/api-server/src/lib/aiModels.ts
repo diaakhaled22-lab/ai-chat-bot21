@@ -58,8 +58,6 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "nvidia/nemotron-3.5-lightning:free",
     "meta-llama/llama-3.3-70b-instruct:free",
     "meta-llama/llama-3.1-8b-instruct:free",
-    "deepseek/deepseek-r1:free",
-    "deepseek/deepseek-v3-base:free",
     "mistralai/mistral-7b-instruct:free",
     "qwen/qwen3-8b:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
@@ -628,11 +626,13 @@ export function buildOpenRouterChatParams(
   model: string;
   messages: Array<any>;
   max_tokens?: number;
+  max_completion_tokens?: number;
   stream?: boolean;
   temperature?: number;
 } {
   const effectiveModel = sanitizeOpenRouterModel(model);
   const isReasoning = isOpenRouterReasoningModel(effectiveModel);
+  const isOpenAiReasoning = isOpenAiReasoningModel(effectiveModel);
 
   let formattedMessages: Array<{ role: string; content: string }> = [];
 
@@ -683,12 +683,17 @@ export function buildOpenRouterChatParams(
   }
 
   if (options?.maxTokens !== undefined) {
-    if (isReasoning) {
+    if (isOpenAiReasoning) {
+      // OpenAI reasoning models (o1, o3, etc.) strictly reject max_tokens and require max_completion_tokens
+      params.max_completion_tokens = Math.max(options.maxTokens, 1000);
+    } else if (isReasoning) {
       // Hidden reasoning tokens consume token budget; minimum 1000 tokens prevents starvation
       params.max_tokens = Math.max(options.maxTokens, 1000);
     } else {
       params.max_tokens = options.maxTokens;
     }
+  } else if (isOpenAiReasoning) {
+    params.max_completion_tokens = 1000;
   } else if (isReasoning) {
     params.max_tokens = 1000;
   }

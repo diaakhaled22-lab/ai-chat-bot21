@@ -2,7 +2,7 @@ import { google, sheets_v4 } from "googleapis";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText } from "./aiModels";
+import { sanitizeOpenAiModel, sanitizeGoogleModel, sanitizeOpenRouterModel, buildOpenAiChatParams, buildOpenRouterChatParams, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText } from "./aiModels";
 import { logger } from "./logger";
 import type { companiesTable } from "@workspace/db";
 
@@ -179,14 +179,12 @@ async function extractFieldsWithAI(
       });
       let completion;
       try {
-        completion = await openrouter.chat.completions.create({
-          model, messages: [{ role: "user", content: instructions }],
-        });
+        const chatParams = buildOpenRouterChatParams(model, [{ role: "user", content: instructions }]);
+        completion = await openrouter.chat.completions.create(chatParams);
       } catch (err: any) {
         if (isOpenRouterFreeModel(model) && model !== "openrouter/free") {
-          completion = await openrouter.chat.completions.create({
-            model: "openrouter/free", messages: [{ role: "user", content: instructions }],
-          });
+          const fallbackParams = buildOpenRouterChatParams("openrouter/free", [{ role: "user", content: instructions }]);
+          completion = await openrouter.chat.completions.create(fallbackParams);
         } else {
           throw err;
         }

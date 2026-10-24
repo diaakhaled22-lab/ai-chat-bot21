@@ -1,3 +1,4 @@
+import { resolveGoogleCalendarCredentials, testGoogleCalendarConnection, listUpcomingCalendarEvents, createCalendarEvent, parseServiceAccountKey } from "../lib/googleCalendar";
 import { Router } from "express";
 import { notifyWidgetClient } from "../lib/ws";
 
@@ -23,7 +24,7 @@ import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
-import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
+import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, buildOpenRouterChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
 import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
@@ -870,6 +871,222 @@ router.post("/client/company/test-google-sheet", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// GET /client/tools/calendar/config
+router.get("/client/tools/calendar/config", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const { credentials, source } = resolveGoogleCalendarCredentials(company);
+
+    res.json({
+      googleCalendarEnabled: (company as any).googleCalendarEnabled ?? false,
+      googleCalendarId: (company as any).googleCalendarId || "primary",
+      googleCalendarTimezone: (company as any).googleCalendarTimezone || "UTC",
+      googleCalendarDuration: (company as any).googleCalendarDuration || 30,
+      googleCalendarBookingRules: (company as any).googleCalendarBookingRules || "",
+      hasCustomKey: Boolean((company as any).googleCalendarServiceAccountKey),
+      hasCompanyKey: Boolean(company.serviceAccountKey),
+      serviceAccountEmail: credentials?.client_email || null,
+      credentialsSource: source,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Get calendar config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /client/tools/calendar/config
+router.put("/client/tools/calendar/config", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const {
+      googleCalendarEnabled,
+      googleCalendarId,
+      googleCalendarTimezone,
+      googleCalendarDuration,
+      googleCalendarBookingRules,
+      googleCalendarServiceAccountKey,
+    } = req.body || {};
+
+    const updates: Record<string, any> = {};
+
+    if (googleCalendarEnabled !== undefined) {
+      updates.googleCalendarEnabled = Boolean(googleCalendarEnabled);
+    }
+    if (googleCalendarId !== undefined) {
+      updates.googleCalendarId = String(googleCalendarId).trim() || "primary";
+    }
+    if (googleCalendarTimezone !== undefined) {
+      updates.googleCalendarTimezone = String(googleCalendarTimezone).trim() || "UTC";
+    }
+    if (googleCalendarDuration !== undefined) {
+      const dur = parseInt(googleCalendarDuration, 10);
+      updates.googleCalendarDuration = isNaN(dur) || dur <= 0 ? 30 : dur;
+    }
+    if (googleCalendarBookingRules !== undefined) {
+      updates.googleCalendarBookingRules = String(googleCalendarBookingRules);
+    }
+    if (googleCalendarServiceAccountKey !== undefined) {
+      const raw = typeof googleCalendarServiceAccountKey === "string" ? googleCalendarServiceAccountKey.trim() : "";
+      if (!raw) {
+        updates.googleCalendarServiceAccountKey = null;
+      } else {
+        try {
+          JSON.parse(raw);
+          updates.googleCalendarServiceAccountKey = raw;
+        } catch {
+          res.status(400).json({ error: "Service account key must be valid JSON" });
+          return;
+        }
+      }
+    }
+
+    await db
+      .update(companiesTable)
+      .set(updates)
+      .where(eq(companiesTable.id, company.id));
+
+    res.json({ ok: true, message: "Calendar settings saved successfully" });
+  } catch (err: any) {
+    logger.error({ err }, "Update calendar config error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /client/tools/calendar/test
+router.post("/client/tools/calendar/test", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const { calendarId: testCalId, serviceAccountKey: customKey } = req.body || {};
+    let creds = customKey ? parseServiceAccountKey(customKey) : null;
+    if (!creds) {
+      const resolved = resolveGoogleCalendarCredentials(company);
+      creds = resolved.credentials;
+    }
+
+    if (!creds || !creds.client_email || !creds.private_key) {
+      res.status(400).json({
+        ok: false,
+        error: "No valid Google Service Account credentials found. Please paste your Service Account JSON or use the company service account.",
+      });
+      return;
+    }
+
+    const targetCalendarId = testCalId || (company as any).googleCalendarId || "primary";
+    const result = await testGoogleCalendarConnection(creds, targetCalendarId);
+    res.json(result);
+  } catch (err: any) {
+    logger.error({ err }, "Test calendar error");
+    res.status(400).json({ ok: false, error: err.message || "Failed to connect to Google Calendar" });
+  }
+});
+
+// GET /client/tools/calendar/events
+router.get("/client/tools/calendar/events", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const { credentials } = resolveGoogleCalendarCredentials(company);
+    if (!credentials) {
+      res.json({ ok: false, events: [], error: "No service account credentials configured" });
+      return;
+    }
+
+    const targetCalendarId = (company as any).googleCalendarId || "primary";
+    const events = await listUpcomingCalendarEvents(credentials, targetCalendarId, 30);
+    res.json({ ok: true, events });
+  } catch (err: any) {
+    logger.error({ err }, "Get calendar events error");
+    res.status(400).json({ ok: false, events: [], error: err.message || "Failed to fetch calendar events" });
+  }
+});
+
+// POST /client/tools/calendar/events
+router.post("/client/tools/calendar/events", async (req, res) => {
+  try {
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const { credentials } = resolveGoogleCalendarCredentials(company);
+    if (!credentials) {
+      res.status(400).json({ ok: false, error: "No service account credentials configured" });
+      return;
+    }
+
+    const { summary, description, startTime, endTime, durationMinutes, attendeeEmail, attendeeName } = req.body || {};
+    if (!summary || !summary.trim() || !startTime) {
+      res.status(400).json({ ok: false, error: "Title and start time are required" });
+      return;
+    }
+
+    const targetCalendarId = (company as any).googleCalendarId || "primary";
+    const timeZone = (company as any).googleCalendarTimezone || "UTC";
+
+    const event = await createCalendarEvent(credentials, targetCalendarId, {
+      summary,
+      description,
+      startTime,
+      endTime,
+      durationMinutes: durationMinutes || (company as any).googleCalendarDuration || 30,
+      timeZone,
+      attendeeEmail,
+      attendeeName,
+    });
+
+    res.json({ ok: true, event });
+  } catch (err: any) {
+    logger.error({ err }, "Create calendar event error");
+    res.status(400).json({ ok: false, error: err.message || "Failed to create event" });
+  }
+});
+
 
 // GET /client/chat-logs
 router.get("/client/chat-logs", async (req, res) => {
@@ -1922,20 +2139,30 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
     });
     const effectiveModel = sanitizeOpenRouterModel(model);
     try {
-      await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
+      await openai.chat.completions.create(
+        buildOpenRouterChatParams(effectiveModel, [{ role: "user", content: "hi" }], { maxTokens: 16 })
+      );
     } catch (err: any) {
       const errMsg = err?.message || "";
       const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
       if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
-        await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
+        await openai.chat.completions.create(
+          buildOpenRouterChatParams("openrouter/free", [{ role: "user", content: "hi" }], { maxTokens: 16 })
+        );
       } else if (isUnavailable) {
         const fallbackModel = effectiveModel.includes("anthropic")
           ? "anthropic/claude-sonnet-4.5"
           : effectiveModel.includes("gemini")
           ? "google/gemini-2.5-pro"
+          : effectiveModel.includes("deepseek")
+          ? "deepseek/deepseek-chat"
+          : effectiveModel.includes("openai")
+          ? "openai/gpt-4o-mini"
           : "openrouter/free";
         try {
-          await openai.chat.completions.create({ model: fallbackModel, messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
+          await openai.chat.completions.create(
+            buildOpenRouterChatParams(fallbackModel, [{ role: "user", content: "hi" }], { maxTokens: 16 })
+          );
         } catch {
           throw err;
         }
@@ -2448,16 +2675,20 @@ router.post("/client/multi-ai/chat", async (req, res) => {
       const effectiveModel = sanitizeOpenRouterModel(model);
       let stream;
       try {
-        stream = await openai.chat.completions.create({
-          model: effectiveModel, max_tokens: 2048, stream: true,
-          messages: [{ role: "system", content: SYSTEM }, ...formatted],
-        });
+        const chatParams = buildOpenRouterChatParams(
+          effectiveModel,
+          [{ role: "system", content: SYSTEM }, ...formatted],
+          { maxTokens: 2048, stream: true }
+        );
+        stream = await openai.chat.completions.create(chatParams);
       } catch (openRouterErr: any) {
         if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
-          stream = await openai.chat.completions.create({
-            model: "openrouter/free", max_tokens: 2048, stream: true,
-            messages: [{ role: "system", content: SYSTEM }, ...formatted],
-          });
+          const fallbackParams = buildOpenRouterChatParams(
+            "openrouter/free",
+            [{ role: "system", content: SYSTEM }, ...formatted],
+            { maxTokens: 2048, stream: true }
+          );
+          stream = await openai.chat.completions.create(fallbackParams);
         } else {
           throw openRouterErr;
         }

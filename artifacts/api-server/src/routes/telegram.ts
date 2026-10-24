@@ -26,8 +26,9 @@ import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, extractAnthropicText } from "../lib/aiModels";
+import { sanitizeGoogleModel, formatGeminiHistory, sanitizeOpenAiModel, buildOpenAiChatParams, buildOpenRouterChatParams, sanitizeOpenRouterModel, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, extractAnthropicText } from "../lib/aiModels";
 import { syncConversationToSheet } from "../lib/googleSheets";
+import { getCalendarPromptSection } from "../lib/googleCalendar";
 import { getKnowledgeFilesPromptSection } from "../lib/knowledgeFiles";
 import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
@@ -130,25 +131,19 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
       defaultHeaders: getOpenRouterHeaders(),
     });
     const effectiveModel = sanitizeOpenRouterModel(model);
-    const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+    const msgs: Array<{ role: string; content: string }> = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
     history.forEach(h => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     let completion;
     try {
-      completion = await openrouter.chat.completions.create({
-        model: effectiveModel,
-        messages: msgs,
-        max_tokens: 1024,
-      });
+      const chatParams = buildOpenRouterChatParams(effectiveModel, msgs, { maxTokens: 1024 });
+      completion = await openrouter.chat.completions.create(chatParams);
     } catch (err: any) {
       if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
         logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in Telegram; falling back to openrouter/free");
-        completion = await openrouter.chat.completions.create({
-          model: "openrouter/free",
-          messages: msgs,
-          max_tokens: 1024,
-        });
+        const fallbackParams = buildOpenRouterChatParams("openrouter/free", msgs, { maxTokens: 1024 });
+        completion = await openrouter.chat.completions.create(fallbackParams);
       } else {
         throw err;
       }
