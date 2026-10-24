@@ -163,16 +163,33 @@ export default function ClientSupport() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      customFetch(`/api/client/tickets/${id}`, {
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/client/tickets/${id}`, {
         method: "DELETE",
-      }),
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${res.status}: Failed to delete ticket`);
+      }
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
-      toast({ title: lang === "ar" ? "تم حذف التذكرة بنجاح" : "Problem ticket deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["client-chat-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
+      toast({
+        title: lang === "ar" ? "تم حذف التذكرة بنجاح" : "Problem ticket deleted successfully",
+      });
     },
-    onError: () => {
-      toast({ title: lang === "ar" ? "فشل حذف التذكرة" : "Failed to delete ticket", variant: "destructive" });
+    onError: (err: any) => {
+      console.error("Delete ticket error:", err);
+      toast({
+        title: lang === "ar" ? "فشل حذف التذكرة" : "Failed to delete ticket",
+        description: err?.message || undefined,
+        variant: "destructive",
+      });
     },
   });
 

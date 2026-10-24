@@ -2023,11 +2023,20 @@ router.post("/client/tickets", async (req, res) => {
 // GET /client/tickets
 router.get("/client/tickets", async (req, res) => {
   try {
-    const tickets = await db
-      .select()
-      .from(ticketsTable)
-      .where(eq(ticketsTable.clientId, req.session.userId!))
-      .orderBy(sql`${ticketsTable.createdAt} DESC`);
+    const isClient = req.session.role === "client";
+    const userId = req.session.userId!;
+
+    const tickets = isClient
+      ? await db
+          .select()
+          .from(ticketsTable)
+          .where(eq(ticketsTable.clientId, userId))
+          .orderBy(sql`${ticketsTable.createdAt} DESC`)
+      : await db
+          .select()
+          .from(ticketsTable)
+          .orderBy(sql`${ticketsTable.createdAt} DESC`);
+
     res.json(
       tickets.map((t) => ({
         id: t.id,
@@ -2053,15 +2062,40 @@ router.delete("/client/tickets/:id", async (req, res) => {
       return;
     }
 
-    const [deleted] = await db
-      .delete(ticketsTable)
-      .where(and(eq(ticketsTable.id, id), eq(ticketsTable.clientId, req.session.userId!)))
-      .returning();
+    const userId = req.session.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
 
-    if (!deleted) {
+    const [existingTicket] = await db
+      .select()
+      .from(ticketsTable)
+      .where(eq(ticketsTable.id, id))
+      .limit(1);
+
+    if (!existingTicket) {
       res.status(404).json({ error: "Ticket not found" });
       return;
     }
+
+    // If client, verify ownership (or company association)
+    if (req.session.role !== "admin" && existingTicket.clientId !== userId) {
+      const [company] = await db
+        .select({ id: companiesTable.id })
+        .from(companiesTable)
+        .where(eq(companiesTable.clientId, userId))
+        .limit(1);
+
+      if (!company) {
+        res.status(403).json({ error: "Unauthorized to delete this ticket" });
+        return;
+      }
+    }
+
+    await db
+      .delete(ticketsTable)
+      .where(eq(ticketsTable.id, id));
 
     // Also delete any mirrored chat log for this ticket
     await db
@@ -2069,10 +2103,10 @@ router.delete("/client/tickets/:id", async (req, res) => {
       .where(eq(chatLogsTable.sessionId, `ticket_${id}`))
       .catch(() => {});
 
-    res.json({ ok: true, id });
-  } catch (err) {
+    res.json({ ok: true, id, success: true });
+  } catch (err: any) {
     logger.error({ err }, "Delete client ticket error");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 

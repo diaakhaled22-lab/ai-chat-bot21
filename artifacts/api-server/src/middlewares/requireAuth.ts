@@ -9,7 +9,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 export function requireClient(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId || req.session.role !== "client") {
+  if (!req.session.userId || (req.session.role !== "client" && req.session.role !== "admin")) {
     res.status(401).json({ error: "Client access required" });
     return;
   }
