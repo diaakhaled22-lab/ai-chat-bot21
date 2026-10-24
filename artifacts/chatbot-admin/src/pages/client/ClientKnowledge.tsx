@@ -382,6 +382,7 @@ function WordPressInlineCard() {
   const [syncing, setSyncing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [apiUrl, setApiUrl] = useState("");
   const [username, setUsername] = useState("");
   const [appPassword, setAppPassword] = useState("");
@@ -408,6 +409,31 @@ function WordPressInlineCard() {
     loadWp();
   }, []);
 
+  const handleDelete = async () => {
+    if (!confirm(lang === "ar" ? "هل أنت متأكد من رغبتك في فصل وحذف ربط ووردبريس؟" : "Are you sure you want to disconnect WordPress?")) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await customFetch("/api/client/wordpress", { method: "DELETE" });
+      setWpData(null);
+      setApiUrl("");
+      setUsername("");
+      setAppPassword("");
+      toast({
+        title: lang === "ar" ? "تم فصل ربط ووردبريس بنجاح" : "WordPress disconnected successfully",
+      });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل فصل الربط" : "Failed to disconnect",
+        description: err?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleTest = async () => {
     if (!apiUrl) {
       toast({ title: lang === "ar" ? "يرجى إدخال الرابط" : "Enter API URL", variant: "destructive" });
@@ -433,7 +459,11 @@ function WordPressInlineCard() {
   };
 
   const handleSave = async () => {
-    if (!apiUrl) {
+    if (!apiUrl.trim()) {
+      if (wpData) {
+        await handleDelete();
+        return;
+      }
       toast({ title: lang === "ar" ? "يرجى إدخال رابط ووردبريس" : "Enter WordPress API URL", variant: "destructive" });
       return;
     }
@@ -443,9 +473,9 @@ function WordPressInlineCard() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiUrl,
-          username: username || undefined,
-          appPassword: appPassword || undefined,
+          apiUrl: apiUrl.trim(),
+          username: username.trim() || undefined,
+          appPassword: appPassword.trim() || undefined,
           autoSync,
         }),
       });
@@ -546,7 +576,7 @@ function WordPressInlineCard() {
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={testing || !apiUrl} className="text-xs">
+                <Button type="button" variant="outline" size="sm" onClick={handleTest} disabled={testing || !apiUrl.trim()} className="text-xs">
                   {testing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plug className="w-3.5 h-3.5 mr-1" />}
                   {lang === "ar" ? "اختبار الاتصال" : "Test Connection"}
                 </Button>
@@ -556,10 +586,31 @@ function WordPressInlineCard() {
                     {lang === "ar" ? "مزامنة الآن" : "Sync Now"}
                   </Button>
                 )}
+                {wpData && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="text-xs text-destructive hover:bg-destructive/10 border-destructive/30"
+                  >
+                    {deleting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+                    {lang === "ar" ? "فصل الربط" : "Disconnect"}
+                  </Button>
+                )}
               </div>
-              <Button type="button" size="sm" onClick={handleSave} disabled={saving || !apiUrl} className="text-xs">
-                {saving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
-                {lang === "ar" ? "حفظ وربط" : "Save & Connect"}
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || deleting || (!apiUrl.trim() && !wpData)}
+                className="text-xs"
+              >
+                {saving || deleting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                {!apiUrl.trim() && wpData
+                  ? (lang === "ar" ? "حذف الربط" : "Disconnect")
+                  : (lang === "ar" ? "حفظ وربط" : "Save & Connect")}
               </Button>
             </div>
 
