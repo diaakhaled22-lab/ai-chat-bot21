@@ -1014,7 +1014,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </header>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8">
-          <div className="max-w-6xl mx-auto">
+          <div className={location === "/client/support" ? "w-full" : "max-w-6xl mx-auto"}>
             {children}
           </div>
         </div>
