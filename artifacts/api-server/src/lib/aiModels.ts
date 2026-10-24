@@ -64,20 +64,17 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "qwen/qwen3-8b:free",
     "nvidia/nemotron-3-super-120b-a12b:free",
     "google/gemini-2.5-flash",
-    "deepseek/deepseek-v4-flash",
-    "anthropic/claude-3.7-sonnet",
-    "anthropic/claude-3.5-sonnet",
+    "deepseek/deepseek-v4.1-flash",
     "anthropic/claude-sonnet-4.5",
     "anthropic/claude-haiku-4.5",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
     "openai/o3-mini",
     "openai/o1",
-    "deepseek/deepseek-r1",
-    "deepseek/deepseek-v3",
+    "deepseek/deepseek-r1-0528",
+    "deepseek/deepseek-chat",
     "google/gemini-2.5-pro",
-    "google/gemini-pro-1.5",
-    "google/gemini-2.0-flash-001",
+    "google/gemini-2.5-flash",
     "mistralai/mistral-large",
     "meta-llama/llama-3.3-70b-instruct",
     "qwen/qwen-2.5-72b-instruct",
@@ -383,10 +380,13 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
   "openai/o1":                          { input: 15.00, output: 60.00 },
   "openai/o3-mini":                     { input: 1.10,  output: 4.40  },
   "deepseek/deepseek-r1":               { input: 0.55,  output: 2.19  },
+  "deepseek/deepseek-r1-0528":          { input: 0.55,  output: 2.19  },
   "deepseek/deepseek-v3":               { input: 0.27,  output: 1.10  },
   "deepseek/deepseek-chat":             { input: 0.27,  output: 1.10  },
   "deepseek/deepseek-v4-flash":         { input: 0.14,  output: 0.28  },
+  "deepseek/deepseek-v4.1-flash":       { input: 0.14,  output: 0.28  },
   "google/gemini-2.5-pro":              { input: 1.25,  output: 5.00  },
+  "google/gemini-2.5-flash":            { input: 0.10,  output: 0.40  },
   "google/gemini-pro-1.5":              { input: 1.25,  output: 5.00  },
   "google/gemini-2.0-flash-001":        { input: 0.10,  output: 0.40  },
   "mistralai/mistral-large":            { input: 2.00,  output: 6.00  },
@@ -518,16 +518,25 @@ const COMMON_OPENROUTER_ALIASES: Record<string, string> = {
   "claude-3-opus": "anthropic/claude-opus-4.5",
   "claude-3-opus-20240229": "anthropic/claude-opus-4.5",
   // DeepSeek
-  "deepseek-r1": "deepseek/deepseek-r1",
-  "deepseek-v3": "deepseek/deepseek-v3",
-  "deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek-r1": "deepseek/deepseek-r1-0528",
+  "deepseek/deepseek-r1": "deepseek/deepseek-r1-0528",
+  "deepseek-v3": "deepseek/deepseek-chat",
+  "deepseek/deepseek-v3": "deepseek/deepseek-chat",
   "deepseek-chat": "deepseek/deepseek-chat",
+  "deepseek-v4-flash": "deepseek/deepseek-v4.1-flash",
+  "deepseek/deepseek-v4-flash": "deepseek/deepseek-v4.1-flash",
   // Google
   "gemini-2.5-flash": "google/gemini-2.5-flash",
-  "gemini-pro-1.5": "google/gemini-pro-1.5",
-  "gemini-1.5-pro": "google/gemini-pro-1.5",
-  "gemini-2.0-flash": "google/gemini-2.0-flash-001",
-  "gemini-2.0-flash-001": "google/gemini-2.0-flash-001",
+  "gemini-pro-1.5": "google/gemini-2.5-pro",
+  "gemini-1.5-pro": "google/gemini-2.5-pro",
+  "google/gemini-pro-1.5": "google/gemini-2.5-pro",
+  "google/gemini-1.5-pro": "google/gemini-2.5-pro",
+  "gemini-2.0-flash": "google/gemini-2.5-flash",
+  "gemini-2.0-flash-001": "google/gemini-2.5-flash",
+  "google/gemini-2.0-flash-001": "google/gemini-2.5-flash",
+  "google/gemini-2.0-flash": "google/gemini-2.5-flash",
+  "gemini-1.5-flash": "google/gemini-2.5-flash",
+  "google/gemini-1.5-flash": "google/gemini-2.5-flash",
   "gemini-2.5-pro": "google/gemini-2.5-pro",
   // Mistral & Meta & Qwen
   "mistral-large": "mistralai/mistral-large",
@@ -556,6 +565,33 @@ export function sanitizeOpenRouterModel(model?: string | null): string {
   if (COMMON_OPENROUTER_ALIASES[trimmed]) {
     return COMMON_OPENROUTER_ALIASES[trimmed];
   }
+  // Automatically map deprecated or renamed DeepSeek model IDs
+  if (trimmed === "deepseek/deepseek-v3" || trimmed === "deepseek-v3") {
+    return "deepseek/deepseek-chat";
+  }
+  if (trimmed === "deepseek/deepseek-r1" || trimmed === "deepseek-r1") {
+    return "deepseek/deepseek-r1-0528";
+  }
+  if (trimmed === "deepseek/deepseek-v4-flash" || trimmed === "deepseek-v4-flash") {
+    return "deepseek/deepseek-v4.1-flash";
+  }
+  // Automatically map deprecated/retired Google Gemini model names on OpenRouter
+  if (
+    trimmed === "google/gemini-pro-1.5" ||
+    trimmed === "google/gemini-1.5-pro" ||
+    trimmed.includes("gemini-pro-1.5") ||
+    trimmed.includes("gemini-1.5-pro") ||
+    trimmed.includes("gemini-2.0-pro")
+  ) {
+    return "google/gemini-2.5-pro";
+  }
+  if (
+    trimmed === "google/gemini-2.0-flash-001" ||
+    trimmed.includes("gemini-2.0-flash") ||
+    trimmed.includes("gemini-1.5-flash")
+  ) {
+    return "google/gemini-2.5-flash";
+  }
   // Automatically map deprecated/retired Anthropic model names on OpenRouter to active equivalents
   if (
     trimmed.startsWith("anthropic/claude-3") ||
@@ -566,6 +602,98 @@ export function sanitizeOpenRouterModel(model?: string | null): string {
     return "anthropic/claude-sonnet-4.5";
   }
   return trimmed;
+}
+
+export function isOpenRouterReasoningModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  const lower = modelId.toLowerCase().trim();
+  return (
+    lower.startsWith("openai/o1") ||
+    lower.startsWith("openai/o3") ||
+    lower.startsWith("openai/o4") ||
+    lower.includes("/o1") ||
+    lower.includes("/o3-") ||
+    lower.includes("deepseek-r1") ||
+    lower.includes("deepseek/deepseek-r1") ||
+    lower.includes("qwq") ||
+    lower.includes("reasoner")
+  );
+}
+
+export function buildOpenRouterChatParams(
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  options?: { maxTokens?: number; stream?: boolean; temperature?: number }
+): {
+  model: string;
+  messages: Array<any>;
+  max_tokens?: number;
+  stream?: boolean;
+  temperature?: number;
+} {
+  const effectiveModel = sanitizeOpenRouterModel(model);
+  const isReasoning = isOpenRouterReasoningModel(effectiveModel);
+
+  let formattedMessages: Array<{ role: string; content: string }> = [];
+
+  if (isReasoning) {
+    let systemInstruction = "";
+    const nonSystem: Array<{ role: string; content: string }> = [];
+
+    for (const m of messages) {
+      if (m.role === "system") {
+        systemInstruction += (systemInstruction ? "\n\n" : "") + m.content;
+      } else {
+        nonSystem.push({ role: m.role, content: m.content });
+      }
+    }
+
+    if (systemInstruction) {
+      const firstUserIdx = nonSystem.findIndex((m) => m.role === "user");
+      if (firstUserIdx >= 0) {
+        nonSystem[firstUserIdx] = {
+          role: "user",
+          content: `[Instructions]\n${systemInstruction}\n\n[User message]\n${nonSystem[firstUserIdx].content}`,
+        };
+      } else {
+        nonSystem.unshift({
+          role: "user",
+          content: `[Instructions]\n${systemInstruction}`,
+        });
+      }
+    }
+
+    formattedMessages = nonSystem.length > 0 ? nonSystem : [{ role: "user", content: "Hello" }];
+  } else {
+    formattedMessages = messages.map((m) => ({ role: m.role, content: m.content }));
+  }
+
+  const params: any = {
+    model: effectiveModel,
+    messages: formattedMessages,
+  };
+
+  if (options?.stream !== undefined) {
+    params.stream = options.stream;
+  }
+
+  // Reasoning models reject temperature
+  if (!isReasoning && options?.temperature !== undefined) {
+    params.temperature = options.temperature;
+  }
+
+  if (options?.maxTokens !== undefined) {
+    if (isReasoning) {
+      // Hidden reasoning tokens consume token budget; minimum 1000 tokens prevents starvation
+      params.max_tokens = Math.max(options.maxTokens, 1000);
+    } else {
+      params.max_tokens = options.maxTokens;
+    }
+  } else if (isReasoning) {
+    params.max_tokens = 1000;
+  }
+
+  return params;
 }
 
 let catalog: AiModelCatalog = cloneCatalog(FALLBACK_MODELS);
@@ -583,6 +711,9 @@ function cloneCatalog(source: AiModelCatalog): AiModelCatalog {
 
 function displayLabel(id: string, displayName?: string): string {
   if (displayName?.trim()) return displayName.trim();
+  if (id === "deepseek/deepseek-chat" || id === "deepseek-chat") return "DeepSeek V3";
+  if (id === "deepseek/deepseek-r1-0528") return "DeepSeek R1 (Paid)";
+  if (id === "deepseek/deepseek-v4.1-flash") return "DeepSeek V4.1 Flash";
   const lastPart = id.split("/").pop() ?? id;
   return lastPart
     .replace(/:free$/i, " (Free)")

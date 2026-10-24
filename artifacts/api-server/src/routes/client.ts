@@ -1924,8 +1924,21 @@ async function testAiConnection(provider: string, model: string, apiKey: string)
     try {
       await openai.chat.completions.create({ model: effectiveModel, messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
     } catch (err: any) {
+      const errMsg = err?.message || "";
+      const isUnavailable = err?.status === 404 || errMsg.includes("no longer available") || errMsg.includes("no provider serves this model");
       if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
         await openai.chat.completions.create({ model: "openrouter/free", messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
+      } else if (isUnavailable) {
+        const fallbackModel = effectiveModel.includes("anthropic")
+          ? "anthropic/claude-sonnet-4.5"
+          : effectiveModel.includes("gemini")
+          ? "google/gemini-2.5-pro"
+          : "openrouter/free";
+        try {
+          await openai.chat.completions.create({ model: fallbackModel, messages: [{ role: "user", content: "hi" }], max_tokens: 16 });
+        } catch {
+          throw err;
+        }
       } else {
         throw err;
       }
