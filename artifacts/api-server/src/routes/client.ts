@@ -2054,7 +2054,7 @@ router.get("/client/tickets", async (req, res) => {
 });
 
 // DELETE /client/tickets/:id
-router.delete("/client/tickets/:id", async (req, res) => {
+router.delete(["/client/tickets/:id", "/tickets/:id"], async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) {
@@ -2075,7 +2075,8 @@ router.delete("/client/tickets/:id", async (req, res) => {
       .limit(1);
 
     if (!existingTicket) {
-      res.status(404).json({ error: "Ticket not found" });
+      // If the ticket was already removed or doesn't exist, treat as success so UI clears it
+      res.json({ ok: true, id, success: true, message: "Ticket already removed" });
       return;
     }
 

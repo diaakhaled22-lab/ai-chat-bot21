@@ -2273,7 +2273,7 @@ router.put("/admin/tickets/:id/solution", async (req, res) => {
 });
 
 // DELETE /admin/tickets/:id — admin permanently deletes a ticket
-router.delete("/admin/tickets/:id", async (req, res) => {
+router.delete(["/admin/tickets/:id", "/tickets/:id"], async (req, res) => {
   try {
     const id = Number(req.params.id);
     const [deleted] = await db
@@ -2282,7 +2282,7 @@ router.delete("/admin/tickets/:id", async (req, res) => {
       .returning();
 
     if (!deleted) {
-      res.status(404).json({ error: "Ticket not found" });
+      res.json({ ok: true, id, message: "Ticket already removed" });
       return;
     }
 
