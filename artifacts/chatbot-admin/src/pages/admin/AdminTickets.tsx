@@ -5,6 +5,7 @@ import {
   AlertCircle, CheckCircle2, Clock, Bot, ChevronDown, ChevronUp,
   Sparkles, Loader2, User, Calendar, Search, X, PenLine, RotateCcw,
   Trash2, Copy, Check, Download, RefreshCw, Edit3, ShieldAlert,
+  UserCheck, TrendingUp, LifeBuoy,
 } from "lucide-react";
 import SupportAICard from "@/components/SupportAICard";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -786,76 +788,181 @@ export default function AdminTickets() {
       </div>
 
       {/* ── KPI Metric Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {/* Total tickets */}
-        <Card className="bg-card/60 border-border/60">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                {lang === "ar" ? "إجمالي التذاكر" : "Total Problems"}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+        {/* Total problems */}
+        <Card
+          onClick={() => setFilter("all")}
+          className={`cursor-pointer transition-all hover:border-primary/50 hover:shadow-xs ${
+            filter === "all" ? "ring-2 ring-primary/40 border-primary bg-primary/5" : "bg-card/70 border-border/60"
+          }`}
+          title={lang === "ar" ? "تصفية: عرض الكل" : "Filter: View all"}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
+                {lang === "ar" ? "إجمالي المشاكل" : "Total Problems"}
               </p>
-              <h3 className="text-2xl font-bold mt-1 text-foreground">{totalCount}</h3>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12 mt-1" />
+              ) : (
+                <h3 className="text-2xl font-bold mt-0.5 text-foreground">{totalCount}</h3>
+              )}
+              <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate">
+                {lang === "ar" ? "كافة التذاكر المسجلة" : "All logged tickets"}
+              </p>
             </div>
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-              <Clock className="w-5 h-5" />
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+              <LifeBuoy className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
         {/* Open tickets */}
-        <Card className={`border transition-colors ${openCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-border/60 bg-card/60"}`}>
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
+        <Card
+          onClick={() => setFilter("open")}
+          className={`cursor-pointer transition-all hover:shadow-xs ${
+            filter === "open"
+              ? "ring-2 ring-amber-500/50 border-amber-500 bg-amber-500/10"
+              : openCount > 0
+              ? "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
+              : "bg-card/70 border-border/60 hover:border-amber-500/40"
+          }`}
+          title={lang === "ar" ? "تصفية: المشاكل قيد الانتظار" : "Filter: Open issues"}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 {lang === "ar" ? "قيد الانتظار" : "Open Issues"}
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <h3 className={`text-2xl font-bold ${openCount > 0 ? "text-amber-500" : "text-foreground"}`}>
-                  {openCount}
-                </h3>
-                {openCount > 0 && (
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                  </span>
-                )}
-              </div>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12 mt-1" />
+              ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <h3 className={`text-2xl font-bold ${openCount > 0 ? "text-amber-500" : "text-foreground"}`}>
+                    {openCount}
+                  </h3>
+                  {openCount > 0 && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                  )}
+                </div>
+              )}
+              <p className="text-[10px] text-amber-500/80 mt-0.5 truncate">
+                {lang === "ar" ? "تتطلب حلاً ومتابعة" : "Requires attention"}
+              </p>
             </div>
-            <div className={`p-2.5 rounded-xl ${openCount > 0 ? "bg-amber-500/20 text-amber-500" : "bg-muted text-muted-foreground"}`}>
+            <div className={`p-2.5 rounded-xl shrink-0 ${openCount > 0 ? "bg-amber-500/20 text-amber-500" : "bg-muted text-muted-foreground"}`}>
               <AlertCircle className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
         {/* Resolved tickets */}
-        <Card className="bg-card/60 border-border/60">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
+        <Card
+          onClick={() => setFilter("resolved")}
+          className={`cursor-pointer transition-all hover:border-emerald-500/50 hover:shadow-xs ${
+            filter === "resolved" ? "ring-2 ring-emerald-500/50 border-emerald-500 bg-emerald-500/10" : "bg-card/70 border-border/60"
+          }`}
+          title={lang === "ar" ? "تصفية: المشاكل المحلولة" : "Filter: Resolved"}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 {lang === "ar" ? "تم الحل بنجاح" : "Resolved"}
               </p>
-              <h3 className="text-2xl font-bold mt-1 text-emerald-500">{resolvedCount}</h3>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12 mt-1" />
+              ) : (
+                <h3 className="text-2xl font-bold mt-0.5 text-emerald-500">{resolvedCount}</h3>
+              )}
+              <p className="text-[10px] text-emerald-500/80 mt-0.5 truncate">
+                {lang === "ar" ? "مكتملة ومغلقة" : "Successfully closed"}
+              </p>
             </div>
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
 
-        {/* AI Resolution Rate */}
-        <Card className="bg-card/60 border-border/60">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                {lang === "ar" ? "نسبة حلول الذكاء الاصطناعي" : "AI Resolution Rate"}
+        {/* AI Solved tickets */}
+        <Card
+          onClick={() => setFilter("ai_solved")}
+          className={`cursor-pointer transition-all hover:border-violet-500/50 hover:shadow-xs ${
+            filter === "ai_solved" ? "ring-2 ring-violet-500/50 border-violet-500 bg-violet-500/10" : "bg-card/70 border-border/60"
+          }`}
+          title={lang === "ar" ? "تصفية: حلول الذكاء الاصطناعي" : "Filter: AI solved"}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
+                {lang === "ar" ? "حلول الـ AI" : "AI Solved"}
               </p>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <h3 className="text-2xl font-bold text-violet-400">{aiPercent}%</h3>
-                <span className="text-[11px] text-muted-foreground">({aiSolvedCount})</span>
-              </div>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12 mt-1" />
+              ) : (
+                <h3 className="text-2xl font-bold mt-0.5 text-violet-400">{aiSolvedCount}</h3>
+              )}
+              <p className="text-[10px] text-violet-400/80 mt-0.5 truncate">
+                {lang === "ar" ? "حُلت تلقائياً بالذكاء" : "Automated resolution"}
+              </p>
             </div>
-            <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400">
+            <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 shrink-0">
               <Bot className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manual Solved tickets */}
+        <Card
+          onClick={() => setFilter("manual_solved")}
+          className={`cursor-pointer transition-all hover:border-sky-500/50 hover:shadow-xs ${
+            filter === "manual_solved" ? "ring-2 ring-sky-500/50 border-sky-500 bg-sky-500/10" : "bg-card/70 border-border/60"
+          }`}
+          title={lang === "ar" ? "تصفية: حلول يدوية" : "Filter: Manual solved"}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
+                {lang === "ar" ? "حلول يدوية" : "Manual Solved"}
+              </p>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12 mt-1" />
+              ) : (
+                <h3 className="text-2xl font-bold mt-0.5 text-sky-400">{manualCount}</h3>
+              )}
+              <p className="text-[10px] text-sky-400/80 mt-0.5 truncate">
+                {lang === "ar" ? "بواسطة فريق الدعم" : "By support team"}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400 shrink-0">
+              <UserCheck className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Resolution Rate */}
+        <Card className="bg-card/70 border-border/60">
+          <CardContent className="p-3.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
+                {lang === "ar" ? "نسبة نجاح الـ AI" : "AI Success Rate"}
+              </p>
+              {isLoading ? (
+                <Skeleton className="h-7 w-12 mt-1" />
+              ) : (
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <h3 className="text-2xl font-bold text-indigo-400">{aiPercent}%</h3>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate">
+                {lang === "ar" ? `${aiSolvedCount} من ${resolvedCount || totalCount} محلولة` : `${aiSolvedCount} of ${resolvedCount || totalCount} solved`}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 shrink-0">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </CardContent>
         </Card>
