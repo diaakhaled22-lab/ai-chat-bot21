@@ -39,7 +39,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
 import { detectResponseLanguage, enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { webhookLimiter } from "../lib/security";
 
@@ -61,6 +61,7 @@ async function callAI(
   sysContent += `\n\n${LANGUAGE_MATCH_INSTRUCTION}`;
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
+  sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
   if (company.generalInfo) sysContent += `\n\nCompany Info:\n${company.generalInfo}`;
 
   sysContent += await getWebsiteKnowledgeSection(company);
