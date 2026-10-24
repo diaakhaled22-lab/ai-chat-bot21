@@ -67,6 +67,8 @@ const FALLBACK_MODELS: AiModelCatalog = {
     "deepseek/deepseek-v4-flash",
     "anthropic/claude-3.7-sonnet",
     "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-sonnet-4.5",
+    "anthropic/claude-haiku-4.5",
     "openai/gpt-4o",
     "openai/gpt-4o-mini",
     "openai/o3-mini",
@@ -373,6 +375,9 @@ export const AI_MODEL_PRICING: Record<string, { input: number; output: number }>
   // OpenRouter & Others
   "anthropic/claude-3.7-sonnet":        { input: 3.00,  output: 15.00 },
   "anthropic/claude-3.5-sonnet":        { input: 3.00,  output: 15.00 },
+  "anthropic/claude-sonnet-4.5":        { input: 3.00,  output: 15.00 },
+  "anthropic/claude-haiku-4.5":         { input: 0.80,  output: 4.00  },
+  "anthropic/claude-opus-4.5":          { input: 15.00, output: 75.00 },
   "openai/gpt-4o":                      { input: 2.50,  output: 10.00 },
   "openai/gpt-4o-mini":                 { input: 0.15,  output: 0.60  },
   "openai/o1":                          { input: 15.00, output: 60.00 },
@@ -497,16 +502,21 @@ const COMMON_OPENROUTER_ALIASES: Record<string, string> = {
   "o1": "openai/o1",
   "o1-mini": "openai/o1-mini",
   "o3-mini": "openai/o3-mini",
-  // Anthropic
-  "claude-3.7-sonnet": "anthropic/claude-3.7-sonnet",
-  "claude-3-7-sonnet": "anthropic/claude-3.7-sonnet",
-  "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
-  "claude-3-5-sonnet": "anthropic/claude-3.5-sonnet",
-  "claude-3-5-sonnet-20241022": "anthropic/claude-3.5-sonnet",
-  "claude-3-5-haiku": "anthropic/claude-3.5-haiku",
-  "claude-3-5-haiku-20241022": "anthropic/claude-3.5-haiku",
-  "claude-3-opus": "anthropic/claude-3-opus",
-  "claude-3-opus-20240229": "anthropic/claude-3-opus",
+  // Anthropic via OpenRouter (Mapped to currently active OpenRouter models)
+  "anthropic/claude-3.7-sonnet": "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-3-7-sonnet": "anthropic/claude-sonnet-4.5",
+  "claude-3.7-sonnet": "anthropic/claude-sonnet-4.5",
+  "claude-3-7-sonnet": "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-3.5-sonnet": "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-3-5-sonnet": "anthropic/claude-sonnet-4.5",
+  "claude-3.5-sonnet": "anthropic/claude-sonnet-4.5",
+  "claude-3-5-sonnet": "anthropic/claude-sonnet-4.5",
+  "claude-3-5-sonnet-20241022": "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-3.5-haiku": "anthropic/claude-haiku-4.5",
+  "claude-3.5-haiku": "anthropic/claude-haiku-4.5",
+  "claude-3-5-haiku-20241022": "anthropic/claude-haiku-4.5",
+  "claude-3-opus": "anthropic/claude-opus-4.5",
+  "claude-3-opus-20240229": "anthropic/claude-opus-4.5",
   // DeepSeek
   "deepseek-r1": "deepseek/deepseek-r1",
   "deepseek-v3": "deepseek/deepseek-v3",
@@ -545,6 +555,15 @@ export function sanitizeOpenRouterModel(model?: string | null): string {
   }
   if (COMMON_OPENROUTER_ALIASES[trimmed]) {
     return COMMON_OPENROUTER_ALIASES[trimmed];
+  }
+  // Automatically map deprecated/retired Anthropic model names on OpenRouter to active equivalents
+  if (
+    trimmed.startsWith("anthropic/claude-3") ||
+    trimmed.startsWith("claude-3")
+  ) {
+    if (trimmed.includes("haiku")) return "anthropic/claude-haiku-4.5";
+    if (trimmed.includes("opus")) return "anthropic/claude-opus-4.5";
+    return "anthropic/claude-sonnet-4.5";
   }
   return trimmed;
 }

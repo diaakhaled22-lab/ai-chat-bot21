@@ -98,6 +98,7 @@ const MODEL_COLORS: Record<string, string> = {
   "deepseek/deepseek-r1":                   "#8b5cf6",
   "anthropic/claude-3.7-sonnet":            "#d97706",
   "anthropic/claude-3.5-sonnet":            "#f59e0b",
+  "anthropic/claude-sonnet-4.5":            "#d97706",
   "openai/gpt-4o":                          "#10b981",
   "openai/gpt-4o-mini":                     "#34d399",
   "openai/o3-mini":                         "#059669",

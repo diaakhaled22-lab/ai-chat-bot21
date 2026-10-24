@@ -69,6 +69,7 @@ const PROVIDERS = [
       { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash", tier: "paid" },
       { id: "anthropic/claude-3.7-sonnet", label: "Claude 3.7 Sonnet", tier: "paid" },
       { id: "anthropic/claude-3.5-sonnet", label: "Claude 3.5 Sonnet", tier: "paid" },
+      { id: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet (Active)", tier: "paid" },
       { id: "openai/gpt-4o", label: "GPT-4o", tier: "paid" },
       { id: "openai/gpt-4o-mini", label: "GPT-4o mini", tier: "paid" },
       { id: "openai/o3-mini", label: "OpenAI o3-mini", tier: "paid" },
