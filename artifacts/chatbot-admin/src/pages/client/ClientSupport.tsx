@@ -33,36 +33,38 @@ function TicketRow({
   const isOpen = ticket.status === "open";
 
   return (
-    <div className={`bg-card border rounded-xl overflow-hidden transition-all duration-200 hover:shadow-sm ${isOpen ? "border-amber-500/40 bg-amber-500/[0.02]" : "border-border/80"}`}>
+    <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-md ${isOpen ? "border-amber-500/40 bg-amber-500/[0.02]" : "border-border/80"}`}>
       <div
-        className="flex items-center justify-between gap-4 p-4 sm:p-5 cursor-pointer hover:bg-muted/30 transition-colors"
+        className="flex items-center justify-between gap-5 p-5 sm:p-6 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
-        <div className="flex items-center gap-3.5 min-w-0 flex-1">
-          <div className={`p-2 rounded-lg shrink-0 ${isOpen ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <div className={`p-3 rounded-xl shrink-0 ${isOpen ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>
             {isOpen ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-sm sm:text-base font-semibold truncate text-foreground">{ticket.title}</span>
-              <Badge variant={isOpen ? "destructive" : "secondary"} className="text-xs font-medium shrink-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-base sm:text-lg font-semibold truncate text-foreground">{ticket.title}</span>
+              <Badge variant={isOpen ? "destructive" : "secondary"} className="text-xs font-medium px-2.5 py-0.5 shrink-0">
                 {isOpen ? t("support_pending") : t("support_resolved")}
               </Badge>
               {ticket.aiResponse && (
-                <Badge variant="outline" className="text-xs text-violet-500 border-violet-500/30 bg-violet-500/5 shrink-0 gap-1 font-medium">
+                <Badge variant="outline" className="text-xs text-violet-500 border-violet-500/30 bg-violet-500/5 px-2.5 py-0.5 shrink-0 gap-1.5 font-medium">
                   <Bot className="w-3.5 h-3.5" />{lang === "ar" ? "تم الرد بالذكاء الاصطناعي" : "AI Solved"}
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-              <span className="font-mono">#{ticket.id}</span>
+            <p className="text-xs text-muted-foreground mt-2.5 flex items-center gap-3 flex-wrap">
+              <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded">#{ticket.id}</span>
               <span>•</span>
-              <Clock className="w-3 h-3" />
-              <span>{new Date(ticket.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", { dateStyle: "medium", timeStyle: "short" })}</span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground/70" />
+                <span>{new Date(ticket.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", { dateStyle: "medium", timeStyle: "short" })}</span>
+              </span>
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 ps-3 sm:ps-4 border-s border-border/50">
           <ConfirmDeleteDialog
             title={lang === "ar" ? "حذف تذكرة المشكلة" : "Delete Problem Ticket"}
             description={lang === "ar" ? "هل أنت متأكد من حذف هذه التذكرة والرسالة الخاصة بها نهائياً؟" : "Are you sure you want to permanently delete this problem ticket and message?"}
@@ -70,23 +72,23 @@ function TicketRow({
           >
             <button
               type="button"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               title={lang === "ar" ? "حذف المشكلة" : "Delete problem"}
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="w-4 h-4" />
             </button>
           </ConfirmDeleteDialog>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:bg-muted">
+            {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </Button>
         </div>
       </div>
 
       {expanded && (
-        <div className="px-5 pb-5 space-y-4 border-t border-border/60 pt-4 bg-muted/10">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+        <div className="px-6 pb-6 pt-6 space-y-6 border-t border-border/60 bg-muted/10">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t("support_your_problem")}</p>
               <ConfirmDeleteDialog
                 title={lang === "ar" ? "حذف تذكرة المشكلة" : "Delete Problem Ticket"}
@@ -95,7 +97,7 @@ function TicketRow({
               >
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors px-2 py-0.5 rounded hover:bg-destructive/10"
+                  className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors px-2.5 py-1 rounded-md hover:bg-destructive/10"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -103,23 +105,25 @@ function TicketRow({
                 </button>
               </ConfirmDeleteDialog>
             </div>
-            <div className="text-sm leading-relaxed bg-background border border-border/80 rounded-xl p-4 whitespace-pre-wrap text-foreground">
+            <div className="text-sm leading-relaxed bg-background border border-border/80 rounded-xl p-4 sm:p-5 whitespace-pre-wrap text-foreground shadow-xs">
               {ticket.description}
             </div>
           </div>
           {ticket.aiResponse && (
-            <div>
-              <p className="text-xs text-violet-500 font-semibold mb-1.5 flex items-center gap-1.5 uppercase tracking-wider">
-                <Bot className="w-3.5 h-3.5" /> {t("support_ai_solution")}
-              </p>
-              <div className="text-sm leading-relaxed bg-violet-500/[0.07] border border-violet-500/25 rounded-xl p-4 whitespace-pre-wrap text-foreground">
+            <div className="space-y-3 pt-2">
+              <div className="pb-1.5 border-b border-border/40">
+                <p className="text-xs text-violet-500 font-semibold flex items-center gap-2 uppercase tracking-wider">
+                  <Bot className="w-4 h-4" /> {t("support_ai_solution")}
+                </p>
+              </div>
+              <div className="text-sm leading-relaxed bg-violet-500/[0.07] border border-violet-500/25 rounded-xl p-4 sm:p-5 whitespace-pre-wrap text-foreground shadow-xs">
                 {ticket.aiResponse}
               </div>
             </div>
           )}
           {isOpen && !ticket.aiResponse && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-amber-600 dark:text-amber-400 mt-2">
+              <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{t("support_admin_pending")}</span>
             </div>
           )}
@@ -276,7 +280,7 @@ export default function ClientSupport() {
           <p className="text-sm font-medium">{t("support_no_tickets")}</p>
         </div>
       ) : (
-        <div className="space-y-3 w-full">
+        <div className="space-y-4 sm:space-y-5 w-full">
           {tickets.map((t) => (
             <TicketRow
               key={t.id}
