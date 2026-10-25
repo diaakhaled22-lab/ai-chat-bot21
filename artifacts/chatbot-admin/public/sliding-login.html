@@ -25,45 +25,73 @@
   <style>
     /* CSS Custom Transition Rules (0.6s ease-in-out) */
     .overlay-panel {
-      transition: transform 0.6s ease-in-out, border-radius 0.6s ease-in-out;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 50%;
+      height: 100%;
+      overflow: hidden;
+      transition: all 0.6s ease-in-out;
       border-radius: 150px 0 0 100px;
+      z-index: 50;
       will-change: transform, border-radius;
     }
 
-    /* When .active is applied, the overlay slides to the left */
+    /* When .active is applied, the overlay container slides to the left */
     #main-container.active .overlay-panel {
       transform: translateX(-100%);
       border-radius: 0 150px 100px 0;
     }
 
-    /* Default state: Overlay content transitions */
-    .overlay-content-client {
-      opacity: 1;
+    /* 200% width inner layer (.toggle) */
+    .toggle {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%);
+      color: #fff;
+      position: relative;
+      left: -100%;
+      height: 100%;
+      width: 200%;
       transform: translateX(0);
-      transition: opacity 0.4s ease-in-out 0.2s, transform 0.6s ease-in-out;
-      pointer-events: auto;
+      transition: all 0.6s ease-in-out;
+      will-change: transform;
     }
 
-    .overlay-content-admin {
-      opacity: 0;
-      transform: translateX(30px);
-      transition: opacity 0.4s ease-in-out, transform 0.6s ease-in-out;
-      pointer-events: none;
+    /* When Client Login is clicked, .toggle shifts via translateX(50%) */
+    #main-container.active .toggle {
+      transform: translateX(50%);
     }
 
-    /* Active state: Overlay content transitions */
-    #main-container.active .overlay-content-client {
-      opacity: 0;
-      transform: translateX(-30px);
-      transition: opacity 0.4s ease-in-out, transform 0.6s ease-in-out;
-      pointer-events: none;
+    .toggle-panel {
+      position: absolute;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0 40px;
+      text-align: center;
+      transition: all 0.6s ease-in-out;
+      will-change: transform;
     }
 
-    #main-container.active .overlay-content-admin {
-      opacity: 1;
+    .toggle-left {
+      left: 0;
+      transform: translateX(-200%);
+    }
+
+    #main-container.active .toggle-left {
       transform: translateX(0);
-      transition: opacity 0.4s ease-in-out 0.2s, transform 0.6s ease-in-out;
-      pointer-events: auto;
+    }
+
+    .toggle-right {
+      right: 0;
+      transform: translateX(0);
+    }
+
+    #main-container.active .toggle-right {
+      transform: translateX(200%);
     }
   </style>
 </head>
@@ -249,51 +277,52 @@
     <!-- 3. The Sliding Overlay (Foreground Layer) -->
     <aside
       id="overlay-panel"
-      class="overlay-panel absolute top-0 left-1/2 w-1/2 h-full text-white z-20 overflow-hidden shadow-2xl md:flex hidden flex-col justify-center items-center"
-      style="background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%);"
+      class="overlay-panel hidden md:block"
     >
-      <!-- Sub-panel 1: Shown in Default State (Overlay covers Client Form on the right) -->
-      <div class="overlay-content-client absolute inset-0 flex flex-col justify-center items-center px-10 text-center">
-        <!-- Robot Icon Badge -->
-        <div class="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
-          <i class="fa-solid fa-robot text-[64px] text-white"></i>
+      <div class="toggle">
+        <!-- Sub-panel: Shown in Active State (Overlay covers Admin Form on the left) -->
+        <div class="toggle-panel toggle-left">
+          <!-- Robot Icon Badge -->
+          <div class="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
+            <i class="fa-solid fa-robot text-[64px] text-white"></i>
+          </div>
+
+          <h2 class="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h2>
+          <p class="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+            Access the administrator management portal.
+          </p>
+
+          <!-- Ghost Button: ADMIN LOGIN -->
+          <button
+            type="button"
+            id="btn-to-admin"
+            class="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
+          >
+            ADMIN LOGIN
+          </button>
         </div>
 
-        <h2 class="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h2>
-        <p class="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
-          Access your client chatbot deployment portal.
-        </p>
+        <!-- Sub-panel: Shown in Default State (Overlay covers Client Form on the right) -->
+        <div class="toggle-panel toggle-right">
+          <!-- Robot Icon Badge -->
+          <div class="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
+            <i class="fa-solid fa-robot text-[64px] text-white"></i>
+          </div>
 
-        <!-- Ghost Button: CLIENT LOGIN -->
-        <button
-          type="button"
-          id="btn-to-client"
-          class="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
-        >
-          CLIENT LOGIN
-        </button>
-      </div>
+          <h2 class="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h2>
+          <p class="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+            Access your client chatbot deployment portal.
+          </p>
 
-      <!-- Sub-panel 2: Shown in Active State (Overlay covers Admin Form on the left) -->
-      <div class="overlay-content-admin absolute inset-0 flex flex-col justify-center items-center px-10 text-center">
-        <!-- Robot Icon Badge -->
-        <div class="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
-          <i class="fa-solid fa-robot text-[64px] text-white"></i>
+          <!-- Ghost Button: CLIENT LOGIN -->
+          <button
+            type="button"
+            id="btn-to-client"
+            class="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
+          >
+            CLIENT LOGIN
+          </button>
         </div>
-
-        <h2 class="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h2>
-        <p class="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
-          Access the administrator management portal.
-        </p>
-
-        <!-- Ghost Button: ADMIN LOGIN -->
-        <button
-          type="button"
-          id="btn-to-admin"
-          class="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
-        >
-          ADMIN LOGIN
-        </button>
       </div>
     </aside>
   </main>
