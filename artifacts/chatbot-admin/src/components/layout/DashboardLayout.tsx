@@ -674,7 +674,7 @@ function OpenTicketsBadge() {
 
   return (
     <span
-      className={`ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all duration-300 ${pulse ? "bg-amber-400 text-black scale-110" : "bg-amber-500/20 text-amber-400"}`}
+      className={`ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all duration-300 ${pulse ? "bg-amber-300 text-slate-900 scale-110 shadow-md" : "bg-amber-400/25 text-amber-200 border border-amber-400/30"}`}
       title={`${count} open problem${count !== 1 ? "s" : ""}`}
     >
       {count > 99 ? "99+" : count}
@@ -699,10 +699,10 @@ function AdminUnreadChatBadge({ isActive }: { isActive?: boolean }) {
 
   return (
     <span
-      className={`ml-auto inline-flex items-center justify-center min-w-[24px] h-5 px-2 rounded-full text-xs font-bold leading-none transition-colors ${
+      className={`ml-auto inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-colors ${
         isActive
-          ? "bg-white text-primary shadow-sm"
-          : "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+          ? "bg-white text-blue-900 shadow-sm"
+          : "bg-white/20 text-white border border-white/20"
       }`}
     >
       {unreadCount > 99 ? "99+" : unreadCount}
@@ -727,10 +727,10 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
 
   return (
     <span
-      className={`ml-auto inline-flex items-center justify-center min-w-[24px] h-5 px-2 rounded-full text-xs font-bold leading-none transition-colors ${
+      className={`ml-auto inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-colors ${
         isActive
-          ? "bg-white text-primary shadow-sm"
-          : "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+          ? "bg-white text-blue-900 shadow-sm"
+          : "bg-white/20 text-white border border-white/20"
       }`}
     >
       {unreadCount > 99 ? "99+" : unreadCount}
@@ -876,147 +876,152 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const currentPage = allLinks.find((l) => l.href === location)?.label ?? "";
 
   const sidebarContent = (
-    <>
+    <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
+      {/* Ambient glass light reflections */}
+      <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 rounded-full bg-white/[0.08] blur-2xl pointer-events-none" />
+      <div className="absolute bottom-1/3 -left-12 w-48 h-48 rounded-full bg-blue-300/10 blur-3xl pointer-events-none" />
 
-        {/* Logo - Bot Manager with Royal Blue Gradient Badge */}
-        <div className="py-[16px] flex items-center gap-3.5 px-5 border-b border-border/70 shrink-0 bg-slate-50/50 dark:bg-slate-900/40">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md shadow-blue-600/30 text-white"
-            style={{ background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)" }}
-          >
-            <i className="fa-solid fa-robot text-lg text-white"></i>
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-300 bg-clip-text text-transparent truncate">
-              Bot Manager
-            </span>
-            <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase truncate">
-              Operations Center
-            </span>
-          </div>
+      {/* Logo - Bot Manager with Frosted Glass Badge */}
+      <div className="py-[16px] flex items-center gap-3 px-4 border-b border-white/10 shrink-0 bg-white/[0.06] backdrop-blur-md relative z-10">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/20 text-white border border-white/25 bg-white/15 backdrop-blur-md"
+        >
+          <i className="fa-solid fa-robot text-lg text-white"></i>
         </div>
+        <div className="flex flex-col min-w-0">
+          <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
+            Bot Manager
+          </span>
+          <span className="text-[10px] font-bold text-blue-200/90 tracking-wider uppercase truncate">
+            Operations Center
+          </span>
+        </div>
+      </div>
 
-        {/* User info with glassmorphic badge */}
-        <div className="px-4 pt-3.5 pb-2 shrink-0">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-blue-600/30 shrink-0">
-              {user?.name?.charAt(0).toUpperCase() ?? "A"}
+      {/* User info with glassmorphic badge rgba(255,255,255,0.1) */}
+      <div className="px-3 pt-3.5 pb-2 shrink-0 relative z-10">
+        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-white/20 text-white border border-white/25 flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
+            {user?.name?.charAt(0).toUpperCase() ?? "A"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold leading-tight text-white truncate">{user?.name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <p className="text-[10px] font-bold text-blue-200 capitalize">{user?.role}</p>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold leading-tight text-foreground truncate">{user?.name}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 capitalize">{user?.role}</p>
-              </div>
-            </div>
           </div>
         </div>
+      </div>
 
-        <div className="px-6 pb-3 shrink-0">
-          {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
-        </div>
+      <div className="px-3 pb-3 shrink-0 relative z-10">
+        {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+      </div>
 
-        {/* Nav â€” scrolls if items overflow, fills all remaining height */}
-        <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-0.5 space-y-0.5">
-          {links.map((link) => {
-            const Icon = link.icon;
-            const isActive = location === link.href;
+      {/* Nav — scrolls if items overflow, fills all remaining height */}
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-1 space-y-1 relative z-10 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
+        {links.map((link) => {
+          const Icon = link.icon;
+          const isActive = location === link.href;
 
-            if (link.children && link.children.length > 0) {
-              const isChildActive = link.children.some((c) => location === c.href);
-              const isParentActive = isActive || isChildActive;
-              const isExpanded = openSubmenus[link.href] ?? false;
-
-              return (
-                <div key={link.href} className="space-y-0.5">
-                  <div
-                    onClick={() => {
-                      setOpenSubmenus((prev) => ({
-                        ...prev,
-                        [link.href]: !isExpanded,
-                      }));
-                      setLocation(link.href);
-                    }}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors cursor-pointer select-none ${
-                      isParentActive
-                        ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold"
-                        : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className="flex-1">{link.label}</span>
-                    <ChevronDown
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                        isExpanded ? "rotate-0 text-foreground" : "-rotate-90 text-muted-foreground"
-                      }`}
-                    />
-                  </div>
-
-                  {isExpanded && (
-                    <div className="ps-6 pe-1 space-y-0.5 pt-0.5">
-                      {link.children.map((child) => {
-                        const ChildIcon = child.icon;
-                        const isSubActive = location === child.href;
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                              isSubActive
-                                ? "bg-blue-600 text-white font-semibold shadow-sm"
-                                : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-foreground"
-                            }`}
-                          >
-                            <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
-                            <span className="flex-1 truncate">{child.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
+          if (link.children && link.children.length > 0) {
+            const isChildActive = link.children.some((c) => location === c.href);
+            const isParentActive = isActive || isChildActive;
+            const isExpanded = openSubmenus[link.href] ?? false;
 
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold shadow-md shadow-blue-600/25" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-foreground"}`}
-              >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
-                <span className="flex-1">{link.label}</span>
-                {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
-                {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
-                {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} />}
-              </Link>
-            );
-          })}
-        </nav>
+              <div key={link.href} className="space-y-1">
+                <div
+                  onClick={() => {
+                    setOpenSubmenus((prev) => ({
+                      ...prev,
+                      [link.href]: !isExpanded,
+                    }));
+                    setLocation(link.href);
+                  }}
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none ${
+                    isParentActive
+                      ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-sm"
+                      : "text-blue-100/80 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-white" : "text-blue-200/80"}`} />
+                  <span className="flex-1 truncate">{link.label}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isExpanded ? "rotate-0 text-white" : "-rotate-90 text-blue-200/70"
+                    }`}
+                  />
+                </div>
 
-        {/* Sign out â€” always pinned at the bottom, never scrolls away */}
-        <div className="p-4 border-t border-border bg-card shrink-0">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-            onClick={handleLogout}
-            disabled={logout.isPending}
-          >
-            <LogOut className="w-4 h-4" />
-            {t("nav_sign_out")}
-          </Button>
-        </div>
-      
-    </>
+                {isExpanded && (
+                  <div className="ps-4 pe-1 space-y-0.5 pt-1 pb-1 bg-black/15 backdrop-blur-sm rounded-xl border border-white/5 my-1">
+                    {link.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isSubActive = location === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                            isSubActive
+                              ? "bg-white/25 text-white font-bold shadow-sm border border-white/20"
+                              : "text-blue-100/70 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-white" : "text-blue-200/70"}`} />
+                          <span className="flex-1 truncate">{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                isActive
+                  ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/15"
+                  : "text-blue-100/80 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-blue-200/80"}`} />
+              <span className="flex-1 truncate">{link.label}</span>
+              {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
+              {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
+              {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} />}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Sign out — always pinned at the bottom, never scrolls away */}
+      <div className="p-3 border-t border-white/10 bg-white/[0.05] backdrop-blur-md shrink-0 relative z-10">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 text-blue-100/80 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+          onClick={handleLogout}
+          disabled={logout.isPending}
+        >
+          <LogOut className="w-4 h-4 text-blue-200" />
+          {t("nav_sign_out")}
+        </Button>
+      </div>
+    </div>
   );
 
 
   return (
     <div className="flex h-full w-full bg-background overflow-hidden text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col overflow-hidden shrink-0">
+      <aside className="w-64 border-r border-white/10 bg-gradient-to-b from-[#0f2459] via-[#1e40af] to-[#0a183d] text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative">
         {sidebarContent}
       </aside>
 
@@ -1030,7 +1035,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-card [&>button]:hidden">
+              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-gradient-to-b from-[#0f2459] via-[#1e40af] to-[#0a183d] text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative">
                 {sidebarContent}
               </SheetContent>
             </Sheet>
@@ -1066,20 +1071,23 @@ function LiveStatusBar() {
   });
 
   const hasMalfunction = isStatsError || isMalfunctionsError || (malfunctions && malfunctions.some(m => m.isActive));
-  const dotColor = hasMalfunction ? "bg-red-500" : "bg-emerald-500";
-  const pingColor = hasMalfunction ? "bg-red-400" : "bg-emerald-400";
+  const dotColor = hasMalfunction ? "bg-rose-400" : "bg-emerald-400";
+  const pingColor = hasMalfunction ? "bg-rose-400" : "bg-emerald-400";
 
   return (
-    <Link href="/admin/malfunctions" className="flex items-center gap-2 text-xs text-muted-foreground hover:opacity-80 transition-opacity">
-      <span className="relative flex h-2 w-2">
+    <Link
+      href="/admin/malfunctions"
+      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-3 py-2 transition-all shadow-sm"
+    >
+      <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues Detected") : (lang === "ar" ? "يعمل" : "Live")}
+      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-medium"}>
+        {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues") : (lang === "ar" ? "النظام يعمل" : "Live")}
       </span>
       {stats?.activeCompanies !== undefined && (
-        <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
+        <span className={`ms-auto flex items-center gap-1 text-blue-200/90 font-semibold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
           <Activity className="w-3 h-3" />
           <span>{stats.activeCompanies} {lang === "ar" ? "نشط" : "active"}</span>
         </span>
@@ -1104,20 +1112,23 @@ function ClientLiveStatusBar() {
   });
 
   const hasMalfunction = isUsageError || isMalfunctionsError || (malfunctions && malfunctions.length > 0);
-  const dotColor = hasMalfunction ? "bg-red-500" : "bg-emerald-500";
-  const pingColor = hasMalfunction ? "bg-red-400" : "bg-emerald-400";
+  const dotColor = hasMalfunction ? "bg-rose-400" : "bg-emerald-400";
+  const pingColor = hasMalfunction ? "bg-rose-400" : "bg-emerald-400";
 
   return (
-    <Link href="/client/malfunctions" className="flex items-center gap-2 text-xs text-muted-foreground hover:opacity-80 transition-opacity">
-      <span className="relative flex h-2 w-2">
+    <Link
+      href="/client/malfunctions"
+      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-3 py-2 transition-all shadow-sm"
+    >
+      <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span className={hasMalfunction ? "text-red-500 font-medium" : ""}>
-        {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues Detected") : (lang === "ar" ? "يعمل" : "Live")}
+      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-medium"}>
+        {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues") : (lang === "ar" ? "النظام يعمل" : "Live")}
       </span>
       {usage && (
-        <span className={`ms-auto flex items-center gap-1 ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
+        <span className={`ms-auto flex items-center gap-1 text-blue-200/90 font-semibold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
           <Activity className="w-3 h-3" />
           <span>{lang === "ar" ? `اليوم ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
         </span>
