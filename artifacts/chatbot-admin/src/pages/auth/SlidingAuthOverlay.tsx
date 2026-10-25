@@ -217,52 +217,76 @@ export const SlidingAuthOverlay: React.FC = () => {
 
         {/* 4. The Sliding Overlay (Foreground Layer) */}
         <div
-          className={`absolute top-0 left-0 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-transform duration-700 ease-in-out bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white ${
+          className={`absolute top-0 left-0 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-all duration-600 ease-in-out text-white ${
             isRightPanelActive
-              ? "translate-x-0 rounded-r-[40px] md:rounded-r-[60px]"
-              : "translate-x-full rounded-l-[40px] md:rounded-l-[60px]"
+              ? "translate-x-0 rounded-tr-[150px] rounded-br-[100px] rounded-tl-none rounded-bl-none"
+              : "translate-x-full rounded-tl-[150px] rounded-bl-[100px] rounded-tr-none rounded-br-none"
           }`}
+          style={{
+            background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+            transitionProperty: "transform, border-radius",
+            willChange: "transform, border-radius",
+          }}
         >
-          {/* Sub-panel: Visible in Default State (When overlay is on the Right) */}
+          {/* Sub-panel 1: Visible in Default State (When overlay is on the Right) */}
           <div
-            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-700 ease-in-out ${
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-600 ease-in-out ${
               !isRightPanelActive
                 ? "opacity-100 translate-x-0 pointer-events-auto"
                 : "opacity-0 -translate-x-12 pointer-events-none"
             }`}
           >
-            {/* Robot Icon Badge */}
-            <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-5 shadow-inner">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Robot Icon Badge (Exact style as shown in the picture) */}
+            <div className="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
+              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
               </svg>
             </div>
 
-            <h3 className="text-3xl font-extrabold tracking-tight">Bot Manager</h3>
-            <p className="text-sm text-blue-100/90 mt-2.5 mb-7 max-w-xs leading-relaxed">
-              Need access to client chatbot configurations and workspace dashboards?
+            <h3 className="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h3>
+            <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+              Access your client chatbot deployment portal.
             </p>
 
             {/* Ghost Button: CLIENT LOGIN */}
             <button
               type="button"
               onClick={() => setIsRightPanelActive(true)}
-              className="border-2 border-white/90 text-white hover:bg-white hover:text-blue-700 text-xs font-bold tracking-widest uppercase py-3.5 px-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600"
+              className="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
             >
               CLIENT LOGIN
             </button>
           </div>
 
-          {/* Sub-panel: Visible in Active State (When overlay is on the Left) */}
+          {/* Sub-panel 2: Visible in Active State (When overlay is on the Left) */}
           <div
-            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-700 ease-in-out ${
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-600 ease-in-out ${
               isRightPanelActive
                 ? "opacity-100 translate-x-0 pointer-events-auto"
                 : "opacity-0 translate-x-12 pointer-events-none"
             }`}
           >
             {/* Robot Icon Badge */}
-            <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-5 shadow-inner">
+            <div className="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
+              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
+            </div>
+
+            <h3 className="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h3>
+            <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+              Access the administrator management portal.
+            </p>
+
+            {/* Ghost Button: ADMIN LOGIN */}
+            <button
+              type="button"
+              onClick={() => setIsRightPanelActive(false)}
+              className="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
+            >
+              ADMIN LOGIN
+            </button>
+          </div>
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
               </svg>
