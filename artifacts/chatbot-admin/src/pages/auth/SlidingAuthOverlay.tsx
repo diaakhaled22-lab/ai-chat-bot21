@@ -223,6 +223,7 @@ export const SlidingAuthOverlay: React.FC = () => {
               : "translate-x-0 rounded-tl-[150px] rounded-bl-[100px] rounded-tr-none rounded-br-none"
           }`}
           style={{
+            transition: "all 0.6s ease-in-out",
             willChange: "transform, border-radius",
           }}
         >
@@ -233,6 +234,7 @@ export const SlidingAuthOverlay: React.FC = () => {
             }`}
             style={{
               background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+              transition: "all 0.6s ease-in-out",
               willChange: "transform",
             }}
           >
