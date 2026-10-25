@@ -241,6 +241,7 @@ export default function AdminClients() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
       {/* ── Summary Stats ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
