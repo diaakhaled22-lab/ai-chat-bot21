@@ -257,7 +257,7 @@
   color: #c4b5fd;
 }
 
-/* 2-Column Sliding Structure */
+/* ── 2-Column Sliding Structure ── */
 .modern-form-container {
   position: absolute;
   top: 0;
@@ -268,148 +268,38 @@
   will-change: transform, opacity;
 }
 
-/* Base states on initial load */
+/* ── Admin Login Form Panel (Sign-in) ── */
 .modern-sign-in {
   transform: translateX(0);
   opacity: 1;
   pointer-events: auto;
   z-index: 2;
+  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
 }
 
-.modern-sign-up {
-  transform: translateX(0);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Direct load in client mode without switch */
-.modern-login-container.active:not(.has-switched) .modern-sign-in {
+.modern-login-container.active .modern-sign-in {
   transform: translateX(100%);
   opacity: 0;
   pointer-events: none;
   z-index: 1;
 }
 
-.modern-login-container.active:not(.has-switched) .modern-sign-up {
+/* ── Client Login Form Panel (Sign-up) ── */
+.modern-sign-up {
+  left: 0;
+  width: 50%;
+  transform: translateX(0);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+}
+
+.modern-login-container.active .modern-sign-up {
   transform: translateX(100%);
   opacity: 1;
   pointer-events: auto;
   z-index: 5;
-}
-
-/* ── When switching to Client (active) ── */
-.modern-login-container.active.has-switched .modern-sign-in {
-  transform: translateX(100%);
-  pointer-events: none;
-  animation: outgoingAdmin 0.6s ease-in-out forwards;
-}
-
-.modern-login-container.active.has-switched .modern-sign-up {
-  transform: translateX(100%);
-  pointer-events: auto;
-  animation: incomingClient 0.6s ease-in-out forwards;
-}
-
-/* ── When switching back to Admin (active removed after interaction) ── */
-.modern-login-container.has-switched:not(.active) .modern-sign-in {
-  transform: translateX(0);
-  pointer-events: auto;
-  animation: incomingAdmin 0.6s ease-in-out forwards;
-}
-
-.modern-login-container.has-switched:not(.active) .modern-sign-up {
-  transform: translateX(0);
-  pointer-events: none;
-  animation: outgoingClient 0.6s ease-in-out forwards;
-}
-
-/* Incoming Client form slides across container while fading into view */
-@keyframes incomingClient {
-  0% {
-    transform: translateX(0);
-    opacity: 0;
-    z-index: 1;
-  }
-  25% {
-    opacity: 0;
-    z-index: 1;
-  }
-  45% {
-    opacity: 0.15;
-    z-index: 5;
-  }
-  100% {
-    transform: translateX(100%);
-    opacity: 1;
-    z-index: 5;
-  }
-}
-
-/* Outgoing Admin form slides across container and fades out */
-@keyframes outgoingAdmin {
-  0% {
-    transform: translateX(0);
-    opacity: 1;
-    z-index: 2;
-  }
-  35% {
-    opacity: 0.35;
-    z-index: 2;
-  }
-  50% {
-    opacity: 0;
-    z-index: 1;
-  }
-  100% {
-    transform: translateX(100%);
-    opacity: 0;
-    z-index: 1;
-  }
-}
-
-/* Incoming Admin form slides across container while fading into view */
-@keyframes incomingAdmin {
-  0% {
-    transform: translateX(100%);
-    opacity: 0;
-    z-index: 1;
-  }
-  25% {
-    opacity: 0;
-    z-index: 1;
-  }
-  45% {
-    opacity: 0.15;
-    z-index: 5;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-    z-index: 5;
-  }
-}
-
-/* Outgoing Client form slides across container and fades out */
-@keyframes outgoingClient {
-  0% {
-    transform: translateX(100%);
-    opacity: 1;
-    z-index: 5;
-  }
-  35% {
-    opacity: 0.35;
-    z-index: 5;
-  }
-  50% {
-    opacity: 0;
-    z-index: 1;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 0;
-    z-index: 1;
-  }
 }
 
 .modern-toggle-container {

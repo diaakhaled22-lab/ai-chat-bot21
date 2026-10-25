@@ -38,15 +38,12 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
   // Active state: false = Admin login, true = Client login (sign-up panel in template)
   const [isActive, setIsActive] = useState<boolean>(initialMode === "client");
-  const [hasSwitched, setHasSwitched] = useState<boolean>(false);
 
   // Keep state in sync if navigated directly
   useEffect(() => {
     if (location === "/client-login" && !isActive) {
-      setHasSwitched(true);
       setIsActive(true);
     } else if (location === "/login" && isActive) {
-      setHasSwitched(true);
       setIsActive(false);
     }
   }, [location, isActive]);
@@ -69,7 +66,6 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const clientLogin = useClientLogin();
 
   const handleSwitchToClient = () => {
-    setHasSwitched(true);
     setIsActive(true);
     if (location !== "/client-login") {
       try {
@@ -79,7 +75,6 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   };
 
   const handleSwitchToAdmin = () => {
-    setHasSwitched(true);
     setIsActive(false);
     if (location !== "/login") {
       try {
@@ -243,9 +238,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
       {/* Main Container - Explicit dir="ltr" to maintain consistent geometric slider animation */}
       <div
-        className={`modern-login-container ${isActive ? "active" : ""} ${
-          hasSwitched ? "has-switched" : ""
-        }`}
+        className={`modern-login-container ${isActive ? "active" : ""}`}
         id="container"
         dir="ltr"
       >
