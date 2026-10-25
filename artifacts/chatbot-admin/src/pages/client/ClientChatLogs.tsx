@@ -380,7 +380,7 @@ export default function ClientChatLogs() {
 
       {/* Mini Analytics */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
-        <Card className="bg-card border-[#DCE7FF]">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#102A6B]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</CardTitle>
             <MessageSquare className="h-4 w-4 text-primary" />
@@ -389,7 +389,7 @@ export default function ClientChatLogs() {
             <div className="text-3xl font-bold">{totalMessages}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF]">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#102A6B]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "الجلسات النشطة (Sessions)" : "Active Sessions"}</CardTitle>
             <User className="h-4 w-4 text-primary" />
@@ -398,7 +398,7 @@ export default function ClientChatLogs() {
             <div className="text-3xl font-bold">{uniqueSessions}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF]">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#102A6B]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "غير مقروءة" : "Unread"}</CardTitle>
             <MessageCircle className="h-4 w-4 text-green-500" />
@@ -407,7 +407,7 @@ export default function ClientChatLogs() {
             <div className="text-3xl font-bold text-green-500">{unreadSessionsCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF]">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#102A6B]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "مقروءة" : "Read"}</CardTitle>
             <MessageSquare className="h-4 w-4 text-orange-500" />
@@ -416,7 +416,7 @@ export default function ClientChatLogs() {
             <div className="text-3xl font-bold text-orange-500">{readSessionsCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF]">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#102A6B]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "القناة الأكثر نشاطاً" : "Top Channel"}</CardTitle>
             <Globe className="h-4 w-4 text-primary" />

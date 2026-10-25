@@ -110,7 +110,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all border-l-4 border-l-[#102A6B]">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border ${color}`}>
         <Icon className="w-6 h-6" />
       </div>
