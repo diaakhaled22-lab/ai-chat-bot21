@@ -261,42 +261,154 @@
 .modern-form-container {
   position: absolute;
   top: 0;
-  height: 100%;
-  transition: all 0.6s ease-in-out;
-}
-
-.modern-sign-in {
   left: 0;
   width: 50%;
+  height: 100%;
+  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+  will-change: transform, opacity;
+}
+
+/* Base states on initial load */
+.modern-sign-in {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
   z-index: 2;
 }
 
-.modern-login-container.active .modern-sign-in {
-  transform: translateX(100%);
-}
-
 .modern-sign-up {
-  left: 0;
-  width: 50%;
+  transform: translateX(0);
   opacity: 0;
+  pointer-events: none;
   z-index: 1;
 }
 
-.modern-login-container.active .modern-sign-up {
+/* Direct load in client mode without switch */
+.modern-login-container.active:not(.has-switched) .modern-sign-in {
   transform: translateX(100%);
-  opacity: 1;
-  z-index: 5;
-  animation: modernMove 0.6s;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
-@keyframes modernMove {
-  0%, 49.99% {
+.modern-login-container.active:not(.has-switched) .modern-sign-up {
+  transform: translateX(100%);
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 5;
+}
+
+/* ── When switching to Client (active) ── */
+.modern-login-container.active.has-switched .modern-sign-in {
+  transform: translateX(100%);
+  pointer-events: none;
+  animation: outgoingAdmin 0.6s ease-in-out forwards;
+}
+
+.modern-login-container.active.has-switched .modern-sign-up {
+  transform: translateX(100%);
+  pointer-events: auto;
+  animation: incomingClient 0.6s ease-in-out forwards;
+}
+
+/* ── When switching back to Admin (active removed after interaction) ── */
+.modern-login-container.has-switched:not(.active) .modern-sign-in {
+  transform: translateX(0);
+  pointer-events: auto;
+  animation: incomingAdmin 0.6s ease-in-out forwards;
+}
+
+.modern-login-container.has-switched:not(.active) .modern-sign-up {
+  transform: translateX(0);
+  pointer-events: none;
+  animation: outgoingClient 0.6s ease-in-out forwards;
+}
+
+/* Incoming Client form slides across container while fading into view */
+@keyframes incomingClient {
+  0% {
+    transform: translateX(0);
     opacity: 0;
     z-index: 1;
   }
-  50%, 100% {
+  25% {
+    opacity: 0;
+    z-index: 1;
+  }
+  45% {
+    opacity: 0.15;
+    z-index: 5;
+  }
+  100% {
+    transform: translateX(100%);
     opacity: 1;
     z-index: 5;
+  }
+}
+
+/* Outgoing Admin form slides across container and fades out */
+@keyframes outgoingAdmin {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    z-index: 2;
+  }
+  35% {
+    opacity: 0.35;
+    z-index: 2;
+  }
+  50% {
+    opacity: 0;
+    z-index: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 1;
+  }
+}
+
+/* Incoming Admin form slides across container while fading into view */
+@keyframes incomingAdmin {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 1;
+  }
+  25% {
+    opacity: 0;
+    z-index: 1;
+  }
+  45% {
+    opacity: 0.15;
+    z-index: 5;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+    z-index: 5;
+  }
+}
+
+/* Outgoing Client form slides across container and fades out */
+@keyframes outgoingClient {
+  0% {
+    transform: translateX(100%);
+    opacity: 1;
+    z-index: 5;
+  }
+  35% {
+    opacity: 0.35;
+    z-index: 5;
+  }
+  50% {
+    opacity: 0;
+    z-index: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+    z-index: 1;
   }
 }
 
@@ -307,9 +419,10 @@
   width: 50%;
   height: 100%;
   overflow: hidden;
-  transition: all 0.6s ease-in-out;
+  transition: transform 0.6s ease-in-out, border-radius 0.6s ease-in-out;
   border-radius: 150px 0 0 100px;
   z-index: 1000;
+  will-change: transform, border-radius;
 }
 
 .modern-login-container.active .modern-toggle-container {
@@ -327,7 +440,8 @@
   height: 100%;
   width: 200%;
   transform: translateX(0);
-  transition: all 0.6s ease-in-out;
+  transition: transform 0.6s ease-in-out;
+  will-change: transform;
 }
 
 .modern-login-container.active .modern-toggle {
@@ -346,7 +460,33 @@
   text-align: center;
   top: 0;
   transform: translateX(0);
-  transition: all 0.6s ease-in-out;
+  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+  will-change: transform, opacity;
+}
+
+.modern-toggle-left {
+  transform: translateX(-200%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modern-login-container.active .modern-toggle-left {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modern-toggle-right {
+  right: 0;
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modern-login-container.active .modern-toggle-right {
+  transform: translateX(200%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .modern-bot-icon {
@@ -401,22 +541,7 @@
   font-weight: 700;
 }
 
-.modern-toggle-left {
-  transform: translateX(-200%);
-}
 
-.modern-login-container.active .modern-toggle-left {
-  transform: translateX(0);
-}
-
-.modern-toggle-right {
-  right: 0;
-  transform: translateX(0);
-}
-
-.modern-login-container.active .modern-toggle-right {
-  transform: translateX(200%);
-}
 
 /* Mobile Responsive Optimization (< 768px) */
 @media (max-width: 767px) {
