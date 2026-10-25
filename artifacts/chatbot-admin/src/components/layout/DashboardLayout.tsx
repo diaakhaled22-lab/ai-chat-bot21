@@ -158,12 +158,12 @@ function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className={`relative p-2 rounded-lg transition-colors ${open ? "bg-muted" : "hover:bg-muted"} ${pulse ? "animate-bounce" : ""}`}
+          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center ${open ? "bg-white/25 ring-2 ring-white/30" : ""} ${pulse ? "animate-bounce" : ""}`}
           aria-label="Notifications"
         >
-          <Bell className={`w-5 h-5 ${totalBadge > 0 ? "text-amber-400" : "text-muted-foreground"}`} />
+          <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-300" : "text-white/80"}`} />
           {totalBadge > 0 && (
-            <span className={`absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none transition-all ${pulse ? "bg-amber-400 text-black scale-125" : "bg-amber-500 text-black"}`}>
+            <span className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${pulse ? "bg-amber-300 text-slate-900 scale-125" : "bg-rose-500 text-white border border-white/30"}`}>
               {totalBadge > 99 ? "99+" : totalBadge}
             </span>
           )}
@@ -471,25 +471,25 @@ function ClientNotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className={`relative p-2 rounded-lg transition-colors ${open ? "bg-muted" : "hover:bg-muted"} ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
+          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center ${open ? "bg-white/25 ring-2 ring-white/30" : ""} ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
           aria-label="Notifications"
         >
-          <Bell className={`w-5 h-5 ${
+          <Bell className={`w-4 h-4 ${
             hasUnreadRed
-              ? "text-rose-500 animate-pulse"
+              ? "text-rose-300 animate-pulse"
               : hasUnreadAmber
-              ? "text-amber-500"
+              ? "text-amber-300"
               : unread > 0
-              ? "text-amber-400"
-              : "text-muted-foreground"
+              ? "text-amber-300"
+              : "text-white/80"
           }`} />
           {unread > 0 && (
-            <span className={`absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none transition-all ${
+            <span className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
               hasUnreadRed
-                ? "bg-rose-500 text-white animate-pulse"
+                ? "bg-rose-500 text-white animate-pulse border border-white/30"
                 : pulse
-                ? "bg-amber-400 text-black scale-125"
-                : "bg-amber-500 text-black"
+                ? "bg-amber-300 text-slate-900 scale-125"
+                : "bg-amber-400 text-slate-950 font-bold"
             }`}>
               {unread > 99 ? "99+" : unread}
             </span>
@@ -744,11 +744,11 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center hover:scale-105 active:scale-95"
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       title={theme === "dark" ? "Light mode" : "Dark mode"}
     >
-      {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+      {theme === "dark" ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-blue-200" />}
     </button>
   );
 }
@@ -760,12 +760,12 @@ function LanguageToggle() {
   return (
     <button
       onClick={() => setLang(next)}
-      className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1"
+      className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center gap-1.5 hover:scale-105 active:scale-95"
       title={lang === "en" ? "Switch to Arabic" : "Switch to English"}
       aria-label={lang === "en" ? "Switch to Arabic" : "Switch to English"}
     >
-      <Globe className="w-5 h-5" />
-      <span className="text-xs font-semibold leading-none">{lang === "en" ? "AR" : "EN"}</span>
+      <Globe className="w-4 h-4 text-blue-200" />
+      <span className="text-xs font-bold leading-none">{lang === "en" ? "AR" : "EN"}</span>
     </button>
   );
 }
@@ -1027,11 +1027,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="py-[17px] border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="relative z-20 py-3.5 px-4 md:px-8 bg-gradient-to-r from-[#102a6b] via-[#1e40af] to-[#1d4ed8] text-white border-b border-white/10 shadow-lg flex items-center justify-between shrink-0 overflow-hidden backdrop-blur-md">
+          {/* Ambient reflections */}
+          <div className="absolute top-0 right-1/4 -mt-10 w-48 h-20 rounded-full bg-white/[0.08] blur-xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-20 rounded-full bg-blue-300/10 blur-xl pointer-events-none" />
+
+          <div className="flex items-center gap-3 relative z-10">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
+                <Button variant="ghost" size="icon" className="md:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9" aria-label="Menu">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -1039,9 +1043,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 {sidebarContent}
               </SheetContent>
             </Sheet>
-            <p className="text-sm font-medium text-foreground">{currentPage}</p>
+
+            {/* Current Page Breadcrumb Pill */}
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">{currentPage}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
+
+          <div className="flex items-center gap-2 relative z-10">
             <LanguageToggle />
             <ThemeToggle />
             {role === "admin" ? <NotificationBell /> : <ClientNotificationBell />}
