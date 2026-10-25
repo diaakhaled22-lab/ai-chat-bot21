@@ -77,7 +77,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden group border-l-4 border-l-[#102A6B]">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden group border-l-4 border-l-[#2D5BE3]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
         <CardTitle className="text-xs sm:text-sm font-semibold text-muted-foreground truncate pr-2">
           {label}
@@ -337,7 +337,7 @@ export default function ClientDashboard() {
         <>
           {filterMode === "quota" ? (
             hasQuota ? (
-              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm border-l-4 border-l-[#102A6B]">
+              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm border-l-4 border-l-[#2D5BE3]">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-amber-500" />
@@ -383,7 +383,7 @@ export default function ClientDashboard() {
                 )}
               </div>
             ) : (
-              <div className="bg-card border border-dashed border-[#DCE7FF] dark:border-slate-700 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm border-l-4 border-l-[#102A6B]">
+              <div className="bg-card border border-dashed border-[#DCE7FF] dark:border-slate-700 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
                     <Coins className="w-5 h-5" />
@@ -408,7 +408,7 @@ export default function ClientDashboard() {
               </div>
             )
           ) : (
-            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm border-l-4 border-l-[#102A6B]">
+            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
               <div className="flex items-center gap-3">
                 <div className={`p-2.5 rounded-lg ${
                   data?.hasOwnApiKey ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"

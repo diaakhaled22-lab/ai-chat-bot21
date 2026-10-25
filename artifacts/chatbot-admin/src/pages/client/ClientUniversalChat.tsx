@@ -588,7 +588,7 @@ export default function ClientUniversalChat() {
         {/* Total Conversations */}
         <Card 
           onClick={() => setChannelFilter("all")}
-          className={`p-4 border transition-all cursor-pointer hover:shadow-md border-l-4 border-l-[#102A6B] ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "border-[#DCE7FF] bg-card/60"}`}
+          className={`p-4 border transition-all cursor-pointer hover:shadow-md border-l-4 border-l-[#2D5BE3] ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "border-[#DCE7FF] bg-card/60"}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
@@ -609,7 +609,7 @@ export default function ClientUniversalChat() {
         {/* Active Problems / Handoffs */}
         <Card 
           onClick={() => setChannelFilter(channelFilter === "problems" ? "all" : "problems")}
-          className={`p-4 border transition-all cursor-pointer hover:shadow-md border-l-4 border-l-[#102A6B] ${channelFilter === "problems" ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30" : kpis.activeHandoffCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-[#DCE7FF] bg-card/60"}`}
+          className={`p-4 border transition-all cursor-pointer hover:shadow-md border-l-4 border-l-[#2D5BE3] ${channelFilter === "problems" ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30" : kpis.activeHandoffCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-[#DCE7FF] bg-card/60"}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
@@ -632,7 +632,7 @@ export default function ClientUniversalChat() {
         </Card>
 
         {/* Unread Messages */}
-        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#102A6B]">
+        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "رسائل غير مقروءة" : "Unread Messages"}
@@ -652,7 +652,7 @@ export default function ClientUniversalChat() {
         </Card>
 
         {/* AI Automation Rate */}
-        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#102A6B]">
+        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "أتمتة الذكاء الاصطناعي" : "AI Resolution Rate"}

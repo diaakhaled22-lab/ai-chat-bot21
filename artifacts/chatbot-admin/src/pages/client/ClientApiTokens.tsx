@@ -103,7 +103,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-5 flex items-start gap-4 shadow-sm border-l-4 border-l-[#102A6B]">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-5 flex items-start gap-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
