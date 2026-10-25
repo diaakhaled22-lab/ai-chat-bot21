@@ -259,7 +259,7 @@ export default function ClientSupport() {
 
       {/* Submit form */}
       {showForm && (
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
           <h2 className="font-semibold text-sm sm:text-base">{t("support_new_ticket")}</h2>
           <div className="space-y-3">
             <div>

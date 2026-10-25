@@ -207,7 +207,7 @@ export default function ClientDashboard() {
       </div>
 
       {/* Filter Buttons Group */}
-      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3.5 shadow-sm space-y-3.5">
+      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3.5 shadow-sm space-y-3.5 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="inline-flex items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/40 rounded-xl border border-[#DCE7FF] dark:border-slate-800">
             {/* Filter 1: Own API Key Model */}
@@ -553,7 +553,7 @@ export default function ClientDashboard() {
           {totalTokens > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Token split pie */}
-              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
                 <h2 className="text-base font-semibold mb-1">
                   {lang === "ar" ? "توزيع الرموز" : "Token Split"}
                 </h2>
@@ -574,7 +574,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* Channel breakdown pie */}
-              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
                 <h2 className="text-base font-semibold mb-1">
                   {lang === "ar" ? "توزيع القنوات" : "By Channel"}
                 </h2>
@@ -604,7 +604,7 @@ export default function ClientDashboard() {
 
           {/* Channel breakdown table */}
           {(data?.byChannel ?? []).length > 0 && (
-            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm border-l-4 border-l-[#2D5BE3]">
               <div className="px-6 py-4 border-b border-border flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
                 <h2 className="text-base font-semibold">
@@ -654,7 +654,7 @@ export default function ClientDashboard() {
           {/* Sentiment Analysis Card */}
           {sentiments && (
             <div className="grid gap-4 md:grid-cols-2 mt-4">
-              <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+              <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
                 <CardHeader>
                   <CardTitle className="text-sm font-medium flex items-center">
                     {lang === "ar" ? "تحليل مشاعر العملاء (ذكاء اصطناعي)" : "Customer Sentiment (AI)"}
@@ -707,7 +707,7 @@ export default function ClientDashboard() {
 
           {/* Empty state when no messages */}
           {totalTokens === 0 && (
-            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-12 flex flex-col items-center gap-3 text-muted-foreground shadow-sm">
+            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-12 flex flex-col items-center gap-3 text-muted-foreground shadow-sm border-l-4 border-l-[#2D5BE3]">
               <Coins className="w-12 h-12 opacity-20" />
               <p className="text-lg font-medium">
                 {lang === "ar" ? "لا يوجد استهلاك هذا الشهر" : "No usage this month"}

@@ -391,7 +391,7 @@ export default function ClientAiModel() {
       </div>
 
       {/* ── 0. Active Operating Engine Hero Card (المحرك الفعلي المشغّل للردود) ── */}
-      <div className="rounded-2xl border border-[#DCE7FF] dark:border-slate-800 bg-card p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-[#DCE7FF] dark:border-slate-800 bg-card p-6 shadow-sm space-y-4 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
             <div className={`p-2.5 rounded-xl ${activeMode === "quota" ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"} shrink-0`}>
@@ -628,7 +628,7 @@ export default function ClientAiModel() {
       </div>
 
       {/* ── 2. AI Execution Mode Toggle Switch (Token Source) ── */}
-      <div className="bg-card border border-border/70 rounded-xl p-5 shadow-xs space-y-4">
+      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
             <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -795,7 +795,7 @@ export default function ClientAiModel() {
       </div>
 
       {/* ── 3. AI Provider & Model Configuration Card ── */}
-      <Card className="bg-card border-border/70 shadow-xs">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 shadow-xs border-l-4 border-l-[#2D5BE3]">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Lock className="w-4 h-4 text-primary" />

@@ -341,7 +341,7 @@ export default function ClientChatLogs() {
       </div>
 
       {/* Retention Policy Banner (Read-only for client, managed by admin) */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm shrink-0">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm shrink-0 border-l-4 border-l-[#2D5BE3]">
         <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -483,7 +483,7 @@ export default function ClientChatLogs() {
       </div>
 
       {/* Inbox View Layout */}
-      <Card className="flex-1 min-h-[600px] overflow-hidden flex border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="flex-1 min-h-[600px] overflow-hidden flex border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         
         {/* Left Pane: Sessions List */}
         <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>

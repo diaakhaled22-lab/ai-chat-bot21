@@ -96,7 +96,7 @@ export default function ClientPrompts() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PenTool className="w-5 h-5 text-primary" />

@@ -195,7 +195,7 @@ function KnowledgeFilesCard() {
   };
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
@@ -512,7 +512,7 @@ function WordPressInlineCard() {
   };
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -835,7 +835,7 @@ function RestApiInlineCard() {
   };
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -1317,7 +1317,7 @@ function ShopifyInlineCard() {
   };
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -2036,7 +2036,7 @@ export default function ClientKnowledge() {
             !allowWebsite ? (
               <LockedSourceCard title={t("data_source_website")} icon={Globe} />
             ) : (
-              <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+              <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Globe className="w-5 h-5 text-primary" />
