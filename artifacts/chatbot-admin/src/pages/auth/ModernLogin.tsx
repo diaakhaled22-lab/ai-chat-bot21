@@ -359,7 +359,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 </div>
 
                 {/* Forgot Password Link */}
-                <div className="flex justify-end pt-0.5">
+                <div className="flex justify-center pt-0.5">
                   <Link
                     href="/forgot-password"
                     className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline transition-colors"

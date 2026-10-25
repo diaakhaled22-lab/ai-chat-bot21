@@ -109,7 +109,7 @@ export const SlidingAuthOverlay: React.FC = () => {
               </div>
 
               {/* Forgot Password Link */}
-              <div className="flex justify-end pt-0.5">
+              <div className="flex justify-center pt-0.5">
                 <a href="#forgot-admin" className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors">
                   Forgot Your Password?
                 </a>
