@@ -433,7 +433,7 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-4 flex items-center gap-4 border-l-4 border-l-[#2D5BE3]">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
         {icon}
       </div>

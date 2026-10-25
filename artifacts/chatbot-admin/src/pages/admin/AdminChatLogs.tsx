@@ -466,7 +466,7 @@ export default function AdminChatLogs() {
 
       {/* ── Mini Analytics ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 shrink-0">
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
             <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</CardTitle>
             <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -478,7 +478,7 @@ export default function AdminChatLogs() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
             <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "الجلسات النشطة" : "Active Sessions"}</CardTitle>
             <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -490,7 +490,7 @@ export default function AdminChatLogs() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
             <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "غير مقروءة" : "Unread"}</CardTitle>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -502,7 +502,7 @@ export default function AdminChatLogs() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
             <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "مقروءة" : "Read"}</CardTitle>
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
@@ -514,7 +514,7 @@ export default function AdminChatLogs() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
             <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "أعلى قناة" : "Top Channel"}</CardTitle>
             <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
@@ -526,7 +526,7 @@ export default function AdminChatLogs() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
             <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "أعلى شركة" : "Top Company"}</CardTitle>
             <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">

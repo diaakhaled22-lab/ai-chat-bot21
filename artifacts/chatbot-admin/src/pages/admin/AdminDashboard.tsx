@@ -395,7 +395,7 @@ export default function AdminDashboard() {
       {/* 2. Platform Stat Cards (Rounded 2xl with soft shadows & vibrant badges) */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
         {/* Total Companies */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Companies</span>
             <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
@@ -411,7 +411,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Active Companies */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Companies</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
@@ -429,7 +429,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Inactive Companies */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive Companies</span>
             <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs">
@@ -445,7 +445,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quota Assigned */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quota Assigned</span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
@@ -461,7 +461,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Total Clients */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl border-l-4 border-l-[#2D5BE3]">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</span>
             <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
@@ -493,7 +493,7 @@ export default function AdminDashboard() {
 
         {/* Summary cards */}
         <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Tokens Used</span>
               <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
@@ -510,7 +510,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated Total Cost</span>
               <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs">
@@ -525,7 +525,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Models in Use</span>
               <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">

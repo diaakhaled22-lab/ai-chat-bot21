@@ -814,12 +814,12 @@ export default function AdminTickets() {
         </div>
       </div>
 
-      {/* ── KPI Metric Cards (Transparent White Frosted Glass) ── */}
+      {/* ── KPI Metric Cards (Transparent White Frosted Glass with Left Border #2D5BE3) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {/* Total problems */}
         <Card
           onClick={() => setFilter("all")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] ${
             filter === "all"
               ? "ring-2 ring-blue-600/60 border-blue-500/60 bg-white/95 dark:bg-white/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-blue-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -848,7 +848,7 @@ export default function AdminTickets() {
         {/* Open tickets */}
         <Card
           onClick={() => setFilter("open")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] ${
             filter === "open"
               ? "ring-2 ring-amber-500/60 border-amber-500/60 bg-amber-50/90 dark:bg-amber-500/20 shadow-md scale-[1.02]"
               : openCount > 0
@@ -891,7 +891,7 @@ export default function AdminTickets() {
         {/* Resolved tickets */}
         <Card
           onClick={() => setFilter("resolved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] ${
             filter === "resolved"
               ? "ring-2 ring-emerald-500/60 border-emerald-500/60 bg-emerald-50/90 dark:bg-emerald-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-emerald-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -920,7 +920,7 @@ export default function AdminTickets() {
         {/* AI Solved tickets */}
         <Card
           onClick={() => setFilter("ai_solved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] ${
             filter === "ai_solved"
               ? "ring-2 ring-violet-500/60 border-violet-500/60 bg-violet-50/90 dark:bg-violet-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-violet-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -949,7 +949,7 @@ export default function AdminTickets() {
         {/* Manual Solved tickets */}
         <Card
           onClick={() => setFilter("manual_solved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] ${
             filter === "manual_solved"
               ? "ring-2 ring-sky-500/60 border-sky-500/60 bg-sky-50/90 dark:bg-sky-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-sky-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -976,7 +976,7 @@ export default function AdminTickets() {
         </Card>
 
         {/* AI Resolution Rate */}
-        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-sm hover:shadow-md hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
           <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
             <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
               <TrendingUp className="w-4 h-4" />

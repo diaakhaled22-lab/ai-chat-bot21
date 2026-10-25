@@ -245,7 +245,7 @@ export default function AdminClients() {
 
       {/* ── Summary Stats ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
             <Users className="w-6 h-6" />
           </div>
@@ -255,7 +255,7 @@ export default function AdminClients() {
           </div>
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
             <UserCheck className="w-6 h-6" />
           </div>
@@ -265,7 +265,7 @@ export default function AdminClients() {
           </div>
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
             <Clock className="w-6 h-6" />
           </div>
