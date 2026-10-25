@@ -1902,7 +1902,7 @@ export default function AdminAiQuota() {
 
       {/* Action Buttons & Period Badge */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs font-semibold text-muted-foreground bg-card border border-slate-200/80 dark:border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-xs">
+        <span className="text-xs font-semibold text-muted-foreground bg-card border border-[#DCE7FF] dark:border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-xs">
           <Calendar className="w-3.5 h-3.5 text-blue-500" />
           <span>{lang === "ar" ? "الفترة المعروضة:" : "Showing:"}</span>
           <span className="text-foreground font-bold">{rangeLabel}</span>
@@ -1932,7 +1932,7 @@ export default function AdminAiQuota() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 text-slate-700 dark:text-slate-200 bg-card border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
+            className="gap-2 text-slate-700 dark:text-slate-200 bg-card border-[#DCE7FF] dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
             onClick={exportToCSV}
           >
             <Download className="w-4 h-4 text-emerald-500" />
@@ -1941,7 +1941,7 @@ export default function AdminAiQuota() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 text-slate-700 dark:text-slate-200 bg-card border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
+            className="gap-2 text-slate-700 dark:text-slate-200 bg-card border-[#DCE7FF] dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
             disabled={isFetchingCompanies || isFetchingUsage}
             onClick={() => {
               refetchCompanies();
@@ -1956,7 +1956,7 @@ export default function AdminAiQuota() {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
             <TrendingUp className="w-6 h-6" />
           </div>
@@ -1973,7 +1973,7 @@ export default function AdminAiQuota() {
           </div>
         </div>
 
-        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
             <Coins className="w-6 h-6" />
           </div>
@@ -1990,7 +1990,7 @@ export default function AdminAiQuota() {
           </div>
         </div>
 
-        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
             <Building2 className="w-6 h-6" />
           </div>
@@ -2010,7 +2010,7 @@ export default function AdminAiQuota() {
 
       {/* Feature 1: Charts Section */}
       {topCompaniesData.length > 0 && (
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-emerald-400" />
@@ -2106,7 +2106,7 @@ export default function AdminAiQuota() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={lang === "ar" ? "بحث عن شركة..." : "Search companies..."}
-                className="pl-9 h-9 text-xs rounded-xl border-slate-200/80 dark:border-slate-800"
+                className="pl-9 h-9 text-xs rounded-xl border-[#DCE7FF] dark:border-slate-800"
               />
             </div>
             
@@ -2118,7 +2118,7 @@ export default function AdminAiQuota() {
                 setSortDir(d as SortDir);
               }}
             >
-              <SelectTrigger className="w-full sm:w-48 h-9 text-xs rounded-xl border-slate-200/80 dark:border-slate-800">
+              <SelectTrigger className="w-full sm:w-48 h-9 text-xs rounded-xl border-[#DCE7FF] dark:border-slate-800">
                 <ArrowUpDown className="w-3 h-3 mr-2 text-muted-foreground" />
                 <SelectValue placeholder={lang === "ar" ? "ترتيب حسب..." : "Sort by..."} />
               </SelectTrigger>
@@ -2135,7 +2135,7 @@ export default function AdminAiQuota() {
             </Select>
 
             {/* Currency Selector (USD, SAR, EGP) */}
-            <div className="flex items-center gap-0.5 bg-card p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 h-9 shadow-xs">
+            <div className="flex items-center gap-0.5 bg-card p-1 rounded-xl border border-[#DCE7FF] dark:border-slate-800 h-9 shadow-xs">
               {(["USD", "SAR", "EGP"] as CurrencyCode[]).map((cCode) => {
                 const c = CURRENCIES[cCode];
                 const active = selectedCurrency === cCode;
@@ -2164,7 +2164,7 @@ export default function AdminAiQuota() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 gap-1.5 text-xs rounded-xl border-slate-200/80 dark:border-slate-800 hover:bg-muted shadow-xs cursor-pointer"
+                  className="h-9 gap-1.5 text-xs rounded-xl border-[#DCE7FF] dark:border-slate-800 hover:bg-muted shadow-xs cursor-pointer"
                   title={lang === "ar" ? "إجراءات الحصص والاستهلاك" : "All Quota Actions"}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-blue-500" />
@@ -2261,7 +2261,7 @@ export default function AdminAiQuota() {
           </div>
         </div>
 
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>

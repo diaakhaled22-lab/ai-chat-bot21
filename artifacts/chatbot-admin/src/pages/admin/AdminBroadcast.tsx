@@ -205,7 +205,7 @@ export default function AdminBroadcast() {
 
       <div className="grid gap-6">
         {/* Compose card */}
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-primary" />
@@ -243,7 +243,7 @@ export default function AdminBroadcast() {
         </Card>
 
         {/* Target & Preview card */}
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="w-4 h-4 text-primary" />
@@ -341,7 +341,7 @@ export default function AdminBroadcast() {
 
         {/* Notification preview */}
         {(title || message) && (
-          <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">Notification Preview</span>
@@ -370,7 +370,7 @@ export default function AdminBroadcast() {
 
         {/* Send button */}
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end mt-4">
-          <Button variant="outline" onClick={reset} disabled={sending} className="w-full sm:w-auto rounded-xl border-slate-200 dark:border-slate-700 font-semibold">
+          <Button variant="outline" onClick={reset} disabled={sending} className="w-full sm:w-auto rounded-xl border-[#DCE7FF] dark:border-slate-700 font-semibold">
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset
           </Button>

@@ -80,7 +80,7 @@ export default function AdminEmailSettings() {
   if (isLoading) return null;
 
   return (
-    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="w-5 h-5 text-blue-400" />
@@ -216,7 +216,7 @@ export default function AdminEmailSettings() {
           {data?.configured && (
             <Button
               variant="outline"
-              className="rounded-xl border-slate-200 dark:border-slate-700 font-semibold"
+              className="rounded-xl border-[#DCE7FF] dark:border-slate-700 font-semibold"
               onClick={() => testMutation.mutate()}
               disabled={testMutation.isPending}
             >

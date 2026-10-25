@@ -87,7 +87,7 @@ export default function AdminAuditLogs() {
         </div>
       </div>
 
-      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-primary" />
@@ -107,7 +107,7 @@ export default function AdminAuditLogs() {
               No admin activity logged yet.
             </div>
           ) : (
-            <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-inner">
+            <div className="border border-[#DCE7FF] dark:border-slate-800 rounded-xl overflow-hidden shadow-inner">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -878,7 +878,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
       {/* Logo - Bot Manager with Frosted Glass Badge */}
-      <div className="h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 bg-[#0f2459] relative z-10">
+      <div className="h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 bg-[#102A6B] relative z-10">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
         >
@@ -999,7 +999,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       </nav>
 
       {/* Sign out — always pinned at the bottom, never scrolls away */}
-      <div className="p-3 border-t border-white/10 bg-[#0f2459] shrink-0 relative z-10">
+      <div className="p-3 border-t border-white/10 bg-[#102A6B] shrink-0 relative z-10">
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-blue-100/80 hover:text-white hover:bg-white/10 rounded-xl transition-all"
@@ -1015,15 +1015,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
 
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden text-foreground">
+    <div className="flex h-full w-full bg-[#F3F7FF] dark:bg-background overflow-hidden text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-white/10 bg-[#0f2459] text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative">
+      <aside className="w-64 border-r border-white/10 bg-[#102A6B] text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative">
         {sidebarContent}
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="relative z-20 h-16 px-4 md:px-8 bg-[#0f2459] text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
+        <header className="relative z-20 h-16 px-4 md:px-8 bg-[#102A6B] text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -1031,7 +1031,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-[#0f2459] text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative">
+              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-[#102A6B] text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative">
                 {sidebarContent}
               </SheetContent>
             </Sheet>
@@ -1050,7 +1050,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
           <div className={location === "/client/support" ? "w-full" : "max-w-6xl mx-auto"}>
             {children}
           </div>

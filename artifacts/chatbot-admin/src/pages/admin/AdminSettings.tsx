@@ -249,7 +249,7 @@ export default function AdminSettings() {
     return (
       <div className="space-y-6 max-w-3xl">
         <Skeleton className="h-10 w-48" />
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
           <CardContent className="space-y-4">
             <Skeleton className="h-10 w-full" />
@@ -299,7 +299,7 @@ export default function AdminSettings() {
       <AdminEmailSettings />
 
       {/* Language */}
-      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-primary" />
