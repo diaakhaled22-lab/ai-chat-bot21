@@ -877,14 +877,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
-      {/* Ambient glass light reflections */}
-      <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 rounded-full bg-white/[0.08] blur-2xl pointer-events-none" />
-      <div className="absolute bottom-1/3 -left-12 w-48 h-48 rounded-full bg-blue-300/10 blur-3xl pointer-events-none" />
-
       {/* Logo - Bot Manager with Frosted Glass Badge */}
-      <div className="py-[16px] flex items-center gap-3 px-4 border-b border-white/10 shrink-0 bg-white/[0.06] backdrop-blur-md relative z-10">
+      <div className="h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 bg-[#0f2459] relative z-10">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/20 text-white border border-white/25 bg-white/15 backdrop-blur-md"
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
         >
           <i className="fa-solid fa-robot text-lg text-white"></i>
         </div>
@@ -1003,7 +999,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       </nav>
 
       {/* Sign out — always pinned at the bottom, never scrolls away */}
-      <div className="p-3 border-t border-white/10 bg-white/[0.05] backdrop-blur-md shrink-0 relative z-10">
+      <div className="p-3 border-t border-white/10 bg-[#0f2459] shrink-0 relative z-10">
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-blue-100/80 hover:text-white hover:bg-white/10 rounded-xl transition-all"
@@ -1021,25 +1017,21 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   return (
     <div className="flex h-full w-full bg-background overflow-hidden text-foreground">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-white/10 bg-gradient-to-b from-[#0f2459] via-[#1e40af] to-[#0a183d] text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative">
+      <aside className="w-64 border-r border-white/10 bg-[#0f2459] text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative">
         {sidebarContent}
       </aside>
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="relative z-20 py-3.5 px-4 md:px-8 bg-gradient-to-r from-[#102a6b] via-[#1e40af] to-[#1d4ed8] text-white border-b border-white/10 shadow-lg flex items-center justify-between shrink-0 overflow-hidden backdrop-blur-md">
-          {/* Ambient reflections */}
-          <div className="absolute top-0 right-1/4 -mt-10 w-48 h-20 rounded-full bg-white/[0.08] blur-xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-20 rounded-full bg-blue-300/10 blur-xl pointer-events-none" />
-
-          <div className="flex items-center gap-3 relative z-10">
+        <header className="relative z-20 h-16 px-4 md:px-8 bg-[#0f2459] text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9" aria-label="Menu">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-gradient-to-b from-[#0f2459] via-[#1e40af] to-[#0a183d] text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative">
+              <SheetContent side={lang === "ar" ? "right" : "left"} className="w-64 p-0 flex flex-col bg-[#0f2459] text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative">
                 {sidebarContent}
               </SheetContent>
             </Sheet>
@@ -1051,7 +1043,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 relative z-10">
+          <div className="flex items-center gap-2">
             <LanguageToggle />
             <ThemeToggle />
             {role === "admin" ? <NotificationBell /> : <ClientNotificationBell />}
