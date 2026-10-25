@@ -549,3 +549,49 @@
     display: none;
   }
 }
+
+/* Single Card Layout (Forgot Password & Reset Password) */
+.modern-auth-card {
+  background-color: #fff;
+  border-radius: 28px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  width: 100%;
+  max-width: 440px;
+  padding: 38px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.dark .modern-auth-card {
+  background-color: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+}
+
+.modern-auth-badge {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #5c6bc0, #512da8);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto 16px auto;
+  box-shadow: 0 8px 20px rgba(81, 45, 168, 0.35);
+}
+
+.modern-auth-badge i {
+  font-size: 46px;
+  line-height: 1;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}

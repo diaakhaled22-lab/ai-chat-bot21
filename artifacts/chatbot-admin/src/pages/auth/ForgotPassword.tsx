@@ -1,101 +1,179 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
-import { Bot, User, ArrowLeft, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Mail, Globe, Sun, Moon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
+import { useTheme } from "@/hooks/use-theme";
+import "./modern-login.css";
 
 export default function ForgotPassword() {
   const { toast } = useToast();
+  const { lang, setLang } = useLanguage();
+  const { theme, toggle: toggleTheme } = useTheme();
+
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) return;
+    if (!username.trim()) {
+      toast({
+        title: lang === "ar" ? "بيانات ناقصة" : "Missing field",
+        description: lang === "ar" ? "يرجى كتابة اسم المستخدم" : "Please enter your username",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${import.meta.env.BASE_URL}api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username: username.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Error", description: data.error || "Something went wrong", variant: "destructive" });
+        toast({
+          title: lang === "ar" ? "خطأ" : "Error",
+          description: data.error || (lang === "ar" ? "حدث خطأ ما" : "Something went wrong"),
+          variant: "destructive",
+        });
       } else {
         setSent(true);
+        toast({
+          title: lang === "ar" ? "تم الإرسال" : "Link Sent",
+          description:
+            lang === "ar"
+              ? "إذا كان الحساب موجوداً، تم إرسال رابط إعادة التعيين."
+              : "If this account exists, a reset link has been dispatched.",
+        });
       }
     } catch {
-      toast({ title: "Error", description: "Network error. Please try again.", variant: "destructive" });
+      toast({
+        title: lang === "ar" ? "خطأ في الشبكة" : "Network error",
+        description: lang === "ar" ? "يرجى المحاولة مرة أخرى." : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col items-center bg-background p-4 pt-12 pb-24 sm:py-4 relative overflow-x-hidden overflow-y-auto">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background pointer-events-none" />
+    <div className="modern-login-wrapper">
+      {/* Top Floating Controls (Language & Theme) */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
+        <button
+          type="button"
+          onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 dark:bg-slate-800/80 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+          title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
+        >
+          <Globe className="w-3.5 h-3.5 text-indigo-500" />
+          <span>{lang === "ar" ? "English" : "العربية"}</span>
+        </button>
 
-      <div className="w-full max-w-md relative z-10 my-auto shrink-0">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 border border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.2)]">
-            <Bot className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Bot Manager</h1>
-          <p className="text-muted-foreground mt-2">AI Deployment Management</p>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2 rounded-full bg-white/70 dark:bg-slate-800/80 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+          title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+          aria-label="Toggle Theme"
+        >
+          {theme === "dark" ? (
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+          ) : (
+            <Moon className="w-3.5 h-3.5 text-indigo-500" />
+          )}
+        </button>
+      </div>
+
+      {/* Main Modern Auth Card */}
+      <div className="modern-auth-card text-center" dir={lang === "ar" ? "rtl" : "ltr"}>
+        {/* Bot Icon Badge */}
+        <div className="modern-auth-badge">
+          {sent ? (
+            <Mail className="w-10 h-10 text-white" />
+          ) : (
+            <i className="fa-solid fa-robot"></i>
+          )}
         </div>
 
-        <Card className="border-border/50 shadow-2xl bg-card/80 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle>Forgot Password</CardTitle>
-            <CardDescription>
-              {sent ? "Check your email for the reset link." : "Enter your username to receive a password reset link."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {sent ? (
-              <div className="flex flex-col items-center gap-4 py-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                  <Mail className="w-7 h-7 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground text-center">
-                  If this username exists, a reset link has been sent to the configured admin email. It expires in 1 hour.
-                </p>
-                <Link href="/login">
-                  <Button variant="outline" className="w-full gap-2">
-                    <ArrowLeft className="w-4 h-4" /> Back to Login
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <form onSubmit={onSubmit} className="space-y-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Username"
-                    className="pl-9 bg-background/50"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sending..." : "Send Reset Link"}
-                </Button>
-                <div className="text-center text-sm text-muted-foreground border-t border-border pt-4">
-                  <Link href="/login" className="text-primary hover:underline inline-flex items-center gap-1">
-                    <ArrowLeft className="w-3 h-3" /> Back to Login
-                  </Link>
-                </div>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">
+          Bot Manager
+        </h1>
+
+        <h2 className="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mb-2">
+          {lang === "ar" ? "استعادة كلمة المرور" : "Forgot Password"}
+        </h2>
+
+        {sent ? (
+          <div className="flex flex-col items-center gap-4 py-2 w-full">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm">
+              {lang === "ar"
+                ? "إذا كان اسم المستخدم هذا مسجلاً في النظام، فقد تم إرسال رابط إعادة تعيين كلمة المرور إلى البريد الإلكتروني للمسؤول. الرابط صالح لمدة ساعة واحدة."
+                : "If this username exists, a reset link has been sent to the configured admin email. It expires in 1 hour."}
+            </p>
+
+            <Link href="/login" className="w-full mt-2">
+              <button type="button" className="modern-login-btn w-full gap-2">
+                <ArrowLeft className={`w-4 h-4 ${lang === "ar" ? "rotate-180" : ""}`} />
+                <span>{lang === "ar" ? "العودة لتسجيل الدخول" : "Back to Login"}</span>
+              </button>
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={onSubmit} className="w-full flex flex-col items-center mt-2">
+            <span className="text-sm text-slate-500 dark:text-slate-400 mb-4 block">
+              {lang === "ar"
+                ? "أدخل اسم المستخدم لتلقي رابط إعادة تعيين كلمة المرور."
+                : "Enter your username to receive a password reset link."}
+            </span>
+
+            <div className="modern-input-group w-full mb-3" dir="ltr">
+              <span className="icon-slot">
+                <i className="fa-solid fa-user"></i>
+              </span>
+              <input
+                type="text"
+                placeholder={lang === "ar" ? "اسم المستخدم" : "Username"}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoFocus
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="modern-login-btn w-full"
+              disabled={loading || !username.trim()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{lang === "ar" ? "جاري الإرسال..." : "Sending..."}</span>
+                </>
+              ) : (
+                lang === "ar" ? "إرسال رابط الاستعادة" : "Send Reset Link"
+              )}
+            </button>
+
+            <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 w-full text-center">
+              <Link
+                href="/login"
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5 font-medium"
+              >
+                <ArrowLeft className={`w-3.5 h-3.5 ${lang === "ar" ? "rotate-180" : ""}`} />
+                <span>{lang === "ar" ? "العودة لتسجيل الدخول" : "Back to Login"}</span>
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
 }
-
