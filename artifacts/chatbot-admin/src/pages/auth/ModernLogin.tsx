@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import {
   useAdminLogin,
@@ -19,6 +19,8 @@ import {
   Sun,
   Moon,
   ArrowLeft,
+  ShieldCheck,
+  Building2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
@@ -29,6 +31,10 @@ interface ModernLoginProps {
   initialMode?: "admin" | "client";
 }
 
+/**
+ * Modern Sliding Panel Overlay (Double Sign-In) Page
+ * Integrated with real backend authentication, 2FA, language & theme controls.
+ */
 export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps) {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
@@ -36,17 +42,19 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const { theme, toggle: toggleTheme } = useTheme();
   const queryClient = useQueryClient();
 
-  // Active state: false = Admin login, true = Client login (sign-up panel in template)
-  const [isActive, setIsActive] = useState<boolean>(initialMode === "client");
+  // 1. State Management:
+  // false = Default State (Overlay sits on the Right, covers Client form, Admin form visible on Left)
+  // true  = Active State (Overlay slides to the Left, covers Admin form, Client form visible on Right)
+  const [isRightPanelActive, setIsRightPanelActive] = useState<boolean>(initialMode === "client");
 
   // Keep state in sync if navigated directly
   useEffect(() => {
-    if (location === "/client-login" && !isActive) {
-      setIsActive(true);
-    } else if (location === "/login" && isActive) {
-      setIsActive(false);
+    if (location === "/client-login" && !isRightPanelActive) {
+      setIsRightPanelActive(true);
+    } else if (location === "/login" && isRightPanelActive) {
+      setIsRightPanelActive(false);
     }
-  }, [location, isActive]);
+  }, [location, isRightPanelActive]);
 
   // Admin form state
   const [adminUsername, setAdminUsername] = useState("");
@@ -66,7 +74,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const clientLogin = useClientLogin();
 
   const handleSwitchToClient = () => {
-    setIsActive(true);
+    setIsRightPanelActive(true);
     if (location !== "/client-login") {
       try {
         window.history.replaceState(null, "", "/client-login");
@@ -75,7 +83,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   };
 
   const handleSwitchToAdmin = () => {
-    setIsActive(false);
+    setIsRightPanelActive(false);
     if (location !== "/login") {
       try {
         window.history.replaceState(null, "", "/login");
@@ -217,7 +225,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/70 dark:bg-slate-800/80 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
           title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
         >
-          <Globe className="w-3.5 h-3.5 text-indigo-500" />
+          <Globe className="w-3.5 h-3.5 text-blue-500" />
           <span>{lang === "ar" ? "English" : "العربية"}</span>
         </button>
 
@@ -231,34 +239,42 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           {theme === "dark" ? (
             <Sun className="w-3.5 h-3.5 text-amber-400" />
           ) : (
-            <Moon className="w-3.5 h-3.5 text-indigo-500" />
+            <Moon className="w-3.5 h-3.5 text-blue-500" />
           )}
         </button>
       </div>
 
-      {/* Main Container - Explicit dir="ltr" to maintain consistent geometric slider animation */}
+      {/* 2. Main Container */}
       <div
-        className={`container modern-login-container ${isActive ? "active" : ""}`}
+        className="relative w-full max-w-4xl min-h-[560px] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-slate-400/25 dark:shadow-black/50 overflow-hidden flex flex-col md:flex-row border border-slate-200/60 dark:border-slate-800 transition-all"
         id="container"
         dir="ltr"
       >
         {/* Mobile Header (Rendered on small screens < 768px) */}
-        <div className="mobile-toggle-header">
-          <div className="mobile-bot-icon">
-            <i className="fa-solid fa-robot"></i>
+        <div className="md:hidden w-full flex flex-col items-center p-6 text-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white">
+          <div className="w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-3 shadow-inner">
+            <Bot className="w-8 h-8 text-white" />
           </div>
-          <h1>Bot Manager</h1>
-          <div className="mobile-toggle-switch">
+          <h1 className="text-xl font-bold">Bot Manager</h1>
+          <div className="flex bg-black/20 p-1 rounded-full mt-3 gap-1">
             <button
               type="button"
-              className={!isActive ? "active-tab" : ""}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                !isRightPanelActive
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-white/80 hover:text-white"
+              }`}
               onClick={handleSwitchToAdmin}
             >
               {lang === "ar" ? "دخول المسؤول" : "Admin Login"}
             </button>
             <button
               type="button"
-              className={isActive ? "active-tab" : ""}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                isRightPanelActive
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-white/80 hover:text-white"
+              }`}
               onClick={handleSwitchToClient}
             >
               {lang === "ar" ? "دخول العميل" : "Client Login"}
@@ -266,252 +282,327 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           </div>
         </div>
 
-        {/* Client Login Form Panel (sign-up in template layout) */}
-        <div className="form-container sign-up modern-form-container modern-sign-up">
-          <form className="modern-login-form" onSubmit={handleClientSubmit}>
-            <h1>{lang === "ar" ? "تسجيل دخول العميل" : "Client Login"}</h1>
-            <span>
-              {lang === "ar"
-                ? "سجل الدخول لإدارة روبوت الذكاء الاصطناعي."
-                : "Sign in to manage your AI deployment."}
-            </span>
+        {/* 3. The Forms (Background Layer) */}
 
-            <div className="modern-input-group modern-input">
-              <span className="icon-slot">
-                <i className="fa-solid fa-user"></i>
-              </span>
-              <input
-                type="text"
-                placeholder={lang === "ar" ? "اسم المستخدم" : "Username"}
-                value={clientUsername}
-                onChange={(e) => setClientUsername(e.target.value)}
-                autoComplete="username"
-                required
-              />
+        {/* LEFT SIDE: Admin Login Form */}
+        <div
+          className={`w-full md:w-1/2 md:absolute md:top-0 md:left-0 h-full flex flex-col justify-center items-center px-8 sm:px-14 py-10 transition-all duration-700 ease-in-out ${
+            !isRightPanelActive
+              ? "z-10 opacity-100 pointer-events-auto"
+              : "md:z-0 md:opacity-0 md:pointer-events-none hidden md:flex"
+          }`}
+        >
+          {!tempToken ? (
+            <div className="w-full max-w-sm flex flex-col items-center text-center">
+              {/* Admin Shield Icon */}
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                {lang === "ar" ? "تسجيل دخول المسؤول" : "Admin Login"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-6">
+                {lang === "ar"
+                  ? "المصادقة للوصول إلى لوحة الإدارة الرئيسية"
+                  : "Authenticate to access the admin portal"}
+              </p>
+
+              <form onSubmit={handleAdminSubmit} className="w-full flex flex-col gap-3.5">
+                {/* Username Input */}
+                <div className="relative w-full text-left">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                    <User className="w-5 h-5" />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder={lang === "ar" ? "اسم المستخدم" : "Admin Username"}
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                    autoComplete="username"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                  />
+                </div>
+
+                {/* Password Input */}
+                <div className="relative w-full text-left">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                    <Lock className="w-5 h-5" />
+                  </span>
+                  <input
+                    type={showAdminPassword ? "text" : "password"}
+                    required
+                    placeholder={lang === "ar" ? "كلمة المرور" : "Password"}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    autoComplete="current-password"
+                    className="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    aria-label="Toggle password visibility"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  >
+                    {showAdminPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Forgot Password Link */}
+                <div className="flex justify-end pt-0.5">
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline transition-colors"
+                  >
+                    {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
+                  </Link>
+                </div>
+
+                {/* Solid SIGN IN Button */}
+                <button
+                  type="submit"
+                  disabled={adminLogin.isPending}
+                  className="w-full mt-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2"
+                >
+                  {adminLogin.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{lang === "ar" ? "جاري التحقق..." : "Signing In..."}</span>
+                    </>
+                  ) : (
+                    lang === "ar" ? "تسجيل الدخول" : "SIGN IN"
+                  )}
+                </button>
+              </form>
             </div>
+          ) : (
+            /* 2FA Verification View */
+            <div className="w-full max-w-sm flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                {lang === "ar" ? "المصادقة الثنائية" : "Two-Factor Auth"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5">
+                {lang === "ar"
+                  ? "أدخل رمز التحقق المكون من 6 أرقام"
+                  : "Enter the 6-digit code from your authenticator app"}
+              </p>
 
-            <div className="modern-input-group modern-input">
-              <span className="icon-slot">
-                <i className="fa-solid fa-lock"></i>
-              </span>
-              <input
-                type={showClientPassword ? "text" : "password"}
-                placeholder={lang === "ar" ? "كلمة المرور" : "Password"}
-                id="clientPasswordInput"
-                value={clientPassword}
-                onChange={(e) => setClientPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                className="modern-toggle-password client-toggle"
-                aria-label={showClientPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowClientPassword(!showClientPassword)}
-              >
-                {showClientPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+              <form onSubmit={handle2faSubmit} className="w-full flex flex-col gap-3.5">
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    placeholder="123456"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    className="w-full py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-center font-bold tracking-widest text-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2 w-full mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setTempToken(null)}
+                    disabled={verify2fa.isPending}
+                    className="flex-1 py-3 px-4 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>{lang === "ar" ? "رجوع" : "Back"}</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={verify2fa.isPending || otpCode.length !== 6}
+                    className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    {verify2fa.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      lang === "ar" ? "تحقق" : "Verify"
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <Link href="/forgot-password">
-              {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
-            </Link>
-
-            <button
-              type="submit"
-              className="modern-login-btn"
-              disabled={clientLogin.isPending}
-            >
-              {clientLogin.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{lang === "ar" ? "جاري الدخول..." : "Signing In..."}</span>
-                </>
-              ) : (
-                lang === "ar" ? "تسجيل الدخول" : "SIGN IN"
-              )}
-            </button>
-          </form>
+          )}
         </div>
 
-        {/* Admin Login Form Panel (sign-in in template layout) */}
-        <div className="form-container sign-in modern-form-container modern-sign-in">
-          {!tempToken ? (
-            <form className="modern-login-form" onSubmit={handleAdminSubmit}>
-              <h1>{lang === "ar" ? "تسجيل دخول المسؤول" : "Admin Login"}</h1>
-              <span>
-                {lang === "ar"
-                  ? "المصادقة للوصول إلى لوحة الإدارة."
-                  : "Authenticate to access the admin portal."}
-              </span>
+        {/* RIGHT SIDE: Client Login Form */}
+        <div
+          className={`w-full md:w-1/2 md:absolute md:top-0 md:right-0 h-full flex flex-col justify-center items-center px-8 sm:px-14 py-10 transition-all duration-700 ease-in-out ${
+            isRightPanelActive
+              ? "z-10 opacity-100 pointer-events-auto"
+              : "md:z-0 md:opacity-0 md:pointer-events-none hidden md:flex"
+          }`}
+        >
+          <div className="w-full max-w-sm flex flex-col items-center text-center">
+            {/* Client Building Icon */}
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 shadow-sm border border-indigo-100 dark:border-indigo-800">
+              <Building2 className="w-6 h-6" />
+            </div>
 
-              <div className="modern-input-group">
-                <span className="icon-slot">
-                  <i className="fa-solid fa-user"></i>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              {lang === "ar" ? "تسجيل دخول العميل" : "Client Login"}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-6">
+              {lang === "ar"
+                ? "سجل الدخول لإدارة روبوت الذكاء الاصطناعي الخاص بك"
+                : "Manage your chatbot deployment portal"}
+            </p>
+
+            <form onSubmit={handleClientSubmit} className="w-full flex flex-col gap-3.5">
+              {/* Username Input */}
+              <div className="relative w-full text-left">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                  <User className="w-5 h-5" />
                 </span>
                 <input
                   type="text"
-                  placeholder={lang === "ar" ? "اسم المستخدم" : "Username"}
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  autoComplete="username"
                   required
+                  placeholder={lang === "ar" ? "اسم المستخدم" : "Client Username"}
+                  value={clientUsername}
+                  onChange={(e) => setClientUsername(e.target.value)}
+                  autoComplete="username"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all"
                 />
               </div>
 
-              <div className="modern-input-group">
-                <span className="icon-slot">
-                  <i className="fa-solid fa-lock"></i>
+              {/* Password Input */}
+              <div className="relative w-full text-left">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                  <Lock className="w-5 h-5" />
                 </span>
                 <input
-                  type={showAdminPassword ? "text" : "password"}
-                  placeholder={lang === "ar" ? "كلمة المرور" : "Password"}
-                  id="passwordInput"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  autoComplete="current-password"
+                  type={showClientPassword ? "text" : "password"}
                   required
+                  placeholder={lang === "ar" ? "كلمة المرور" : "Password"}
+                  value={clientPassword}
+                  onChange={(e) => setClientPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all"
                 />
                 <button
                   type="button"
-                  className="modern-toggle-password"
-                  aria-label={showAdminPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowAdminPassword(!showAdminPassword)}
+                  onClick={() => setShowClientPassword(!showClientPassword)}
+                  aria-label="Toggle password visibility"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
-                  {showAdminPassword ? (
-                    <EyeOff className="w-4 h-4" />
+                  {showClientPassword ? (
+                    <EyeOff className="w-5 h-5" />
                   ) : (
-                    <Eye className="w-4 h-4" />
+                    <Eye className="w-5 h-5" />
                   )}
                 </button>
               </div>
 
-              <Link href="/forgot-password">
-                {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
-              </Link>
+              {/* Forgot Password Link */}
+              <div className="flex justify-end pt-0.5">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline transition-colors"
+                >
+                  {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
+                </Link>
+              </div>
 
+              {/* Solid SIGN IN Button */}
               <button
                 type="submit"
-                className="modern-login-btn"
-                disabled={adminLogin.isPending}
+                disabled={clientLogin.isPending}
+                className="w-full mt-2 py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-indigo-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 flex items-center justify-center gap-2"
               >
-                {adminLogin.isPending ? (
+                {clientLogin.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{lang === "ar" ? "جاري التحقق..." : "Signing In..."}</span>
+                    <span>{lang === "ar" ? "جاري الدخول..." : "Signing In..."}</span>
                   </>
                 ) : (
                   lang === "ar" ? "تسجيل الدخول" : "SIGN IN"
                 )}
               </button>
             </form>
-          ) : (
-            /* 2FA Verification View */
-            <form className="modern-login-form" onSubmit={handle2faSubmit}>
-              <div className="w-12 h-12 rounded-xl bg-purple-500/15 flex items-center justify-center mb-2">
-                <KeyRound className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h1 className="text-xl font-bold">
-                {lang === "ar" ? "المصادقة الثنائية" : "Two-Factor Auth"}
-              </h1>
-              <span>
-                {lang === "ar"
-                  ? "أدخل رمز التحقق المكون من 6 أرقام."
-                  : "Enter the 6-digit code from your authenticator app."}
-              </span>
-
-              <div className="modern-input-group mt-3">
-                <span className="icon-slot">
-                  <KeyRound className="w-4 h-4" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="123456"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  className="text-center font-bold tracking-widest text-lg"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2 w-full mt-2">
-                <button
-                  type="button"
-                  onClick={() => setTempToken(null)}
-                  className="modern-login-btn btn-hidden !text-slate-700 dark:!text-slate-200 !border-slate-300 dark:!border-slate-700 !px-4 flex-1"
-                  disabled={verify2fa.isPending}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>{lang === "ar" ? "رجوع" : "Back"}</span>
-                </button>
-                <button
-                  type="submit"
-                  className="modern-login-btn flex-1"
-                  disabled={verify2fa.isPending || otpCode.length !== 6}
-                >
-                  {verify2fa.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    lang === "ar" ? "تحقق" : "Verify"
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* Sliding Toggle Overlay Panel */}
-        <div className="toggle-container modern-toggle-container">
-          <div className="toggle modern-toggle">
-            {/* Left Panel: Revealed when Active (Client is visible), offers switch to Admin */}
-            <div className="toggle-panel toggle-left modern-toggle-panel modern-toggle-left">
-              <div className="bot-icon left-bot-icon modern-bot-icon modern-left-bot-icon">
-                <i className="fa-solid fa-robot"></i>
-              </div>
-              <h1>Bot Manager</h1>
-              <p className="text-sm opacity-90 max-w-xs mb-3">
-                {lang === "ar"
-                  ? "للرجوع إلى لوحة تحكم المسؤول الرئيسية"
-                  : "Switch back to the administrative portal."}
-              </p>
-              <button
-                type="button"
-                className="modern-login-btn btn-hidden hidden"
-                id="login"
-                onClick={handleSwitchToAdmin}
-              >
-                {lang === "ar" ? "دخول المسؤول" : "ADMIN LOGIN"}
-              </button>
-            </div>
-
-            {/* Right Panel: Revealed when Inactive (Admin is visible), offers switch to Client */}
-            <div className="toggle-panel toggle-right modern-toggle-panel modern-toggle-right">
-              <div className="bot-icon modern-bot-icon">
-                <i className="fa-solid fa-robot"></i>
-              </div>
-              <h1>Bot Manager</h1>
-              <p className="text-sm opacity-90 max-w-xs mb-3">
-                {lang === "ar"
-                  ? "للوصول إلى لوحة إعدادات بوت العميل"
-                  : "Access your client chatbot deployment portal."}
-              </p>
-              <button
-                type="button"
-                className="modern-login-btn btn-hidden hidden"
-                id="register"
-                onClick={handleSwitchToClient}
-              >
-                {lang === "ar" ? "دخول العميل" : "CLIENT LOGIN"}
-              </button>
-            </div>
           </div>
         </div>
+
+        {/* 4. The Sliding Overlay (Foreground Layer - Desktop only) */}
+        <div
+          className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-transform duration-700 ease-in-out bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white ${
+            isRightPanelActive
+              ? "translate-x-0 rounded-r-[40px] md:rounded-r-[60px]"
+              : "translate-x-full rounded-l-[40px] md:rounded-l-[60px]"
+          }`}
+        >
+          {/* Sub-panel 1: Visible in Default State (When overlay is on the Right, covering Client) */}
+          <div
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-700 ease-in-out ${
+              !isRightPanelActive
+                ? "opacity-100 translate-x-0 pointer-events-auto"
+                : "opacity-0 -translate-x-12 pointer-events-none"
+            }`}
+          >
+            {/* Robot Icon Badge */}
+            <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-5 shadow-inner">
+              <Bot className="w-10 h-10 text-white" />
+            </div>
+
+            <h3 className="text-3xl font-extrabold tracking-tight">Bot Manager</h3>
+            <p className="text-sm text-blue-100/90 mt-2.5 mb-7 max-w-xs leading-relaxed">
+              {lang === "ar"
+                ? "هل تريد الوصول إلى إعدادات بوت العميل ولوحات العمل؟"
+                : "Need access to client chatbot configurations and workspace dashboards?"}
+            </p>
+
+            {/* Ghost Button: CLIENT LOGIN */}
+            <button
+              type="button"
+              onClick={handleSwitchToClient}
+              className="border-2 border-white/90 text-white hover:bg-white hover:text-blue-700 text-xs font-bold tracking-widest uppercase py-3.5 px-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 cursor-pointer"
+            >
+              {lang === "ar" ? "دخول العميل" : "CLIENT LOGIN"}
+            </button>
+          </div>
+
+          {/* Sub-panel 2: Visible in Active State (When overlay is on the Left, covering Admin) */}
+          <div
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-700 ease-in-out ${
+              isRightPanelActive
+                ? "opacity-100 translate-x-0 pointer-events-auto"
+                : "opacity-0 translate-x-12 pointer-events-none"
+            }`}
+          >
+            {/* Robot Icon Badge */}
+            <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-5 shadow-inner">
+              <Bot className="w-10 h-10 text-white" />
+            </div>
+
+            <h3 className="text-3xl font-extrabold tracking-tight">Bot Manager</h3>
+            <p className="text-sm text-indigo-100/90 mt-2.5 mb-7 max-w-xs leading-relaxed">
+              {lang === "ar"
+                ? "الرجوع إلى لوحة تحكم المسؤول الرئيسية والإعدادات العامة؟"
+                : "Switching back to system administration and core master controls?"}
+            </p>
+
+            {/* Ghost Button: ADMIN LOGIN */}
+            <button
+              type="button"
+              onClick={handleSwitchToAdmin}
+              className="border-2 border-white/90 text-white hover:bg-white hover:text-indigo-700 text-xs font-bold tracking-widest uppercase py-3.5 px-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 cursor-pointer"
+            >
+              {lang === "ar" ? "دخول المسؤول" : "ADMIN LOGIN"}
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
