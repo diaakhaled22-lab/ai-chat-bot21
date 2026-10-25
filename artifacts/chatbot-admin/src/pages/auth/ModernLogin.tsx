@@ -452,7 +452,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         >
           <div className="w-full max-w-sm flex flex-col items-center text-center">
             {/* Client Building Icon */}
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 shadow-sm border border-indigo-100 dark:border-indigo-800">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
               <Building2 className="w-6 h-6" />
             </div>
 
@@ -478,7 +478,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   value={clientUsername}
                   onChange={(e) => setClientUsername(e.target.value)}
                   autoComplete="username"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                 />
               </div>
 
@@ -494,7 +494,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   value={clientPassword}
                   onChange={(e) => setClientPassword(e.target.value)}
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all"
+                  className="w-full pl-10 pr-11 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                 />
                 <button
                   type="button"
@@ -510,21 +510,11 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 </button>
               </div>
 
-              {/* Forgot Password Link */}
-              <div className="flex justify-end pt-0.5">
-                <Link
-                  href="/forgot-password"
-                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline transition-colors"
-                >
-                  {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
-                </Link>
-              </div>
-
               {/* Solid SIGN IN Button */}
               <button
                 type="submit"
                 disabled={clientLogin.isPending}
-                className="w-full mt-2 py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-indigo-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 flex items-center justify-center gap-2"
+                className="w-full mt-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2"
               >
                 {clientLogin.isPending ? (
                   <>
