@@ -312,7 +312,7 @@ export default function ClientChannels() {
           <Accordion type="multiple" defaultValue={["telegram","whatsapp","messenger"]} className="space-y-3">
 
             {/* ══ TELEGRAM ══════════════════════════════════════ */}
-            <AccordionItem value="telegram" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
+            <AccordionItem value="telegram" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="telegram" size={22} />
@@ -371,7 +371,7 @@ export default function ClientChannels() {
             </AccordionItem>
 
             {/* ══ WHATSAPP ══════════════════════════════════════ */}
-            <AccordionItem value="whatsapp" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
+            <AccordionItem value="whatsapp" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="whatsapp" size={22} />
@@ -464,7 +464,7 @@ export default function ClientChannels() {
             </AccordionItem>
 
             {/* ══ MESSENGER ═════════════════════════════════════ */}
-            <AccordionItem value="messenger" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
+            <AccordionItem value="messenger" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="messenger" size={22} />
@@ -533,7 +533,7 @@ export default function ClientChannels() {
             </AccordionItem>
 
             {/* ══ WEBSITE WIDGET ════════════════════════════════ */}
-            <AccordionItem value="widget" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
+            <AccordionItem value="widget" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="widget" size={22} />
@@ -589,7 +589,7 @@ export default function ClientChannels() {
           </Accordion>
 
           {/* ── Floating Action Button ───────────────────────── */}
-          <div className="rounded-xl border border-border/50 bg-card px-4 py-4">
+          <div className="rounded-xl border border-[#DCE7FF] bg-card px-4 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
@@ -645,11 +645,11 @@ export default function ClientChannels() {
 
                 <div
                   ref={fabPreviewRef}
-                  className="relative h-64 overflow-hidden rounded-xl border border-border/60 bg-slate-100 shadow-inner dark:bg-slate-950"
+                  className="relative h-64 overflow-hidden rounded-xl border border-[#DCE7FF] bg-slate-100 shadow-inner dark:bg-slate-950"
                   aria-label="Website preview for positioning the floating action button"
                 >
                   <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,rgba(100,116,139,.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,.18)_1px,transparent_1px)] [background-size:28px_28px]" />
-                  <div className="absolute inset-x-0 top-0 flex h-9 items-center gap-1.5 border-b border-slate-300/70 bg-white/75 px-3 dark:border-slate-700/70 dark:bg-slate-900/75">
+                  <div className="absolute inset-x-0 top-0 flex h-9 items-center gap-1.5 border-b border-[#DCE7FF] bg-white/75 px-3 dark:border-slate-700/70 dark:bg-slate-900/75">
                     <span className="h-2 w-2 rounded-full bg-red-400/80" />
                     <span className="h-2 w-2 rounded-full bg-amber-400/80" />
                     <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
@@ -752,7 +752,7 @@ export default function ClientChannels() {
           )}
 
           {/* ── Voice Notes & Audio AI (WhatsApp & Telegram) ── */}
-          <div className="bg-card border border-border/50 rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-[#DCE7FF] rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">

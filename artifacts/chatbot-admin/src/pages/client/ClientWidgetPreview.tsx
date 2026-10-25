@@ -247,7 +247,7 @@ export default function ClientWidgetPreview() {
       </div>
 
       {company && company.websiteChatbotKey ? (
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Bot className="w-5 h-5 text-violet-500" />
@@ -267,7 +267,7 @@ export default function ClientWidgetPreview() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-3">
             <Bot className="w-10 h-10 text-muted-foreground/40" />
             <p className="text-sm font-medium text-muted-foreground">{lang === "ar" ? "لم يتم تعيين مفتاح ويدجت الموقع" : "No Website Widget Key set"}</p>

@@ -391,7 +391,7 @@ export default function ClientAiModel() {
       </div>
 
       {/* ── 0. Active Operating Engine Hero Card (المحرك الفعلي المشغّل للردود) ── */}
-      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-card p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-[#DCE7FF] dark:border-slate-800 bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
             <div className={`p-2.5 rounded-xl ${activeMode === "quota" ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"} shrink-0`}>
@@ -430,7 +430,7 @@ export default function ClientAiModel() {
         {/* 3 Metric Pills */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
           {/* Active Provider */}
-          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-xs space-y-1">
+          <div className="rounded-lg bg-muted/30 border border-[#DCE7FF] p-3 text-xs space-y-1">
             <span className="text-muted-foreground block text-[11px] font-medium">
               {lang === "ar" ? "المزود المشغّل حالياً:" : "Operating Provider:"}
             </span>
@@ -449,7 +449,7 @@ export default function ClientAiModel() {
           </div>
 
           {/* Active Model */}
-          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-xs space-y-1">
+          <div className="rounded-lg bg-muted/30 border border-[#DCE7FF] p-3 text-xs space-y-1">
             <span className="text-muted-foreground block text-[11px] font-medium">
               {lang === "ar" ? "النموذج الذكي الفعلي:" : "Operating Model:"}
             </span>
@@ -459,7 +459,7 @@ export default function ClientAiModel() {
           </div>
 
           {/* Balance / Status */}
-          <div className="rounded-lg bg-muted/30 border border-border/50 p-3 text-xs space-y-1">
+          <div className="rounded-lg bg-muted/30 border border-[#DCE7FF] p-3 text-xs space-y-1">
             <span className="text-muted-foreground block text-[11px] font-medium">
               {activeMode === "quota" ? (lang === "ar" ? "رصيد الحصة الشهرية:" : "Monthly Token Quota:") : (lang === "ar" ? "حالة المفتاح الخاص:" : "Private API Key:")}
             </span>
@@ -549,7 +549,7 @@ export default function ClientAiModel() {
 
               {!aiStatusLoading && (aiStatus?.model || quotaModel) && (
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-background/50 px-2 py-0.5 rounded border border-border/50">
+                  <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-background/50 px-2 py-0.5 rounded border border-[#DCE7FF]">
                     {(aiStatus?.provider || (activeMode === "quota" ? quotaProvider : selectedProvider))} / {aiStatus?.model?.includes("nemotron-nano") ? "nvidia/nemotron-3.5-lightning:free" : (aiStatus?.model || (activeMode === "quota" ? quotaModel : selectedModel))}
                   </span>
                   <span
@@ -661,7 +661,7 @@ export default function ClientAiModel() {
           </div>
 
           {/* Switch Component */}
-          <div className="flex items-center gap-3 shrink-0 self-start sm:self-center bg-muted/40 border border-border/60 rounded-xl px-3.5 py-2">
+          <div className="flex items-center gap-3 shrink-0 self-start sm:self-center bg-muted/40 border border-[#DCE7FF] rounded-xl px-3.5 py-2">
             <span
               role="button"
               tabIndex={0}
@@ -701,7 +701,7 @@ export default function ClientAiModel() {
             className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
               activeMode === "quota"
                 ? "bg-amber-500/10 border-amber-500/40 text-foreground ring-1 ring-amber-500/30"
-                : "bg-muted/20 border-border/50 text-muted-foreground hover:bg-muted/40"
+                : "bg-muted/20 border-[#DCE7FF] text-muted-foreground hover:bg-muted/40"
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
@@ -736,7 +736,7 @@ export default function ClientAiModel() {
             className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
               activeMode === "tokens"
                 ? "bg-blue-500/10 border-blue-500/40 text-foreground ring-1 ring-blue-500/30"
-                : "bg-muted/20 border-border/50 text-muted-foreground hover:bg-muted/40"
+                : "bg-muted/20 border-[#DCE7FF] text-muted-foreground hover:bg-muted/40"
             }`}
           >
             <div className="flex items-center justify-between mb-1.5">
@@ -891,7 +891,7 @@ export default function ClientAiModel() {
           </div>
 
           {/* Provider Notice & Link to obtain key */}
-          <div className="flex items-start gap-3 rounded-xl bg-muted/40 border border-border/60 p-3.5 text-xs">
+          <div className="flex items-start gap-3 rounded-xl bg-muted/40 border border-[#DCE7FF] p-3.5 text-xs">
             <span className="text-base shrink-0">ℹ️</span>
             <div className="space-y-1">
               <p className="font-medium text-foreground">
@@ -1054,7 +1054,7 @@ export default function ClientAiModel() {
                 </p>
               </div>
 
-              <div className="border-t border-border/60 p-3.5">
+              <div className="border-t border-[#DCE7FF] p-3.5">
                 <div className="flex items-center rounded-lg border border-border bg-background overflow-hidden">
                   <div className="px-3 py-2.5 bg-muted/50 border-r border-border shrink-0">
                     <span className="font-mono text-xs text-muted-foreground">
@@ -1112,7 +1112,7 @@ export default function ClientAiModel() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#DCE7FF]">
             <Button
               type="button"
               variant="outline"

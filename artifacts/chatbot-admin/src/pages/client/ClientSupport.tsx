@@ -33,7 +33,7 @@ function TicketRow({
   const isOpen = ticket.status === "open";
 
   return (
-    <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-md ${isOpen ? "border-amber-500/40 bg-amber-500/[0.02]" : "border-border/80"}`}>
+    <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-md ${isOpen ? "border-amber-500/40 bg-amber-500/[0.02]" : "border-[#DCE7FF]"}`}>
       <div
         className="flex items-center justify-between gap-5 p-5 sm:p-6 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded((v) => !v)}
@@ -64,7 +64,7 @@ function TicketRow({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0 ps-3 sm:ps-4 border-s border-border/50">
+        <div className="flex items-center gap-3 shrink-0 ps-3 sm:ps-4 border-s border-[#DCE7FF]">
           <ConfirmDeleteDialog
             title={lang === "ar" ? "حذف تذكرة المشكلة" : "Delete Problem Ticket"}
             description={lang === "ar" ? "هل أنت متأكد من حذف هذه التذكرة والرسالة الخاصة بها نهائياً؟" : "Are you sure you want to permanently delete this problem ticket and message?"}
@@ -86,7 +86,7 @@ function TicketRow({
       </div>
 
       {expanded && (
-        <div className="px-6 pb-6 pt-6 space-y-6 border-t border-border/60 bg-muted/10">
+        <div className="px-6 pb-6 pt-6 space-y-6 border-t border-[#DCE7FF] bg-muted/10">
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t("support_your_problem")}</p>
@@ -105,7 +105,7 @@ function TicketRow({
                 </button>
               </ConfirmDeleteDialog>
             </div>
-            <div className="text-sm leading-relaxed bg-background border border-border/80 rounded-xl p-4 sm:p-5 whitespace-pre-wrap text-foreground shadow-xs">
+            <div className="text-sm leading-relaxed bg-background border border-[#DCE7FF] rounded-xl p-4 sm:p-5 whitespace-pre-wrap text-foreground shadow-xs">
               {ticket.description}
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function ClientSupport() {
 
       {/* Submit form */}
       {showForm && (
-        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
           <h2 className="font-semibold text-sm sm:text-base">{t("support_new_ticket")}</h2>
           <div className="space-y-3">
             <div>

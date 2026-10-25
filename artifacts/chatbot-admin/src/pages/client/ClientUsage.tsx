@@ -110,7 +110,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border ${color}`}>
         <Icon className="w-6 h-6" />
       </div>
@@ -296,7 +296,7 @@ export default function ClientUsage() {
 
       {/* NO QUOTA STATE: Only display data if admin has assigned a quota to the client */}
       {!isLoading && !isError && !hasQuota && (
-        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto my-8 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto my-8 shadow-sm hover:shadow-md transition-all">
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-5 shadow-inner">
             <Coins className="w-8 h-8" />
           </div>
@@ -321,7 +321,7 @@ export default function ClientUsage() {
             </Link>
             <Link
               href="/client/support"
-              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-foreground font-semibold text-xs sm:text-sm transition-all inline-flex items-center gap-2 border border-slate-200 dark:border-slate-700"
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-foreground font-semibold text-xs sm:text-sm transition-all inline-flex items-center gap-2 border border-[#DCE7FF] dark:border-slate-700"
             >
               <LifeBuoy className="w-4 h-4" />
               <span>{lang === "ar" ? "طلب تخصيص حصة من الإدارة" : "Request Admin Quota"}</span>
@@ -334,7 +334,7 @@ export default function ClientUsage() {
       {!isLoading && !isError && hasQuota && (
         <>
           {/* Quota Progress Banner */}
-          <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+          <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
@@ -461,7 +461,7 @@ export default function ClientUsage() {
             <>
               {/* Pie charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                   <h2 className="text-base font-semibold mb-1">{t("usage_tokens_chart")}</h2>
                   <p className="text-xs text-muted-foreground mb-4">
                     {lang === "ar" ? "رسائل العملاء (مدخلات) مقابل ردود البوت (مخرجات)" : "Customer messages (input) vs bot responses (output)"}
@@ -491,7 +491,7 @@ export default function ClientUsage() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                   <h2 className="text-base font-semibold mb-1">{t("usage_channel_breakdown")}</h2>
                   <p className="text-xs text-muted-foreground mb-4">
                     {lang === "ar" ? "إجمالي الرموز المستهلكة عبر كل قناة تواصل" : "Total tokens consumed across each messaging channel"}
@@ -537,8 +537,8 @@ export default function ClientUsage() {
 
               {/* Breakdown table */}
               {data!.byChannel.length > 0 && (
-                <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-                  <div className="px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+                  <div className="px-6 py-4 border-b border-[#DCE7FF] dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
                     <h2 className="text-base font-semibold">{t("usage_channel_breakdown")}</h2>
                     <span className="text-xs text-muted-foreground">{rangeLabel}</span>
                   </div>

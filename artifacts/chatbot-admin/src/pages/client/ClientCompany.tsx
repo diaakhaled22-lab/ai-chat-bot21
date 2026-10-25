@@ -110,7 +110,7 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
   };
 
   return (
-    <Card className="bg-card border-border/50 border-blue-500/30">
+    <Card className="bg-card border-[#DCE7FF] border-blue-500/30">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <ChannelIcon channel="messenger" size={20} /> Messenger Setup
@@ -177,7 +177,7 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
           )}
         </div>
 
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
+        <div className="rounded-lg border border-[#DCE7FF] bg-muted/20 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-muted-foreground">
             {lang === "ar" ? "متطلبات Meta:" : "Meta requirements:"}
           </p>
@@ -188,7 +188,7 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
           </p>
         </div>
 
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
+        <div className="rounded-lg border border-[#DCE7FF] bg-muted/20 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-muted-foreground">How it works after setup:</p>
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span>① User sends a message to your Facebook Page</span>
@@ -235,7 +235,7 @@ function WhatsAppSetupCard({ company }: { company: { isActive: boolean; whatsapp
   };
 
   return (
-    <Card className="bg-card border-border/50 border-green-500/30">
+    <Card className="bg-card border-[#DCE7FF] border-green-500/30">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <ChannelIcon channel="whatsapp" size={20} /> WhatsApp Setup
@@ -306,7 +306,7 @@ function WhatsAppSetupCard({ company }: { company: { isActive: boolean; whatsapp
           )}
         </div>
 
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
+        <div className="rounded-lg border border-[#DCE7FF] bg-muted/20 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-muted-foreground">How it works after setup:</p>
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span>① User sends a message to your WhatsApp number</span>
@@ -658,7 +658,7 @@ export default function ClientCompany() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           
-          <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
+          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="w-5 h-5 text-primary" />
@@ -743,7 +743,7 @@ export default function ClientCompany() {
       </Form>
 
       {company && company.telegramBotApiKey && (
-        <Card className="bg-card border-border/50 border-sky-500/30">
+        <Card className="bg-card border-[#DCE7FF] border-sky-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <ChannelIcon channel="telegram" size={20} /> Telegram Bot Setup
@@ -804,7 +804,7 @@ export default function ClientCompany() {
               </div>
             )}
 
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
+            <div className="rounded-lg border border-[#DCE7FF] bg-muted/20 p-3 space-y-1.5">
               <p className="text-xs font-semibold text-muted-foreground">How it works after registration:</p>
               <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <span>① User sends a message to your Telegram bot</span>
@@ -826,7 +826,7 @@ export default function ClientCompany() {
       )}
 
       {company && hasConnectedChannel && (
-        <Card className="bg-card border-border/50 border-primary/20">
+        <Card className="bg-card border-[#DCE7FF] border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="w-5 h-5 text-primary" />
@@ -839,7 +839,7 @@ export default function ClientCompany() {
           <CardContent className="space-y-6">
 
             {/* Architecture flow */}
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+            <div className="rounded-xl border border-[#DCE7FF] bg-muted/20 p-4 space-y-3">
               {/* Row 1: Inputs */}
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                 {lang === "ar" ? "مصادر المعرفة والبيانات" : "Knowledge & Data Sources"}
@@ -1098,7 +1098,7 @@ export default function ClientCompany() {
                     </div>
 
                     {/* Breakdown of both models: Platform Quota vs Company API Key */}
-                    <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="mt-3 pt-3 border-t border-[#DCE7FF] grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {/* Platform Quota Box */}
                       <div className={`p-2.5 rounded-lg border transition-all ${
                         isQuotaMode
@@ -1370,7 +1370,7 @@ ${fabRows.join('\n')}
         const snippet = company.fabEnabled ? fabSnippet : standardLines.join("\n");
 
         return (
-          <Card className="bg-card border-border/50 border-emerald-500/20">
+          <Card className="bg-card border-[#DCE7FF] border-emerald-500/20">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Send className="w-5 h-5 text-emerald-500" />

@@ -956,7 +956,7 @@ export default function ClientUniversalChat() {
                         <button
                           key={r.id}
                           onClick={() => handleSelectQuickReply(r.content)}
-                          className="flex flex-col text-start px-3 py-2 hover:bg-muted focus:bg-muted transition-colors border-b border-border/50 last:border-0"
+                          className="flex flex-col text-start px-3 py-2 hover:bg-muted focus:bg-muted transition-colors border-b border-[#DCE7FF] last:border-0"
                         >
                           <span className="font-medium text-sm text-primary">/{r.title}</span>
                           <span className="text-xs text-muted-foreground truncate w-full">{r.content}</span>

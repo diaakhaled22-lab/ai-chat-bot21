@@ -162,7 +162,7 @@ export default function ClientSettings() {
       </div>
 
       {/* Language */}
-      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
         <CardHeader className="p-5 sm:p-6 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-800/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
@@ -184,7 +184,7 @@ export default function ClientSettings() {
               className={`flex items-center justify-between p-4 rounded-xl border-2 text-sm font-semibold transition-all ${
                 lang === "en"
                   ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-500/20"
-                  : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground hover:text-foreground bg-muted/20"
+                  : "border-[#DCE7FF] dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground hover:text-foreground bg-muted/20"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -206,7 +206,7 @@ export default function ClientSettings() {
               className={`flex items-center justify-between p-4 rounded-xl border-2 text-sm font-semibold transition-all ${
                 lang === "ar"
                   ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-500/20"
-                  : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground hover:text-foreground bg-muted/20"
+                  : "border-[#DCE7FF] dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground hover:text-foreground bg-muted/20"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ export default function ClientSettings() {
       </Card>
 
       {/* Account credentials */}
-      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
         <CardHeader className="p-5 sm:p-6 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-inner">
@@ -247,7 +247,7 @@ export default function ClientSettings() {
 
               {/* Current username display */}
               {me?.name && (
-                <div className="flex items-center justify-between gap-3 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between gap-3 text-sm bg-slate-50 dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
                       <User className="w-4 h-4" />
@@ -272,7 +272,7 @@ export default function ClientSettings() {
                       <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> {lang === "ar" ? "اسم المستخدم الجديد" : "New Username"}
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder={lang === "ar" ? "اتركه فارغاً للإبقاء على الحالي" : "Leave blank to keep current"} {...field} className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500" />
+                      <Input placeholder={lang === "ar" ? "اتركه فارغاً للإبقاء على الحالي" : "Leave blank to keep current"} {...field} className="bg-background rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-blue-500" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -294,7 +294,7 @@ export default function ClientSettings() {
                           type="email"
                           placeholder={lang === "ar" ? "أدخل بريد Gmail لتلقي الإشعارات" : "Enter Gmail to receive notifications"}
                           {...field}
-                          className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500"
+                          className="bg-background rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-blue-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -315,7 +315,7 @@ export default function ClientSettings() {
                         <PasswordInput
                           placeholder="re_xxxxxxxxxxxxxxxxx"
                           {...field}
-                          className="bg-background font-mono text-xs rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500"
+                          className="bg-background font-mono text-xs rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-blue-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -361,7 +361,7 @@ export default function ClientSettings() {
                 </div>
               </div>
 
-              <div className="border-t border-slate-200/80 dark:border-slate-800 pt-5 space-y-4">
+              <div className="border-t border-[#DCE7FF] dark:border-slate-800 pt-5 space-y-4">
                 <FormField
                   control={form.control}
                   name="currentPassword"
@@ -371,7 +371,7 @@ export default function ClientSettings() {
                         <Lock className="w-4 h-4 text-slate-500" /> {t("label_current_password")}
                       </FormLabel>
                       <FormControl>
-                        <PasswordInput placeholder={lang === "ar" ? "مطلوبة فقط عند تغيير اسم المستخدم أو كلمة المرور" : "Required only when changing username or password"} {...field} className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500" />
+                        <PasswordInput placeholder={lang === "ar" ? "مطلوبة فقط عند تغيير اسم المستخدم أو كلمة المرور" : "Required only when changing username or password"} {...field} className="bg-background rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-blue-500" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -386,7 +386,7 @@ export default function ClientSettings() {
                         <Lock className="w-4 h-4 text-slate-500" /> {t("label_new_password_optional")}
                       </FormLabel>
                       <FormControl>
-                        <PasswordInput placeholder={lang === "ar" ? "اتركها فارغة للإبقاء على الحالية" : "Leave blank to keep current"} {...field} className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500" />
+                        <PasswordInput placeholder={lang === "ar" ? "اتركها فارغة للإبقاء على الحالية" : "Leave blank to keep current"} {...field} className="bg-background rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-blue-500" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

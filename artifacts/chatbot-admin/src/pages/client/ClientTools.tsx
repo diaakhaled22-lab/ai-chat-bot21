@@ -460,7 +460,7 @@ export default function ClientTools() {
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
           <Card className="border-border bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
-            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 bg-gradient-to-r from-blue-500/5 via-card to-background">
+            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCE7FF] bg-gradient-to-r from-blue-500/5 via-card to-background">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
                   <CalendarIcon className="w-6 h-6 text-blue-500" />
@@ -605,7 +605,7 @@ export default function ClientTools() {
                   </div>
 
                   {/* Credentials Section */}
-                  <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3">
+                  <div className="p-4 rounded-xl border border-[#DCE7FF] bg-muted/20 space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -902,7 +902,7 @@ export default function ClientTools() {
                       return (
                         <div
                           key={evt.id}
-                          className="p-3.5 rounded-xl border border-border/80 bg-background/60 hover:bg-background/90 transition-all space-y-2"
+                          className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 hover:bg-background/90 transition-all space-y-2"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -986,7 +986,7 @@ export default function ClientTools() {
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
           <Card className="border-border bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
-            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 bg-gradient-to-r from-emerald-500/5 via-card to-background">
+            <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCE7FF] bg-gradient-to-r from-emerald-500/5 via-card to-background">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
                   <FileSpreadsheet className="w-6 h-6 text-emerald-500" />
@@ -1156,7 +1156,7 @@ export default function ClientTools() {
                   </div>
 
                   {/* Service Account Credentials Card */}
-                  <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-3">
+                  <div className="p-4 rounded-xl border border-[#DCE7FF] bg-muted/20 space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -1289,7 +1289,7 @@ export default function ClientTools() {
                 </CardHeader>
 
                 <CardContent className="space-y-4 text-xs">
-                  <div className="p-3.5 rounded-xl border border-border/80 bg-background/60 space-y-2">
+                  <div className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 space-y-2">
                     <h5 className="font-semibold text-foreground flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                       {isAr ? "تسجيل بيانات العملاء (Leads Capture)" : "Lead Capture Logging"}
@@ -1301,7 +1301,7 @@ export default function ClientTools() {
                     </p>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-border/80 bg-background/60 space-y-2">
+                  <div className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 space-y-2">
                     <h5 className="font-semibold text-foreground flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                       {isAr ? "الأعمدة الموثقة في الجدول" : "Recorded Columns"}
