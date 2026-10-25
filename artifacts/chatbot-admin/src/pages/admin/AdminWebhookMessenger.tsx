@@ -500,7 +500,7 @@ export default function AdminWebhookMessenger() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="bg-card border-blue-500/20">
+        <Card className="bg-card border-blue-500/20 border-l-4 border-l-[#2D5BE3]">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-xl shrink-0">📨</div>
             <div>
@@ -509,7 +509,7 @@ export default function AdminWebhookMessenger() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-green-500/20">
+        <Card className="bg-card border-green-500/20 border-l-4 border-l-[#2D5BE3]">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-xl shrink-0">💬</div>
             <div>

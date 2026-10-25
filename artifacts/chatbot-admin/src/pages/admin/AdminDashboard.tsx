@@ -544,7 +544,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Pie chart + model table */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 mb-6 overflow-hidden">
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 mb-6 overflow-hidden border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Cost Breakdown by Model</CardTitle>
             <p className="text-xs text-muted-foreground">Estimated USD cost per AI model · {rangeLabel}</p>
@@ -607,7 +607,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Per-company breakdown table */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden mb-6">
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden mb-6 border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
@@ -738,7 +738,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Quota Assigned Companies table */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden">
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
@@ -837,7 +837,7 @@ export default function AdminDashboard() {
 
         {/* Summary cards */}
         <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">AI Solve Rate</span>
               <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-900/30 text-violet-500 flex items-center justify-center shadow-xs">
@@ -861,7 +861,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Avg. Resolution Time</span>
               <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
@@ -889,7 +889,7 @@ export default function AdminDashboard() {
             })()}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Open vs Resolved</span>
               <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">
@@ -914,7 +914,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Model breakdown */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden">
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
               <Bot className="w-4 h-4 text-violet-500" />
@@ -974,7 +974,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 5. System Status Operations Card */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-l-4 border-l-[#2D5BE3]">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
             <Activity className="w-6 h-6" />
