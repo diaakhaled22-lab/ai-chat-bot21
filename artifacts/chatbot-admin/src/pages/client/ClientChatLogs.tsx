@@ -290,26 +290,58 @@ export default function ClientChatLogs() {
 
   return (
     <div className="space-y-6 flex flex-col flex-1 pb-10">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t("chat_logs_title")}</h1>
-          <p className="text-muted-foreground mt-2">{t("chat_logs_desc")}</p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button onClick={handleExportCSV} disabled={!logs?.length} variant="outline" className="bg-card">
-            <Download className="w-4 h-4 mr-2" />
-            {lang === "ar" ? "تصدير CSV" : "Export CSV"}
-          </Button>
-          <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-            {t("btn_refresh")}
-          </Button>
+      {/* ── Bot Manager Hero Operations Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10 shrink-0"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-comments text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "سجلات المحادثات للشركة" : "Live Chat Telemetry"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {t("chat_logs_title")}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {t("chat_logs_desc")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+            <Button
+              onClick={handleExportCSV}
+              disabled={!logs?.length}
+              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+            </Button>
+            <Button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              {t("btn_refresh")}
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Retention Policy Banner (Read-only for client, managed by admin) */}
-      <Card className="bg-card border-border shrink-0">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm shrink-0">
         <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -451,7 +483,7 @@ export default function ClientChatLogs() {
       </div>
 
       {/* Inbox View Layout */}
-      <Card className="flex-1 min-h-[600px] overflow-hidden flex border-border">
+      <Card className="flex-1 min-h-[600px] overflow-hidden flex border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
         
         {/* Left Pane: Sessions List */}
         <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>

@@ -357,29 +357,41 @@ export default function ClientAiModel() {
   return (
     <div className="space-y-8 max-w-4xl pb-12">
       {/* ── Header ── */}
-      <div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5">
-          <Link href="/client/dashboard" className="hover:text-foreground transition-colors">
-            {lang === "ar" ? "الرئيسية" : "Dashboard"}
-          </Link>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium">
-            {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
-          </span>
+      {/* ── Bot Manager Hero Operations Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-microchip text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "محرك الذكاء الاصطناعي المركزي" : "AI Intelligence Engine"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "تحكم في مزود الذكاء الاصطناعي، النموذج الذكي، مفاتيح الـ API، ونمط تشغيل الرموز لشركتك."
+                  : "Manage your AI provider, model selection, API credentials, and execution mode."}
+              </p>
+            </div>
+          </div>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2.5">
-          <Cpu className="w-8 h-8 text-primary shrink-0" />
-          {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
-        </h1>
-        <p className="text-muted-foreground mt-1.5 text-sm">
-          {lang === "ar"
-            ? "تحكم في مزود الذكاء الاصطناعي، النموذج الذكي، مفاتيح الـ API، ونمط تشغيل الرموز لشركتك."
-            : "Manage your AI provider, model selection, API credentials, and execution mode."}
-        </p>
       </div>
 
       {/* ── 0. Active Operating Engine Hero Card (المحرك الفعلي المشغّل للردود) ── */}
-      <div className="rounded-xl border border-border/70 bg-card p-5 shadow-xs space-y-4">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
             <div className={`p-2.5 rounded-xl ${activeMode === "quota" ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"} shrink-0`}>

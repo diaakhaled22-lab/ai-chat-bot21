@@ -110,14 +110,14 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex items-start gap-4">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+    <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-inner border border-white/10 ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5">{label}</p>
-        <p className="text-2xl font-bold tabular-nums truncate">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sub}</p>}
       </div>
     </div>
   );
@@ -426,7 +426,7 @@ export default function ClientUsage() {
             <>
               {/* Pie charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card border border-border rounded-xl p-6">
+                <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                   <h2 className="text-base font-semibold mb-1">{t("usage_tokens_chart")}</h2>
                   <p className="text-xs text-muted-foreground mb-4">
                     {lang === "ar" ? "رسائل العملاء (مدخلات) مقابل ردود البوت (مخرجات)" : "Customer messages (input) vs bot responses (output)"}
@@ -456,7 +456,7 @@ export default function ClientUsage() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl p-6">
+                <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                   <h2 className="text-base font-semibold mb-1">{t("usage_channel_breakdown")}</h2>
                   <p className="text-xs text-muted-foreground mb-4">
                     {lang === "ar" ? "إجمالي الرموز المستهلكة عبر كل قناة تواصل" : "Total tokens consumed across each messaging channel"}

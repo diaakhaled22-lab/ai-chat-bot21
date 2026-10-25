@@ -514,10 +514,34 @@ export default function ClientUniversalChat() {
 
   return (
     <div className="space-y-6 flex flex-col flex-1 pb-10 h-full min-h-[700px]">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{lang === "ar" ? "المحادثة الشاملة" : "Universal Chat"}</h1>
-          <p className="text-muted-foreground mt-2">{lang === "ar" ? "إدارة المحادثات الحية والتدخل البشري" : "Manage live conversations and human handoff"}</p>
+      {/* ── Bot Manager Hero Operations Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10 shrink-0"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-comments text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live Agent Desk & Human Handoff
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "المحادثة الشاملة والتدخل البشري" : "Universal Chat & Live Agent"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar" ? "إدارة المحادثات الحية، استقبال التدخل البشري، والرد الفوري على العملاء." : "Manage live conversations, human handoff, and immediate replies."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

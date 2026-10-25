@@ -262,7 +262,7 @@ export default function ClientChannels() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-6 max-w-4xl">
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-40 w-full" />
@@ -272,19 +272,37 @@ export default function ClientChannels() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl pb-12">
+    <div className="space-y-6 max-w-4xl pb-12">
 
-      {/* ── Header ───────────────────────────────────────────── */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <MessageCircle className="w-4.5 h-4.5 text-primary" />
+      {/* ── Bot Manager Hero Operations Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-satellite-dish text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Multi-Channel Deployment
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {t("channels_title")}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {t("channels_desc")}
+              </p>
+            </div>
           </div>
-          <h1 className="text-xl font-semibold">{t("channels_title")}</h1>
         </div>
-        <p className="text-sm text-muted-foreground pl-11.5">
-          {t("channels_desc")}
-        </p>
       </div>
 
       {/* ── Form ─────────────────────────────────────────────── */}
@@ -294,7 +312,7 @@ export default function ClientChannels() {
           <Accordion type="multiple" defaultValue={["telegram","whatsapp","messenger"]} className="space-y-3">
 
             {/* ══ TELEGRAM ══════════════════════════════════════ */}
-            <AccordionItem value="telegram" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
+            <AccordionItem value="telegram" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="telegram" size={22} />
@@ -353,7 +371,7 @@ export default function ClientChannels() {
             </AccordionItem>
 
             {/* ══ WHATSAPP ══════════════════════════════════════ */}
-            <AccordionItem value="whatsapp" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
+            <AccordionItem value="whatsapp" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="whatsapp" size={22} />
@@ -446,7 +464,7 @@ export default function ClientChannels() {
             </AccordionItem>
 
             {/* ══ MESSENGER ═════════════════════════════════════ */}
-            <AccordionItem value="messenger" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
+            <AccordionItem value="messenger" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="messenger" size={22} />
@@ -515,7 +533,7 @@ export default function ClientChannels() {
             </AccordionItem>
 
             {/* ══ WEBSITE WIDGET ════════════════════════════════ */}
-            <AccordionItem value="widget" className="bg-card border border-border/50 rounded-xl px-1 overflow-hidden">
+            <AccordionItem value="widget" className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                   <ChannelIcon channel="widget" size={22} />

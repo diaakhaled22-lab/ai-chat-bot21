@@ -220,21 +220,46 @@ export default function ClientSupport() {
 
   return (
     <div className="space-y-6 w-full">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border/50">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("support_title")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {t("support_desc")}
-          </p>
+      {/* ── Bot Manager Hero Operations Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-life-ring text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Helpdesk & Troubleshooting
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {t("support_title")}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {t("support_desc")}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setShowForm((v) => !v)}
+            className="bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0"
+          >
+            {showForm ? <><X className="w-4 h-4 mr-1.5" />{t("btn_cancel")}</> : <><Plus className="w-4 h-4 mr-1.5" />{t("support_new_ticket")}</>}
+          </Button>
         </div>
-        <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? "outline" : "default"} size="sm" className="shrink-0">
-          {showForm ? <><X className="w-4 h-4 mr-1.5" />{t("btn_cancel")}</> : <><Plus className="w-4 h-4 mr-1.5" />{t("support_new_ticket")}</>}
-        </Button>
       </div>
 
       {/* Submit form */}
       {showForm && (
-        <div className="bg-card border border-border rounded-xl p-5 sm:p-6 space-y-4 shadow-sm">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
           <h2 className="font-semibold text-sm sm:text-base">{t("support_new_ticket")}</h2>
           <div className="space-y-3">
             <div>
@@ -265,6 +290,7 @@ export default function ClientSupport() {
               onClick={() => submitMutation.mutate()}
               disabled={!title.trim() || !description.trim() || submitMutation.isPending}
               size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-5"
             >
               {submitMutation.isPending
                 ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t("loading")}</>

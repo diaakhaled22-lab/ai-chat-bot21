@@ -139,14 +139,14 @@ export default function ClientSettings() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{t("client_settings_title")}</h1>
         <p className="text-muted-foreground mt-2">{t("client_settings_desc")}</p>
       </div>
 
       {/* Language */}
-      <Card className="bg-card">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-primary" />
@@ -183,7 +183,7 @@ export default function ClientSettings() {
       </Card>
 
       {/* Account credentials */}
-      <Card className="bg-card">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-primary" />
@@ -335,7 +335,7 @@ export default function ClientSettings() {
                 />
               </div>
 
-              <Button type="submit" disabled={updateSettings.isPending}>
+              <Button type="submit" disabled={updateSettings.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-6">
                 {updateSettings.isPending ? t("btn_saving") : t("btn_save_changes")}
               </Button>
             </form>

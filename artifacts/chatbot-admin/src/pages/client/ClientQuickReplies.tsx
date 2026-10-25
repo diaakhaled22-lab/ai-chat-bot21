@@ -74,7 +74,7 @@ export default function ClientQuickReplies() {
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Form */}
-        <Card className="md:col-span-1 h-fit">
+        <Card className="md:col-span-1 h-fit border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <MessageSquarePlus className="w-5 h-5 text-primary" />
@@ -96,7 +96,7 @@ export default function ClientQuickReplies() {
               />
             </div>
             <Button 
-              className="w-full" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25" 
               onClick={() => createMutation.mutate()} 
               disabled={!title.trim() || !content.trim() || createMutation.isPending}
             >
@@ -125,7 +125,7 @@ export default function ClientQuickReplies() {
           ) : (
             <div className="grid gap-3">
               {responses.map((res) => (
-                <Card key={res.id}>
+                <Card key={res.id} className="border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
                   <CardContent className="p-4 flex gap-4 items-start justify-between group">
                     <div className="space-y-1 overflow-hidden">
                       <div className="font-semibold text-primary flex items-center gap-2">

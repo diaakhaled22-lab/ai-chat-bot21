@@ -120,17 +120,39 @@ export default function ClientLeads() {
 
   return (
     <div className="flex flex-col h-full bg-background/50 p-4 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            {lang === "ar" ? "العملاء المحتملين (Leads)" : "Leads CRM"}
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            {lang === "ar" ? "تتبع بيانات العملاء المهتمين التي يجمعها الذكاء الاصطناعي." : "Track customer contact details collected automatically by AI."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button onClick={handleExportCSV} disabled={!filteredLeads.length} variant="outline" className="bg-card w-full sm:w-auto">
+      {/* ── Bot Manager Hero Operations Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-users text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "قاعدة العملاء المحتملين" : "AI Lead Generation"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "العملاء المحتملين (Leads CRM)" : "Leads CRM"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar" ? "تتبع بيانات العملاء المهتمين التي يجمعها الذكاء الاصطناعي تلقائياً." : "Track customer contact details collected automatically by AI."}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleExportCSV}
+            disabled={!filteredLeads.length}
+            className="bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+          >
             <Download className="w-4 h-4 mr-2" />
             {t("btn_export_csv" as any) || "Export CSV"}
           </Button>
@@ -138,7 +160,7 @@ export default function ClientLeads() {
       </div>
 
       {/* Retention Policy Banner */}
-      <Card className="bg-card border-border shrink-0">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm shrink-0">
         <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -203,7 +225,7 @@ export default function ClientLeads() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex-1 flex flex-col min-h-[300px]">
+      <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex-1 flex flex-col min-h-[300px]">
         <div className="overflow-x-auto flex-1 max-w-[100vw] sm:max-w-none">
           <table className="w-full text-sm text-left whitespace-nowrap min-w-[800px]">
             <thead className="text-xs text-muted-foreground bg-muted/30 uppercase sticky top-0">
