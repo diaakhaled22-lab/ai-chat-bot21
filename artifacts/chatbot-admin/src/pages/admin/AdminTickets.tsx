@@ -814,31 +814,32 @@ export default function AdminTickets() {
         </div>
       </div>
 
-      {/* ── KPI Metric Cards ── */}
+      {/* ── KPI Metric Cards (Transparent White Frosted Glass) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {/* Total problems */}
         <Card
           onClick={() => setFilter("all")}
-          className={`cursor-pointer transition-all hover:border-primary/50 hover:shadow-xs relative overflow-hidden ${
-            filter === "all" ? "ring-2 ring-primary/40 border-primary bg-primary/5" : "bg-card/70 border-border/60"
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+            filter === "all"
+              ? "ring-2 ring-blue-600/60 border-blue-500/60 bg-white/95 dark:bg-white/20 shadow-md scale-[1.02]"
+              : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-blue-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: عرض الكل" : "Filter: View all"}
         >
-          <CardContent className="p-3.5 pt-3 relative flex flex-col items-center justify-center text-center min-h-[108px]">
-            {/* Icon on the right */}
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-primary/10 text-primary">
+          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
+            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-inner">
               <LifeBuoy className="w-4 h-4" />
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
               {lang === "ar" ? "إجمالي المشاكل" : "Total Problems"}
             </p>
             {isLoading ? (
-              <Skeleton className="h-7 w-14 mt-1" />
+              <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className="text-2xl font-bold mt-0.5 text-foreground">{totalCount}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-foreground tracking-tight tabular-nums">{totalCount}</h3>
             )}
-            <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate max-w-full">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium truncate max-w-full">
               {lang === "ar" ? "كافة التذاكر المسجلة" : "All logged tickets"}
             </p>
           </CardContent>
@@ -847,18 +848,21 @@ export default function AdminTickets() {
         {/* Open tickets */}
         <Card
           onClick={() => setFilter("open")}
-          className={`cursor-pointer transition-all hover:shadow-xs relative overflow-hidden ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
             filter === "open"
-              ? "ring-2 ring-amber-500/50 border-amber-500 bg-amber-500/10"
+              ? "ring-2 ring-amber-500/60 border-amber-500/60 bg-amber-50/90 dark:bg-amber-500/20 shadow-md scale-[1.02]"
               : openCount > 0
-              ? "border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60"
-              : "bg-card/70 border-border/60 hover:border-amber-500/40"
+              ? "bg-amber-50/60 dark:bg-amber-500/10 border border-amber-400/40 hover:border-amber-500/60 hover:bg-amber-50/80 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+              : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-amber-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: المشاكل قيد الانتظار" : "Filter: Open issues"}
         >
-          <CardContent className="p-3.5 pt-3 relative flex flex-col items-center justify-center text-center min-h-[108px]">
-            {/* Icon on the right */}
-            <div className={`absolute top-2.5 right-2.5 p-1.5 rounded-lg ${openCount > 0 ? "bg-amber-500/20 text-amber-500" : "bg-muted text-muted-foreground"}`}>
+          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
+            <div className={`absolute top-2.5 right-2.5 p-1.5 rounded-xl border ${
+              openCount > 0
+                ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-inner"
+                : "bg-white/50 dark:bg-white/10 text-slate-400 border-white/20"
+            }`}>
               <AlertCircle className="w-4 h-4" />
               {openCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
@@ -868,17 +872,17 @@ export default function AdminTickets() {
               )}
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
               {lang === "ar" ? "قيد الانتظار" : "Open Issues"}
             </p>
             {isLoading ? (
-              <Skeleton className="h-7 w-14 mt-1" />
+              <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className={`text-2xl font-bold mt-0.5 ${openCount > 0 ? "text-amber-500" : "text-foreground"}`}>
+              <h3 className={`text-2xl sm:text-3xl font-black mt-1 tracking-tight tabular-nums ${openCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
                 {openCount}
               </h3>
             )}
-            <p className="text-[10px] text-amber-500/80 mt-0.5 truncate max-w-full">
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5 truncate max-w-full">
               {lang === "ar" ? "تحتاج إلى حل" : "Requires attention"}
             </p>
           </CardContent>
@@ -887,26 +891,27 @@ export default function AdminTickets() {
         {/* Resolved tickets */}
         <Card
           onClick={() => setFilter("resolved")}
-          className={`cursor-pointer transition-all hover:border-emerald-500/50 hover:shadow-xs relative overflow-hidden ${
-            filter === "resolved" ? "ring-2 ring-emerald-500/50 border-emerald-500 bg-emerald-500/10" : "bg-card/70 border-border/60"
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+            filter === "resolved"
+              ? "ring-2 ring-emerald-500/60 border-emerald-500/60 bg-emerald-50/90 dark:bg-emerald-500/20 shadow-md scale-[1.02]"
+              : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-emerald-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: المشاكل المحلولة" : "Filter: Resolved"}
         >
-          <CardContent className="p-3.5 pt-3 relative flex flex-col items-center justify-center text-center min-h-[108px]">
-            {/* Icon on the right */}
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
+            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-inner">
               <CheckCircle2 className="w-4 h-4" />
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
               {lang === "ar" ? "تم الحل بنجاح" : "Resolved"}
             </p>
             {isLoading ? (
-              <Skeleton className="h-7 w-14 mt-1" />
+              <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className="text-2xl font-bold mt-0.5 text-emerald-500">{resolvedCount}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums">{resolvedCount}</h3>
             )}
-            <p className="text-[10px] text-emerald-500/80 mt-0.5 truncate max-w-full">
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5 truncate max-w-full">
               {lang === "ar" ? "مكتملة ومغلقة" : "Successfully closed"}
             </p>
           </CardContent>
@@ -915,26 +920,27 @@ export default function AdminTickets() {
         {/* AI Solved tickets */}
         <Card
           onClick={() => setFilter("ai_solved")}
-          className={`cursor-pointer transition-all hover:border-violet-500/50 hover:shadow-xs relative overflow-hidden ${
-            filter === "ai_solved" ? "ring-2 ring-violet-500/50 border-violet-500 bg-violet-500/10" : "bg-card/70 border-border/60"
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+            filter === "ai_solved"
+              ? "ring-2 ring-violet-500/60 border-violet-500/60 bg-violet-50/90 dark:bg-violet-500/20 shadow-md scale-[1.02]"
+              : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-violet-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: حلول الذكاء الاصطناعي" : "Filter: AI solved"}
         >
-          <CardContent className="p-3.5 pt-3 relative flex flex-col items-center justify-center text-center min-h-[108px]">
-            {/* Icon on the right */}
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-violet-500/10 text-violet-400">
+          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
+            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20 shadow-inner">
               <Bot className="w-4 h-4" />
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
               {lang === "ar" ? "حلول الـ AI" : "AI Solved"}
             </p>
             {isLoading ? (
-              <Skeleton className="h-7 w-14 mt-1" />
+              <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className="text-2xl font-bold mt-0.5 text-violet-400">{aiSolvedCount}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-violet-600 dark:text-violet-400 tracking-tight tabular-nums">{aiSolvedCount}</h3>
             )}
-            <p className="text-[10px] text-violet-400/80 mt-0.5 truncate max-w-full">
+            <p className="text-[11px] text-violet-600 dark:text-violet-400 font-medium mt-0.5 truncate max-w-full">
               {lang === "ar" ? "حُلت تلقائياً بالذكاء" : "Automated resolution"}
             </p>
           </CardContent>
@@ -943,48 +949,48 @@ export default function AdminTickets() {
         {/* Manual Solved tickets */}
         <Card
           onClick={() => setFilter("manual_solved")}
-          className={`cursor-pointer transition-all hover:border-sky-500/50 hover:shadow-xs relative overflow-hidden ${
-            filter === "manual_solved" ? "ring-2 ring-sky-500/50 border-sky-500 bg-sky-500/10" : "bg-card/70 border-border/60"
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden ${
+            filter === "manual_solved"
+              ? "ring-2 ring-sky-500/60 border-sky-500/60 bg-sky-50/90 dark:bg-sky-500/20 shadow-md scale-[1.02]"
+              : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-sky-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: حلول يدوية" : "Filter: Manual solved"}
         >
-          <CardContent className="p-3.5 pt-3 relative flex flex-col items-center justify-center text-center min-h-[108px]">
-            {/* Icon on the right */}
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-sky-500/10 text-sky-400">
+          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
+            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-inner">
               <UserCheck className="w-4 h-4" />
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
               {lang === "ar" ? "حلول يدوية" : "Manual Solved"}
             </p>
             {isLoading ? (
-              <Skeleton className="h-7 w-14 mt-1" />
+              <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className="text-2xl font-bold mt-0.5 text-sky-400">{manualCount}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-sky-600 dark:text-sky-400 tracking-tight tabular-nums">{manualCount}</h3>
             )}
-            <p className="text-[10px] text-sky-400/80 mt-0.5 truncate max-w-full">
+            <p className="text-[11px] text-sky-600 dark:text-sky-400 font-medium mt-0.5 truncate max-w-full">
               {lang === "ar" ? "بواسطة فريق الدعم" : "By support team"}
             </p>
           </CardContent>
         </Card>
 
         {/* AI Resolution Rate */}
-        <Card className="bg-card/70 border-border/60 relative overflow-hidden">
-          <CardContent className="p-3.5 pt-3 relative flex flex-col items-center justify-center text-center min-h-[108px]">
-            {/* Icon on the right */}
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
+        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
+            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
               <TrendingUp className="w-4 h-4" />
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
               {lang === "ar" ? "نسبة نجاح الـ AI" : "AI Success Rate"}
             </p>
             {isLoading ? (
-              <Skeleton className="h-7 w-14 mt-1" />
+              <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className="text-2xl font-bold mt-0.5 text-indigo-400">{aiPercent}%</h3>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-indigo-600 dark:text-indigo-400 tracking-tight tabular-nums">{aiPercent}%</h3>
             )}
-            <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate max-w-full">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium truncate max-w-full">
               {lang === "ar" ? `${aiSolvedCount} من ${resolvedCount || totalCount} محلولة` : `${aiSolvedCount} of ${resolvedCount || totalCount} solved`}
             </p>
           </CardContent>

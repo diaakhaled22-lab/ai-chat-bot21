@@ -300,33 +300,33 @@ export default function ClientSupport() {
         </div>
       )}
 
-      {/* Stats row - fills width in responsive grid */}
+      {/* Stats row (Transparent White Frosted Glass) */}
       {tickets.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="bg-card border border-amber-500/30 bg-amber-500/[0.04] rounded-xl p-4 sm:p-5 flex items-center justify-between shadow-xs">
+          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md transition-all">
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("support_pending")}</p>
-              <p className="text-3xl font-bold text-amber-500 mt-1">{openCount}</p>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t("support_pending")}</p>
+              <p className="text-3xl font-black text-amber-500 mt-1 tabular-nums">{openCount}</p>
             </div>
-            <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+            <div className="p-3 bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 rounded-2xl shadow-inner">
               <AlertCircle className="w-6 h-6" />
             </div>
           </div>
-          <div className="bg-card border border-emerald-500/30 bg-emerald-500/[0.04] rounded-xl p-4 sm:p-5 flex items-center justify-between shadow-xs">
+          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md transition-all">
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("support_resolved")}</p>
-              <p className="text-3xl font-bold text-emerald-500 mt-1">{resolvedCount}</p>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t("support_resolved")}</p>
+              <p className="text-3xl font-black text-emerald-500 mt-1 tabular-nums">{resolvedCount}</p>
             </div>
-            <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
+            <div className="p-3 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 rounded-2xl shadow-inner">
               <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4 sm:p-5 flex items-center justify-between sm:col-span-2 lg:col-span-1 shadow-xs">
+          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between sm:col-span-2 lg:col-span-1 shadow-sm hover:shadow-md transition-all">
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{lang === "ar" ? "إجمالي التذاكر" : "Total Tickets"}</p>
-              <p className="text-3xl font-bold text-foreground mt-1">{tickets.length}</p>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{lang === "ar" ? "إجمالي التذاكر" : "Total Tickets"}</p>
+              <p className="text-3xl font-black text-foreground mt-1 tabular-nums">{tickets.length}</p>
             </div>
-            <div className="p-3 bg-primary/10 text-primary rounded-xl">
+            <div className="p-3 bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 rounded-2xl shadow-inner">
               <LifeBuoy className="w-6 h-6" />
             </div>
           </div>
