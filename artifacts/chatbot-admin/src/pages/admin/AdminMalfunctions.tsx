@@ -213,7 +213,12 @@ export default function AdminMalfunctions() {
     },
   });
 
-  const title = lang === "ar" ? "إدارة الأعطال" : "Manage Malfunctions";
+  const totalCount = malfunctions?.length ?? 0;
+  const activeCount = malfunctions?.filter((m) => m.isActive).length ?? 0;
+  const resolvedCount = totalCount - activeCount;
+  const aiDiagnosedCount = malfunctions?.filter((m) => Boolean(m.aiAnalysis)).length ?? 0;
+
+  const title = lang === "ar" ? "إدارة وتتبع الأعطال" : "Manage Malfunctions";
   const desc =
     lang === "ar"
       ? "متابعة وحل الأعطال وتشخيصها تلقائياً بالاعتماد على وكيل الدعم الفني الذكي (Support AI)."
@@ -221,21 +226,43 @@ export default function AdminMalfunctions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-          <p className="text-muted-foreground mt-2">{desc}</p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Report Malfunction Dialog */}
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-triangle-exclamation text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "مركز مراقبة وتشخيص الأعطال" : "Malfunctions & Diagnostics Center"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {title}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {desc}
+              </p>
+            </div>
+          </div>
+
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
-              <Button className="shrink-0 flex items-center gap-2">
-                <Plus className="w-4 h-4" />
+              <Button className="bg-white hover:bg-blue-50 text-blue-700 font-bold shadow-lg shadow-black/10 rounded-xl px-5 py-2.5 h-auto transition-all shrink-0 cursor-pointer">
+                <Plus className="w-4 h-4 mr-2" />
                 {lang === "ar" ? "تسجيل عطل جديد" : "Report Malfunction"}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg w-[calc(100vw-2rem)] max-w-[95vw] overflow-hidden">
+            <DialogContent className="sm:max-w-lg w-[calc(100vw-2rem)] max-w-[95vw] overflow-hidden rounded-2xl">
               <DialogHeader>
                 <DialogTitle>{lang === "ar" ? "تسجيل عطل جديد" : "Report New Malfunction"}</DialogTitle>
                 <DialogDescription>
@@ -251,6 +278,7 @@ export default function AdminMalfunctions() {
                     placeholder={lang === "ar" ? "مثال: توقف خدمة الواتساب مؤقتاً" : "e.g. WhatsApp service degraded"}
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
+                    className="rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
@@ -260,16 +288,18 @@ export default function AdminMalfunctions() {
                     rows={4}
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
+                    className="rounded-xl"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenCreate(false)}>
+                <Button variant="outline" onClick={() => setOpenCreate(false)} className="rounded-xl">
                   {lang === "ar" ? "إلغاء" : "Cancel"}
                 </Button>
                 <Button
                   disabled={!newTitle.trim() || !newDescription.trim() || createMutation.isPending}
                   onClick={() => createMutation.mutate({ title: newTitle.trim(), description: newDescription.trim() })}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 cursor-pointer"
                 >
                   {createMutation.isPending
                     ? (lang === "ar" ? "جاري الإرسال..." : "Sending...")
@@ -278,6 +308,49 @@ export default function AdminMalfunctions() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
+      </div>
+
+      {/* ── Summary Stats ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : totalCount}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "إجمالي الأعطال" : "Total Issues"}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 shadow-inner">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight text-red-600 dark:text-red-400">{isLoading ? "—" : activeCount}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "أعطال نشطة" : "Active Issues"}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight text-emerald-600 dark:text-emerald-400">{isLoading ? "—" : resolvedCount}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "أعطال تم حلها" : "Resolved"}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight text-purple-600 dark:text-purple-400">{isLoading ? "—" : aiDiagnosedCount}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "مشخصة بـ AI" : "AI Diagnosed"}</p>
+          </div>
         </div>
       </div>
 
@@ -313,7 +386,7 @@ export default function AdminMalfunctions() {
               <Alert
                 key={m.id}
                 variant={m.isActive ? "destructive" : "default"}
-                className={m.isActive ? "bg-red-500/5" : "bg-muted/50 border-muted"}
+                className={`rounded-2xl border p-5 transition-all shadow-sm ${m.isActive ? "bg-red-500/5 border-red-500/30" : "bg-card border-slate-200/80 dark:border-slate-800"}`}
               >
                 {m.isActive ? (
                   <AlertTriangle className="h-5 w-5" />

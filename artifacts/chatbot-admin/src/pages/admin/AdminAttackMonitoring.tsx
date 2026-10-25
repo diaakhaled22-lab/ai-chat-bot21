@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 
 type AttackEvent = "failed_attempt" | "warning_triggered" | "account_locked" | "blocked_attempt" | "ip_blocked" | "manual_ip_blocked" | "ip_unblocked";
 
@@ -69,6 +70,7 @@ function eventStyle(event: AttackEvent): string {
 
 export default function AdminAttackMonitoring() {
   const { toast } = useToast();
+  const { lang } = useLanguage();
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery<AttackMonitoringSnapshot>({
@@ -162,45 +164,64 @@ export default function AdminAttackMonitoring() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-            <ShieldAlert className="w-5 h-5 text-red-400" />
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-shield-halved text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "درع الحماية ومراقبة الهجمات" : "Security & Intrusion Telemetry"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "مراقبة الهجمات والأمان" : "Attack & Threat Monitoring"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "رصد محاولات تسجيل الدخول الفاشلة، وحظر العناوين المشبوهة، وحماية الحسابات تلقائياً."
+                  : "Monitor failed login attempts, account lockouts, and suspicious IP activity in real time."}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Attack Monitoring</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Monitor failed login attempts, account lockouts, and suspicious IP activity.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {data?.logs && data.logs.length > 0 && (
+
+          <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto shrink-0">
+            {data?.logs && data.logs.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 bg-white/15 hover:bg-red-500/30 text-white border-white/20 rounded-xl cursor-pointer"
+                onClick={() => {
+                  if (window.confirm(lang === "ar" ? "هل أنت متأكد من مسح جميع سجلات الهجمات؟" : "Are you sure you want to clear all recorded attack logs?")) {
+                    clearLogsMutation.mutate();
+                  }
+                }}
+                disabled={clearLogsMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 text-red-300" />
+                <span>{lang === "ar" ? "مسح السجلات" : "Clear Logs"}</span>
+              </Button>
+            )}
             <Button
-              variant="outline"
               size="sm"
-              className="gap-2 text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                if (window.confirm("Are you sure you want to clear all recorded attack logs?")) {
-                  clearLogsMutation.mutate();
-                }
-              }}
-              disabled={clearLogsMutation.isPending}
+              className="gap-2 bg-white hover:bg-blue-50 text-blue-700 font-bold shadow-lg shadow-black/10 rounded-xl px-4 py-2 text-xs cursor-pointer"
+              onClick={() => testAlertMutation.mutate()}
+              disabled={testAlertMutation.isPending}
             >
-              <Trash2 className="w-4 h-4" />
-              Clear Logs
+              {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4 text-amber-500" />}
+              <span>{lang === "ar" ? "إرسال تنبيه أمني تجريبي" : "Send Test Security Alert"}</span>
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => testAlertMutation.mutate()}
-            disabled={testAlertMutation.isPending}
-          >
-            {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4 text-amber-500" />}
-            Send Test Security Alert
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -216,55 +237,80 @@ export default function AdminAttackMonitoring() {
         </Card>
       )}
 
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Failed in last 5 min</CardTitle>
-            <TrendingUp className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.recentFailedAttempts ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Warning trigger</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{policy.warningThreshold ?? 3} fails</div>
-            <p className="text-xs text-muted-foreground mt-1">Alerts bell & email</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Account lockout</CardTitle>
-            <Clock3 className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{policy.maxFailedAttempts} fails</div>
-            <p className="text-xs text-muted-foreground mt-1">Locks account for {policy.accountLockoutMinutes} min</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Suspicious activity</CardTitle>
-            <Ban className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">IP Block</div>
-            <p className="text-xs text-muted-foreground mt-1">after {policy.additionalAttemptsBeforeIpBlock} more attempts</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Recorded failed attempts</CardTitle>
-            <Activity className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{analytics?.totalFailedAttempts ?? 0}</div>
-          </CardContent>
-        </Card>
+            {/* ── Security KPI Cards ── */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 shadow-inner">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400 leading-tight">
+              {analytics?.recentFailedAttempts ?? 0}
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              {lang === "ar" ? "فشل خلال 5 دقائق" : "Failed in last 5m"}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold tabular-nums leading-tight">
+              {policy.warningThreshold ?? 3} <span className="text-xs font-normal text-muted-foreground">{lang === "ar" ? "مرات" : "fails"}</span>
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              {lang === "ar" ? "حد إرسال التحذير" : "Warning trigger"}
+            </p>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">{lang === "ar" ? "تنبيه إشعارات وبريد" : "Bell & email"}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-inner">
+            <Clock3 className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold tabular-nums leading-tight">
+              {policy.maxFailedAttempts} <span className="text-xs font-normal text-muted-foreground">{lang === "ar" ? "مرات" : "fails"}</span>
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              {lang === "ar" ? "قفل الحساب" : "Account lockout"}
+            </p>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">{lang === "ar" ? `قفل لمدة ${policy.accountLockoutMinutes} دقيقة` : `Locks for ${policy.accountLockoutMinutes}m`}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner">
+            <Ban className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold text-rose-600 dark:text-rose-400 leading-tight">
+              {lang === "ar" ? "حظر الـ IP" : "IP Block"}
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              {lang === "ar" ? "نشاط مشبوه" : "Suspicious activity"}
+            </p>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">{lang === "ar" ? `بعد ${policy.additionalAttemptsBeforeIpBlock} محاولات` : `+${policy.additionalAttemptsBeforeIpBlock} attempts`}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+            <Activity className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold tabular-nums text-foreground leading-tight">
+              {analytics?.totalFailedAttempts ?? 0}
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              {lang === "ar" ? "إجمالي المحاولات الفاشلة" : "Total Failed"}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -329,7 +375,7 @@ export default function AdminAttackMonitoring() {
       </div>
 
       {data?.blockedIps && data.blockedIps.length > 0 && (
-        <Card className="bg-red-500/5 border-red-500/20">
+        <Card className="bg-red-500/5 border border-red-500/30 rounded-2xl shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2 text-red-300">
               <Ban className="w-4 h-4" />
