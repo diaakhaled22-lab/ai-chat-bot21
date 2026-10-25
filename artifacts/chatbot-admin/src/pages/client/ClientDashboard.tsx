@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import {
@@ -20,6 +21,7 @@ import {
   Layers,
   ShieldCheck,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useLanguage } from "@/hooks/use-language";
@@ -75,14 +77,20 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card className="bg-card border-border/50">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium truncate pr-2">{label}</CardTitle>
-        <Icon className={`h-4 w-4 ${color.replace('bg-', 'text-').replace('/10', '')}`} />
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden group">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
+        <CardTitle className="text-xs sm:text-sm font-semibold text-muted-foreground truncate pr-2">
+          {label}
+        </CardTitle>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner border transition-transform group-hover:scale-105 ${color || "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"}`}>
+          <Icon className="w-5 h-5" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold tabular-nums truncate">{value}</div>
-        {sub && <p className="text-xs text-muted-foreground mt-1 truncate">{sub}</p>}
+      <CardContent className="px-5 pb-5">
+        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">
+          {value}
+        </div>
+        {sub && <p className="text-xs text-muted-foreground mt-1.5 truncate font-medium">{sub}</p>}
       </CardContent>
     </Card>
   );
@@ -102,7 +110,7 @@ const PieTooltip = ({ active, payload }: any) => {
 export default function ClientDashboard() {
   const { lang } = useLanguage();
 
-  const { data, isLoading, isError } = useQuery<DashboardData>({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery<DashboardData>({
     queryKey: ["client-dashboard"],
     queryFn: () => customFetch("/api/client/dashboard"),
     refetchInterval: 60 * 1000,
@@ -141,36 +149,67 @@ export default function ClientDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {lang === "ar"
-              ? "نظرة عامة على استهلاك الذكاء الاصطناعي والإحصائيات والتحليلات"
-              : "AI usage overview, model analytics, and conversation statistics"}
-          </p>
-        </div>
-        {data && (
-          <div className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-full border ${
-            data.isActive
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-400"
-          }`}>
-            {data.isActive
-              ? <><CheckCircle2 className="w-4 h-4" /> {lang === "ar" ? "نشط" : "Active"}</>
-              : <><XCircle className="w-4 h-4" /> {lang === "ar" ? "غير نشط" : "Inactive"}</>
-            }
+      {/* ── Bot Manager Hero Operations Banner matching Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-robot text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-2 border border-white/20">
+                <span className={`w-1.5 h-1.5 rounded-full ${data?.isActive ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+                <span>
+                  {data?.companyName ? `${data.companyName} • ` : ""}
+                  {data?.isActive
+                    ? (lang === "ar" ? "النظام نشط ومتصل" : "Connected & Active")
+                    : (lang === "ar" ? "النظام غير مفعل" : "Inactive")}
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "لوحة تحكم العميل الذكية" : "Client Operations Portal"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "متابعة استهلاك الذكاء الاصطناعي، أداء البوت عبر القنوات، الحصة الشهرية، وتحليلات المحادثات."
+                  : "AI usage telemetry, token consumption, quota management, and multi-channel customer analytics."}
+              </p>
+            </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 flex-wrap">
+            <Link href="/client/universal-chat">
+              <Button
+                className="bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all px-4"
+              >
+                <Sparkles className="w-4 h-4 mr-1.5 text-blue-600" />
+                {lang === "ar" ? "محادثة حية للبوت" : "Universal Chat"}
+              </Button>
+            </Link>
+            <Button
+              onClick={() => refetch()}
+              disabled={isFetching || isLoading}
+              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+              {lang === "ar" ? "تحديث" : "Refresh"}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Filter Buttons Group */}
-      <div className="bg-card border border-border/70 rounded-2xl p-2.5 shadow-sm space-y-3">
+      <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-1.5 p-1 bg-muted/70 rounded-xl border border-border/50">
+          <div className="inline-flex items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/40 rounded-xl border border-slate-200/60 dark:border-slate-800">
             {/* Filter 1: Own API Key Model */}
             <button
               type="button"
@@ -180,8 +219,8 @@ export default function ClientDashboard() {
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 filterMode === "own_key"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
               }`}
             >
               <KeyRound className="w-4 h-4 shrink-0" />
@@ -203,8 +242,8 @@ export default function ClientDashboard() {
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 filterMode === "quota"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
               }`}
             >
               <Coins className="w-4 h-4 shrink-0" />
@@ -298,7 +337,7 @@ export default function ClientDashboard() {
         <>
           {filterMode === "quota" ? (
             hasQuota ? (
-              <div className="bg-card border border-border rounded-xl p-5">
+              <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-amber-500" />
@@ -316,7 +355,7 @@ export default function ClientDashboard() {
                     {quotaPercent!.toFixed(1)}%
                   </span>
                 </div>
-                <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-700/60">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       quotaPercent! > 90 ? "bg-rose-500" : quotaPercent! > 75 ? "bg-amber-500" : "bg-emerald-500"
@@ -344,7 +383,7 @@ export default function ClientDashboard() {
                 )}
               </div>
             ) : (
-              <div className="bg-card border border-dashed border-border/80 rounded-xl p-5 flex items-center justify-between flex-wrap gap-4">
+              <div className="bg-card border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
                     <Coins className="w-5 h-5" />
@@ -369,7 +408,7 @@ export default function ClientDashboard() {
               </div>
             )
           ) : (
-            <div className="bg-card border border-border rounded-xl p-5 flex items-center justify-between flex-wrap gap-4">
+            <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className={`p-2.5 rounded-lg ${
                   data?.hasOwnApiKey ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
@@ -514,7 +553,7 @@ export default function ClientDashboard() {
           {totalTokens > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Token split pie */}
-              <div className="bg-card border border-border rounded-xl p-6">
+              <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                 <h2 className="text-base font-semibold mb-1">
                   {lang === "ar" ? "توزيع الرموز" : "Token Split"}
                 </h2>
@@ -535,7 +574,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* Channel breakdown pie */}
-              <div className="bg-card border border-border rounded-xl p-6">
+              <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
                 <h2 className="text-base font-semibold mb-1">
                   {lang === "ar" ? "توزيع القنوات" : "By Channel"}
                 </h2>
@@ -565,7 +604,7 @@ export default function ClientDashboard() {
 
           {/* Channel breakdown table */}
           {(data?.byChannel ?? []).length > 0 && (
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
               <div className="px-6 py-4 border-b border-border flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
                 <h2 className="text-base font-semibold">
@@ -615,7 +654,7 @@ export default function ClientDashboard() {
           {/* Sentiment Analysis Card */}
           {sentiments && (
             <div className="grid gap-4 md:grid-cols-2 mt-4">
-              <Card>
+              <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
                 <CardHeader>
                   <CardTitle className="text-sm font-medium flex items-center">
                     {lang === "ar" ? "تحليل مشاعر العملاء (ذكاء اصطناعي)" : "Customer Sentiment (AI)"}
@@ -668,7 +707,7 @@ export default function ClientDashboard() {
 
           {/* Empty state when no messages */}
           {totalTokens === 0 && (
-            <div className="bg-card border border-border rounded-xl p-12 flex flex-col items-center gap-3 text-muted-foreground">
+            <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-12 flex flex-col items-center gap-3 text-muted-foreground shadow-sm">
               <Coins className="w-12 h-12 opacity-20" />
               <p className="text-lg font-medium">
                 {lang === "ar" ? "لا يوجد استهلاك هذا الشهر" : "No usage this month"}
