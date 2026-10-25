@@ -16,6 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
+import { Users, UserCheck, Clock, ShieldCheck } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -42,6 +44,11 @@ export default function AdminClients() {
   const updateClient = useUpdateClient();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { lang } = useLanguage();
+
+  const totalClients = clients?.length ?? 0;
+  const configuredClients = clients?.filter((c: any) => c.hasCompany).length ?? 0;
+  const pendingClients = totalClients - configuredClients;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -119,19 +126,44 @@ export default function AdminClients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-          <p className="text-muted-foreground mt-2">Manage platform access for your clients.</p>
-        </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Client
-            </Button>
-          </DialogTrigger>
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-users text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "بوابة حسابات العملاء" : "Clients & Accounts"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "إدارة حسابات العملاء" : "Clients Directory"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "إدارة صلاحيات الدخول، الحسابات المسجلة، وربط الشركات بلوحة تحكم العملاء."
+                  : "Manage client platform access, credentials, and company attachments."}
+              </p>
+            </div>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-white hover:bg-blue-50 text-blue-700 font-bold shadow-lg shadow-black/10 rounded-xl px-5 py-2.5 h-auto transition-all shrink-0 cursor-pointer">
+                <Plus className="w-4 h-4 mr-2" />
+                {lang === "ar" ? "إضافة عميل جديد" : "Add Client"}
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Client</DialogTitle>
@@ -210,7 +242,41 @@ export default function AdminClients() {
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-2 bg-card p-4 rounded-lg border border-border">
+      {/* ── Summary Stats ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : totalClients}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "إجمالي العملاء" : "Total Clients"}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
+            <UserCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : configuredClients}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "حسابات مربوطة بشركات" : "Configured Companies"}</p>
+          </div>
+        </div>
+
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : pendingClients}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "قيد الإعداد (بدون شركة)" : "Pending Setup"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Search Bar ── */}
+      <div className="flex items-center space-x-2 bg-card px-4 py-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <Search className="w-5 h-5 text-muted-foreground" />
         <Input 
           placeholder="Search clients..." 
@@ -220,7 +286,7 @@ export default function AdminClients() {
         />
       </div>
 
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
+      <div className="bg-card rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
