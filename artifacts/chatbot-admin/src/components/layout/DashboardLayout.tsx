@@ -878,23 +878,36 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const sidebarContent = (
     <>
 
-        {/* Logo */}
-        <div className="py-[15px] flex items-center gap-3 px-5 border-b border-border shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-            <Bot className="w-6 h-6 text-primary" />
+        {/* Logo - Bot Manager with Royal Blue Gradient Badge */}
+        <div className="py-[16px] flex items-center gap-3.5 px-5 border-b border-border/70 shrink-0 bg-slate-50/50 dark:bg-slate-900/40">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md shadow-blue-600/30 text-white"
+            style={{ background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)" }}
+          >
+            <i className="fa-solid fa-robot text-lg text-white"></i>
           </div>
-          <span className="font-bold text-xl tracking-tight whitespace-nowrap">Bot Manager</span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-300 bg-clip-text text-transparent truncate">
+              Bot Manager
+            </span>
+            <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase truncate">
+              Operations Center
+            </span>
+          </div>
         </div>
 
-        {/* User info */}
-        <div className="px-4 pt-4 pb-2 shrink-0">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
-              {user?.name?.charAt(0).toUpperCase() ?? "U"}
+        {/* User info with glassmorphic badge */}
+        <div className="px-4 pt-3.5 pb-2 shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-blue-600/30 shrink-0">
+              {user?.name?.charAt(0).toUpperCase() ?? "A"}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium leading-none truncate">{user?.name}</p>
-              <p className="text-xs font-bold text-foreground/85 dark:text-muted-foreground mt-1 capitalize">{user?.role}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold leading-tight text-foreground truncate">{user?.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 capitalize">{user?.role}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -926,8 +939,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     }}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors cursor-pointer select-none ${
                       isParentActive
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold"
+                        : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-foreground"
                     }`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-primary" : "text-muted-foreground"}`} />
@@ -951,8 +964,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                             onClick={() => setMobileMenuOpen(false)}
                             className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                               isSubActive
-                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                ? "bg-blue-600 text-white font-semibold shadow-sm"
+                                : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-foreground"
                             }`}
                           >
                             <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
@@ -971,7 +984,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold shadow-md shadow-blue-600/25" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-foreground"}`}
               >
                 <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
                 <span className="flex-1">{link.label}</span>

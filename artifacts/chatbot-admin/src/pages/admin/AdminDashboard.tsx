@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/hooks/use-language";
 import { useGetAdminStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Users, CheckCircle2, XCircle, Activity, Coins, Zap, TrendingUp, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Download, Bot, Ticket, Clock, Sparkles } from "lucide-react";
@@ -170,6 +171,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useGetAdminStats();
+  const { lang } = useLanguage();
   const [activeRange, setActiveRange] = useState<RangePreset>("30d");
   const [showCustom, setShowCustom] = useState(false);
   const [customFrom, setCustomFrom] = useState(toIso(new Date(Date.now() - 30 * 86400000)));
@@ -301,205 +303,254 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Header with Unified Date Range Filter */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-1">
-            Platform statistics and metrics · <span className="text-foreground font-medium">{rangeLabel}</span>
+    <div className="space-y-7">
+      {/* 1. Hero Operations Banner matching Bot Manager Login aesthetic */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        {/* Soft atmospheric blurred circles */}
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex items-center gap-4 sm:gap-5">
+            {/* Robot Badge (exact style as Login page) */}
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-robot text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "مركز العمليات وإدارة المنصة" : "Bot Manager · Operations Center"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "لوحة تحكم المسؤول" : "Admin Operations Dashboard"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "متابعة استهلاك رموز الذكاء الاصطناعي، أداء الشركات، وتذاكر الدعم الفني المباشرة."
+                  : "Platform telemetry, AI token consumption, company deployments, and customer support analytics."}
+              </p>
+            </div>
+          </div>
+
+          {/* Global Date Filter Controls (Translucent frosted glass inside hero) */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start lg:self-auto shrink-0">
+            <div className="flex items-center gap-1 bg-black/20 backdrop-blur-md border border-white/20 rounded-xl p-1 overflow-x-auto max-w-full scrollbar-hide">
+              <Calendar className="w-3.5 h-3.5 text-blue-200 ml-1.5 shrink-0" />
+              {RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                    !showCustom && activeRange === opt.key
+                      ? "bg-white text-blue-700 shadow-sm"
+                      : "text-white/80 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowCustom((v) => !v)}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                  showCustom
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <span>Custom</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+
+            {showCustom && (
+              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-3 py-1.5 shadow-sm text-xs text-white">
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="bg-transparent text-white outline-none text-xs [color-scheme:dark]"
+                />
+                <span className="text-white/70">→</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={toIso(new Date())}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="bg-transparent text-white outline-none text-xs [color-scheme:dark]"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Platform Stat Cards (Rounded 2xl with soft shadows & vibrant badges) */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Total Companies */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Companies</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+              <Building2 className="w-4 h-4" />
+            </div>
+          </div>
+          {isLoading ? <Skeleton className="h-8 w-20" /> : (
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              {stats?.totalCompanies || 0}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 mt-1.5">Registered organizations</p>
+        </div>
+
+        {/* Active Companies */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Companies</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          {isLoading ? <Skeleton className="h-8 w-20" /> : (
+            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+              {stats?.activeCompanies || 0}
+            </div>
+          )}
+          <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live & responding
           </p>
         </div>
 
-        {/* Global Date Filter Controls */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start md:self-auto">
-          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1 overflow-x-auto max-w-full scrollbar-hide">
-            <Calendar className="w-3.5 h-3.5 text-muted-foreground ml-1.5 shrink-0" />
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
-                  !showCustom && activeRange === opt.key
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-            <button
-              onClick={() => setShowCustom((v) => !v)}
-              className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
-                showCustom
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              }`}
-            >
-              <span>Custom</span>
-              <ChevronDown className="w-3 h-3" />
-            </button>
+        {/* Inactive Companies */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive Companies</span>
+            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs">
+              <XCircle className="w-4 h-4" />
+            </div>
           </div>
-
-          {showCustom && (
-            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1.5 shadow-sm text-xs">
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="bg-transparent text-foreground outline-none text-xs"
-              />
-              <span className="text-muted-foreground">→</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom}
-                max={toIso(new Date())}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="bg-transparent text-foreground outline-none text-xs"
-              />
+          {isLoading ? <Skeleton className="h-8 w-20" /> : (
+            <div className="text-3xl font-extrabold text-slate-600 dark:text-slate-300 tracking-tight">
+              {stats?.inactiveCompanies || 0}
             </div>
           )}
+          <p className="text-[11px] text-slate-400 mt-1.5">Paused / setup pending</p>
+        </div>
+
+        {/* Quota Assigned */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quota Assigned</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
+              <Coins className="w-4 h-4" />
+            </div>
+          </div>
+          {isLoading ? <Skeleton className="h-8 w-20" /> : (
+            <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+              {(stats as any)?.quotaCompanies || 0}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 mt-1.5">Monthly token limits active</p>
+        </div>
+
+        {/* Total Clients */}
+        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+          <div className="flex items-center justify-between pb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          {isLoading ? <Skeleton className="h-8 w-20" /> : (
+            <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
+              {stats?.totalClients || 0}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 mt-1.5">Client portal accounts</p>
         </div>
       </div>
 
-      {/* Platform stat cards */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
-            <Building2 className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-bold">{stats?.totalCompanies || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Active Companies</CardTitle>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-bold">{stats?.activeCompanies || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Inactive Companies</CardTitle>
-            <XCircle className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-bold">{stats?.inactiveCompanies || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Quota Assigned</CardTitle>
-            <Coins className="w-4 h-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-bold">{(stats as any)?.quotaCompanies || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-bold">{stats?.totalClients || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Usage & Cost Section */}
+      {/* 3. AI Usage & Cost Section */}
       <div>
         {/* Section Header */}
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
             AI Usage &amp; Cost Estimation
           </h2>
-          <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2.5 py-1 rounded-md flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-lg flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-blue-600" />
             Showing: {rangeLabel}
           </span>
         </div>
 
         {/* Summary cards */}
-        <div className="grid gap-6 md:grid-cols-3 mb-6">
-          <Card className="bg-card border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Tokens Used</CardTitle>
-              <Zap className="w-4 h-4 text-amber-400" />
-            </CardHeader>
-            <CardContent>
-              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
-                <>
-                  <div className="text-3xl font-bold">{formatTokens(usage?.totalTokens ?? 0)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatTokens(usage?.totalInputTokens ?? 0)} in · {formatTokens(usage?.totalOutputTokens ?? 0)} out
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid gap-5 md:grid-cols-3 mb-6">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Tokens Used</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
+                <Zap className="w-4 h-4" />
+              </div>
+            </div>
+            {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+              <>
+                <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{formatTokens(usage?.totalTokens ?? 0)}</div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium">
+                  {formatTokens(usage?.totalInputTokens ?? 0)} in · {formatTokens(usage?.totalOutputTokens ?? 0)} out
+                </p>
+              </>
+            )}
+          </div>
 
-          <Card className="bg-card border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Estimated Total Cost</CardTitle>
-              <Coins className="w-4 h-4 text-emerald-400" />
-            </CardHeader>
-            <CardContent>
-              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
-                <>
-                  <div className="text-3xl font-bold">{formatCost(usage?.totalCostUsd ?? 0)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Based on official API pricing rates</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated Total Cost</span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs">
+                <Coins className="w-4 h-4" />
+              </div>
+            </div>
+            {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+              <>
+                <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{formatCost(usage?.totalCostUsd ?? 0)}</div>
+                <p className="text-xs text-slate-400 mt-1.5">Based on official API pricing rates</p>
+              </>
+            )}
+          </div>
 
-          <Card className="bg-card border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Models in Use</CardTitle>
-              <Activity className="w-4 h-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
-                <>
-                  <div className="text-3xl font-bold">{usage?.byModel?.length ?? 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {usage?.byModel?.map((m) => m.model).join(", ") || "No models used yet"}
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Models in Use</span>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">
+                <Activity className="w-4 h-4" />
+              </div>
+            </div>
+            {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+              <>
+                <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">{usage?.byModel?.length ?? 0}</div>
+                <p className="text-xs text-slate-400 mt-1.5 truncate">
+                  {usage?.byModel?.map((m) => m.model).join(", ") || "No models used yet"}
+                </p>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Pie chart + model table */}
-        <Card className="bg-card border-border/50 mb-6">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Cost Breakdown by Model</CardTitle>
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 mb-6 overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Cost Breakdown by Model</CardTitle>
             <p className="text-xs text-muted-foreground">Estimated USD cost per AI model · {rangeLabel}</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {usageLoading ? (
               <div className="flex items-center justify-center h-64">
                 <Skeleton className="h-48 w-48 rounded-full" />
@@ -520,7 +571,7 @@ export default function AdminDashboard() {
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend formatter={(value) => <span className="text-xs text-foreground">{value}</span>} />
+                      <Legend formatter={(value) => <span className="text-xs text-foreground font-medium">{value}</span>} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -529,23 +580,23 @@ export default function AdminDashboard() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-muted-foreground border-b border-border/50">
-                        <th className="text-left pb-2 font-medium">Model</th>
-                        <th className="text-right pb-2 font-medium">Tokens</th>
-                        <th className="text-right pb-2 font-medium">Est. Cost</th>
+                        <th className="text-left pb-2 font-semibold">Model</th>
+                        <th className="text-right pb-2 font-semibold">Tokens</th>
+                        <th className="text-right pb-2 font-semibold">Est. Cost</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
                       {(usage?.byModel ?? []).map((m) => (
                         <tr key={m.model} className="hover:bg-muted/20 transition-colors">
-                          <td className="py-2">
+                          <td className="py-2.5">
                             <div className="flex items-center gap-2">
                               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: MODEL_COLORS[m.model] ?? MODEL_COLORS["unknown"] }} />
-                              <span className="font-medium truncate">{m.model}</span>
+                              <span className="font-semibold truncate">{m.model}</span>
                               <span className="text-muted-foreground/60 capitalize shrink-0">({m.provider})</span>
                             </div>
                           </td>
-                          <td className="py-2 text-right tabular-nums">{formatTokens(m.inputTokens + m.outputTokens)}</td>
-                          <td className="py-2 text-right tabular-nums font-medium text-emerald-400">{formatCost(m.costUsd)}</td>
+                          <td className="py-2.5 text-right tabular-nums">{formatTokens(m.inputTokens + m.outputTokens)}</td>
+                          <td className="py-2.5 text-right tabular-nums font-bold text-emerald-500 dark:text-emerald-400">{formatCost(m.costUsd)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -557,17 +608,17 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Per-company breakdown table */}
-        <Card className="bg-card border-border/50">
-          <CardHeader>
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden mb-6">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                <Building2 className="w-4 h-4 text-blue-600" />
                 Usage by Company
               </CardTitle>
               <button
                 onClick={exportCSV}
                 disabled={sortedCompanies.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border/50 bg-muted/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export CSV
@@ -589,11 +640,11 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-border/50 bg-muted/20">
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Company</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Model</th>
+                    <tr className="border-b border-border/50 bg-slate-50/70 dark:bg-slate-800/40">
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Company</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Model</th>
                       <th
-                        className="text-right px-4 py-2.5 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                        className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none"
                         onClick={() => toggleSort("messages")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
@@ -601,7 +652,7 @@ export default function AdminDashboard() {
                         </span>
                       </th>
                       <th
-                        className="text-right px-4 py-2.5 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                        className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none"
                         onClick={() => toggleSort("inputTokens")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
@@ -609,7 +660,7 @@ export default function AdminDashboard() {
                         </span>
                       </th>
                       <th
-                        className="text-right px-4 py-2.5 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                        className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none"
                         onClick={() => toggleSort("outputTokens")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
@@ -617,7 +668,7 @@ export default function AdminDashboard() {
                         </span>
                       </th>
                       <th
-                        className="text-right px-4 py-2.5 font-medium text-muted-foreground cursor-pointer hover:text-foreground select-none"
+                        className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none"
                         onClick={() => toggleSort("costUsd")}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
@@ -631,32 +682,32 @@ export default function AdminDashboard() {
                       const totalTokens = usage?.totalTokens ?? 0;
                       const share = totalTokens > 0 ? ((c.inputTokens + c.outputTokens) / totalTokens) * 100 : 0;
                       return (
-                        <tr key={c.companyId} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
+                        <tr key={c.companyId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center shrink-0">
                                 {i + 1}
                               </span>
                               <div>
-                                <p className="font-medium text-foreground">{c.companyName}</p>
-                                <p className="text-muted-foreground/60 capitalize">{c.provider}</p>
+                                <p className="font-semibold text-foreground">{c.companyName}</p>
+                                <p className="text-muted-foreground/60 capitalize text-[10px]">{c.provider}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             <div className="flex items-center gap-1.5">
                               <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.model] ?? MODEL_COLORS["unknown"] }} />
-                              <span className="font-mono">{c.model}</span>
+                              <span className="font-mono text-[11px]">{c.model}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right tabular-nums">{c.messages.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">{formatTokens(c.inputTokens)}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">{formatTokens(c.outputTokens)}</td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3.5 text-right tabular-nums font-medium">{c.messages.toLocaleString()}</td>
+                          <td className="px-4 py-3.5 text-right tabular-nums font-medium">{formatTokens(c.inputTokens)}</td>
+                          <td className="px-4 py-3.5 text-right tabular-nums font-medium">{formatTokens(c.outputTokens)}</td>
+                          <td className="px-4 py-3.5 text-right">
                             <div className="flex flex-col items-end gap-1">
-                              <span className="tabular-nums font-semibold text-emerald-400">{formatCost(c.costUsd)}</span>
-                              <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                                <div className="h-full rounded-full bg-emerald-500/60" style={{ width: `${Math.min(share, 100)}%` }} />
+                              <span className="tabular-nums font-bold text-emerald-500 dark:text-emerald-400">{formatCost(c.costUsd)}</span>
+                              <div className="w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div className="h-full rounded-full bg-emerald-500/80" style={{ width: `${Math.min(share, 100)}%` }} />
                               </div>
                             </div>
                           </td>
@@ -665,18 +716,18 @@ export default function AdminDashboard() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-border bg-muted/10">
-                      <td className="px-4 py-2.5 text-xs font-semibold text-muted-foreground" colSpan={2}>Total</td>
-                      <td className="px-4 py-2.5 text-right text-xs font-semibold tabular-nums">
+                    <tr className="border-t border-border bg-slate-50/50 dark:bg-slate-800/50">
+                      <td className="px-4 py-3 text-xs font-bold text-foreground" colSpan={2}>Total</td>
+                      <td className="px-4 py-3 text-right text-xs font-bold tabular-nums">
                         {sortedCompanies.reduce((s, c) => s + c.messages, 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-xs font-semibold tabular-nums">
+                      <td className="px-4 py-3 text-right text-xs font-bold tabular-nums">
                         {formatTokens(usage?.totalInputTokens ?? 0)}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-xs font-semibold tabular-nums">
+                      <td className="px-4 py-3 text-right text-xs font-bold tabular-nums">
                         {formatTokens(usage?.totalOutputTokens ?? 0)}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-xs font-bold text-emerald-400 tabular-nums">
+                      <td className="px-4 py-3 text-right text-xs font-extrabold text-emerald-500 dark:text-emerald-400 tabular-nums">
                         {formatCost(usage?.totalCostUsd ?? 0)}
                       </td>
                     </tr>
@@ -688,15 +739,15 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Quota Assigned Companies table */}
-        <Card className="bg-card border-border/50">
-          <CardHeader>
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
                 <Coins className="w-4 h-4 text-amber-500" />
                 Quota Assigned Companies
               </CardTitle>
-              <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2.5 py-0.5 rounded-md flex items-center gap-1.5">
-                <Calendar className="w-3 h-3 text-primary" />
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 border border-slate-200 dark:border-slate-700">
+                <Calendar className="w-3 h-3 text-blue-600" />
                 {rangeLabel}
               </span>
             </div>
@@ -716,13 +767,13 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-border/50 bg-muted/20">
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Company</th>
-                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Model</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Quota Assigned</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Messages</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Tokens Used</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Est. Cost</th>
+                    <tr className="border-b border-border/50 bg-slate-50/70 dark:bg-slate-800/40">
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Company</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Model</th>
+                      <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Quota Assigned</th>
+                      <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Messages</th>
+                      <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Tokens Used</th>
+                      <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Est. Cost</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
@@ -730,36 +781,36 @@ export default function AdminDashboard() {
                       const totalUsed = c.inputTokens + c.outputTokens;
                       const quotaShare = c.monthlyTokenQuota > 0 ? (totalUsed / c.monthlyTokenQuota) * 100 : 0;
                       return (
-                        <tr key={c.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
+                        <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0">
                                 {i + 1}
                               </span>
                               <div>
-                                <p className="font-medium text-foreground">{c.name}</p>
-                                <p className="text-muted-foreground/60 capitalize">{c.provider ?? "unknown"}</p>
+                                <p className="font-semibold text-foreground">{c.name}</p>
+                                <p className="text-muted-foreground/60 capitalize text-[10px]">{c.provider ?? "unknown"}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             <div className="flex items-center gap-1.5">
                               <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MODEL_COLORS[c.model ?? ""] ?? MODEL_COLORS["unknown"] }} />
-                              <span className="font-mono">{c.model ?? "unknown"}</span>
+                              <span className="font-mono text-[11px]">{c.model ?? "unknown"}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right tabular-nums">{formatTokens(c.monthlyTokenQuota)}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">{c.messages.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right tabular-nums">
+                          <td className="px-4 py-3.5 text-right tabular-nums font-medium">{formatTokens(c.monthlyTokenQuota)}</td>
+                          <td className="px-4 py-3.5 text-right tabular-nums font-medium">{c.messages.toLocaleString()}</td>
+                          <td className="px-4 py-3.5 text-right tabular-nums">
                             <div className="flex flex-col items-end gap-1">
-                              <span>{formatTokens(totalUsed)}</span>
-                              <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                                <div className={`h-full rounded-full ${quotaShare > 90 ? 'bg-rose-500' : quotaShare > 75 ? 'bg-amber-500' : 'bg-emerald-500/60'}`} style={{ width: `${Math.min(quotaShare, 100)}%` }} />
+                              <span className="font-medium">{formatTokens(totalUsed)}</span>
+                              <div className="w-16 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div className={`h-full rounded-full ${quotaShare > 90 ? 'bg-rose-500' : quotaShare > 75 ? 'bg-amber-500' : 'bg-emerald-500/80'}`} style={{ width: `${Math.min(quotaShare, 100)}%` }} />
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className="tabular-nums font-semibold text-emerald-400">{formatCost(c.costUsd)}</span>
+                          <td className="px-4 py-3.5 text-right">
+                            <span className="tabular-nums font-bold text-emerald-500 dark:text-emerald-400">{formatCost(c.costUsd)}</span>
                           </td>
                         </tr>
                       );
@@ -772,107 +823,107 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Ticket Analytics Section */}
+      {/* 4. Ticket Analytics Section */}
       <div>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <Ticket className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">Support Ticket Analytics</h2>
+            <Ticket className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Support Ticket Analytics</h2>
           </div>
-          <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-2.5 py-1 rounded-md flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200 dark:border-slate-700">
+            <Calendar className="w-3.5 h-3.5 text-blue-600" />
             Showing: {rangeLabel}
           </span>
         </div>
 
         {/* Summary cards */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <Card className="bg-card border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">AI Solve Rate</CardTitle>
-              <Sparkles className="w-4 h-4 text-violet-400" />
-            </CardHeader>
-            <CardContent>
-              {ticketStatsLoading ? <Skeleton className="h-8 w-24" /> : (
-                <>
-                  <div className="text-3xl font-bold">{ticketStats?.aiSolveRate ?? 0}%</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {ticketStats?.aiSolved ?? 0} of {ticketStats?.total ?? 0} tickets answered by AI
-                  </p>
-                  {/* progress bar */}
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-violet-500/70 transition-all"
-                      style={{ width: `${ticketStats?.aiSolveRate ?? 0}%` }}
-                    />
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid gap-5 md:grid-cols-3 mb-6">
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">AI Solve Rate</span>
+              <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-900/30 text-violet-500 flex items-center justify-center shadow-xs">
+                <Sparkles className="w-4 h-4" />
+              </div>
+            </div>
+            {ticketStatsLoading ? <Skeleton className="h-8 w-24" /> : (
+              <>
+                <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 tracking-tight">{ticketStats?.aiSolveRate ?? 0}%</div>
+                <p className="text-xs text-slate-400 mt-1.5">
+                  {ticketStats?.aiSolved ?? 0} of {ticketStats?.total ?? 0} tickets answered by AI
+                </p>
+                {/* progress bar */}
+                <div className="mt-3 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all"
+                    style={{ width: `${ticketStats?.aiSolveRate ?? 0}%` }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
 
-          <Card className="bg-card border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Avg. Resolution Time</CardTitle>
-              <Clock className="w-4 h-4 text-amber-400" />
-            </CardHeader>
-            <CardContent>
-              {ticketStatsLoading ? <Skeleton className="h-8 w-24" /> : (() => {
-                const ms  = ticketStats?.avgResolutionMs ?? 0;
-                const mins = Math.floor(ms / 60000);
-                const hrs  = Math.floor(mins / 60);
-                const days = Math.floor(hrs / 24);
-                const label = ms === 0 ? "—"
-                  : days > 0 ? `${days}d ${hrs % 24}h`
-                  : hrs  > 0 ? `${hrs}h ${mins % 60}m`
-                  : mins > 0 ? `${mins}m`
-                  : "<1m";
-                return (
-                  <>
-                    <div className="text-3xl font-bold">{label}</div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Across {ticketStats?.resolved ?? 0} resolved tickets
-                    </p>
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Open vs Resolved</CardTitle>
-              <Bot className="w-4 h-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              {ticketStatsLoading ? <Skeleton className="h-8 w-24" /> : (
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Avg. Resolution Time</span>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            {ticketStatsLoading ? <Skeleton className="h-8 w-24" /> : (() => {
+              const ms  = ticketStats?.avgResolutionMs ?? 0;
+              const mins = Math.floor(ms / 60000);
+              const hrs  = Math.floor(mins / 60);
+              const days = Math.floor(hrs / 24);
+              const label = ms === 0 ? "—"
+                : days > 0 ? `${days}d ${hrs % 24}h`
+                : hrs  > 0 ? `${hrs}h ${mins % 60}m`
+                : mins > 0 ? `${mins}m`
+                : "<1m";
+              return (
                 <>
-                  <div className="text-3xl font-bold">{ticketStats?.resolved ?? 0} <span className="text-base font-normal text-muted-foreground">/ {ticketStats?.total ?? 0}</span></div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {ticketStats?.open ?? 0} still open
+                  <div className="text-3xl font-extrabold text-amber-500 dark:text-amber-400 tracking-tight">{label}</div>
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Across {ticketStats?.resolved ?? 0} resolved tickets
                   </p>
-                  <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-emerald-500/70 transition-all"
-                      style={{ width: ticketStats?.total ? `${(ticketStats.resolved / ticketStats.total) * 100}%` : "0%" }}
-                    />
-                  </div>
                 </>
-              )}
-            </CardContent>
-          </Card>
+              );
+            })()}
+          </div>
+
+          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 transition-all hover:-translate-y-0.5">
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Open vs Resolved</span>
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">
+                <Bot className="w-4 h-4" />
+              </div>
+            </div>
+            {ticketStatsLoading ? <Skeleton className="h-8 w-24" /> : (
+              <>
+                <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{ticketStats?.resolved ?? 0} <span className="text-base font-normal text-muted-foreground">/ {ticketStats?.total ?? 0}</span></div>
+                <p className="text-xs text-slate-400 mt-1.5">
+                  {ticketStats?.open ?? 0} still open
+                </p>
+                <div className="mt-3 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
+                    style={{ width: ticketStats?.total ? `${(ticketStats.resolved / ticketStats.total) * 100}%` : "0%" }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Model breakdown */}
-        <Card className="bg-card border-border/50">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Bot className="w-4 h-4 text-violet-400" />
+        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+              <Bot className="w-4 h-4 text-violet-500" />
               AI Models Used for Support
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">Which models handled AI-solved tickets</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-5">
             {ticketStatsLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
@@ -883,16 +934,16 @@ export default function AdminDashboard() {
                 <p className="text-xs">No AI-solved tickets yet. Use the AI Solve button on any ticket to get started.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {ticketStats.byModel.map((m) => {
                   const providerColor =
-                    m.provider === "anthropic" ? "bg-orange-500/70"
-                    : m.provider === "google"   ? "bg-blue-500/70"
-                    : "bg-emerald-500/70";
+                    m.provider === "anthropic" ? "bg-orange-500"
+                    : m.provider === "google"   ? "bg-blue-500"
+                    : "bg-emerald-500";
                   const providerBadgeColor =
-                    m.provider === "anthropic" ? "text-orange-400 bg-orange-500/10 border-orange-500/30"
-                    : m.provider === "google"   ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
-                    : "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
+                    m.provider === "anthropic" ? "text-orange-500 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800"
+                    : m.provider === "google"   ? "text-blue-500 bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800"
+                    : "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800";
                   const providerLabel =
                     m.provider === "anthropic" ? "Anthropic"
                     : m.provider === "google"   ? "Google"
@@ -900,19 +951,19 @@ export default function AdminDashboard() {
                   return (
                     <div key={`${m.provider}::${m.model}`} className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium font-mono truncate">{m.model}</span>
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-semibold shrink-0 ${providerBadgeColor}`}>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-xs font-bold font-mono text-foreground truncate">{m.model}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-bold shrink-0 ${providerBadgeColor}`}>
                             {providerLabel}
                           </span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${providerColor}`} style={{ width: `${m.share}%` }} />
                         </div>
                       </div>
-                      <div className="text-right shrink-0 w-20">
-                        <p className="text-xs font-semibold tabular-nums">{m.count} ticket{m.count !== 1 ? "s" : ""}</p>
-                        <p className="text-[10px] text-muted-foreground">{m.share}% of AI</p>
+                      <div className="text-right shrink-0 w-24">
+                        <p className="text-xs font-bold tabular-nums text-foreground">{m.count} ticket{m.count !== 1 ? "s" : ""}</p>
+                        <p className="text-[10px] font-medium text-slate-400">{m.share}% of AI</p>
                       </div>
                     </div>
                   );
@@ -923,19 +974,26 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* System status */}
-      <div className="mt-2 p-6 bg-card border border-border/50 rounded-lg">
+      {/* 5. System Status Operations Card */}
+      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Activity className="w-6 h-6 text-primary" />
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+            <Activity className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-medium">System Status</h3>
-            <p className="text-sm text-muted-foreground">All systems operational</p>
+            <div className="flex items-center gap-2.5">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Bot Manager Operational Telemetry</h3>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                All Systems Normal
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Live AI gateways, automated webhooks, database clusters, and customer response engines are running at 100% capacity.
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
