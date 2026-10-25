@@ -258,12 +258,18 @@
 }
 
 /* ── 2-Column Sliding Structure driven by CSS translateX() transforms ── */
+:root {
+  --slide-duration: 0.8s;
+  --slide-timing: ease-in-out;
+}
+
 .modern-form-container,
 .form-container {
   position: absolute;
   top: 0;
   height: 100%;
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform;
 }
 
 .modern-sign-in,
@@ -271,7 +277,8 @@
   left: 0;
   width: 50%;
   z-index: 2;
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform;
 }
 
 /* When you click Client Login, the container gains the active class: the Admin form moves right with translateX(100%) */
@@ -288,7 +295,8 @@
   width: 50%;
   opacity: 0;
   z-index: 1;
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform, opacity;
 }
 
 /* The Client Login form also has a move animation that changes its opacity and stacking order */
@@ -299,7 +307,7 @@
   transform: translateX(100%);
   opacity: 1;
   z-index: 5;
-  animation: move 1.2s;
+  animation: move var(--slide-duration, 0.8s);
 }
 
 @keyframes move {
@@ -322,9 +330,10 @@
   width: 50%;
   height: 100%;
   overflow: hidden;
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
   border-radius: 150px 0 0 100px;
   z-index: 1000;
+  will-change: transform, border-radius;
 }
 
 .modern-login-container.active .modern-toggle-container,
@@ -347,7 +356,8 @@
   height: 100%;
   width: 200%;
   transform: translateX(0);
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform;
 }
 
 .modern-login-container.active .modern-toggle,
@@ -370,13 +380,15 @@
   text-align: center;
   top: 0;
   transform: translateX(0);
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform;
 }
 
 .modern-toggle-left,
 .toggle-left {
   transform: translateX(-200%);
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform;
 }
 
 .modern-login-container.active .modern-toggle-left,
@@ -390,7 +402,8 @@
 .toggle-right {
   right: 0;
   transform: translateX(0);
-  transition: all 1.2s ease-in-out;
+  transition: all var(--slide-duration, 0.8s) var(--slide-timing, ease-in-out);
+  will-change: transform;
 }
 
 .modern-login-container.active .modern-toggle-right,
