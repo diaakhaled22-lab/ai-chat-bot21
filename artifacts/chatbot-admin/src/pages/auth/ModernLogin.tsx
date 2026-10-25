@@ -238,7 +238,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
       {/* Main Container - Explicit dir="ltr" to maintain consistent geometric slider animation */}
       <div
-        className={`modern-login-container ${isActive ? "active" : ""}`}
+        className={`container modern-login-container ${isActive ? "active" : ""}`}
         id="container"
         dir="ltr"
       >
@@ -267,7 +267,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         </div>
 
         {/* Client Login Form Panel (sign-up in template layout) */}
-        <div className="modern-form-container modern-sign-up">
+        <div className="form-container sign-up modern-form-container modern-sign-up">
           <form className="modern-login-form" onSubmit={handleClientSubmit}>
             <h1>{lang === "ar" ? "تسجيل دخول العميل" : "Client Login"}</h1>
             <span>
@@ -335,7 +335,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         </div>
 
         {/* Admin Login Form Panel (sign-in in template layout) */}
-        <div className="modern-form-container modern-sign-in">
+        <div className="form-container sign-in modern-form-container modern-sign-in">
           {!tempToken ? (
             <form className="modern-login-form" onSubmit={handleAdminSubmit}>
               <h1>{lang === "ar" ? "تسجيل دخول المسؤول" : "Admin Login"}</h1>
@@ -463,17 +463,17 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         </div>
 
         {/* Sliding Toggle Overlay Panel */}
-        <div className="modern-toggle-container">
-          <div className="modern-toggle">
+        <div className="toggle-container modern-toggle-container">
+          <div className="toggle modern-toggle">
             {/* Left Panel: Revealed when Active (Client is visible), offers switch to Admin */}
-            <div className="modern-toggle-panel modern-toggle-left">
-              <div className="modern-bot-icon modern-left-bot-icon">
+            <div className="toggle-panel toggle-left modern-toggle-panel modern-toggle-left">
+              <div className="bot-icon left-bot-icon modern-bot-icon modern-left-bot-icon">
                 <i className="fa-solid fa-robot"></i>
               </div>
               <h1>Bot Manager</h1>
               <button
                 type="button"
-                className="modern-login-btn btn-hidden"
+                className="modern-login-btn btn-hidden hidden"
                 id="login"
                 onClick={handleSwitchToAdmin}
               >
@@ -482,14 +482,14 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
             </div>
 
             {/* Right Panel: Revealed when Inactive (Admin is visible), offers switch to Client */}
-            <div className="modern-toggle-panel modern-toggle-right">
-              <div className="modern-bot-icon">
+            <div className="toggle-panel toggle-right modern-toggle-panel modern-toggle-right">
+              <div className="bot-icon modern-bot-icon">
                 <i className="fa-solid fa-robot"></i>
               </div>
               <h1>Bot Manager</h1>
               <button
                 type="button"
-                className="modern-login-btn btn-hidden"
+                className="modern-login-btn btn-hidden hidden"
                 id="register"
                 onClick={handleSwitchToClient}
               >

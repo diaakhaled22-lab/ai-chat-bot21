@@ -257,70 +257,87 @@
   color: #c4b5fd;
 }
 
-/* ── 2-Column Sliding Structure ── */
-.modern-form-container {
+/* ── 2-Column Sliding Structure driven by CSS translateX() transforms ── */
+.modern-form-container,
+.form-container {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 50%;
   height: 100%;
-  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
-  will-change: transform, opacity;
+  transition: all 0.6s ease-in-out;
 }
 
-/* ── Admin Login Form Panel (Sign-in) ── */
-.modern-sign-in {
-  transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 2;
-  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
-}
-
-.modern-login-container.active .modern-sign-in {
-  transform: translateX(100%);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ── Client Login Form Panel (Sign-up) ── */
-.modern-sign-up {
+.modern-sign-in,
+.sign-in {
   left: 0;
   width: 50%;
-  transform: translateX(0);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 1;
-  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+  z-index: 2;
+  transition: all 0.6s ease-in-out;
 }
 
-.modern-login-container.active .modern-sign-up {
+/* When you click Client Login, the container gains the active class: the Admin form moves right with translateX(100%) */
+.modern-login-container.active .modern-sign-in,
+.modern-login-container.active .sign-in,
+.container.active .modern-sign-in,
+.container.active .sign-in {
+  transform: translateX(100%);
+}
+
+.modern-sign-up,
+.sign-up {
+  left: 0;
+  width: 50%;
+  opacity: 0;
+  z-index: 1;
+  transition: all 0.6s ease-in-out;
+}
+
+/* The Client Login form also has a 600 ms move animation that changes its opacity and stacking order */
+.modern-login-container.active .modern-sign-up,
+.modern-login-container.active .sign-up,
+.container.active .modern-sign-up,
+.container.active .sign-up {
   transform: translateX(100%);
   opacity: 1;
-  pointer-events: auto;
   z-index: 5;
+  animation: move 0.6s;
 }
 
-.modern-toggle-container {
+@keyframes move {
+  0%, 49.99% {
+    opacity: 0;
+    z-index: 1;
+  }
+  50%, 100% {
+    opacity: 1;
+    z-index: 5;
+  }
+}
+
+/* The toggle panel shifts left with translateX(-100%) */
+.modern-toggle-container,
+.toggle-container {
   position: absolute;
   top: 0;
   left: 50%;
   width: 50%;
   height: 100%;
   overflow: hidden;
-  transition: transform 0.6s ease-in-out, border-radius 0.6s ease-in-out;
+  transition: all 0.6s ease-in-out;
   border-radius: 150px 0 0 100px;
   z-index: 1000;
-  will-change: transform, border-radius;
 }
 
-.modern-login-container.active .modern-toggle-container {
+.modern-login-container.active .modern-toggle-container,
+.modern-login-container.active .toggle-container,
+.container.active .modern-toggle-container,
+.container.active .toggle-container {
   transform: translateX(-100%);
   border-radius: 0 150px 100px 0;
 }
 
-.modern-toggle {
+/* and the toggle’s contents shift with translateX(50%) */
+.modern-toggle,
+.toggle {
   background-color: #512da8;
   height: 100%;
   background: linear-gradient(to right, #5c6bc0, #512da8);
@@ -330,15 +347,18 @@
   height: 100%;
   width: 200%;
   transform: translateX(0);
-  transition: transform 0.6s ease-in-out;
-  will-change: transform;
+  transition: all 0.6s ease-in-out;
 }
 
-.modern-login-container.active .modern-toggle {
+.modern-login-container.active .modern-toggle,
+.modern-login-container.active .toggle,
+.container.active .modern-toggle,
+.container.active .toggle {
   transform: translateX(50%);
 }
 
-.modern-toggle-panel {
+.modern-toggle-panel,
+.toggle-panel {
   position: absolute;
   width: 50%;
   height: 100%;
@@ -350,33 +370,34 @@
   text-align: center;
   top: 0;
   transform: translateX(0);
-  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
-  will-change: transform, opacity;
+  transition: all 0.6s ease-in-out;
 }
 
-.modern-toggle-left {
+.modern-toggle-left,
+.toggle-left {
   transform: translateX(-200%);
-  opacity: 0;
-  pointer-events: none;
+  transition: all 0.6s ease-in-out;
 }
 
-.modern-login-container.active .modern-toggle-left {
+.modern-login-container.active .modern-toggle-left,
+.modern-login-container.active .toggle-left,
+.container.active .modern-toggle-left,
+.container.active .toggle-left {
   transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
 }
 
-.modern-toggle-right {
+.modern-toggle-right,
+.toggle-right {
   right: 0;
   transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
+  transition: all 0.6s ease-in-out;
 }
 
-.modern-login-container.active .modern-toggle-right {
+.modern-login-container.active .modern-toggle-right,
+.modern-login-container.active .toggle-right,
+.container.active .modern-toggle-right,
+.container.active .toggle-right {
   transform: translateX(200%);
-  opacity: 0;
-  pointer-events: none;
 }
 
 .modern-bot-icon {
