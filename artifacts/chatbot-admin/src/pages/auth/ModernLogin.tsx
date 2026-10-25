@@ -245,7 +245,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         {/* Mobile Header (Rendered on small screens < 768px) */}
         <div className="mobile-toggle-header">
           <div className="mobile-bot-icon">
-            <Bot className="w-10 h-10 text-white" strokeWidth={1.8} />
+            <i className="fa-solid fa-robot"></i>
           </div>
           <h1>Bot Manager</h1>
           <div className="mobile-toggle-switch">
