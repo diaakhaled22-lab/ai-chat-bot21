@@ -139,67 +139,127 @@ export default function ClientSettings() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t("client_settings_title")}</h1>
-        <p className="text-muted-foreground mt-2">{t("client_settings_desc")}</p>
+    <div className="space-y-6 max-w-4xl">
+      {/* Hero Operations Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-blue-500/10">
+        <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -left-10 -bottom-10 h-44 w-44 rounded-full bg-blue-400/20 blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0">
+              <i className="fa-solid fa-sliders text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                {lang === "ar" ? "تفضيلات وإعدادات الحساب" : "Account & Preferences"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm">{t("client_settings_title")}</h1>
+              <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl font-normal opacity-90">{t("client_settings_desc")}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Language */}
-      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-primary" />
-            {t("settings_language")}
-          </CardTitle>
-          <CardDescription>{t("settings_language_desc")}</CardDescription>
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+        <CardHeader className="p-5 sm:p-6 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-800/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">
+                {t("settings_language")}
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm mt-0.5">{t("settings_language_desc")}</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-3">
+        <CardContent className="p-5 sm:p-6 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <button
               type="button"
               onClick={() => setLang("en")}
-              className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+              className={`flex items-center justify-between p-4 rounded-xl border-2 text-sm font-semibold transition-all ${
                 lang === "en"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-500/20"
+                  : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground hover:text-foreground bg-muted/20"
               }`}
             >
-              🇬🇧 {t("settings_lang_english")}
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🇬🇧</span>
+                <div className="text-left">
+                  <p className="font-bold text-foreground">English</p>
+                  <p className="text-[11px] text-muted-foreground">{t("settings_lang_english")}</p>
+                </div>
+              </div>
+              {lang === "en" && (
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+                  ✓
+                </span>
+              )}
             </button>
             <button
               type="button"
               onClick={() => setLang("ar")}
-              className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+              className={`flex items-center justify-between p-4 rounded-xl border-2 text-sm font-semibold transition-all ${
                 lang === "ar"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-500/20"
+                  : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-muted-foreground hover:text-foreground bg-muted/20"
               }`}
             >
-              🇸🇦 {t("settings_lang_arabic")}
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🇸🇦</span>
+                <div className="text-right">
+                  <p className="font-bold text-foreground">العربية</p>
+                  <p className="text-[11px] text-muted-foreground">{t("settings_lang_arabic")}</p>
+                </div>
+              </div>
+              {lang === "ar" && (
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+                  ✓
+                </span>
+              )}
             </button>
           </div>
         </CardContent>
       </Card>
 
       {/* Account credentials */}
-      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            {t("settings_security")}
-          </CardTitle>
-          <CardDescription>{t("settings_security_client_desc")}</CardDescription>
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+        <CardHeader className="p-5 sm:p-6 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-inner">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold">
+                {t("settings_security")}
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm mt-0.5">{t("settings_security_client_desc")}</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 sm:p-6 pt-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 
               {/* Current username display */}
               {me?.name && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/40 rounded-lg px-4 py-3">
-                  <User className="w-4 h-4 shrink-0" />
-                  <span>{lang === "ar" ? "اسم المستخدم الحالي:" : "Current username:"} <span className="font-medium text-foreground">{(me as any).username ?? me.name}</span></span>
+                <div className="flex items-center justify-between gap-3 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">{lang === "ar" ? "اسم المستخدم الحالي" : "Current username"}</span>
+                      <span className="font-bold text-foreground">{(me as any).username ?? me.name}</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    {lang === "ar" ? "حساب نشط" : "Active"}
+                  </span>
                 </div>
               )}
 
@@ -208,26 +268,25 @@ export default function ClientSettings() {
                 name="newUsername"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" /> {lang === "ar" ? "اسم المستخدم الجديد" : "New Username"}
+                    <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
+                      <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> {lang === "ar" ? "اسم المستخدم الجديد" : "New Username"}
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder={lang === "ar" ? "اتركه فارغاً للإبقاء على الحالي" : "Leave blank to keep current"} {...field} className="bg-background" />
+                      <Input placeholder={lang === "ar" ? "اتركه فارغاً للإبقاء على الحالي" : "Leave blank to keep current"} {...field} className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="notificationEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-primary" />
+                      <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
+                        <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         {lang === "ar" ? "البريد الإلكتروني للإشعارات (Gmail)" : "Notification Email (Gmail)"}
                       </FormLabel>
                       <FormControl>
@@ -235,7 +294,7 @@ export default function ClientSettings() {
                           type="email"
                           placeholder={lang === "ar" ? "أدخل بريد Gmail لتلقي الإشعارات" : "Enter Gmail to receive notifications"}
                           {...field}
-                          className="bg-background"
+                          className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -248,15 +307,15 @@ export default function ClientSettings() {
                   name="resendApiKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Key className="w-3.5 h-3.5 text-primary" />
+                      <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
+                        <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         {lang === "ar" ? "المفتاح السري (RESEND_API_KEY)" : "Secret (RESEND_API_KEY)"}
                       </FormLabel>
                       <FormControl>
                         <PasswordInput
                           placeholder="re_xxxxxxxxxxxxxxxxx"
                           {...field}
-                          className="bg-background font-mono text-xs"
+                          className="bg-background font-mono text-xs rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -266,14 +325,14 @@ export default function ClientSettings() {
               </div>
 
               {/* Test Email Action Card */}
-              <div className="rounded-lg border border-border/80 bg-muted/30 p-3 space-y-2">
+              <div className="rounded-xl border border-blue-200/80 dark:border-blue-900/50 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 space-y-3">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p className="font-semibold text-foreground text-sm flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-primary" />
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-bold text-foreground text-sm flex items-center gap-2 text-blue-900 dark:text-blue-100">
+                      <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       {lang === "ar" ? "اختبار وصول رسائل البريد (Gmail)" : "Test Email Notification Delivery"}
                     </p>
-                    <p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
                       {lang === "ar"
                         ? "أرسل بريداً تجريبياً فورياً للتحقق من صحة مفتاح Resend والتأكد من استلام الإشعارات في صندوق الوارد."
                         : "Send an instant test email via Resend to verify your API Key and ensure notifications arrive."}
@@ -285,7 +344,7 @@ export default function ClientSettings() {
                     size="sm"
                     disabled={isSendingTest}
                     onClick={handleSendTestEmail}
-                    className="shrink-0 flex items-center gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+                    className="shrink-0 flex items-center gap-2 bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 font-bold rounded-xl shadow-sm px-4 py-2 h-auto"
                   >
                     {isSendingTest ? (
                       <>
@@ -302,17 +361,17 @@ export default function ClientSettings() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4 space-y-4">
+              <div className="border-t border-slate-200/80 dark:border-slate-800 pt-5 space-y-4">
                 <FormField
                   control={form.control}
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5" /> {t("label_current_password")}
+                      <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
+                        <Lock className="w-4 h-4 text-slate-500" /> {t("label_current_password")}
                       </FormLabel>
                       <FormControl>
-                        <PasswordInput placeholder={lang === "ar" ? "مطلوبة فقط عند تغيير اسم المستخدم أو كلمة المرور" : "Required only when changing username or password"} {...field} className="bg-background" />
+                        <PasswordInput placeholder={lang === "ar" ? "مطلوبة فقط عند تغيير اسم المستخدم أو كلمة المرور" : "Required only when changing username or password"} {...field} className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -323,11 +382,11 @@ export default function ClientSettings() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5" /> {t("label_new_password_optional")}
+                      <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
+                        <Lock className="w-4 h-4 text-slate-500" /> {t("label_new_password_optional")}
                       </FormLabel>
                       <FormControl>
-                        <PasswordInput placeholder={lang === "ar" ? "اتركها فارغة للإبقاء على الحالية" : "Leave blank to keep current"} {...field} className="bg-background" />
+                        <PasswordInput placeholder={lang === "ar" ? "اتركها فارغة للإبقاء على الحالية" : "Leave blank to keep current"} {...field} className="bg-background rounded-xl h-10 border-slate-200 dark:border-slate-800 focus-visible:ring-blue-500" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -335,9 +394,11 @@ export default function ClientSettings() {
                 />
               </div>
 
-              <Button type="submit" disabled={updateSettings.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-6">
-                {updateSettings.isPending ? t("btn_saving") : t("btn_save_changes")}
-              </Button>
+              <div className="pt-2">
+                <Button type="submit" disabled={updateSettings.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-8 py-2.5 h-auto text-sm transition-all hover:shadow-lg">
+                  {updateSettings.isPending ? t("btn_saving") : t("btn_save_changes")}
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>

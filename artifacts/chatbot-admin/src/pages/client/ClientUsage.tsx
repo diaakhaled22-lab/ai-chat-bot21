@@ -111,8 +111,8 @@ function StatCard({
 }) {
   return (
     <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-inner border border-white/10 ${color}`}>
-        <Icon className="w-5 h-5" />
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border ${color}`}>
+        <Icon className="w-6 h-6" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
@@ -190,75 +190,88 @@ export default function ClientUsage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {lang === "ar" ? "استهلاك الحصة المخصصة (Tokens)" : "Admin Assigned Quota Usage"}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {lang === "ar"
-              ? "متابعة استهلاك الحصة الشهرية المخصصة لشركتك من قِبل مسؤول النظام"
-              : "Track consumption under the administrator-assigned monthly token quota"}
-          </p>
-        </div>
+      {/* Hero Operations Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-blue-500/10">
+        <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -left-10 -bottom-10 h-44 w-44 rounded-full bg-blue-400/20 blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0">
+              <i className="fa-solid fa-coins text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                {lang === "ar" ? "الحصة الشهرية واستهلاك الرموز" : "Token Quota & Usage"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm">
+                {lang === "ar" ? "استهلاك الحصة المخصصة (Token Quota)" : "Admin Assigned Quota Usage"}
+              </h1>
+              <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl font-normal opacity-90">
+                {lang === "ar"
+                  ? "متابعة استهلاك الحصة الشهرية المخصصة لشركتك من قِبل مسؤول النظام بالرموز والرسائل"
+                  : "Track consumption under the administrator-assigned monthly token quota"}
+              </p>
+            </div>
+          </div>
 
-        {hasQuota && (
-          <div className="flex flex-col gap-2 items-end">
-            <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto max-w-full scrollbar-hide justify-start sm:justify-end pb-1">
-              <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
-              {PRESETS.map((p) => (
+          {/* Quick Period Switcher in Hero */}
+          {hasQuota && (
+            <div className="flex flex-col gap-2 items-start md:items-end shrink-0">
+              <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md border border-white/20 p-1.5 rounded-xl max-w-full overflow-x-auto scrollbar-hide">
+                <CalendarRange className="w-4 h-4 text-blue-200 ml-1.5 mr-0.5 shrink-0" />
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => { setPreset(p.key); setShowCustom(false); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
+                      !showCustom && preset === p.key
+                        ? "bg-white text-blue-700 shadow-md font-bold"
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
                 <button
-                  key={p.key}
-                  onClick={() => { setPreset(p.key); setShowCustom(false); }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
-                    !showCustom && preset === p.key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowCustom((v) => !v)}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
+                    showCustom
+                      ? "bg-white text-blue-700 shadow-md font-bold"
+                      : "text-white/80 hover:text-white hover:bg-white/10"
                   }`}
                 >
-                  {p.label}
+                  {lang === "ar" ? "مخصص" : "Custom"} <ChevronDown className="w-3 h-3" />
                 </button>
-              ))}
-              <button
-                onClick={() => setShowCustom((v) => !v)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
-                  showCustom
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {lang === "ar" ? "مخصص" : "Custom"} <ChevronDown className="w-3 h-3" />
-              </button>
-            </div>
-
-            {/* Custom date pickers */}
-            {showCustom && (
-              <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-                <input
-                  type="date"
-                  value={customFrom}
-                  max={customTo}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="bg-transparent text-xs text-foreground outline-none"
-                />
-                <span className="text-muted-foreground text-xs">→</span>
-                <input
-                  type="date"
-                  value={customTo}
-                  min={customFrom}
-                  max={toIso(new Date())}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="bg-transparent text-xs text-foreground outline-none"
-                />
               </div>
-            )}
 
-            {!showCustom && (
-              <p className="text-xs text-muted-foreground">{rangeLabel}</p>
-            )}
-          </div>
-        )}
+              {showCustom && (
+                <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 text-white">
+                  <input
+                    type="date"
+                    value={customFrom}
+                    max={customTo}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className="bg-transparent text-xs text-white outline-none font-mono"
+                  />
+                  <span className="text-blue-200 text-xs">→</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    min={customFrom}
+                    max={toIso(new Date())}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className="bg-transparent text-xs text-white outline-none font-mono"
+                  />
+                </div>
+              )}
+
+              {!showCustom && (
+                <p className="text-xs text-blue-100/80 font-medium px-1">{rangeLabel}</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Loading state */}
@@ -283,16 +296,16 @@ export default function ClientUsage() {
 
       {/* NO QUOTA STATE: Only display data if admin has assigned a quota to the client */}
       {!isLoading && !isError && !hasQuota && (
-        <div className="bg-card border border-border/80 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto my-8 shadow-sm">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto my-8 shadow-sm hover:shadow-md transition-all">
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-5 shadow-inner">
             <Coins className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold mb-2">
+          <h2 className="text-xl sm:text-2xl font-extrabold mb-2 tracking-tight">
             {lang === "ar"
               ? "لم يتم تعيين حصة رموز (Quota) لشركتك من قِبل المسؤول"
               : "No Admin Quota Assigned"}
           </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-lg mx-auto">
             {lang === "ar"
               ? "هذه الصفحة مخصصة حصرياً لعرض وتتبع استهلاك الحصة الشهرية المحددة من مسؤول النظام. نظراً لعدم تخصيص حصة لحسابك حالياً، لا تتوفر أي بيانات استهلاك حصة لعرضها هنا."
               : "This page is dedicated exclusively to tracking consumption under an administrator-assigned monthly quota. Since no quota is currently assigned to your company, no quota data is available."}
@@ -301,14 +314,14 @@ export default function ClientUsage() {
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
               href="/client/dashboard"
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-blue-600/25 transition-all inline-flex items-center gap-2"
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>{lang === "ar" ? "الانتقال إلى لوحة التحكم" : "Go to Dashboard"}</span>
             </Link>
             <Link
               href="/client/support"
-              className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-xs sm:text-sm font-medium transition-colors inline-flex items-center gap-2 border border-border"
+              className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-foreground font-semibold text-xs sm:text-sm transition-all inline-flex items-center gap-2 border border-slate-200 dark:border-slate-700"
             >
               <LifeBuoy className="w-4 h-4" />
               <span>{lang === "ar" ? "طلب تخصيص حصة من الإدارة" : "Request Admin Quota"}</span>
@@ -321,51 +334,73 @@ export default function ClientUsage() {
       {!isLoading && !isError && hasQuota && (
         <>
           {/* Quota Progress Banner */}
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                    {lang === "ar" ? "الحصة الشهرية المخصصة من المسؤول" : "Admin Assigned Monthly Quota"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar" ? "النموذج النشط:" : "Active Model:"}{" "}
+                    <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">{modelLabel}</span>
+                  </p>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-amber-500" />
-                <span className="font-semibold text-sm">
-                  {lang === "ar" ? "الحصة الشهرية المخصصة من المسؤول" : "Admin Assigned Monthly Quota"}
-                </span>
-                <span className="text-[11px] font-mono bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">
-                  {modelLabel}
+                <span className={`text-xs font-black px-3 py-1 rounded-full border ${
+                  quotaPercent! > 90
+                    ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
+                    : quotaPercent! > 75
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                }`}>
+                  {quotaPercent!.toFixed(1)}% {lang === "ar" ? "مستهلك" : "Used"}
                 </span>
               </div>
-              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                quotaPercent! > 90
-                  ? "bg-rose-500/20 text-rose-400"
-                  : quotaPercent! > 75
-                  ? "bg-amber-500/20 text-amber-400"
-                  : "bg-emerald-500/20 text-emerald-400"
-              }`}>
-                {quotaPercent!.toFixed(1)}%
-              </span>
             </div>
-            <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+
+            <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  quotaPercent! > 90 ? "bg-rose-500" : quotaPercent! > 75 ? "bg-amber-500" : "bg-emerald-500"
+                className={`h-full rounded-full transition-all duration-700 shadow-sm ${
+                  quotaPercent! > 90 
+                    ? "bg-gradient-to-r from-amber-500 to-rose-500" 
+                    : quotaPercent! > 75 
+                    ? "bg-gradient-to-r from-blue-500 to-amber-500" 
+                    : "bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500"
                 }`}
                 style={{ width: `${quotaPercent}%` }}
               />
             </div>
-            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-              <span>
-                {lang === "ar" ? "المستهلك هذا الشهر:" : "Used this period:"}{" "}
-                <strong className="text-foreground">{fmt(data?.usedTokens ?? totalTokens)}</strong>
-              </span>
-              <span>
-                {lang === "ar" ? "الحد الأقصى للحصة:" : "Assigned Limit:"}{" "}
-                <strong className="text-foreground">{fmt(quota!)}</strong>
-              </span>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+              <div>
+                <span className="text-muted-foreground block">{lang === "ar" ? "المستهلك هذا الشهر" : "Used this period"}</span>
+                <strong className="text-base font-extrabold text-foreground tabular-nums">{fmt(data?.usedTokens ?? totalTokens)}</strong>
+              </div>
+              <div>
+                <span className="text-muted-foreground block">{lang === "ar" ? "الحد الأقصى للحصة" : "Assigned Limit"}</span>
+                <strong className="text-base font-extrabold text-foreground tabular-nums">{fmt(quota!)}</strong>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <span className="text-muted-foreground block">{lang === "ar" ? "الرصيد المتبقي" : "Remaining Quota"}</span>
+                <strong className={`text-base font-extrabold tabular-nums ${
+                  remainingTokens === 0 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400"
+                }`}>
+                  {remainingTokens !== null ? fmt(remainingTokens) : "0"} ({remainingPercent?.toFixed(1)}%)
+                </strong>
+              </div>
             </div>
+
             {quotaPercent! > 90 && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 rounded-lg px-3 py-2">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl px-4 py-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
                 {lang === "ar"
-                  ? "تنبيه: لقد اقتربت من استنفاذ الحصة الشهرية المخصصة لك من قِبل المسؤول!"
-                  : "Warning: You are close to exhausting your monthly quota!"}
+                  ? "تنبيه: لقد اقتربت من استنفاذ الحصة الشهرية المخصصة لك من قِبل المسؤول! يمكنك طلب زيادة الحصة عبر الدعم الفني."
+                  : "Warning: You are close to exhausting your monthly quota! Contact support to request an increase."}
               </div>
             )}
           </div>
@@ -377,21 +412,21 @@ export default function ClientUsage() {
               label={t("usage_stat_messages")}
               value={(data?.totalMessages ?? 0).toLocaleString()}
               sub={lang === "ar" ? "رسائل عبر الحصة المخصصة" : "messages under quota"}
-              color="bg-blue-500/10 text-blue-400"
+              color="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
             />
             <StatCard
               icon={Coins}
               label={lang === "ar" ? "إجمالي الرموز" : "Total Tokens"}
               value={fmt(totalTokens)}
               sub={`${fmt(data?.estimatedInputTokens ?? 0)} ${lang === "ar" ? "مدخل" : "in"} · ${fmt(data?.estimatedOutputTokens ?? 0)} ${lang === "ar" ? "مخرج" : "out"}`}
-              color="bg-violet-500/10 text-violet-400"
+              color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
             />
             <StatCard
               icon={Cpu}
               label={lang === "ar" ? "نموذج الحصة المعتمد" : "Quota AI Model"}
               value={data?.quotaAiModel || data?.aiModel || "gpt-4o-mini"}
               sub={`${data?.quotaAiProvider || data?.aiProvider || "openai"} · ${lang === "ar" ? "حصة المنصة" : "Platform Quota"}`}
-              color="bg-amber-500/10 text-amber-400"
+              color="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
             />
             <StatCard
               icon={Sparkles}
@@ -502,8 +537,8 @@ export default function ClientUsage() {
 
               {/* Breakdown table */}
               {data!.byChannel.length > 0 && (
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+                  <div className="px-6 py-4 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
                     <h2 className="text-base font-semibold">{t("usage_channel_breakdown")}</h2>
                     <span className="text-xs text-muted-foreground">{rangeLabel}</span>
                   </div>

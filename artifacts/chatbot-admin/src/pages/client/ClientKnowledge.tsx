@@ -195,7 +195,7 @@ function KnowledgeFilesCard() {
   };
 
   return (
-    <Card className="bg-card border-border/50">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
@@ -217,9 +217,9 @@ function KnowledgeFilesCard() {
           />
           <Button
             type="button"
-            variant="outline"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingCount > 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-5 py-2.5 h-auto text-sm"
           >
             {uploadingCount > 0 ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {lang === "ar" ? "جاري الرفع والفهرسة..." : "Uploading & Indexing…"}</>
@@ -512,7 +512,7 @@ function WordPressInlineCard() {
   };
 
   return (
-    <Card className="bg-card border-border/50 shadow-sm">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -835,7 +835,7 @@ function RestApiInlineCard() {
   };
 
   return (
-    <Card className="bg-card border-border/50 shadow-sm">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -1317,7 +1317,7 @@ function ShopifyInlineCard() {
   };
 
   return (
-    <Card className="bg-card border-border/50 shadow-sm">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -1586,7 +1586,7 @@ function LockedSourceCard({ title, icon: Icon }: { title: string; icon: React.El
   const { t } = useLanguage();
 
   return (
-    <Card className="bg-card border-amber-500/30 shadow-sm relative overflow-hidden">
+    <Card className="bg-card border border-amber-500/30 rounded-2xl shadow-sm relative overflow-hidden">
       <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-500/40 via-amber-500 to-amber-500/40" />
       <CardHeader className="pb-4 text-center">
         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-3 shadow-sm">
@@ -1805,12 +1805,25 @@ export default function ClientKnowledge() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-0">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-primary">
-          <Database className="w-6 h-6" />
-          {t("get_data_title")}
-        </h2>
-        <p className="text-muted-foreground mt-1">{t("get_data_desc")}</p>
+      {/* Hero Operations Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-blue-500/10">
+        <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute -left-10 -bottom-10 h-44 w-44 rounded-full bg-blue-400/20 blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0">
+              <i className="fa-solid fa-database text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                {lang === "ar" ? "قاعدة المعرفة والتدريب الذكي" : "Knowledge Base & Vector Store"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm">{t("get_data_title")}</h1>
+              <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl font-normal opacity-90">{t("get_data_desc")}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1820,28 +1833,28 @@ export default function ClientKnowledge() {
           <button
             type="button"
             onClick={() => setActiveSource("website")}
-            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
               activeSource === "website"
                 ? !allowWebsite
-                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
-                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-2 ring-amber-500/20"
+                  : "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 shadow-sm ring-2 ring-blue-500/20 text-blue-900 dark:text-blue-100"
+                : "border-slate-200/80 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
             }`}
           >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               !allowWebsite
                 ? "bg-amber-500/15 text-amber-500"
                 : activeSource === "website"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
               {!allowWebsite ? <Lock className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{t("data_source_website")}</p>
+              <p className="text-sm font-bold truncate">{t("data_source_website")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {!allowWebsite ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("data_source_locked_badge")}</span>
                 ) : websiteUrl ? (
                   lang === "ar" ? "تم التكوين" : "Configured"
                 ) : (
@@ -1852,7 +1865,7 @@ export default function ClientKnowledge() {
             {!allowWebsite ? (
               <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             ) : websiteUrl ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
             ) : null}
           </button>
 
@@ -1860,37 +1873,37 @@ export default function ClientKnowledge() {
           <button
             type="button"
             onClick={() => setActiveSource("files")}
-            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
               activeSource === "files"
                 ? !allowFiles
-                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
-                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-2 ring-amber-500/20"
+                  : "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 shadow-sm ring-2 ring-blue-500/20 text-blue-900 dark:text-blue-100"
+                : "border-slate-200/80 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
             }`}
           >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               !allowFiles
                 ? "bg-amber-500/15 text-amber-500"
                 : activeSource === "files"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
               {!allowFiles ? <Lock className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{t("data_source_files")}</p>
+              <p className="text-sm font-bold truncate">{t("data_source_files")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {!allowFiles ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("data_source_locked_badge")}</span>
                 ) : (
-                  lang === "ar" ? "Excel, CSV" : "Excel, CSV"
+                  lang === "ar" ? "Excel, CSV, PDF" : "Excel, CSV, PDF"
                 )}
               </p>
             </div>
             {!allowFiles ? (
               <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             ) : readyFilesCount > 0 ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary shrink-0">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white shrink-0 shadow-sm">
                 {readyFilesCount}
               </span>
             ) : null}
@@ -1900,28 +1913,28 @@ export default function ClientKnowledge() {
           <button
             type="button"
             onClick={() => setActiveSource("wordpress")}
-            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
               activeSource === "wordpress"
                 ? !allowWordpress
-                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
-                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-2 ring-amber-500/20"
+                  : "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 shadow-sm ring-2 ring-blue-500/20 text-blue-900 dark:text-blue-100"
+                : "border-slate-200/80 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
             }`}
           >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               !allowWordpress
                 ? "bg-amber-500/15 text-amber-500"
                 : activeSource === "wordpress"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
               {!allowWordpress ? <Lock className="w-4 h-4" /> : <Plug className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{t("data_source_wordpress")}</p>
+              <p className="text-sm font-bold truncate">{t("data_source_wordpress")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {!allowWordpress ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("data_source_locked_badge")}</span>
                 ) : isWordPressConnected ? (
                   lang === "ar" ? "متصل" : "Connected"
                 ) : (
@@ -1932,7 +1945,7 @@ export default function ClientKnowledge() {
             {!allowWordpress ? (
               <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             ) : isWordPressConnected ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
             ) : null}
           </button>
 
@@ -1940,28 +1953,28 @@ export default function ClientKnowledge() {
           <button
             type="button"
             onClick={() => setActiveSource("restapi")}
-            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
               activeSource === "restapi"
                 ? !allowRestApi
-                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
-                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-2 ring-amber-500/20"
+                  : "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 shadow-sm ring-2 ring-blue-500/20 text-blue-900 dark:text-blue-100"
+                : "border-slate-200/80 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
             }`}
           >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               !allowRestApi
                 ? "bg-amber-500/15 text-amber-500"
                 : activeSource === "restapi"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
               {!allowRestApi ? <Lock className="w-4 h-4" /> : <Code2 className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{t("data_source_rest_api")}</p>
+              <p className="text-sm font-bold truncate">{t("data_source_rest_api")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {!allowRestApi ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("data_source_locked_badge")}</span>
                 ) : isRestApiConnected ? (
                   lang === "ar" ? "متصل" : "Connected"
                 ) : (
@@ -1972,7 +1985,7 @@ export default function ClientKnowledge() {
             {!allowRestApi ? (
               <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             ) : isRestApiConnected ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
             ) : null}
           </button>
 
@@ -1980,28 +1993,28 @@ export default function ClientKnowledge() {
           <button
             type="button"
             onClick={() => setActiveSource("shopify")}
-            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+            className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
               activeSource === "shopify"
                 ? !allowShopify
-                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-1 ring-amber-500/20"
-                  : "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
-                : "border-border/60 bg-card hover:bg-muted/40"
+                  ? "border-amber-500/50 bg-amber-500/10 shadow-sm ring-2 ring-amber-500/20"
+                  : "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 shadow-sm ring-2 ring-blue-500/20 text-blue-900 dark:text-blue-100"
+                : "border-slate-200/80 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/60 text-slate-700 dark:text-slate-300"
             }`}
           >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               !allowShopify
                 ? "bg-amber-500/15 text-amber-500"
                 : activeSource === "shopify"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
             }`}>
               {!allowShopify ? <Lock className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{t("data_source_shopify")}</p>
+              <p className="text-sm font-bold truncate">{t("data_source_shopify")}</p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {!allowShopify ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t("data_source_locked_badge")}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("data_source_locked_badge")}</span>
                 ) : isShopifyConnected ? (
                   lang === "ar" ? "متصل" : "Connected"
                 ) : (
@@ -2012,7 +2025,7 @@ export default function ClientKnowledge() {
             {!allowShopify ? (
               <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             ) : isShopifyConnected ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_1px_rgba(16,185,129,0.6)]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
             ) : null}
           </button>
         </div>
@@ -2023,7 +2036,7 @@ export default function ClientKnowledge() {
             !allowWebsite ? (
               <LockedSourceCard title={t("data_source_website")} icon={Globe} />
             ) : (
-              <Card className="bg-card border-border/50 shadow-sm">
+              <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Globe className="w-5 h-5 text-primary" />
@@ -2133,7 +2146,7 @@ export default function ClientKnowledge() {
                         {company?.websiteDataUrl && (
                           <WebsiteSyncButton companyWebsiteLastSynced={company.websiteLastSynced ?? null} />
                         )}
-                        <Button type="submit" disabled={updateCompany.isPending} className="ml-auto">
+                        <Button type="submit" disabled={updateCompany.isPending} className="ml-auto bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-6 py-2">
                           {updateCompany.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                           {lang === "ar" ? "حفظ التغييرات" : "Save Changes"}
                         </Button>
