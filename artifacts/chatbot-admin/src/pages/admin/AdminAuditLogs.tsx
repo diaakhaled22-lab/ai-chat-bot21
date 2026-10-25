@@ -7,6 +7,7 @@ import { Loader2, ShieldAlert, Trash2 } from "lucide-react";
 import { deleteAdminAuditLog, customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function AdminAuditLogs() {
+  const { lang } = useLanguage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [deleteId, setDeleteId] = React.useState<number | null>(null);
@@ -52,14 +54,40 @@ export default function AdminAuditLogs() {
   return (
     <>
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Audit Logs</h1>
-        <p className="text-muted-foreground mt-2">
-          Track all critical actions performed by administrators across the platform.
-        </p>
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-clock-rotate-left text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "سجل الرقابة والتتبع" : "Audit Trail & Compliance"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "سجل تدقيق المشرفين" : "Admin Audit Logs"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "تتبع كافة الإجراءات والعمليات الحساسة التي قام بها المسؤولون عبر المنصة."
+                  : "Track all critical actions and sensitive changes performed by administrators across the platform."}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Card className="bg-card">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-primary" />
@@ -79,7 +107,7 @@ export default function AdminAuditLogs() {
               No admin activity logged yet.
             </div>
           ) : (
-            <div className="border rounded-md">
+            <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-inner">
               <Table>
                 <TableHeader>
                   <TableRow>

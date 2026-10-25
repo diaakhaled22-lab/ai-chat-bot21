@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 
 type Target = "all" | "active" | "inactive" | "specific";
 
@@ -32,6 +33,7 @@ const TARGET_DESCRIPTIONS: Record<Target, string> = {
 
 export default function AdminBroadcast() {
   const { toast } = useToast();
+  const { lang } = useLanguage();
 
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -149,11 +151,37 @@ export default function AdminBroadcast() {
 
   return (
     <div className="max-w-3xl space-y-8 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Broadcast</h1>
-        <p className="text-muted-foreground mt-2">
-          Send a system message to your clients. It will appear in their notification bell instantly.
-        </p>
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-bullhorn text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "مركز الإشعارات والبث" : "System Broadcast Center"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "إرسال بث فوري للعملاء" : "Client Broadcast"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "إرسال إشعارات وتنبيهات مباشرة لجميع الشركات أو لشركات محددة عبر جرس التنبيهات."
+                  : "Send instant system alerts and messages to all client dashboards and notification bells."}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {result && (
@@ -177,7 +205,7 @@ export default function AdminBroadcast() {
 
       <div className="grid gap-6">
         {/* Compose card */}
-        <Card className="bg-card border-border">
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-primary" />
@@ -215,7 +243,7 @@ export default function AdminBroadcast() {
         </Card>
 
         {/* Target & Preview card */}
-        <Card className="bg-card border-border">
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="w-4 h-4 text-primary" />
@@ -313,7 +341,7 @@ export default function AdminBroadcast() {
 
         {/* Notification preview */}
         {(title || message) && (
-          <Card className="bg-card border-border">
+          <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">Notification Preview</span>
@@ -342,14 +370,14 @@ export default function AdminBroadcast() {
 
         {/* Send button */}
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end mt-4">
-          <Button variant="outline" onClick={reset} disabled={sending} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={reset} disabled={sending} className="w-full sm:w-auto rounded-xl border-slate-200 dark:border-slate-700 font-semibold">
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset
           </Button>
           <Button
             onClick={handleSend}
             disabled={sending || !title.trim() || !message.trim() || (preview?.count ?? 0) === 0}
-            className="w-full sm:w-auto gap-2 sm:min-w-[160px]"
+            className="w-full sm:w-auto gap-2 sm:min-w-[160px] bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-6"
           >
             {sending ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>

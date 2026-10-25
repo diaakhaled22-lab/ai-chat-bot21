@@ -80,7 +80,7 @@ export default function AdminEmailSettings() {
   if (isLoading) return null;
 
   return (
-    <Card className="bg-card">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="w-5 h-5 text-blue-400" />
@@ -207,6 +207,7 @@ export default function AdminEmailSettings() {
 
         <div className="flex gap-2 pt-1 flex-wrap">
           <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-5"
             onClick={() => saveMutation.mutate()}
             disabled={!form.recipientEmail.trim() || !form.smtpHost.trim() || !form.smtpUser.trim() || saveMutation.isPending}
           >
@@ -215,6 +216,7 @@ export default function AdminEmailSettings() {
           {data?.configured && (
             <Button
               variant="outline"
+              className="rounded-xl border-slate-200 dark:border-slate-700 font-semibold"
               onClick={() => testMutation.mutate()}
               disabled={testMutation.isPending}
             >

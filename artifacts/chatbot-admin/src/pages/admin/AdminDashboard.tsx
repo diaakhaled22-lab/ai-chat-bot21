@@ -109,7 +109,6 @@ const MODEL_COLORS: Record<string, string> = {
   "openai/o1":                              "#047857",
   "google/gemini-2.5-pro":                  "#2563eb",
   "google/gemini-pro-1.5":                  "#3b82f6",
-  "google/gemini-2.5-flash":                "#60a5fa",
   "mistralai/mistral-large":                "#f97316",
   "meta-llama/llama-3.3-70b-instruct":      "#a21caf",
   "unknown":                                "#6b7280",

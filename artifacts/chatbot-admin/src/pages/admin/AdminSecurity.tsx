@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,7 +93,7 @@ function WebhookTokenCard({
   };
 
   return (
-    <Card className="bg-card">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -245,7 +246,7 @@ function TwoFactorAuthCard() {
   };
 
   return (
-    <Card className="bg-card">
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -311,6 +312,7 @@ function TwoFactorAuthCard() {
 }
 
 export default function AdminSecurity() {
+  const { lang } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -351,21 +353,43 @@ export default function AdminSecurity() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <ShieldCheck className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold">Security Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage signing secrets, 2FA, and security credentials.</p>
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-lock text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "أمان المنصة والتشفير" : "Security & Authentication"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "إعدادات الأمان والتشفير" : "Security & Credentials"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "إدارة مفاتيح JWT، المصادقة الثنائية 2FA، ومفاتيح التحقق لقنوات Webhook."
+                  : "Manage signing secrets, two-factor authentication (2FA), and webhook verify tokens."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       <TwoFactorAuthCard />
 
       {/* JWT Secret Card */}
-      <Card className="bg-card">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -476,13 +500,19 @@ export default function AdminSecurity() {
       <Separator className="opacity-40" />
 
       {/* Webhook Verify Tokens */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Webhook className="w-5 h-5 text-primary" />
+      <div className="flex items-center gap-3.5 pt-2">
+        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20 shadow-inner shrink-0">
+          <Webhook className="w-6 h-6" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Webhook Verify Tokens</h2>
-          <p className="text-sm text-muted-foreground">Generate tokens to authenticate Meta webhook subscriptions.</p>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            {lang === "ar" ? "رموز التحقق من Webhook" : "Webhook Verify Tokens"}
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {lang === "ar"
+              ? "توليد رموز مصادقة اشتراكات Meta Webhook"
+              : "Generate tokens to authenticate Meta webhook subscriptions."}
+          </p>
         </div>
       </div>
 

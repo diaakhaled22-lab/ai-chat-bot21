@@ -362,35 +362,60 @@ export default function AdminChatLogs() {
 
   return (
     <div className="space-y-6 flex flex-col flex-1 pb-10">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Global Chat Logs
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            View interactions across all deployed chatbots.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleExportCSV} disabled={!logs?.length} variant="outline" className="bg-card">
-            <Download className="w-4 h-4 mr-2" />
-            {lang === "ar" ? "تصدير CSV" : "Export CSV"}
-          </Button>
-          <Button
-            onClick={handleRefresh}
-            disabled={isFetching || isLoading}
-            variant="outline"
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-            />
-            {lang === "ar" ? "تحديث" : "Refresh"}
-          </Button>
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10 shrink-0"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-comments text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "سجلات المحادثات المركزية" : "Live Chat Telemetry"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "سجلات المحادثات العامة" : "Global Chat Logs"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "مراقبة وتحليل جميع المحادثات وتفاعلات البوت عبر جميع الشركات والقنوات."
+                  : "View and analyze live customer interactions across all deployed bots and channels."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+            <Button
+              onClick={handleExportCSV}
+              disabled={!logs?.length}
+              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              disabled={isFetching || isLoading}
+              className="bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+              {lang === "ar" ? "تحديث" : "Refresh"}
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Retention Policy */}
-      <Card className="bg-card border-border shrink-0">
+      <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm shrink-0">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
@@ -426,6 +451,7 @@ export default function AdminChatLogs() {
               onClick={handleSaveRetention}
               disabled={pendingRetention === null || updateRetention.isPending}
               size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-600/20 px-4"
             >
               {updateRetention.isPending ? "Saving..." : "Save"}
             </Button>
@@ -438,60 +464,77 @@ export default function AdminChatLogs() {
         </CardContent>
       </Card>
 
-      {/* Mini Analytics */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 shrink-0">
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Total Messages</CardTitle>
-            <MessageSquare className="h-4 w-4 text-primary" />
+      {/* ── Mini Analytics ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 shrink-0">
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
+            <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <MessageSquare className="h-4 w-4" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{totalMessages}</div>
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">{totalMessages}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Active Sessions</CardTitle>
-            <User className="h-4 w-4 text-primary" />
+
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
+            <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "الجلسات النشطة" : "Active Sessions"}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <User className="h-4 w-4" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{activeSessions}</div>
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-extrabold text-foreground tracking-tight">{activeSessions}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Unread</CardTitle>
-            <MessageCircle className="h-4 w-4 text-green-500" />
+
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
+            <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "غير مقروءة" : "Unread"}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <MessageCircle className="h-4 w-4" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-500">{unreadSessionsCount}</div>
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{unreadSessionsCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Read</CardTitle>
-            <MessageSquare className="h-4 w-4 text-orange-500" />
+
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
+            <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "مقروءة" : "Read"}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <MessageSquare className="h-4 w-4" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-500">{readSessionsCount}</div>
+          <CardContent className="px-4 pb-4">
+            <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">{readSessionsCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Top Channel</CardTitle>
-            <Globe className="h-4 w-4 text-primary" />
+
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
+            <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "أعلى قناة" : "Top Channel"}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+              <Globe className="h-4 w-4" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold capitalize">{topChannel}</div>
+          <CardContent className="px-4 pb-4">
+            <div className="text-xl font-extrabold capitalize truncate tracking-tight">{topChannel}</div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium truncate pr-2">Top Company</CardTitle>
-            <Building2 className="h-4 w-4 text-primary" />
+
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-4 px-4">
+            <CardTitle className="text-xs font-semibold text-muted-foreground truncate">{lang === "ar" ? "أعلى شركة" : "Top Company"}</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Building2 className="h-4 w-4" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold truncate pr-2">{topCompany}</div>
+          <CardContent className="px-4 pb-4">
+            <div className="text-lg font-extrabold truncate tracking-tight">{topCompany}</div>
           </CardContent>
         </Card>
       </div>
@@ -570,7 +613,7 @@ export default function AdminChatLogs() {
       </div>
 
       {/* Inbox View Layout */}
-      <Card className="flex-1 min-h-[600px] overflow-hidden flex border-border">
+      <Card className="flex-1 min-h-[600px] overflow-hidden flex border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
         {/* Left Pane: Sessions List */}
         <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-3 border-b border-border bg-card font-medium text-sm text-muted-foreground shrink-0">

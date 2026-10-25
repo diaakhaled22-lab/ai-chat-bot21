@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/use-language";
 
 interface MetaAppSecretInfo {
   configured: boolean;
@@ -108,7 +109,7 @@ function CompanyCard({
   const isMessenger = channel === "messenger";
 
   return (
-    <Card className={`bg-card border-border/50 ${isMessenger ? "border-blue-500/20" : "border-green-500/20"}`}>
+    <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -446,6 +447,7 @@ function PlatformCredentialsSection() {
 }
 
 export default function AdminWebhookMessenger() {
+  const { lang } = useLanguage();
   const { messengerQuery, whatsappQuery } = usePlatformWebhookConfig();
   const messengerWebhookUrl = messengerQuery.data?.webhookUrl ?? `${window.location.origin}/api/messenger/webhook`;
   const whatsappWebhookUrl  = whatsappQuery.data?.webhookUrl  ?? `${window.location.origin}/api/whatsapp/webhook`;
@@ -531,7 +533,7 @@ export default function AdminWebhookMessenger() {
             <Skeleton className="h-32 w-full" />
           </div>
         ) : messengerCompanies.length === 0 ? (
-          <Card className="bg-card border-border/50">
+          <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <MessageCircle className="w-8 h-8 opacity-20" />
               <p className="text-sm">No companies have Messenger configured yet.</p>
@@ -559,7 +561,7 @@ export default function AdminWebhookMessenger() {
             <Skeleton className="h-32 w-full" />
           </div>
         ) : whatsappCompanies.length === 0 ? (
-          <Card className="bg-card border-border/50">
+          <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <MessageCircle className="w-8 h-8 opacity-20" />
               <p className="text-sm">No companies have WhatsApp configured yet.</p>
@@ -577,7 +579,7 @@ export default function AdminWebhookMessenger() {
       {/* Recent activity */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Recent Activity</h2>
-        <Card className="bg-card border-border/50">
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Latest Messenger &amp; WhatsApp messages
