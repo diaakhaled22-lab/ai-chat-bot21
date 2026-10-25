@@ -421,7 +421,7 @@ export default function QuotaAICard() {
   );
 
   return (
-    <Card className="bg-card border-violet-500/20">
+    <Card className="bg-card border border-blue-500/25 dark:border-blue-500/35 rounded-2xl shadow-sm hover:border-blue-500/45 transition-all overflow-hidden">
       {/* ── Header ── */}
       <CardHeader
         className="cursor-pointer select-none"
@@ -429,7 +429,7 @@ export default function QuotaAICard() {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-violet-400 shrink-0" />
+            <Bot className="w-5 h-5 text-blue-500 shrink-0" />
             <CardTitle className="text-base">Support AI Agent</CardTitle>
             {statusPill && <span className="hidden sm:inline">{statusPill}</span>}
           </div>
@@ -645,7 +645,7 @@ export default function QuotaAICard() {
                   })
                 }
                 disabled={saveQuotaAi.isPending}
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/25 rounded-xl cursor-pointer"
               >
                 {saveQuotaAi.isPending ? "Saving…" : "Save Support AI Settings"}
               </Button>

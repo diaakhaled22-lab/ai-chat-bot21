@@ -1813,86 +1813,106 @@ export default function AdminAiQuota() {
 
   return (
     <div className="space-y-8">
-      {/* Header with Unified Date Range Filter */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Cpu className="w-8 h-8 text-violet-400" />
-            {lang === "ar" ? "الذكاء الاصطناعي وإدارة الحصص (AI / Quota)" : "AI / Quota Management"}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {lang === "ar"
-              ? "تكوين نموذج الدعم الفني بالذكاء الاصطناعي، ومراقبة وتحديد حصص الرموز (Token Quotas) لشركات العملاء."
-              : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
-          </p>
-        </div>
+      {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
-        {/* Global Date Filter Controls */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start md:self-auto">
-          <div className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-lg p-1 overflow-x-auto max-w-full">
-            <Calendar className="w-3.5 h-3.5 text-primary ml-1.5 shrink-0" />
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
-                  !showCustom && activeRange === opt.key
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                }`}
-              >
-                {lang === "ar" ? opt.labelAr : opt.labelEn}
-              </button>
-            ))}
-            <button
-              onClick={() => setShowCustom((v) => !v)}
-              className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-all whitespace-nowrap shrink-0 ${
-                showCustom
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-              }`}
-            >
-              <span>{lang === "ar" ? "مخصص" : "Custom"}</span>
-              <ChevronDown className="w-3 h-3" />
-            </button>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-microchip text-2xl sm:text-3xl text-white"></i>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {lang === "ar" ? "مركز إدارة الذكاء الاصطناعي والحصص" : "AI Quota & Telemetry"}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "الذكاء الاصطناعي وإدارة الحصص (AI / Quota)" : "AI / Quota Management"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "تكوين نموذج الدعم الفني بالذكاء الاصطناعي، ومراقبة وتحديد حصص الرموز (Token Quotas) لشركات العملاء."
+                  : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
+              </p>
+            </div>
           </div>
 
-          {showCustom && (
-            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1 shadow-sm text-xs">
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="bg-transparent text-foreground outline-none text-xs"
-              />
-              <span className="text-muted-foreground">→</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom}
-                max={toIso(new Date())}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="bg-transparent text-foreground outline-none text-xs"
-              />
+          {/* Global Date Filter Controls (Translucent frosted glass inside hero) */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start lg:self-auto shrink-0">
+            <div className="flex items-center gap-1 bg-black/20 backdrop-blur-md border border-white/20 rounded-xl p-1 overflow-x-auto max-w-full scrollbar-hide">
+              <Calendar className="w-3.5 h-3.5 text-blue-200 ml-1.5 shrink-0" />
+              {RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                    !showCustom && activeRange === opt.key
+                      ? "bg-white text-blue-700 shadow-sm"
+                      : "text-white/80 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {lang === "ar" ? opt.labelAr : opt.labelEn}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowCustom((v) => !v)}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                  showCustom
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <span>{lang === "ar" ? "مخصص" : "Custom"}</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
             </div>
-          )}
+
+            {showCustom && (
+              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1.5 shadow-sm text-xs text-white">
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="bg-transparent text-white outline-none text-xs"
+                />
+                <span className="text-white/60">→</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={toIso(new Date())}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="bg-transparent text-white outline-none text-xs"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Action Buttons & Period Badge */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50 px-3 py-1.5 rounded-md flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-primary" />
+        <span className="text-xs font-semibold text-muted-foreground bg-card border border-slate-200/80 dark:border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-xs">
+          <Calendar className="w-3.5 h-3.5 text-blue-500" />
           <span>{lang === "ar" ? "الفترة المعروضة:" : "Showing:"}</span>
-          <span className="text-foreground font-semibold">{rangeLabel}</span>
+          <span className="text-foreground font-bold">{rangeLabel}</span>
         </span>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+            className="gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border-emerald-500/30 hover:bg-emerald-500/15 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
             disabled={!filteredAndSortedCompanies.length}
             onClick={() => setShowAllBillsModal(true)}
           >
@@ -1902,26 +1922,26 @@ export default function AdminAiQuota() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 text-blue-600 dark:text-blue-400 bg-blue-500/5 border-blue-500/30 hover:bg-blue-500/15 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
             disabled={!modelCostBreakdown.length}
             onClick={() => setShowModelCostModal(true)}
           >
-            <PieChart className="w-4 h-4 text-purple-400" />
+            <PieChart className="w-4 h-4 text-blue-500" />
             {lang === "ar" ? "تفاصيل التكلفة" : "Cost Breakdown"}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 text-slate-700 dark:text-slate-200 bg-card border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
             onClick={exportToCSV}
           >
-            <Download className="w-4 h-4 text-emerald-400" />
+            <Download className="w-4 h-4 text-emerald-500" />
             {lang === "ar" ? "تصدير CSV" : "Export CSV"}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="gap-2 text-slate-700 dark:text-slate-200 bg-card border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-semibold shadow-xs h-9 cursor-pointer"
             disabled={isFetchingCompanies || isFetchingUsage}
             onClick={() => {
               refetchCompanies();
@@ -1936,61 +1956,61 @@ export default function AdminAiQuota() {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-400" />
-              {lang === "ar" ? "إجمالي الحصص المخصصة" : "Total Allocated Quota"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-foreground tabular-nums tracking-tight leading-tight">
               {formatQuota(totalAllocatedQuota)} <span className="text-xs font-normal text-muted-foreground">tokens</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">
+              {lang === "ar" ? "إجمالي الحصص المخصصة" : "Total Allocated Quota"}
+            </p>
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
               {companiesWithQuota.length} {lang === "ar" ? "شركات بحصص محددة" : "companies with set quotas"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="bg-card border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Coins className="w-4 h-4 text-emerald-400" />
-              {lang === "ar" ? `استهلاك الرموز (${rangeLabel})` : `Tokens Consumed (${rangeLabel})`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
+            <Coins className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight leading-tight">
               {totalTokensConsumedMonth.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">
+              {lang === "ar" ? `استهلاك الرموز (${rangeLabel})` : `Tokens Consumed (${rangeLabel})`}
+            </p>
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
               {formatCost(totalCostConsumedMonth, selectedCurrency)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="bg-card border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-purple-400" />
-              {lang === "ar" ? "الشركات ذات الحصة" : "Companies with Quota"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
+        <div className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-foreground tabular-nums tracking-tight leading-tight">
               {companiesWithQuota.length}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            </p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">
+              {lang === "ar" ? "الشركات ذات الحصة" : "Companies with Quota"}
+            </p>
+            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
               {companiesWithQuota.filter((c) => c.isActive).length} {lang === "ar" ? "نشطة حالياً" : "currently active"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Feature 1: Charts Section */}
       {topCompaniesData.length > 0 && (
-        <Card className="bg-card border-border/50">
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-emerald-400" />
@@ -2028,7 +2048,7 @@ export default function AdminAiQuota() {
                   />
                   <Bar dataKey="tokens" radius={[4, 4, 0, 0]} maxBarSize={50}>
                     {topCompaniesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill="hsl(var(--primary))" className="opacity-80 hover:opacity-100 transition-opacity" />
+                      <Cell key={`cell-${index}`} fill="#2563eb" className="opacity-80 hover:opacity-100 transition-opacity" />
                     ))}
                   </Bar>
                 </BarChart>
@@ -2064,7 +2084,7 @@ export default function AdminAiQuota() {
             {companiesWithoutQuota.length > 0 && (
               <Button
                 size="sm"
-                className="h-9 gap-1.5 text-xs"
+                className="h-9 gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-600/25"
                 onClick={() => {
                   setNewAssignCompanyId(String(companiesWithoutQuota[0].id));
                   setNewAssignQuota("");
@@ -2086,7 +2106,7 @@ export default function AdminAiQuota() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={lang === "ar" ? "بحث عن شركة..." : "Search companies..."}
-                className="pl-9 h-9 text-xs"
+                className="pl-9 h-9 text-xs rounded-xl border-slate-200/80 dark:border-slate-800"
               />
             </div>
             
@@ -2098,7 +2118,7 @@ export default function AdminAiQuota() {
                 setSortDir(d as SortDir);
               }}
             >
-              <SelectTrigger className="w-full sm:w-48 h-9 text-xs">
+              <SelectTrigger className="w-full sm:w-48 h-9 text-xs rounded-xl border-slate-200/80 dark:border-slate-800">
                 <ArrowUpDown className="w-3 h-3 mr-2 text-muted-foreground" />
                 <SelectValue placeholder={lang === "ar" ? "ترتيب حسب..." : "Sort by..."} />
               </SelectTrigger>
@@ -2115,7 +2135,7 @@ export default function AdminAiQuota() {
             </Select>
 
             {/* Currency Selector (USD, SAR, EGP) */}
-            <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-lg border border-border h-9">
+            <div className="flex items-center gap-0.5 bg-card p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 h-9 shadow-xs">
               {(["USD", "SAR", "EGP"] as CurrencyCode[]).map((cCode) => {
                 const c = CURRENCIES[cCode];
                 const active = selectedCurrency === cCode;
@@ -2124,10 +2144,10 @@ export default function AdminAiQuota() {
                     key={cCode}
                     type="button"
                     onClick={() => handleCurrencyChange(cCode)}
-                    className={`px-2 py-1 text-xs rounded-md font-medium transition-all flex items-center gap-1 h-7.5 ${
+                    className={`px-2 py-1 text-xs rounded-lg font-medium transition-all flex items-center gap-1 h-7 cursor-pointer ${
                       active
-                        ? "bg-background text-foreground shadow-xs font-bold border border-border/80"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-blue-600 text-white shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     }`}
                     title={`${c.nameAr} (${c.nameEn})`}
                   >
@@ -2144,10 +2164,10 @@ export default function AdminAiQuota() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 gap-1.5 text-xs border-border/70 hover:bg-muted shadow-xs"
+                  className="h-9 gap-1.5 text-xs rounded-xl border-slate-200/80 dark:border-slate-800 hover:bg-muted shadow-xs cursor-pointer"
                   title={lang === "ar" ? "إجراءات الحصص والاستهلاك" : "All Quota Actions"}
                 >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-blue-500" />
                   <span className="hidden sm:inline">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -2241,7 +2261,7 @@ export default function AdminAiQuota() {
           </div>
         </div>
 
-        <Card className="bg-card border-border/50 overflow-hidden">
+        <Card className="bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -3485,6 +3505,7 @@ export default function AdminAiQuota() {
               <Button
                 onClick={handleSaveQuota}
                 disabled={setQuotaMutation.isPending || Boolean(quotaStartDate && quotaEndDate && quotaEndDate < quotaStartDate)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/25 rounded-xl cursor-pointer"
               >
                 {setQuotaMutation.isPending ? (
                   <>
@@ -3870,6 +3891,7 @@ export default function AdminAiQuota() {
                 !newAssignQuota ||
                 Boolean(newAssignStartDate && newAssignEndDate && newAssignEndDate < newAssignStartDate)
               }
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-600/25 rounded-xl cursor-pointer"
             >
               {setQuotaMutation.isPending ? (
                 <>
