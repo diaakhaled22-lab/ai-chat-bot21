@@ -217,82 +217,76 @@ export const SlidingAuthOverlay: React.FC = () => {
 
         {/* 4. The Sliding Overlay (Foreground Layer) */}
         <div
-          className={`absolute top-0 left-1/2 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-all duration-[600ms] ease-in-out text-white ${
+          className={`absolute top-0 left-0 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-all duration-[600ms] ease-in-out text-white ${
             isRightPanelActive
-              ? "-translate-x-full rounded-tr-[150px] rounded-br-[100px] rounded-tl-none rounded-bl-none"
-              : "translate-x-0 rounded-tl-[150px] rounded-bl-[100px] rounded-tr-none rounded-br-none"
+              ? "translate-x-0 rounded-tr-[150px] rounded-br-[100px] rounded-tl-none rounded-bl-none"
+              : "translate-x-full rounded-tl-[150px] rounded-bl-[100px] rounded-tr-none rounded-br-none"
           }`}
           style={{
+            background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
             transition: "all 0.6s ease-in-out",
+            transitionProperty: "transform, border-radius",
             willChange: "transform, border-radius",
           }}
         >
-          {/* Inner 200% width layer (.toggle) driven by translateX(50%) and translateX(0) */}
+          {/* Sub-panel 1: Visible in Default State (When overlay is on the Right) */}
           <div
-            className={`relative left-[-100%] h-full w-[200%] text-white transition-all duration-[600ms] ease-in-out ${
-              isRightPanelActive ? "translate-x-1/2" : "translate-x-0"
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
+              !isRightPanelActive
+                ? "opacity-100 translate-x-0 pointer-events-auto"
+                : "opacity-0 -translate-x-12 pointer-events-none"
             }`}
-            style={{
-              background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
-              transition: "all 0.6s ease-in-out",
-              willChange: "transform",
-            }}
           >
-            {/* Left Sub-panel (.toggle-left): Visible in Active State (When overlay is on the Left, covering Admin) */}
-            <div
-              className={`absolute top-0 left-0 w-1/2 h-full flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
-                isRightPanelActive ? "translate-x-0" : "-translate-x-[200%]"
-              }`}
-            >
-              {/* Robot Icon Badge */}
-              <div className="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
-                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                </svg>
-              </div>
-
-              <h3 className="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h3>
-              <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
-                Access the administrator management portal.
-              </p>
-
-              {/* Ghost Button: ADMIN LOGIN */}
-              <button
-                type="button"
-                onClick={() => setIsRightPanelActive(false)}
-                className="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
-              >
-                ADMIN LOGIN
-              </button>
+            {/* Robot Icon Badge */}
+            <div className="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
+              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
             </div>
 
-            {/* Right Sub-panel (.toggle-right): Visible in Default State (When overlay is on the Right, covering Client) */}
-            <div
-              className={`absolute top-0 right-0 w-1/2 h-full flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
-                isRightPanelActive ? "translate-x-[200%]" : "translate-x-0"
-              }`}
+            <h3 className="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h3>
+            <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+              Access your client chatbot deployment portal.
+            </p>
+
+            {/* Ghost Button: CLIENT LOGIN */}
+            <button
+              type="button"
+              onClick={() => setIsRightPanelActive(true)}
+              className="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
             >
-              {/* Robot Icon Badge */}
-              <div className="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
-                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                </svg>
-              </div>
+              CLIENT LOGIN
+            </button>
+          </div>
 
-              <h3 className="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h3>
-              <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
-                Access your client chatbot deployment portal.
-              </p>
-
-              {/* Ghost Button: CLIENT LOGIN */}
-              <button
-                type="button"
-                onClick={() => setIsRightPanelActive(true)}
-                className="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
-              >
-                CLIENT LOGIN
-              </button>
+          {/* Sub-panel 2: Visible in Active State (When overlay is on the Left) */}
+          <div
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
+              isRightPanelActive
+                ? "opacity-100 translate-x-0 pointer-events-auto"
+                : "opacity-0 translate-x-12 pointer-events-none"
+            }`}
+          >
+            {/* Robot Icon Badge */}
+            <div className="w-[120px] h-[120px] rounded-[26px] bg-white/[0.16] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] backdrop-blur-sm flex items-center justify-center mb-4">
+              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
             </div>
+
+            <h3 className="text-[2.65rem] font-bold tracking-tight text-white mb-2 leading-tight">Bot Manager</h3>
+            <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+              Access the administrator management portal.
+            </p>
+
+            {/* Ghost Button: ADMIN LOGIN */}
+            <button
+              type="button"
+              onClick={() => setIsRightPanelActive(false)}
+              className="border border-white bg-transparent hover:bg-white/15 text-white text-xs font-semibold tracking-wider uppercase py-3 px-11 rounded-lg transition-all duration-200"
+            >
+              ADMIN LOGIN
+            </button>
           </div>
         </div>
       </div>

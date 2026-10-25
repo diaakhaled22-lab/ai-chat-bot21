@@ -541,86 +541,80 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
         {/* 4. The Sliding Overlay (Foreground Layer - Desktop only) */}
         <div
-          className={`hidden md:block absolute top-0 left-1/2 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-all duration-[600ms] ease-in-out text-white ${
+          className={`hidden md:flex absolute top-0 left-0 w-1/2 h-full z-50 overflow-hidden shadow-2xl transition-all duration-[600ms] ease-in-out text-white ${
             isRightPanelActive
-              ? "-translate-x-full rounded-tr-[150px] rounded-br-[100px] rounded-tl-none rounded-bl-none"
-              : "translate-x-0 rounded-tl-[150px] rounded-bl-[100px] rounded-tr-none rounded-br-none"
+              ? "translate-x-0 rounded-tr-[150px] rounded-br-[100px] rounded-tl-none rounded-bl-none"
+              : "translate-x-full rounded-tl-[150px] rounded-bl-[100px] rounded-tr-none rounded-br-none"
           }`}
           style={{
+            background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
             transition: "all 0.6s ease-in-out",
+            transitionProperty: "transform, border-radius",
             willChange: "transform, border-radius",
           }}
         >
-          {/* Inner 200% width layer (.toggle) driven by translateX(50%) and translateX(0) */}
+          {/* Sub-panel 1: Visible in Default State (When overlay is on the Right, covering Client) */}
           <div
-            className={`relative left-[-100%] h-full w-[200%] text-white transition-all duration-[600ms] ease-in-out ${
-              isRightPanelActive ? "translate-x-1/2" : "translate-x-0"
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
+              !isRightPanelActive
+                ? "opacity-100 translate-x-0 pointer-events-auto"
+                : "opacity-0 -translate-x-12 pointer-events-none"
             }`}
-            style={{
-              background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
-              transition: "all 0.6s ease-in-out",
-              willChange: "transform",
-            }}
           >
-            {/* Left Sub-panel (.toggle-left): Visible in Active State (When overlay is on the Left, covering Admin) */}
-            <div
-              className={`absolute top-0 left-0 w-1/2 h-full flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
-                isRightPanelActive ? "translate-x-0" : "-translate-x-[200%]"
-              }`}
-            >
-              {/* Robot Icon Badge */}
-              <div className="modern-bot-icon">
-                <i className="fa-solid fa-robot"></i>
-              </div>
-
-              <h3 className="text-[2.65rem] font-bold text-white tracking-tight mb-3 leading-tight">
-                Bot Manager
-              </h3>
-              <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
-                {lang === "ar"
-                  ? "للرجوع إلى لوحة تحكم المسؤول الرئيسية."
-                  : "Access the administrator management portal."}
-              </p>
-
-              {/* Ghost Button: ADMIN LOGIN */}
-              <button
-                type="button"
-                onClick={handleSwitchToAdmin}
-                className="modern-login-btn btn-hidden"
-              >
-                {lang === "ar" ? "دخول المسؤول" : "ADMIN LOGIN"}
-              </button>
+            {/* Robot Icon Badge (Exact style as shown in the picture) */}
+            <div className="modern-bot-icon">
+              <i className="fa-solid fa-robot"></i>
             </div>
 
-            {/* Right Sub-panel (.toggle-right): Visible in Default State (When overlay is on the Right, covering Client) */}
-            <div
-              className={`absolute top-0 right-0 w-1/2 h-full flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
-                isRightPanelActive ? "translate-x-[200%]" : "translate-x-0"
-              }`}
+            <h3 className="text-[2.65rem] font-bold text-white tracking-tight mb-3 leading-tight">
+              Bot Manager
+            </h3>
+            <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+              {lang === "ar"
+                ? "للوصول إلى لوحة إعدادات بوت العميل."
+                : "Access your client chatbot deployment portal."}
+            </p>
+
+            {/* Ghost Button: CLIENT LOGIN */}
+            <button
+              type="button"
+              onClick={handleSwitchToClient}
+              className="modern-login-btn btn-hidden"
             >
-              {/* Robot Icon Badge */}
-              <div className="modern-bot-icon">
-                <i className="fa-solid fa-robot"></i>
-              </div>
+              {lang === "ar" ? "دخول العميل" : "CLIENT LOGIN"}
+            </button>
+          </div>
 
-              <h3 className="text-[2.65rem] font-bold text-white tracking-tight mb-3 leading-tight">
-                Bot Manager
-              </h3>
-              <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
-                {lang === "ar"
-                  ? "للوصول إلى لوحة إعدادات بوت العميل."
-                  : "Access your client chatbot deployment portal."}
-              </p>
-
-              {/* Ghost Button: CLIENT LOGIN */}
-              <button
-                type="button"
-                onClick={handleSwitchToClient}
-                className="modern-login-btn btn-hidden"
-              >
-                {lang === "ar" ? "دخول العميل" : "CLIENT LOGIN"}
-              </button>
+          {/* Sub-panel 2: Visible in Active State (When overlay is on the Left, covering Admin) */}
+          <div
+            className={`absolute inset-0 flex flex-col justify-center items-center px-10 text-center transition-all duration-[600ms] ease-in-out ${
+              isRightPanelActive
+                ? "opacity-100 translate-x-0 pointer-events-auto"
+                : "opacity-0 translate-x-12 pointer-events-none"
+            }`}
+          >
+            {/* Robot Icon Badge */}
+            <div className="modern-bot-icon">
+              <i className="fa-solid fa-robot"></i>
             </div>
+
+            <h3 className="text-[2.65rem] font-bold text-white tracking-tight mb-3 leading-tight">
+              Bot Manager
+            </h3>
+            <p className="text-sm text-white/90 mb-6 max-w-[280px] leading-relaxed">
+              {lang === "ar"
+                ? "للرجوع إلى لوحة تحكم المسؤول الرئيسية."
+                : "Access the administrator management portal."}
+            </p>
+
+            {/* Ghost Button: ADMIN LOGIN */}
+            <button
+              type="button"
+              onClick={handleSwitchToAdmin}
+              className="modern-login-btn btn-hidden"
+            >
+              {lang === "ar" ? "دخول المسؤول" : "ADMIN LOGIN"}
+            </button>
           </div>
         </div>
       </div>
