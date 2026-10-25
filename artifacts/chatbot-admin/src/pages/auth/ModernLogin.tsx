@@ -317,6 +317,10 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               </button>
             </div>
 
+            <Link href="/forgot-password">
+              {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
+            </Link>
+
             <button
               type="submit"
               className="modern-login-btn"
@@ -328,7 +332,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   <span>{lang === "ar" ? "جاري الدخول..." : "Signing In..."}</span>
                 </>
               ) : (
-                lang === "ar" ? "تسجيل الدخول" : "Sign In"
+                lang === "ar" ? "تسجيل الدخول" : "SIGN IN"
               )}
             </button>
           </form>
@@ -387,7 +391,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               </div>
 
               <Link href="/forgot-password">
-                {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forget Your Password?"}
+                {lang === "ar" ? "هل نسيت كلمة المرور؟" : "Forgot Your Password?"}
               </Link>
 
               <button
@@ -401,7 +405,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     <span>{lang === "ar" ? "جاري التحقق..." : "Signing In..."}</span>
                   </>
                 ) : (
-                  lang === "ar" ? "تسجيل الدخول" : "Sign In"
+                  lang === "ar" ? "تسجيل الدخول" : "SIGN IN"
                 )}
               </button>
             </form>
@@ -471,13 +475,18 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 <i className="fa-solid fa-robot"></i>
               </div>
               <h1>Bot Manager</h1>
+              <p className="text-sm opacity-90 max-w-xs mb-3">
+                {lang === "ar"
+                  ? "للرجوع إلى لوحة تحكم المسؤول الرئيسية"
+                  : "Switch back to the administrative portal."}
+              </p>
               <button
                 type="button"
                 className="modern-login-btn btn-hidden hidden"
                 id="login"
                 onClick={handleSwitchToAdmin}
               >
-                {lang === "ar" ? "تسجيل دخول المسؤول" : "Admin Login"}
+                {lang === "ar" ? "دخول المسؤول" : "ADMIN LOGIN"}
               </button>
             </div>
 
@@ -487,13 +496,18 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 <i className="fa-solid fa-robot"></i>
               </div>
               <h1>Bot Manager</h1>
+              <p className="text-sm opacity-90 max-w-xs mb-3">
+                {lang === "ar"
+                  ? "للوصول إلى لوحة إعدادات بوت العميل"
+                  : "Access your client chatbot deployment portal."}
+              </p>
               <button
                 type="button"
                 className="modern-login-btn btn-hidden hidden"
                 id="register"
                 onClick={handleSwitchToClient}
               >
-                {lang === "ar" ? "تسجيل دخول العميل" : "Client Login"}
+                {lang === "ar" ? "دخول العميل" : "CLIENT LOGIN"}
               </button>
             </div>
           </div>

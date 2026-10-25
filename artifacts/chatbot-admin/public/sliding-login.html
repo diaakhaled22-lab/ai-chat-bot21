@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bot Manager - Sliding Panel Login</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          transitionDuration: {
+            '600': '600ms',
+          },
+          transitionTimingFunction: {
+            'in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* CSS Custom Transition Rules (0.6s ease-in-out) */
+    .overlay-panel {
+      transition: transform 0.6s ease-in-out, border-radius 0.6s ease-in-out;
+      will-change: transform;
+    }
+
+    /* When .active is applied, the overlay slides to the left */
+    #main-container.active .overlay-panel {
+      transform: translateX(-100%);
+      border-radius: 0 40px 40px 0;
+    }
+
+    /* Default state: Overlay content transitions */
+    .overlay-content-client {
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 0.4s ease-in-out 0.2s, transform 0.6s ease-in-out;
+      pointer-events: auto;
+    }
+
+    .overlay-content-admin {
+      opacity: 0;
+      transform: translateX(30px);
+      transition: opacity 0.4s ease-in-out, transform 0.6s ease-in-out;
+      pointer-events: none;
+    }
+
+    /* Active state: Overlay content transitions */
+    #main-container.active .overlay-content-client {
+      opacity: 0;
+      transform: translateX(-30px);
+      transition: opacity 0.4s ease-in-out, transform 0.6s ease-in-out;
+      pointer-events: none;
+    }
+
+    #main-container.active .overlay-content-admin {
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 0.4s ease-in-out 0.2s, transform 0.6s ease-in-out;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-tr from-slate-100 via-slate-200 to-indigo-100 min-h-screen flex items-center justify-center p-4 selection:bg-blue-600 selection:text-white font-sans antialiased">
+
+  <!-- 1. Main Container -->
+  <main
+    id="main-container"
+    class="relative w-full max-w-[850px] min-h-[580px] bg-white rounded-3xl shadow-2xl shadow-slate-400/30 overflow-hidden flex"
+  >
+    <!-- 2. The Forms (Background Layer) -->
+
+    <!-- LEFT SIDE: Admin Login Form -->
+    <section
+      aria-label="Admin Login Form"
+      class="w-full md:w-1/2 h-full flex flex-col justify-center items-center px-8 sm:px-12 py-10 z-0 bg-white"
+    >
+      <div class="w-full max-w-sm flex flex-col items-center text-center">
+        <!-- Admin Icon -->
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 shadow-sm border border-blue-100">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Admin Login</h1>
+        <p class="text-xs text-slate-500 mt-1 mb-6">Enter your administrative credentials</p>
+
+        <form id="admin-form" class="w-full flex flex-col gap-3.5" novalidate>
+          <!-- Username Input -->
+          <div class="relative w-full">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </span>
+            <input
+              type="text"
+              id="admin-username"
+              required
+              autocomplete="username"
+              placeholder="Username or Email"
+              class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+            />
+          </div>
+
+          <!-- Password Input with Show/Hide Toggle -->
+          <div class="relative w-full">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+            </span>
+            <input
+              type="password"
+              id="admin-password"
+              required
+              autocomplete="current-password"
+              placeholder="Password"
+              class="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+            />
+            <button
+              type="button"
+              id="admin-password-toggle"
+              aria-label="Toggle password visibility"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <!-- Eye Icon (Hidden state default) -->
+              <svg id="admin-eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              <!-- Eye Slash Icon (Visible state) -->
+              <svg id="admin-eye-off-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Forgot Password Link -->
+          <div class="flex justify-end pt-1">
+            <a href="#forgot-admin" class="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors">
+              Forgot Your Password?
+            </a>
+          </div>
+
+          <!-- Solid SIGN IN Button -->
+          <button
+            type="submit"
+            class="w-full mt-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+          >
+            SIGN IN
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- RIGHT SIDE: Client Login Form -->
+    <section
+      aria-label="Client Login Form"
+      class="w-full md:w-1/2 h-full flex flex-col justify-center items-center px-8 sm:px-12 py-10 z-0 bg-white"
+    >
+      <div class="w-full max-w-sm flex flex-col items-center text-center">
+        <!-- Client Icon -->
+        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 shadow-sm border border-indigo-100">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+          </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Client Login</h1>
+        <p class="text-xs text-slate-500 mt-1 mb-6">Manage your chatbot deployment portal</p>
+
+        <form id="client-form" class="w-full flex flex-col gap-3.5" novalidate>
+          <!-- Username Input -->
+          <div class="relative w-full">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </span>
+            <input
+              type="text"
+              id="client-username"
+              required
+              autocomplete="username"
+              placeholder="Client Username"
+              class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all"
+            />
+          </div>
+
+          <!-- Password Input with Show/Hide Toggle -->
+          <div class="relative w-full">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+            </span>
+            <input
+              type="password"
+              id="client-password"
+              required
+              autocomplete="current-password"
+              placeholder="Password"
+              class="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all"
+            />
+            <button
+              type="button"
+              id="client-password-toggle"
+              aria-label="Toggle password visibility"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <!-- Eye Icon -->
+              <svg id="client-eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+              </svg>
+              <!-- Eye Slash Icon -->
+              <svg id="client-eye-off-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Forgot Password Link -->
+          <div class="flex justify-end pt-1">
+            <a href="#forgot-client" class="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline transition-colors">
+              Forgot Your Password?
+            </a>
+          </div>
+
+          <!-- Solid SIGN IN Button -->
+          <button
+            type="submit"
+            class="w-full mt-2 py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-indigo-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
+          >
+            SIGN IN
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 3. The Sliding Overlay (Foreground Layer) -->
+    <aside
+      id="overlay-panel"
+      class="overlay-panel absolute top-0 left-1/2 w-1/2 h-full bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 text-white z-20 overflow-hidden shadow-2xl rounded-l-[40px] md:flex hidden flex-col justify-center items-center"
+    >
+      <!-- Sub-panel 1: Shown in Default State (Overlay covers Client Form on the right) -->
+      <div class="overlay-content-client absolute inset-0 flex flex-col justify-center items-center px-10 text-center">
+        <!-- Robot Icon Badge -->
+        <div class="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-5 shadow-inner">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+          </svg>
+        </div>
+
+        <h2 class="text-3xl font-extrabold tracking-tight">Bot Manager</h2>
+        <p class="text-sm text-blue-100/90 mt-2.5 mb-7 max-w-xs leading-relaxed">
+          Need access to client chatbot configurations and workspace dashboards?
+        </p>
+
+        <!-- Ghost Button: CLIENT LOGIN -->
+        <button
+          type="button"
+          id="btn-to-client"
+          class="border-2 border-white/90 text-white hover:bg-white hover:text-blue-700 text-xs font-bold tracking-widest uppercase py-3.5 px-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600"
+        >
+          CLIENT LOGIN
+        </button>
+      </div>
+
+      <!-- Sub-panel 2: Shown in Active State (Overlay covers Admin Form on the left) -->
+      <div class="overlay-content-admin absolute inset-0 flex flex-col justify-center items-center px-10 text-center">
+        <!-- Robot Icon Badge -->
+        <div class="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-5 shadow-inner">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+          </svg>
+        </div>
+
+        <h2 class="text-3xl font-extrabold tracking-tight">Bot Manager</h2>
+        <p class="text-sm text-indigo-100/90 mt-2.5 mb-7 max-w-xs leading-relaxed">
+          Switching back to system administration and core master controls?
+        </p>
+
+        <!-- Ghost Button: ADMIN LOGIN -->
+        <button
+          type="button"
+          id="btn-to-admin"
+          class="border-2 border-white/90 text-white hover:bg-white hover:text-indigo-700 text-xs font-bold tracking-widest uppercase py-3.5 px-9 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600"
+        >
+          ADMIN LOGIN
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 4. TypeScript Script (Compiled / Inline) -->
+  <script>
+    /**
+     * TypeScript Source Implementation:
+     * ----------------------------------------------------
+     * interface PasswordToggleElements {
+     *   input: HTMLInputElement;
+     *   toggleBtn: HTMLButtonElement;
+     *   eyeIcon: SVGElement;
+     *   eyeOffIcon: SVGElement;
+     * }
+     * 
+     * class SlidingAuthManager {
+     *   private container: HTMLElement;
+     *   private btnToClient: HTMLButtonElement;
+     *   private btnToAdmin: HTMLButtonElement;
+     * 
+     *   constructor() { ... }
+     * }
+     */
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // DOM Elements Selection
+      const container = document.getElementById('main-container');
+      const btnToClient = document.getElementById('btn-to-client');
+      const btnToAdmin = document.getElementById('btn-to-admin');
+
+      // 1. Sliding Overlay Interaction via .active class
+      if (container && btnToClient && btnToAdmin) {
+        // Slide overlay to the Left (reveals Client form on the right)
+        btnToClient.addEventListener('click', () => {
+          container.classList.add('active');
+        });
+
+        // Slide overlay back to the Right (reveals Admin form on the left)
+        btnToAdmin.addEventListener('click', () => {
+          container.classList.remove('active');
+        });
+      }
+
+      // 2. Generic Password Visibility Toggle Handler
+      const setupPasswordToggle = (
+        inputId,
+        toggleBtnId,
+        eyeIconId,
+        eyeOffIconId
+      ) => {
+        const input = document.getElementById(inputId);
+        const toggleBtn = document.getElementById(toggleBtnId);
+        const eyeIcon = document.getElementById(eyeIconId);
+        const eyeOffIcon = document.getElementById(eyeOffIconId);
+
+        if (!input || !toggleBtn || !eyeIcon || !eyeOffIcon) return;
+
+        toggleBtn.addEventListener('click', () => {
+          const isPassword = input.getAttribute('type') === 'password';
+          input.setAttribute('type', isPassword ? 'text' : 'password');
+          eyeIcon.classList.toggle('hidden', isPassword);
+          eyeOffIcon.classList.toggle('hidden', !isPassword);
+        });
+      };
+
+      // Initialize toggles for Admin and Client forms
+      setupPasswordToggle('admin-password', 'admin-password-toggle', 'admin-eye-icon', 'admin-eye-off-icon');
+      setupPasswordToggle('client-password', 'client-password-toggle', 'client-eye-icon', 'client-eye-off-icon');
+
+      // 3. Prevent form submission demo
+      const handleFormSubmit = (formId, role) => {
+        const form = document.getElementById(formId);
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert(`${role} Sign-In submitted successfully!`);
+          });
+        }
+      };
+
+      handleFormSubmit('admin-form', 'Admin');
+      handleFormSubmit('client-form', 'Client');
+    });
+  </script>
+</body>
+</html>
