@@ -891,10 +891,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
           {/* Top-right vivid violet/magenta nebula glow */}
           <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-purple-600/50 via-fuchsia-600/30 to-transparent blur-3xl pointer-events-none" />
-          
-          {/* Glowing particle stars */}
-          <div className="absolute top-12 right-10 w-2.5 h-2.5 rounded-full bg-white/90 blur-[0.5px] shadow-[0_0_10px_rgba(255,255,255,0.9)]" />
-          <div className="absolute top-28 right-4 w-1.5 h-1.5 rounded-full bg-purple-200/80 blur-[0.5px] shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
 
           {/* Upper sweeping curved glass wave */}
           <svg className="absolute top-[18%] -left-10 w-[380px] h-[360px] pointer-events-none" viewBox="0 0 380 360" fill="none">
