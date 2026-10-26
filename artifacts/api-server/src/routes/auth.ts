@@ -67,6 +67,11 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     }
     const { username, password } = parsed.data;
     const ip = req.ip || "unknown";
+    const clientIp = extractClientIp(req);
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
+    const headerMac = typeof req.headers["x-mac-address"] === "string" ? (req.headers["x-mac-address"] as string).trim() : null;
+    const arpMac = await getArpMac(clientIp);
+    const finalMac = bodyMac || headerMac || arpMac || null;
 
     if (isIpBlocked(ip)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
@@ -76,7 +81,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     // Check account lockout
     const lockSeconds = isAccountLocked(username);
     if (lockSeconds > 0) {
-      recordBlockedLoginAttempt(username, ip);
+      recordBlockedLoginAttempt(username, ip, finalMac);
       res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
@@ -89,7 +94,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
 
     if (!user || user.role !== "admin") {
       if (username) {
-        const result = recordFailedLogin(username, ip);
+        const result = recordFailedLogin(username, ip, finalMac);
         if (result.spikeDetected) {
           void sendAttackSpikeNotification({
             recentFailedAttempts: result.recentFailedAttempts,
@@ -103,7 +108,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, ip);
+      const result = recordFailedLogin(username, ip, finalMac);
       if (result.spikeDetected) {
         void sendAttackSpikeNotification({
           recentFailedAttempts: result.recentFailedAttempts,
@@ -209,6 +214,11 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     }
     const { username, password } = parsed.data;
     const ip = req.ip || "unknown";
+    const clientIp = extractClientIp(req);
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
+    const headerMac = typeof req.headers["x-mac-address"] === "string" ? (req.headers["x-mac-address"] as string).trim() : null;
+    const arpMac = await getArpMac(clientIp);
+    let finalMac = bodyMac || headerMac || arpMac || null;
 
     if (isIpBlocked(ip)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
@@ -217,7 +227,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
 
     const lockSeconds = isAccountLocked(username);
     if (lockSeconds > 0) {
-      recordBlockedLoginAttempt(username, ip);
+      recordBlockedLoginAttempt(username, ip, finalMac);
       res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
@@ -228,9 +238,13 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       .where(eq(usersTable.username, username))
       .limit(1);
 
+    if (user?.macAddress && !finalMac) {
+      finalMac = user.macAddress;
+    }
+
     if (!user || user.role !== "client") {
       if (username) {
-        const result = recordFailedLogin(username, ip);
+        const result = recordFailedLogin(username, ip, finalMac);
         if (result.spikeDetected) {
           void sendAttackSpikeNotification({
             recentFailedAttempts: result.recentFailedAttempts,
@@ -244,7 +258,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, ip);
+      const result = recordFailedLogin(username, ip, finalMac);
       if (result.spikeDetected) {
         void sendAttackSpikeNotification({
           recentFailedAttempts: result.recentFailedAttempts,

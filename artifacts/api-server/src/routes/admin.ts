@@ -111,24 +111,24 @@ router.get("/admin/attack-monitoring", async (_req, res) => {
 
 // POST /admin/attack-monitoring/block
 router.post("/admin/attack-monitoring/block", async (req, res) => {
-  const { ip } = req.body as { ip?: string };
+  const { ip, macAddress } = req.body as { ip?: string; macAddress?: string };
   if (!ip || typeof ip !== "string") {
     res.status(400).json({ error: "Valid IP is required" });
     return;
   }
-  manualBlockIp(ip);
+  manualBlockIp(ip, macAddress);
   await logAdminActivity(req.session.userId!, "IP Blocked", `Manually blocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
 });
 
 // POST /admin/attack-monitoring/unblock
 router.post("/admin/attack-monitoring/unblock", async (req, res) => {
-  const { ip } = req.body as { ip?: string };
+  const { ip, macAddress } = req.body as { ip?: string; macAddress?: string };
   if (!ip || typeof ip !== "string") {
     res.status(400).json({ error: "Valid IP is required" });
     return;
   }
-  manualUnblockIp(ip);
+  manualUnblockIp(ip, macAddress);
   await logAdminActivity(req.session.userId!, "IP Unblocked", `Manually unblocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
 });

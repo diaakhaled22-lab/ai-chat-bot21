@@ -22,6 +22,7 @@ export interface HealthStatus {
 export interface LoginInput {
   username: string;
   password: string;
+  macAddress?: string;
 }
 
 export type AuthResultRole = typeof AuthResultRole[keyof typeof AuthResultRole];

@@ -152,8 +152,9 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       return;
     }
 
+    const macAddress = getDeviceMac();
     adminLogin.mutate(
-      { data: { username: adminUsername.trim(), password: adminPassword } },
+      { data: { username: adminUsername.trim(), password: adminPassword, macAddress } as any },
       {
         onSuccess: (data) => {
           if (data.requires2FA) {

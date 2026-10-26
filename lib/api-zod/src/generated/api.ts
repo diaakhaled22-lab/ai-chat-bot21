@@ -21,7 +21,8 @@ export const HealthCheckResponse = zod.object({
  */
 export const AdminLoginBody = zod.object({
   "username": zod.string(),
-  "password": zod.string()
+  "password": zod.string(),
+  "macAddress": zod.string().optional()
 })
 
 export const AdminLoginResponse = zod.object({

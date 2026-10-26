@@ -13,6 +13,7 @@ type AttackEvent = "failed_attempt" | "warning_triggered" | "account_locked" | "
 interface AttackLogEntry {
   id: number;
   ip: string;
+  macAddress?: string | null;
   time: string;
   username: string;
   failedAttempts: number;
@@ -80,12 +81,14 @@ export default function AdminAttackMonitoring() {
   });
 
   const blockIpMutation = useMutation({
-    mutationFn: (ip: string) =>
-      customFetch("/api/admin/attack-monitoring/block", {
+    mutationFn: (param: string | { ip: string; macAddress?: string | null }) => {
+      const payload = typeof param === "string" ? { ip: param } : param;
+      return customFetch("/api/admin/attack-monitoring/block", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ip }),
-      }),
+        body: JSON.stringify(payload),
+      });
+    },
     onSuccess: () => {
       toast({ title: "IP Blocked successfully" });
       queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
@@ -96,12 +99,14 @@ export default function AdminAttackMonitoring() {
   });
 
   const unblockIpMutation = useMutation({
-    mutationFn: (ip: string) =>
-      customFetch("/api/admin/attack-monitoring/unblock", {
+    mutationFn: (param: string | { ip: string; macAddress?: string | null }) => {
+      const payload = typeof param === "string" ? { ip: param } : param;
+      return customFetch("/api/admin/attack-monitoring/unblock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ip }),
-      }),
+        body: JSON.stringify(payload),
+      });
+    },
     onSuccess: () => {
       toast({ title: "IP Unblocked successfully" });
       queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
@@ -431,11 +436,12 @@ export default function AdminAttackMonitoring() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>IP</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Failed attempts</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{lang === "ar" ? "عنوان MAC" : "MAC Address"}</TableHead>
+                    <TableHead>{lang === "ar" ? "الوقت" : "Time"}</TableHead>
+                    <TableHead>{lang === "ar" ? "اسم المستخدم" : "Username"}</TableHead>
+                    <TableHead>{lang === "ar" ? "المحاولات الفاشلة" : "Failed attempts"}</TableHead>
+                    <TableHead>{lang === "ar" ? "الحالة" : "Status"}</TableHead>
+                    <TableHead className="text-right">{lang === "ar" ? "الإجراءات" : "Actions"}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -444,6 +450,9 @@ export default function AdminAttackMonitoring() {
                     return (
                       <TableRow key={log.id}>
                         <TableCell className="font-mono text-xs whitespace-nowrap">{log.ip}</TableCell>
+                        <TableCell className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+                          {log.macAddress || "—"}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(log.time)}</TableCell>
                         <TableCell className="font-medium">{log.username}</TableCell>
                         <TableCell className="tabular-nums">{log.failedAttempts}</TableCell>
@@ -458,7 +467,7 @@ export default function AdminAttackMonitoring() {
                               variant="outline"
                               size="sm"
                               className="h-6 text-[11px] px-3 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
-                              onClick={() => unblockIpMutation.mutate(log.ip)}
+                              onClick={() => unblockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
                               disabled={unblockIpMutation.isPending}
                             >
                               Unblock
@@ -468,7 +477,7 @@ export default function AdminAttackMonitoring() {
                               variant="destructive"
                               size="sm"
                               className="h-6 text-[11px] px-4"
-                              onClick={() => blockIpMutation.mutate(log.ip)}
+                              onClick={() => blockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
                               disabled={blockIpMutation.isPending}
                             >
                               Block

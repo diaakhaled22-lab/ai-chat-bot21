@@ -248,6 +248,7 @@ export type AttackLogEvent = "failed_attempt" | "warning_triggered" | "account_l
 export interface AttackLogEntry {
   id: number;
   ip: string;
+  macAddress?: string | null;
   time: string;
   username: string;
   failedAttempts: number;
@@ -304,7 +305,7 @@ export async function loadAttackLogsFromDb() {
       const savedLogs: AttackLogEntry[] = JSON.parse(row.value);
       if (Array.isArray(savedLogs) && savedLogs.length > 0) {
         attackLogs.length = 0;
-        attackLogs.push(...savedLogs.slice(-MAX_ATTACK_LOG_ENTRIES));
+        attackLogs.push(...savedLogs.map((l) => ({ ...l, macAddress: l.macAddress || "—" })).slice(-MAX_ATTACK_LOG_ENTRIES));
         const maxId = attackLogs.reduce((max, log) => Math.max(max, log.id || 0), 0);
         nextAttackLogId = maxId + 1;
         logger.info({ count: attackLogs.length }, "Loaded attack logs from DB");
@@ -446,10 +447,13 @@ function appendAttackLog(
   failedAttempts: number,
   event: AttackLogEvent,
   timestamp = Date.now(),
+  macAddress?: string | null,
 ): void {
+  const normalizedMac = macAddress ? macAddress.replace(/-/g, ":").toUpperCase() : "—";
   attackLogs.push({
     id: nextAttackLogId++,
     ip: normalizeIp(ip),
+    macAddress: normalizedMac,
     time: new Date(timestamp).toISOString(),
     username: username.trim() || "(unknown)",
     failedAttempts,
@@ -526,11 +530,11 @@ export function isIpBlocked(ip: string): boolean {
  * Records an attempted login while the account is already locked. Five such
  * attempts trigger a source-IP block.
  */
-export function recordBlockedLoginAttempt(username: string, ip: string): boolean {
+export function recordBlockedLoginAttempt(username: string, ip: string, macAddress?: string | null): boolean {
   const entry = getOrCreateLoginAttempt(username);
   entry.postLockoutFailures++;
   const attempts = MAX_LOGIN_ATTEMPTS + entry.postLockoutFailures;
-  appendAttackLog(ip, username, attempts, "blocked_attempt");
+  appendAttackLog(ip, username, attempts, "blocked_attempt", Date.now(), macAddress);
 
   if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
     const normalizedIp = normalizeIp(ip);
@@ -538,7 +542,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
       blockedIps.set(normalizedIp, Date.now());
       void saveBlockedIpsToDb();
       void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
-      appendAttackLog(ip, username, attempts, "ip_blocked");
+      appendAttackLog(ip, username, attempts, "ip_blocked", Date.now(), macAddress);
       logger.warn(
         { username: username.toLowerCase(), ip: normalizedIp, attempts },
         "IP blocked after suspicious activity during account lockout",
@@ -555,7 +559,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
  * Automatically triggers warning notification (bell icon + email) when consecutive
  * failed attempts reach the warning threshold (3 attempts).
  */
-export function recordFailedLogin(username: string, ip: string): FailedLoginResult {
+export function recordFailedLogin(username: string, ip: string, macAddress?: string | null): FailedLoginResult {
   const cleanUsername = username.trim() || "(unknown)";
   const normUser = cleanUsername.toLowerCase();
   const normalizedIp = normalizeIp(ip);
@@ -578,7 +582,7 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
   const ipAttempts = ipEntry.failureTimes.length;
 
   const currentAttempts = Math.max(userAttempts, ipAttempts);
-  appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "failed_attempt", now);
+  appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "failed_attempt", now, macAddress);
   logger.warn({ username: normUser, ip: normalizedIp, userAttempts, ipAttempts }, "Failed login attempt");
 
   const recentFailedAttempts = attackLogs.filter(
@@ -603,7 +607,7 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     if (shouldWarnUser) entry.warningSent = true;
     if (shouldWarnIp) ipEntry.warningSent = true;
 
-    appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now);
+    appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now, macAddress);
     void sendSecurityEventEmail("failed_attempts_warning", normalizedIp, cleanUsername, currentAttempts);
     logger.warn(
       { username: normUser, ip: normalizedIp, attempts: currentAttempts },
@@ -621,7 +625,7 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     }
     
     entry.lockedUntil = now + LOCKOUT_DURATION_MS;
-    appendAttackLog(normalizedIp, cleanUsername, userAttempts, "account_locked", now);
+    appendAttackLog(normalizedIp, cleanUsername, userAttempts, "account_locked", now, macAddress);
     logger.warn({ username: normUser, ip: normalizedIp, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
   }
 
@@ -696,22 +700,22 @@ export function resetLoginAttempts(username: string, ip?: string): void {
   }
 }
 
-export function manualBlockIp(ip: string): void {
+export function manualBlockIp(ip: string, macAddress?: string | null): void {
   const normalizedIp = normalizeIp(ip);
   if (!blockedIps.has(normalizedIp)) {
     blockedIps.set(normalizedIp, Date.now());
     void saveBlockedIpsToDb();
-    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked");
+    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked", Date.now(), macAddress);
     logger.info({ ip: normalizedIp }, "IP manually blocked by admin");
   }
 }
 
-export function manualUnblockIp(ip: string): void {
+export function manualUnblockIp(ip: string, macAddress?: string | null): void {
   const normalizedIp = normalizeIp(ip);
   if (blockedIps.has(normalizedIp)) {
     blockedIps.delete(normalizedIp);
     void saveBlockedIpsToDb();
-    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked");
+    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked", Date.now(), macAddress);
     logger.info({ ip: normalizedIp }, "IP manually unblocked by admin");
   }
 }
