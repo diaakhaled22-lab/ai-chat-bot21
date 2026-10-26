@@ -329,7 +329,7 @@ export default function ClientAiModel() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-4xl pb-12">
+      <div className="space-y-6 w-full pb-12">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-28 w-full rounded-xl" />
         <Skeleton className="h-20 w-full rounded-xl" />
@@ -355,7 +355,7 @@ export default function ClientAiModel() {
   const showQuotaBanner = activeMode === "quota" && quotaData && quotaData.warning !== "none" && quotaData.warning !== "ok";
 
   return (
-    <div className="space-y-8 max-w-4xl pb-12">
+    <div className="space-y-8 w-full pb-12">
       {/* ── Header ── */}
       {/* ── Bot Manager Hero Operations Banner ── */}
       <div
