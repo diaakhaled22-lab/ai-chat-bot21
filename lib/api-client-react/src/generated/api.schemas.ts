@@ -78,6 +78,7 @@ export interface Client {
   username: string;
   email?: string | null;
   lastLoginIp?: string | null;
+  macAddress?: string | null;
   createdAt: string;
   hasCompany?: boolean;
 }

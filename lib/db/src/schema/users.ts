@@ -13,6 +13,7 @@ export const usersTable = pgTable("users", {
   notificationEmail: text("notification_email"),
   resendApiKey: encryptedText("resend_api_key"),
   lastLoginIp: text("last_login_ip"),
+  macAddress: text("mac_address"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

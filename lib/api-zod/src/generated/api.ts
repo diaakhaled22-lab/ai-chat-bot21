@@ -38,7 +38,8 @@ export const AdminLoginResponse = zod.object({
  */
 export const ClientLoginBody = zod.object({
   "username": zod.string(),
-  "password": zod.string()
+  "password": zod.string(),
+  "macAddress": zod.string().optional()
 })
 
 export const ClientLoginResponse = zod.object({

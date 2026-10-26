@@ -388,6 +388,7 @@ router.get("/admin/clients", async (req, res) => {
         username: c.username,
         email: (c as any).email?.trim() || c.notificationEmail?.trim() || companyEmailMap.get(c.id)?.trim() || null,
         lastLoginIp: c.lastLoginIp ?? null,
+        macAddress: (c as any).macAddress ?? null,
         createdAt: c.createdAt.toISOString(),
         hasCompany: (companyCountMap.get(c.id) ?? 0) > 0,
       }))

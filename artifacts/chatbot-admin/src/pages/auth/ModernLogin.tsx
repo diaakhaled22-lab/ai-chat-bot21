@@ -42,6 +42,33 @@ interface ModernLoginProps {
   initialMode?: "admin" | "client";
 }
 
+function getDeviceMac(): string {
+  try {
+    const key = "botmgr_device_mac";
+    let mac = localStorage.getItem(key);
+    if (mac && /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(mac)) {
+      return mac.toUpperCase();
+    }
+    const cryptoObj = window.crypto || (window as any).msCrypto;
+    const bytes = new Uint8Array(6);
+    if (cryptoObj?.getRandomValues) {
+      cryptoObj.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < 6; i++) {
+        bytes[i] = Math.floor(Math.random() * 256);
+      }
+    }
+    bytes[0] = (bytes[0] & 0xfc) | 0x02;
+    mac = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+      .join(":");
+    localStorage.setItem(key, mac);
+    return mac;
+  } catch {
+    return "02:00:00:00:00:01";
+  }
+}
+
 /**
  * Modern Sliding Panel Overlay (Double Sign-In) Page
  * Integrated with real backend authentication, 2FA, language & theme controls.
@@ -210,8 +237,9 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       return;
     }
 
+    const macAddress = getDeviceMac();
     clientLogin.mutate(
-      { data: { username: clientUsername.trim(), password: clientPassword } },
+      { data: { username: clientUsername.trim(), password: clientPassword, macAddress } as any },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
@@ -258,6 +286,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
     setIsRegistering(true);
     try {
+      const macAddress = getDeviceMac();
       const res = await fetch("/api/auth/client/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,6 +295,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           username: regUsername.trim(),
           email: regEmail.trim() || undefined,
           password: regPassword,
+          macAddress,
           lang,
         }),
         credentials: "include",

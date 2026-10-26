@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useListClients, useCreateClient, useDeleteClient, useUpdateClient, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MoreVertical, Search, Edit, Mail } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Search, Edit, Mail, Laptop } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -129,7 +129,8 @@ export default function AdminClients() {
     c.name.toLowerCase().includes(search.toLowerCase()) || 
     c.username.toLowerCase().includes(search.toLowerCase()) ||
     (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
-    (c.lastLoginIp && c.lastLoginIp.toLowerCase().includes(search.toLowerCase()))
+    (c.lastLoginIp && c.lastLoginIp.toLowerCase().includes(search.toLowerCase())) ||
+    (c.macAddress && c.macAddress.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -302,7 +303,7 @@ export default function AdminClients() {
       <div className="flex items-center space-x-2 bg-card px-4 py-3 rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
         <Search className="w-5 h-5 text-muted-foreground" />
         <Input 
-          placeholder={lang === "ar" ? "بحث بالاسم، اسم المستخدم، بريد Gmail، أو عنوان IP..." : "Search clients by name, username, email, or IP..."} 
+          placeholder={lang === "ar" ? "بحث بالاسم، اسم المستخدم، بريد Gmail، عنوان IP، أو عنوان MAC..." : "Search clients by name, username, email, IP, or MAC..."} 
           className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -314,6 +315,7 @@ export default function AdminClients() {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-[140px] font-semibold">{lang === "ar" ? "عنوان IP" : "IP"}</TableHead>
+              <TableHead className="w-[160px] font-semibold">{lang === "ar" ? "عنوان MAC" : "MAC Address"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "الاسم" : "Name"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "اسم المستخدم" : "Username"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "بريد Gmail" : "Gmail"}</TableHead>
@@ -327,6 +329,7 @@ export default function AdminClients() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -337,7 +340,7 @@ export default function AdminClients() {
               ))
             ) : filteredClients?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   {lang === "ar" ? "لم يتم العثور على أي عملاء." : "No clients found."}
                 </TableCell>
               </TableRow>
@@ -352,6 +355,18 @@ export default function AdminClients() {
                       </span>
                     ) : (
                       <span className="text-muted-foreground text-xs" title={lang === "ar" ? "لم يسجل الدخول بعد" : "No login recorded yet"}>
+                        —
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {client.macAddress ? (
+                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-muted/80 text-foreground border border-border/60 inline-flex items-center gap-1.5" title={lang === "ar" ? "عنوان MAC للجهاز" : "Device MAC address"}>
+                        <Laptop className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        {client.macAddress}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs" title={lang === "ar" ? "لم يسجل بعد" : "Not recorded yet"}>
                         —
                       </span>
                     )}

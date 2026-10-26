@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { exec } from "child_process";
 import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable } from "@workspace/db";
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
@@ -33,7 +34,26 @@ export const temp2faTokens = new Map<string, { userId: number; name: string; exp
 function extractClientIp(req: any): string {
   const forwarded = req.headers["x-forwarded-for"];
   const raw = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") || req.ip || req.socket?.remoteAddress || "unknown";
-  return raw.replace(/^::ffff:/, "");
+  return raw.replace(/^::ffff:/, "").trim();
+}
+
+function getArpMac(ip: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!ip || ip === "unknown" || ip === "127.0.0.1" || ip === "::1" || ip === "localhost") {
+      return resolve(null);
+    }
+    const isWin = process.platform === "win32";
+    const cmd = isWin ? `arp -a ${ip}` : `arp -n ${ip}`;
+    exec(cmd, { timeout: 1500 }, (err, stdout) => {
+      if (err || !stdout) return resolve(null);
+      const match = stdout.match(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/);
+      if (match) {
+        resolve(match[0].replace(/-/g, ":").toUpperCase());
+      } else {
+        resolve(null);
+      }
+    });
+  });
 }
 
 const router = Router();
@@ -241,11 +261,20 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     await regenerateSession(req);
 
     const clientIp = extractClientIp(req);
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
+    const arpMac = await getArpMac(clientIp);
+    const finalMac = arpMac || bodyMac || null;
+
+    const loginUpdates: Record<string, any> = { lastLoginIp: clientIp };
+    if (finalMac) {
+      loginUpdates.macAddress = finalMac;
+    }
+
     await db
       .update(usersTable)
-      .set({ lastLoginIp: clientIp })
+      .set(loginUpdates)
       .where(eq(usersTable.id, user.id))
-      .catch((err) => logger.warn({ err }, "Failed to update last login IP"));
+      .catch((err) => logger.warn({ err }, "Failed to update last login IP / MAC"));
 
     req.session.userId = user.id;
     req.session.role = "client";
@@ -294,6 +323,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     await db.execute(sql`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS mac_address TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email TEXT;
     `).catch((e) => logger.warn({ err: e }, "Failed to ensure users columns in register"));
 
@@ -366,6 +396,10 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       }
     }
 
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
+    const arpMac = await getArpMac(clientIp);
+    const finalMac = arpMac || bodyMac || null;
+
     const passwordHash = await bcrypt.hash(password, 12);
 
     const [newUser] = await db
@@ -378,6 +412,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
         email: trimmedEmail,
         notificationEmail: trimmedEmail,
         lastLoginIp: clientIp,
+        macAddress: finalMac,
       })
       .returning();
 
@@ -393,6 +428,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       username: newUser.username,
       email: (newUser as any).email || newUser.notificationEmail || null,
       ip: clientIp || null,
+      mac: finalMac || null,
       source: "self_registration",
     });
 

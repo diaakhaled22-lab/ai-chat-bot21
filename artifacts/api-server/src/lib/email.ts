@@ -482,12 +482,13 @@ export async function sendNewClientNotification(client: {
   username: string;
   email?: string | null;
   ip?: string | null;
+  mac?: string | null;
   source?: "self_registration" | "admin_created";
 }) {
   const isSelf = client.source !== "admin_created";
   const title = isSelf ? "New Client Registered" : "New Client Account Created";
   const message = isSelf
-    ? `New client "${client.name}" (@${client.username}) registered successfully.${client.email ? ` Email: ${client.email}.` : ""}${client.ip ? ` IP: ${client.ip}.` : ""}`
+    ? `New client "${client.name}" (@${client.username}) registered successfully.${client.email ? ` Email: ${client.email}.` : ""}${client.ip ? ` IP: ${client.ip}.` : ""}${client.mac ? ` MAC: ${client.mac}.` : ""}`
     : `New client account "${client.name}" (@${client.username}) was added.${client.email ? ` Email: ${client.email}.` : ""}`;
 
   // 1. In-App Notification in Admin notification panel (bell icon)
@@ -563,6 +564,11 @@ export async function sendNewClientNotification(client: {
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">IP Address</td>
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${client.ip ? escapeHtml(client.ip) : "<span style='color:#94a3b8;'>—</span>"}</td>
               </tr>
+              ${client.mac ? `
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">MAC Address</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${escapeHtml(client.mac)}</td>
+              </tr>` : ""}
               <tr>
                 <td style="padding:12px 16px;font-size:12px;font-weight:600;color:#64748b;">Date Added</td>
                 <td style="padding:12px 16px;font-size:13px;color:#334155;">${new Date().toLocaleString()}</td>
