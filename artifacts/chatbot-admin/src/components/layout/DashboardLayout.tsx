@@ -984,13 +984,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* Section Header: MENU */}
-      <div className="px-4 pt-2 pb-1 relative z-10">
-        <span className="text-[10px] font-extrabold text-slate-400/80 tracking-widest uppercase">
-          MENU
-        </span>
-      </div>
-
       {/* Nav — scrolls if items overflow, fills all remaining height */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-1 space-y-1 relative z-10 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
         {links.map((link) => {
