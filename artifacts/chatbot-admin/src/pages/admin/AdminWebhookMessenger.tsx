@@ -109,7 +109,7 @@ function CompanyCard({
   const isMessenger = channel === "messenger";
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -218,7 +218,7 @@ function WebhookCryptographicSecuritySection() {
   const isConfigured = metaSecretInfo?.configured ?? false;
 
   return (
-    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card overflow-hidden border-l-4 border-l-[#2D5BE3]">
+    <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
       <CardHeader className="pb-3 border-b border-border/40">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -380,7 +380,7 @@ function PlatformCredentialsSection() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {/* Messenger */}
-      <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-card border-l-4 border-l-[#2D5BE3]">
+      <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-card border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -402,7 +402,7 @@ function PlatformCredentialsSection() {
       </Card>
 
       {/* Telegram */}
-      <Card className="border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-card border-l-4 border-l-[#2D5BE3]">
+      <Card className="border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-card border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -422,7 +422,7 @@ function PlatformCredentialsSection() {
       </Card>
 
       {/* WhatsApp */}
-      <Card className="border-green-500/30 bg-gradient-to-br from-green-500/5 to-card border-l-4 border-l-[#2D5BE3]">
+      <Card className="border-green-500/30 bg-gradient-to-br from-green-500/5 to-card border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -500,7 +500,7 @@ export default function AdminWebhookMessenger() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="bg-card border-blue-500/20 border-l-4 border-l-[#2D5BE3]">
+        <Card className="bg-card border-blue-500/20 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-xl shrink-0">📨</div>
             <div>
@@ -509,7 +509,7 @@ export default function AdminWebhookMessenger() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-green-500/20 border-l-4 border-l-[#2D5BE3]">
+        <Card className="bg-card border-green-500/20 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
           <CardContent className="pt-5 pb-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-xl shrink-0">💬</div>
             <div>
@@ -533,7 +533,7 @@ export default function AdminWebhookMessenger() {
             <Skeleton className="h-32 w-full" />
           </div>
         ) : messengerCompanies.length === 0 ? (
-          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
+          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
             <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <MessageCircle className="w-8 h-8 opacity-20" />
               <p className="text-sm">No companies have Messenger configured yet.</p>
@@ -561,7 +561,7 @@ export default function AdminWebhookMessenger() {
             <Skeleton className="h-32 w-full" />
           </div>
         ) : whatsappCompanies.length === 0 ? (
-          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
+          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
             <CardContent className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <MessageCircle className="w-8 h-8 opacity-20" />
               <p className="text-sm">No companies have WhatsApp configured yet.</p>
@@ -579,7 +579,7 @@ export default function AdminWebhookMessenger() {
       {/* Recent activity */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Recent Activity</h2>
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Latest Messenger &amp; WhatsApp messages

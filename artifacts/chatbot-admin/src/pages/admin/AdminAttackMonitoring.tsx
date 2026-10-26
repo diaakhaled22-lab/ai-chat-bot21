@@ -226,7 +226,7 @@ export default function AdminAttackMonitoring() {
       </div>
 
       {analytics?.spikeAlert.active && (
-        <Card className="border-red-500/40 bg-red-500/10 border-l-4 border-l-[#2D5BE3]" role="alert" aria-live="assertive">
+        <Card className="border-red-500/40 bg-red-500/10 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15" role="alert" aria-live="assertive">
           <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4 flex items-center gap-3 h-full">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
             <div>
@@ -239,7 +239,7 @@ export default function AdminAttackMonitoring() {
 
             {/* ── Security KPI Cards ── */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 shadow-inner">
             <TrendingUp className="w-6 h-6" />
           </div>
@@ -253,7 +253,7 @@ export default function AdminAttackMonitoring() {
           </div>
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
             <AlertTriangle className="w-6 h-6" />
           </div>
@@ -268,7 +268,7 @@ export default function AdminAttackMonitoring() {
           </div>
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-inner">
             <Clock3 className="w-6 h-6" />
           </div>
@@ -283,7 +283,7 @@ export default function AdminAttackMonitoring() {
           </div>
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner">
             <Ban className="w-6 h-6" />
           </div>
@@ -298,7 +298,7 @@ export default function AdminAttackMonitoring() {
           </div>
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
             <Activity className="w-6 h-6" />
           </div>
@@ -314,7 +314,7 @@ export default function AdminAttackMonitoring() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="bg-card border-l-4 border-l-[#2D5BE3]">
+        <Card className="bg-card border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Most active IP addresses</CardTitle>
             <CardDescription>Failed attempts during the last 5 minutes.</CardDescription>
@@ -352,7 +352,7 @@ export default function AdminAttackMonitoring() {
             )}
           </CardContent>
         </Card>
-        <Card className="bg-card border-l-4 border-l-[#2D5BE3]">
+        <Card className="bg-card border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Targeted accounts</CardTitle>
             <CardDescription>Accounts named in recent failed attempts.</CardDescription>
@@ -375,7 +375,7 @@ export default function AdminAttackMonitoring() {
       </div>
 
       {data?.blockedIps && data.blockedIps.length > 0 && (
-        <Card className="bg-red-500/5 border border-red-500/30 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
+        <Card className="bg-red-500/5 border border-red-500/30 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2 text-red-300">
               <Ban className="w-4 h-4" />
@@ -403,7 +403,7 @@ export default function AdminAttackMonitoring() {
         </Card>
       )}
 
-      <Card className="bg-card border-l-4 border-l-[#2D5BE3]">
+      <Card className="bg-card border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-primary" />

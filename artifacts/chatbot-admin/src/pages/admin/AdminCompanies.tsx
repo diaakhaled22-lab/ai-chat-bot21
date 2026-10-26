@@ -433,7 +433,7 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-4 flex items-center gap-4 border-l-4 border-l-[#2D5BE3]">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-4 flex items-center gap-4 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
         {icon}
       </div>
@@ -787,7 +787,7 @@ export default function AdminCompanies() {
       </div>
 
       {/* ── Table ── */}
-      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden border-l-4 border-l-[#2D5BE3]">
+      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
         <div className="overflow-x-auto">
         {/* Table header */}
         <div className="grid grid-cols-[70px_minmax(110px,2fr)_minmax(140px,1.5fr)_minmax(100px,1fr)_100px_110px_110px_120px_80px_110px_44px] gap-0 border-b border-border bg-muted/30 px-4 py-3 min-w-[1160px]">

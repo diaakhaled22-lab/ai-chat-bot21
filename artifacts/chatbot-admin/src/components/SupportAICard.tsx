@@ -338,7 +338,7 @@ export default function SupportAICard() {
   ) : null;
 
   return (
-    <Card className="bg-card border-violet-500/20 border-l-4 border-l-[#2D5BE3]">
+    <Card className="bg-card border-violet-500/20 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
       {/* ── Header (always visible, click to expand/collapse) ── */}
       <CardHeader
         className="cursor-pointer select-none"

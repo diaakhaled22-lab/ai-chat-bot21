@@ -421,7 +421,7 @@ export default function QuotaAICard() {
   );
 
   return (
-    <Card className="bg-card border border-blue-500/25 dark:border-blue-500/35 rounded-2xl shadow-sm hover:border-blue-500/45 transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
+    <Card className="bg-card border border-blue-500/25 dark:border-blue-500/35 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:border-blue-500/45 transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
       {/* ── Header ── */}
       <CardHeader
         className="cursor-pointer select-none"
