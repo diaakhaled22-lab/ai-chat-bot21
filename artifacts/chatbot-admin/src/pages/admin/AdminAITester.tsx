@@ -259,7 +259,7 @@ export default function AdminAITester() {
   const failedCount  = provider.models.filter((m) => results[m.id]?.status === "error").length;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
       <div
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"

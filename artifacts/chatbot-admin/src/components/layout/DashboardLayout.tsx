@@ -1156,7 +1156,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </header>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
-          <div className={location === "/client/support" || location === "/admin/broadcast" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
+          <div className={location === "/client/support" || location === "/admin/broadcast" || location === "/admin/ai-tester" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
             {children}
           </div>
         </div>
