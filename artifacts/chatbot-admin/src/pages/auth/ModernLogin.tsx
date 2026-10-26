@@ -21,7 +21,18 @@ import {
   ArrowLeft,
   ShieldCheck,
   Building2,
+  UserPlus,
+  Mail,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { useTheme } from "@/hooks/use-theme";
@@ -67,6 +78,15 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const [clientUsername, setClientUsername] = useState("");
   const [clientPassword, setClientPassword] = useState("");
   const [showClientPassword, setShowClientPassword] = useState(false);
+
+  // New Client Registration state
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [regName, setRegName] = useState("");
+  const [regUsername, setRegUsername] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Mutations
   const adminLogin = useAdminLogin();
@@ -213,6 +233,69 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         },
       }
     );
+  };
+
+  // Submit New Client Registration
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || !regUsername.trim() || !regPassword.trim()) {
+      toast({
+        title: lang === "ar" ? "بيانات ناقصة" : "Missing fields",
+        description: lang === "ar" ? "يرجى تعبئة جميع الحقول المطلوبة" : "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      toast({
+        title: lang === "ar" ? "كلمة المرور قصيرة" : "Weak Password",
+        description: lang === "ar" ? "يجب أن تكون كلمة المرور 6 أحرف على الأقل" : "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const res = await fetch("/api/auth/client/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: regName.trim(),
+          username: regUsername.trim(),
+          email: regEmail.trim() || undefined,
+          password: regPassword,
+        }),
+        credentials: "include",
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || (lang === "ar" ? "فشل إنشاء الحساب" : "Failed to create account"));
+      }
+
+      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      toast({
+        title: lang === "ar" ? "تم إنشاء الحساب بنجاح" : "Account Created",
+        description: lang === "ar" ? "مرحباً بك! تم تسجيل الدخول بنجاح إلى بوابة العميل." : "Welcome! You are now logged in.",
+      });
+
+      setIsRegisterOpen(false);
+      setRegName("");
+      setRegUsername("");
+      setRegEmail("");
+      setRegPassword("");
+      setLocation("/client/dashboard");
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في التسجيل" : "Registration Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   return (
@@ -514,7 +597,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               <button
                 type="submit"
                 disabled={clientLogin.isPending}
-                className="w-full mt-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2"
+                className="w-full mt-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {clientLogin.isPending ? (
                   <>
@@ -524,6 +607,24 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 ) : (
                   lang === "ar" ? "تسجيل الدخول" : "SIGN IN"
                 )}
+              </button>
+
+              {/* Divider */}
+              <div className="relative flex items-center justify-center my-0.5">
+                <div className="border-t border-slate-200 dark:border-slate-700 w-full" />
+                <span className="bg-white dark:bg-slate-900 px-3 text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                  {lang === "ar" ? "أو" : "OR"}
+                </span>
+              </div>
+
+              {/* New Client Button */}
+              <button
+                type="button"
+                onClick={() => setIsRegisterOpen(true)}
+                className="w-full py-3 px-4 rounded-xl border-2 border-blue-600/25 dark:border-blue-500/30 hover:border-blue-600 dark:hover:border-blue-400 bg-blue-50/70 hover:bg-blue-100/80 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"
+              >
+                <UserPlus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>{lang === "ar" ? "عميل جديد (New Client)" : "New Client"}</span>
               </button>
             </form>
           </div>
@@ -608,6 +709,145 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           </div>
         </div>
       </div>
+
+      {/* New Client Registration Modal */}
+      <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+        <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div className="text-start">
+                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {lang === "ar" ? "تسجيل عميل جديد (New Client)" : "New Client Registration"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {lang === "ar"
+                    ? "أدخل بياناتك لإنشاء حساب عميل جديد والبدء في استخدام لوحة التحكم."
+                    : "Create a new client account to manage your chatbot deployment."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleRegisterSubmit} className="space-y-3.5 mt-2">
+            <div className="text-start">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {lang === "ar" ? "الاسم الكامل *" : "Full Name *"}
+              </label>
+              <div className="relative">
+                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                  <User className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  required
+                  placeholder={lang === "ar" ? "مثال: أحمد محمد" : "e.g. John Doe"}
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                />
+              </div>
+            </div>
+
+            <div className="text-start">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {lang === "ar" ? "اسم المستخدم *" : "Username *"}
+              </label>
+              <div className="relative">
+                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                  <KeyRound className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  required
+                  placeholder={lang === "ar" ? "مثال: johndoe" : "e.g. johndoe"}
+                  value={regUsername}
+                  onChange={(e) => setRegUsername(e.target.value)}
+                  className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                />
+              </div>
+            </div>
+
+            <div className="text-start">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {lang === "ar" ? "بريد Gmail / البريد الإلكتروني (اختياري)" : "Gmail / Email (Optional)"}
+              </label>
+              <div className="relative">
+                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                  <Mail className="w-4 h-4" />
+                </span>
+                <input
+                  type="email"
+                  placeholder="client@gmail.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                />
+              </div>
+            </div>
+
+            <div className="text-start">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {lang === "ar" ? "كلمة المرور *" : "Password *"}
+              </label>
+              <div className="relative">
+                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                  <Lock className="w-4 h-4" />
+                </span>
+                <input
+                  type={showRegPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  className={`w-full ${lang === "ar" ? "pr-9 pl-10 text-right" : "pl-9 pr-10 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRegPassword(!showRegPassword)}
+                  className={`absolute inset-y-0 ${lang === "ar" ? "left-0 pl-3" : "right-0 pr-3"} flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer`}
+                >
+                  {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {lang === "ar" ? "6 أحرف أو أكثر" : "6 characters or more"}
+              </p>
+            </div>
+
+            <DialogFooter className="pt-3 gap-2 sm:gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsRegisterOpen(false)}
+                disabled={isRegistering}
+                className="rounded-xl cursor-pointer"
+              >
+                {lang === "ar" ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                disabled={isRegistering}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isRegistering ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{lang === "ar" ? "جاري الإنشاء..." : "Creating..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>{lang === "ar" ? "إنشاء الحساب والدخول" : "Create Account & Sign In"}</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -258,6 +258,94 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
   }
 });
 
+router.post("/auth/client/register", authLimiter, async (req, res) => {
+  try {
+    const { name, username, email, password } = req.body as {
+      name?: string;
+      username?: string;
+      email?: string;
+      password?: string;
+    };
+    const ip = req.ip || "unknown";
+
+    if (isIpBlocked(ip)) {
+      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
+      return;
+    }
+
+    if (!name || typeof name !== "string" || name.trim().length < 2) {
+      res.status(400).json({ error: "Name must be at least 2 characters" });
+      return;
+    }
+
+    if (!username || typeof username !== "string" || username.trim().length < 3) {
+      res.status(400).json({ error: "Username must be at least 3 characters" });
+      return;
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+
+    if (!password || typeof password !== "string") {
+      res.status(400).json({ error: "Password is required" });
+      return;
+    }
+
+    const pwError = validatePassword(password);
+    if (pwError) {
+      res.status(400).json({ error: pwError });
+      return;
+    }
+
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.username, cleanUsername))
+      .limit(1);
+
+    if (existing) {
+      res.status(409).json({ error: `Username "${cleanUsername}" is already taken. Please choose another.` });
+      return;
+    }
+
+    const trimmedEmail = typeof email === "string" && email.trim() ? email.trim() : null;
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      res.status(400).json({ error: "Invalid email format" });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const clientIp = extractClientIp(req);
+
+    const [newUser] = await db
+      .insert(usersTable)
+      .values({
+        name: name.trim(),
+        username: cleanUsername,
+        passwordHash,
+        role: "client",
+        email: trimmedEmail,
+        notificationEmail: trimmedEmail,
+        lastLoginIp: clientIp,
+      })
+      .returning();
+
+    await regenerateSession(req);
+    req.session.userId = newUser.id;
+    req.session.role = "client";
+    req.session.name = newUser.name;
+
+    res.status(201).json({
+      role: "client",
+      name: newUser.name,
+      id: newUser.id,
+      message: "Account created successfully",
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Client registration error");
+    res.status(500).json({ error: "Failed to create account" });
+  }
+});
+
 router.post("/auth/forgot-password", sensitiveLimiter, async (req, res) => {
   try {
     const { username } = req.body;
