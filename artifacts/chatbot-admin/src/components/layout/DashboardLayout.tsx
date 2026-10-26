@@ -957,9 +957,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
             Bot Manager
           </span>
-          <span className="text-[10px] font-bold text-blue-200/90 tracking-wider uppercase truncate">
-            Operations Center
-          </span>
         </div>
       </div>
 
