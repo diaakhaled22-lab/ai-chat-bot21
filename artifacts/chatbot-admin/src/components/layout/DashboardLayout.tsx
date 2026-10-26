@@ -881,6 +881,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     : "bg-[#102A6B] text-white";
   const sidebarHeaderBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
   const sidebarFooterBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
+  const navbarBg = isAdmin ? "bg-[#090b16]" : "bg-[#102A6B]";
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
@@ -1110,8 +1111,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
-        <header className="relative z-20 h-16 px-4 md:px-8 bg-[#102A6B] text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
+          {isAdmin && (
+            <>
+              <div className="absolute top-0 right-1/4 -mt-10 w-48 h-20 rounded-full bg-purple-600/20 blur-xl pointer-events-none" />
+              <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-20 rounded-full bg-blue-500/15 blur-xl pointer-events-none" />
+            </>
+          )}
+          <div className="flex items-center gap-3 relative z-10">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9" aria-label="Menu">
@@ -1130,7 +1137,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative z-10">
             <LanguageToggle />
             <ThemeToggle />
             {role === "admin" ? <NotificationBell /> : <ClientNotificationBell />}
