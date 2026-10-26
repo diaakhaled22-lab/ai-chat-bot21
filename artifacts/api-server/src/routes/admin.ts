@@ -378,6 +378,7 @@ router.get("/admin/clients", async (req, res) => {
         id: c.id,
         name: c.name,
         username: c.username,
+        lastLoginIp: c.lastLoginIp ?? null,
         createdAt: c.createdAt.toISOString(),
         hasCompany: (companyMap.get(c.id) ?? 0) > 0,
       }))

@@ -121,7 +121,8 @@ export default function AdminClients() {
 
   const filteredClients = clients?.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
-    c.username.toLowerCase().includes(search.toLowerCase())
+    c.username.toLowerCase().includes(search.toLowerCase()) ||
+    (c.lastLoginIp && c.lastLoginIp.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -280,7 +281,7 @@ export default function AdminClients() {
       <div className="flex items-center space-x-2 bg-card px-4 py-3 rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
         <Search className="w-5 h-5 text-muted-foreground" />
         <Input 
-          placeholder="Search clients..." 
+          placeholder={lang === "ar" ? "بحث بالاسم، اسم المستخدم، أو عنوان IP..." : "Search clients by name, username, or IP..."} 
           className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -291,10 +292,11 @@ export default function AdminClients() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead>Name</TableHead>
-              <TableHead>Username</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead className="w-[140px] font-semibold">{lang === "ar" ? "عنوان IP" : "IP"}</TableHead>
+              <TableHead className="font-semibold">{lang === "ar" ? "الاسم" : "Name"}</TableHead>
+              <TableHead className="font-semibold">{lang === "ar" ? "اسم المستخدم" : "Username"}</TableHead>
+              <TableHead className="font-semibold">{lang === "ar" ? "الحالة" : "Status"}</TableHead>
+              <TableHead className="font-semibold">{lang === "ar" ? "تاريخ الإنشاء" : "Created"}</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -302,6 +304,7 @@ export default function AdminClients() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -311,20 +314,36 @@ export default function AdminClients() {
               ))
             ) : filteredClients?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                  No clients found.
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  {lang === "ar" ? "لم يتم العثور على أي عملاء." : "No clients found."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredClients?.map((client) => (
                 <TableRow key={client.id}>
+                  <TableCell>
+                    {client.lastLoginIp ? (
+                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-muted/80 text-foreground border border-border/60 inline-flex items-center gap-1.5" title={lang === "ar" ? "آخر عنوان IP لتسجيل الدخول" : "Last login IP"}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        {client.lastLoginIp}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs" title={lang === "ar" ? "لم يسجل الدخول بعد" : "No login recorded yet"}>
+                        —
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.username}</TableCell>
                   <TableCell>
                     {client.hasCompany ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500">Configured</span>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500">
+                        {lang === "ar" ? "تم الإعداد" : "Configured"}
+                      </span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500">Pending Setup</span>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500">
+                        {lang === "ar" ? "قيد الإعداد" : "Pending Setup"}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>{new Date(client.createdAt).toLocaleDateString()}</TableCell>
@@ -338,12 +357,12 @@ export default function AdminClients() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEditClick(client)}>
                           <Edit className="w-4 h-4 mr-2" />
-                          Edit
+                          {lang === "ar" ? "تعديل" : "Edit"}
                         </DropdownMenuItem>
                         <ConfirmDeleteDialog onConfirm={() => handleDelete(client.id)}>
                           <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
+                            {lang === "ar" ? "حذف" : "Delete"}
                           </DropdownMenuItem>
                         </ConfirmDeleteDialog>
                       </DropdownMenuContent>

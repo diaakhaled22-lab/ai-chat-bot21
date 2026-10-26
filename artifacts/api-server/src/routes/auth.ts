@@ -30,6 +30,12 @@ declare module "express-session" {
 
 export const temp2faTokens = new Map<string, { userId: number; name: string; expiresAt: number }>();
 
+function extractClientIp(req: any): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") || req.ip || req.socket?.remoteAddress || "unknown";
+  return raw.replace(/^::ffff:/, "");
+}
+
 const router = Router();
 
 router.post("/auth/admin/login", authLimiter, async (req, res) => {
@@ -102,6 +108,13 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);
 
+    const adminIp = extractClientIp(req);
+    await db
+      .update(usersTable)
+      .set({ lastLoginIp: adminIp })
+      .where(eq(usersTable.id, user.id))
+      .catch((err) => logger.warn({ err }, "Failed to update last login IP"));
+
     req.session.userId = user.id;
     req.session.role = "admin";
     req.session.name = user.name;
@@ -148,6 +161,14 @@ router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
     temp2faTokens.delete(tempToken);
 
     await regenerateSession(req);
+
+    const adminIp = extractClientIp(req);
+    await db
+      .update(usersTable)
+      .set({ lastLoginIp: adminIp })
+      .where(eq(usersTable.id, tokenData.userId))
+      .catch((err) => logger.warn({ err }, "Failed to update last login IP"));
+
     req.session.userId = tokenData.userId;
     req.session.role = "admin";
     req.session.name = tokenData.name;
@@ -218,6 +239,13 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
 
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);
+
+    const clientIp = extractClientIp(req);
+    await db
+      .update(usersTable)
+      .set({ lastLoginIp: clientIp })
+      .where(eq(usersTable.id, user.id))
+      .catch((err) => logger.warn({ err }, "Failed to update last login IP"));
 
     req.session.userId = user.id;
     req.session.role = "client";

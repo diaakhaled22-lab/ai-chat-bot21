@@ -11,6 +11,7 @@ export const usersTable = pgTable("users", {
   role: text("role", { enum: ["admin", "client"] }).notNull().default("client"),
   notificationEmail: text("notification_email"),
   resendApiKey: encryptedText("resend_api_key"),
+  lastLoginIp: text("last_login_ip"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
