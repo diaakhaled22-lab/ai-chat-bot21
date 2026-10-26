@@ -955,44 +955,21 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
       )}
 
-      {/* Top Header - macOS Window Dots & CODEXR / Bot Manager Title */}
-      <div className={`px-4 pt-4 pb-3 shrink-0 ${sidebarHeaderBg} relative z-10 ${isAdmin ? "" : "border-b border-white/10 h-16 flex items-center gap-3"}`}>
-        {isAdmin ? (
-          <div>
-            {/* macOS window traffic light dots */}
-            <div className="flex items-center gap-1.5 mb-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] shadow-[0_0_6px_rgba(255,95,86,0.5)] inline-block" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] shadow-[0_0_6px_rgba(255,189,46,0.5)] inline-block" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f] shadow-[0_0_6px_rgba(39,201,63,0.5)] inline-block" />
-            </div>
-
-            {/* Glowing Brand Title */}
-            <div className="flex items-center gap-2.5">
-              <span className="font-extrabold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-white drop-shadow-[0_2px_12px_rgba(56,189,248,0.4)]">
-                CODEXR
-              </span>
-              <span className="text-[10px] font-bold text-blue-200/70 tracking-wider uppercase bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
-                Bot Manager
-              </span>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
-            >
-              <i className="fa-solid fa-robot text-lg text-white"></i>
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
-                Bot Manager
-              </span>
-              <span className="text-[10px] font-bold text-blue-200/90 tracking-wider uppercase truncate">
-                Operations Center
-              </span>
-            </div>
-          </>
-        )}
+      {/* Top Header - Bot Manager Logo */}
+      <div className={`h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 ${sidebarHeaderBg} relative z-10`}>
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
+        >
+          <i className="fa-solid fa-robot text-lg text-white"></i>
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
+            Bot Manager
+          </span>
+          <span className="text-[10px] font-bold text-blue-200/90 tracking-wider uppercase truncate">
+            Operations Center
+          </span>
+        </div>
       </div>
 
       {/* Unified User Info & Live Status in One Box */}
