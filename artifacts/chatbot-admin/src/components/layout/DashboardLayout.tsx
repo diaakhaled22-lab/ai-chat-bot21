@@ -877,51 +877,137 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const isAdmin = role === "admin";
   const sidebarAsideBg = isAdmin
-    ? "bg-[#2563eb] bg-[linear-gradient(135deg,#1e40af_0%,#2B4DBA_35%,#2563eb_70%,#1d4ed8_100%)]"
-    : "bg-[#102A6B]";
-  const sidebarHeaderBg = isAdmin ? "bg-[#2B4DBA]/20 backdrop-blur-sm" : "bg-[#102A6B]";
-  const sidebarFooterBg = isAdmin ? "bg-[#2B4DBA]/20 backdrop-blur-sm" : "bg-[#102A6B]";
+    ? "bg-[#090b16] text-white"
+    : "bg-[#102A6B] text-white";
+  const sidebarHeaderBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
+  const sidebarFooterBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
       {isAdmin && (
-        <>
-          <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 rounded-full bg-white/[0.08] blur-2xl pointer-events-none" />
-          <div className="absolute top-1/3 -right-8 w-44 h-44 rounded-full bg-[#2B4DBA]/35 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-1/3 -left-12 w-48 h-48 rounded-full bg-blue-300/10 blur-3xl pointer-events-none" />
-        </>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {/* Base dark cosmic night sky background */}
+          <div className="absolute inset-0 bg-[#090b16]" />
+
+          {/* Top-right vivid violet/magenta nebula glow */}
+          <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-purple-600/50 via-fuchsia-600/30 to-transparent blur-3xl pointer-events-none" />
+          
+          {/* Glowing particle stars */}
+          <div className="absolute top-12 right-10 w-2.5 h-2.5 rounded-full bg-white/90 blur-[0.5px] shadow-[0_0_10px_rgba(255,255,255,0.9)]" />
+          <div className="absolute top-28 right-4 w-1.5 h-1.5 rounded-full bg-purple-200/80 blur-[0.5px] shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+
+          {/* Upper sweeping curved glass wave */}
+          <svg className="absolute top-[18%] -left-10 w-[380px] h-[360px] pointer-events-none" viewBox="0 0 380 360" fill="none">
+            <defs>
+              <linearGradient id="wave1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.45" />
+                <stop offset="60%" stopColor="#1e3a8a" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity="0.1" />
+              </linearGradient>
+              <linearGradient id="stroke1Grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.1" />
+                <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#c084fc" stopOpacity="0.8" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M-20,180 C80,200 220,110 380,30 L380,360 L-20,360 Z"
+              fill="url(#wave1Grad)"
+            />
+            <path
+              d="M-20,180 C80,200 220,110 380,30"
+              stroke="url(#stroke1Grad)"
+              strokeWidth="1.5"
+              filter="drop-shadow(0 0 8px rgba(96,165,250,0.6))"
+            />
+          </svg>
+
+          {/* Main Lower Sweeping 3D Glass Arc Sphere (as seen from Messages down to bottom) */}
+          <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
+            <defs>
+              <radialGradient id="sphereGrad" cx="25%" cy="25%" r="75%">
+                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.8" />
+                <stop offset="35%" stopColor="#1d4ed8" stopOpacity="0.9" />
+                <stop offset="70%" stopColor="#172554" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#090b16" stopOpacity="1" />
+              </radialGradient>
+              <linearGradient id="arcHighlight" x1="0%" y1="60%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.95" />
+                <stop offset="40%" stopColor="#60a5fa" stopOpacity="0.85" />
+                <stop offset="85%" stopColor="#818cf8" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="#c084fc" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M-10,130 Q110,40 380,220 L380,480 L-10,480 Z"
+              fill="url(#sphereGrad)"
+            />
+            <path
+              d="M-10,130 Q110,40 380,220"
+              stroke="url(#arcHighlight)"
+              strokeWidth="2.5"
+              filter="drop-shadow(0 0 10px rgba(56,189,248,0.85))"
+            />
+          </svg>
+
+          {/* Secondary bottom soft glow */}
+          <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-blue-600/25 blur-3xl pointer-events-none" />
+        </div>
       )}
 
-      {/* Logo - Bot Manager with Frosted Glass Badge */}
-      <div className={`h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 ${sidebarHeaderBg} relative z-10`}>
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
-        >
-          <i className="fa-solid fa-robot text-lg text-white"></i>
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
-            Bot Manager
-          </span>
-          <span className="text-[10px] font-bold text-blue-200/90 tracking-wider uppercase truncate">
-            Operations Center
-          </span>
-        </div>
+      {/* Top Header - macOS Window Dots & CODEXR / Bot Manager Title */}
+      <div className={`px-4 pt-4 pb-3 shrink-0 ${sidebarHeaderBg} relative z-10 ${isAdmin ? "" : "border-b border-white/10 h-16 flex items-center gap-3"}`}>
+        {isAdmin ? (
+          <div>
+            {/* macOS window traffic light dots */}
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] shadow-[0_0_6px_rgba(255,95,86,0.5)] inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] shadow-[0_0_6px_rgba(255,189,46,0.5)] inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f] shadow-[0_0_6px_rgba(39,201,63,0.5)] inline-block" />
+            </div>
+
+            {/* Glowing Brand Title */}
+            <div className="flex items-center gap-2.5">
+              <span className="font-extrabold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-white drop-shadow-[0_2px_12px_rgba(56,189,248,0.4)]">
+                CODEXR
+              </span>
+              <span className="text-[10px] font-bold text-blue-200/70 tracking-wider uppercase bg-white/10 px-2 py-0.5 rounded-md border border-white/10">
+                Bot Manager
+              </span>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
+            >
+              <i className="fa-solid fa-robot text-lg text-white"></i>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
+                Bot Manager
+              </span>
+              <span className="text-[10px] font-bold text-blue-200/90 tracking-wider uppercase truncate">
+                Operations Center
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Unified User Info & Live Status in One Box */}
-      <div className="px-3 pt-3 pb-2 shrink-0 relative z-10">
-        <div className="rounded-xl bg-white/10 backdrop-blur-md border border-white/15 shadow-sm p-2.5 space-y-2">
+      <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
+        <div className={`rounded-2xl ${isAdmin ? "bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)]" : "bg-white/10 backdrop-blur-md border border-white/15 shadow-sm"} p-2.5 space-y-2`}>
           {/* User profile row */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-white/20 text-white border border-white/25 flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
-              {user?.name?.charAt(0).toUpperCase() ?? "A"}
+            <div className={`w-8 h-8 rounded-xl ${isAdmin ? "bg-white/15 border border-white/20 text-white" : "bg-white/20 text-white border border-white/25"} flex items-center justify-center font-bold text-xs shadow-inner shrink-0`}>
+              {user?.name?.charAt(0).toUpperCase() ?? "S"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold leading-tight text-white truncate">{user?.name}</p>
+              <p className="text-xs font-bold leading-tight text-white truncate">{user?.name ?? "softysta.com"}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <p className="text-[10px] font-bold text-blue-200 capitalize">{user?.role}</p>
+                <p className="text-[10px] font-medium text-slate-300 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
               </div>
             </div>
           </div>
@@ -932,6 +1018,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </div>
         </div>
       </div>
+
+      {/* Section Header: MENU */}
+      {isAdmin && (
+        <div className="px-4 pt-2 pb-1 relative z-10">
+          <span className="text-[10px] font-extrabold text-slate-400/80 tracking-widest uppercase">
+            MENU
+          </span>
+        </div>
+      )}
 
       {/* Nav — scrolls if items overflow, fills all remaining height */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-1 space-y-1 relative z-10 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
@@ -956,21 +1051,21 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   }}
                   className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none ${
                     isParentActive
-                      ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-sm"
-                      : "text-blue-100/80 hover:text-white hover:bg-white/10"
+                      ? "bg-white/15 backdrop-blur-md text-white font-semibold border border-white/20 shadow-md"
+                      : "text-slate-300/85 hover:text-white hover:bg-white/[0.08]"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-white" : "text-blue-200/80"}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-white" : "text-slate-300/80"}`} />
                   <span className="flex-1 truncate">{link.label}</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isExpanded ? "rotate-0 text-white" : "-rotate-90 text-blue-200/70"
+                      isExpanded ? "rotate-0 text-white" : "-rotate-90 text-slate-400"
                     }`}
                   />
                 </div>
 
                 {isExpanded && (
-                  <div className="ps-4 pe-1 space-y-0.5 pt-1 pb-1 bg-black/15 backdrop-blur-sm rounded-xl border border-white/5 my-1">
+                  <div className="ps-4 pe-1 space-y-0.5 pt-1 pb-1 bg-black/20 backdrop-blur-sm rounded-xl border border-white/10 my-1">
                     {link.children.map((child) => {
                       const ChildIcon = child.icon;
                       const isSubActive = location === child.href;
@@ -981,11 +1076,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           onClick={() => setMobileMenuOpen(false)}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                             isSubActive
-                              ? "bg-white/25 text-white font-bold shadow-sm border border-white/20"
-                              : "text-blue-100/70 hover:text-white hover:bg-white/10"
+                              ? "bg-white/20 text-white font-semibold shadow-sm border border-white/20"
+                              : "text-slate-300/75 hover:text-white hover:bg-white/[0.08]"
                           }`}
                         >
-                          <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-white" : "text-blue-200/70"}`} />
+                          <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-white" : "text-slate-400"}`} />
                           <span className="flex-1 truncate">{child.label}</span>
                         </Link>
                       );
@@ -1003,11 +1098,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/15"
-                  : "text-blue-100/80 hover:text-white hover:bg-white/10"
+                  ? "bg-white/15 backdrop-blur-md text-white font-semibold border border-white/20 shadow-md shadow-black/25"
+                  : "text-slate-300/85 hover:text-white hover:bg-white/[0.08]"
               }`}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-blue-200/80"}`} />
+              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-300/80"}`} />
               <span className="flex-1 truncate">{link.label}</span>
               {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
               {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
@@ -1021,11 +1116,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       <div className={`p-3 border-t border-white/10 ${sidebarFooterBg} shrink-0 relative z-10`}>
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-blue-100/80 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+          className="w-full justify-start gap-3 text-slate-300/85 hover:text-white hover:bg-white/[0.08] rounded-xl transition-all"
           onClick={handleLogout}
           disabled={logout.isPending}
         >
-          <LogOut className="w-4 h-4 text-blue-200" />
+          <LogOut className="w-4 h-4 text-slate-300" />
           {t("nav_sign_out")}
         </Button>
       </div>
