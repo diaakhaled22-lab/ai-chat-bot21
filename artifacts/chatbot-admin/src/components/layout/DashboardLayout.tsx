@@ -920,32 +920,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#2D5BE3]/80 via-[#1d4ed8]/50 to-transparent blur-3xl pointer-events-none" />
           <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-[#38bdf8]/25 blur-2xl pointer-events-none" />
 
-          {/* Upper sweeping arched glass wave */}
-          <svg className="absolute top-[18%] -left-10 w-[380px] h-[360px] pointer-events-none" viewBox="0 0 380 360" fill="none">
-            <defs>
-              <linearGradient id="wave1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#0c1a40" stopOpacity="0.55" />
-                <stop offset="60%" stopColor="#1e3a8a" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#2D5BE3" stopOpacity="0.15" />
-              </linearGradient>
-              <linearGradient id="stroke1Grad" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.2" />
-                <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.75" />
-                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.9" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M-20,180 C80,200 220,110 380,30 L380,360 L-20,360 Z"
-              fill="url(#wave1Grad)"
-            />
-            <path
-              d="M-20,180 C80,200 220,110 380,30"
-              stroke="url(#stroke1Grad)"
-              strokeWidth="1.5"
-              filter="drop-shadow(0 0 8px rgba(96,165,250,0.7))"
-            />
-          </svg>
-
           {/* Large 3D spherical glass arc spanning the lower third with luminous cyan/royal blue neon edge */}
           <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
             <defs>
