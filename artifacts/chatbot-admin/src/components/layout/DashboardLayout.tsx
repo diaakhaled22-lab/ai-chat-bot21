@@ -901,42 +901,42 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const isAdmin = role === "admin";
   const sidebarAsideBg = isAdmin
-    ? "bg-[#090b16] text-white"
+    ? "bg-[#070b19] text-white"
     : "bg-[#102A6B] text-white";
   const sidebarHeaderBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
   const sidebarFooterBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
   const navbarBg = isAdmin
-    ? "bg-[#28093c] bg-gradient-to-r from-[#28093c] via-[#1f0b32] to-[#140b26]"
+    ? "bg-[#0e1838] bg-gradient-to-r from-[#0e1838] via-[#102354] to-[#070b19]"
     : "bg-[#102A6B]";
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
       {isAdmin && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          {/* Base dark cosmic night sky background */}
-          <div className="absolute inset-0 bg-[#090b16]" />
+          {/* Base dark midnight-blue cosmic night sky background */}
+          <div className="absolute inset-0 bg-[#070b19]" />
 
-          {/* Top-right vivid violet/magenta nebula glow */}
-          <div className="absolute -top-12 -right-12 w-64 h-64 rounded-full bg-gradient-to-br from-purple-600/50 via-fuchsia-600/30 to-transparent blur-3xl pointer-events-none" />
+          {/* Top-right radiant Royal Blue nebular glow */}
+          <div className="absolute -top-12 -right-12 w-72 h-72 rounded-full bg-gradient-to-br from-[#2D5BE3]/60 via-[#1d4ed8]/40 to-transparent blur-3xl pointer-events-none" />
 
           {/* Shimmering stellar particles (micro-stars) */}
-          <div className="absolute top-14 right-10 w-1 h-1 rounded-full bg-blue-100/90 shadow-[0_0_4px_rgba(255,255,255,0.9)] animate-pulse pointer-events-none" />
-          <div className="absolute top-24 right-5 w-1.5 h-1.5 rounded-full bg-purple-200/80 shadow-[0_0_6px_rgba(192,132,252,0.8)] pointer-events-none" />
-          <div className="absolute top-36 right-12 w-1 h-1 rounded-full bg-sky-200/70 shadow-[0_0_4px_rgba(186,230,253,0.7)] pointer-events-none" />
-          <div className="absolute top-52 right-8 w-1.5 h-1.5 rounded-full bg-indigo-200/60 shadow-[0_0_5px_rgba(199,210,254,0.6)] animate-pulse pointer-events-none" />
+          <div className="absolute top-12 right-12 w-1 h-1 rounded-full bg-cyan-100/90 shadow-[0_0_5px_rgba(255,255,255,0.95)] animate-pulse pointer-events-none" />
+          <div className="absolute top-20 right-6 w-1.5 h-1.5 rounded-full bg-blue-200/85 shadow-[0_0_6px_rgba(45,91,227,0.85)] pointer-events-none" />
+          <div className="absolute top-32 right-14 w-1 h-1 rounded-full bg-sky-200/75 shadow-[0_0_4px_rgba(186,230,253,0.8)] pointer-events-none" />
+          <div className="absolute top-48 right-8 w-1.5 h-1.5 rounded-full bg-blue-300/70 shadow-[0_0_6px_rgba(96,165,250,0.7)] animate-pulse pointer-events-none" />
 
-          {/* Upper sweeping curved glass wave */}
+          {/* Upper sweeping arched glass wave */}
           <svg className="absolute top-[18%] -left-10 w-[380px] h-[360px] pointer-events-none" viewBox="0 0 380 360" fill="none">
             <defs>
               <linearGradient id="wave1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.45" />
-                <stop offset="60%" stopColor="#1e3a8a" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#2563eb" stopOpacity="0.1" />
+                <stop offset="0%" stopColor="#0c1a40" stopOpacity="0.55" />
+                <stop offset="60%" stopColor="#1e3a8a" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#2D5BE3" stopOpacity="0.15" />
               </linearGradient>
               <linearGradient id="stroke1Grad" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.1" />
-                <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="#c084fc" stopOpacity="0.8" />
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.2" />
+                <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.75" />
+                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.9" />
               </linearGradient>
             </defs>
             <path
@@ -947,24 +947,24 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               d="M-20,180 C80,200 220,110 380,30"
               stroke="url(#stroke1Grad)"
               strokeWidth="1.5"
-              filter="drop-shadow(0 0 8px rgba(96,165,250,0.6))"
+              filter="drop-shadow(0 0 8px rgba(96,165,250,0.7))"
             />
           </svg>
 
-          {/* Main Lower Sweeping 3D Glass Arc Sphere (as seen from Messages down to bottom) */}
+          {/* Large 3D spherical glass arc spanning the lower third with luminous cyan/royal blue neon edge */}
           <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
             <defs>
               <radialGradient id="sphereGrad" cx="25%" cy="25%" r="75%">
-                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.8" />
+                <stop offset="0%" stopColor="#2D5BE3" stopOpacity="0.85" />
                 <stop offset="35%" stopColor="#1d4ed8" stopOpacity="0.9" />
                 <stop offset="70%" stopColor="#172554" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#090b16" stopOpacity="1" />
+                <stop offset="100%" stopColor="#070b19" stopOpacity="1" />
               </radialGradient>
               <linearGradient id="arcHighlight" x1="0%" y1="60%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.95" />
-                <stop offset="40%" stopColor="#60a5fa" stopOpacity="0.85" />
-                <stop offset="85%" stopColor="#818cf8" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#c084fc" stopOpacity="0.2" />
+                <stop offset="45%" stopColor="#2D5BE3" stopOpacity="0.9" />
+                <stop offset="85%" stopColor="#60a5fa" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.4" />
               </linearGradient>
             </defs>
             <path
@@ -975,12 +975,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               d="M-10,130 Q110,40 380,220"
               stroke="url(#arcHighlight)"
               strokeWidth="2.5"
-              filter="drop-shadow(0 0 10px rgba(56,189,248,0.85))"
+              filter="drop-shadow(0 0 10px rgba(56,189,248,0.9)) drop-shadow(0 0 20px rgba(45,91,227,0.6))"
             />
           </svg>
 
           {/* Secondary bottom soft glow */}
-          <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-blue-600/25 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-[#2D5BE3]/30 blur-3xl pointer-events-none" />
         </div>
       )}
 
@@ -1169,8 +1169,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
           {isAdmin && (
             <>
-              <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-purple-600/30 blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-fuchsia-600/20 blur-2xl pointer-events-none" />
+              <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
             </>
           )}
           <div className="flex items-center gap-3 relative z-10">
