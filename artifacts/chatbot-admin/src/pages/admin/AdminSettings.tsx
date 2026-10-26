@@ -247,7 +247,7 @@ export default function AdminSettings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-3xl">
+      <div className="space-y-6 w-full">
         <Skeleton className="h-10 w-48" />
         <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
           <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
@@ -262,7 +262,7 @@ export default function AdminSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 w-full">
       {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
       <div
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
