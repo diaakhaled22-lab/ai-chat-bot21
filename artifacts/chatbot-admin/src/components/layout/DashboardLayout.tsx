@@ -894,24 +894,28 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* User info with glassmorphic badge rgba(255,255,255,0.1) */}
-      <div className="px-3 pt-3.5 pb-2 shrink-0 relative z-10">
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 shadow-sm">
-          <div className="w-8 h-8 rounded-lg bg-white/20 text-white border border-white/25 flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
-            {user?.name?.charAt(0).toUpperCase() ?? "A"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold leading-tight text-white truncate">{user?.name}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <p className="text-[10px] font-bold text-blue-200 capitalize">{user?.role}</p>
+      {/* Unified User Info & Live Status in One Box */}
+      <div className="px-3 pt-3 pb-2 shrink-0 relative z-10">
+        <div className="rounded-xl bg-white/10 backdrop-blur-md border border-white/15 shadow-sm p-2.5 space-y-2">
+          {/* User profile row */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/20 text-white border border-white/25 flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
+              {user?.name?.charAt(0).toUpperCase() ?? "A"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold leading-tight text-white truncate">{user?.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <p className="text-[10px] font-bold text-blue-200 capitalize">{user?.role}</p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="px-3 pb-3 shrink-0 relative z-10">
-        {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+          {/* Live status row */}
+          <div className="pt-2 border-t border-white/10">
+            {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+          </div>
+        </div>
       </div>
 
       {/* Nav — scrolls if items overflow, fills all remaining height */}
@@ -1079,7 +1083,7 @@ function LiveStatusBar() {
   return (
     <Link
       href="/admin/malfunctions"
-      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-3 py-2 transition-all shadow-sm"
+      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white px-1 py-0.5 transition-colors rounded-lg hover:bg-white/5"
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
@@ -1120,7 +1124,7 @@ function ClientLiveStatusBar() {
   return (
     <Link
       href="/client/malfunctions"
-      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-3 py-2 transition-all shadow-sm"
+      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white px-1 py-0.5 transition-colors rounded-lg hover:bg-white/5"
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
