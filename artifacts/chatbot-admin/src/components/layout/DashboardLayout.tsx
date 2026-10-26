@@ -900,57 +900,51 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const currentPage = allLinks.find((l) => l.href === location)?.label ?? "";
 
   const isAdmin = role === "admin";
-  const sidebarAsideBg = isAdmin
-    ? "bg-[#070b19] text-white"
-    : "bg-[#102A6B] text-white";
-  const sidebarHeaderBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
-  const sidebarFooterBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
-  const navbarBg = isAdmin
-    ? "bg-[#0e1838] bg-gradient-to-r from-[#0e1838] via-[#102354] to-[#070b19]"
-    : "bg-[#102A6B]";
+  const sidebarAsideBg = "bg-[#070b19] text-white";
+  const sidebarHeaderBg = "bg-transparent";
+  const sidebarFooterBg = "bg-transparent";
+  const navbarBg = "bg-[#0e1838] bg-gradient-to-r from-[#0e1838] via-[#102354] to-[#070b19]";
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
-      {isAdmin && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          {/* Base dark midnight-blue cosmic night sky background */}
-          <div className="absolute inset-0 bg-[#070b19]" />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Base dark midnight-blue cosmic night sky background */}
+        <div className="absolute inset-0 bg-[#070b19]" />
 
-          {/* Top-right radiant Royal Blue nebular glow */}
-          <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#2D5BE3]/80 via-[#1d4ed8]/50 to-transparent blur-3xl pointer-events-none" />
-          <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-[#38bdf8]/25 blur-2xl pointer-events-none" />
+        {/* Top-right radiant Royal Blue nebular glow */}
+        <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#2D5BE3]/80 via-[#1d4ed8]/50 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-[#38bdf8]/25 blur-2xl pointer-events-none" />
 
-          {/* Large 3D spherical glass arc spanning the lower third with subtle, harmonious glass styling */}
-          <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
-            <defs>
-              <radialGradient id="sphereGrad" cx="30%" cy="30%" r="70%">
-                <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.45" />
-                <stop offset="40%" stopColor="#172554" stopOpacity="0.65" />
-                <stop offset="75%" stopColor="#0f172a" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#070b19" stopOpacity="0.95" />
-              </radialGradient>
-              <linearGradient id="arcHighlight" x1="0%" y1="60%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.45" />
-                <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#2D5BE3" stopOpacity="0.1" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M-10,130 Q110,40 380,220 L380,480 L-10,480 Z"
-              fill="url(#sphereGrad)"
-            />
-            <path
-              d="M-10,130 Q110,40 380,220"
-              stroke="url(#arcHighlight)"
-              strokeWidth="1.5"
-              filter="drop-shadow(0 0 6px rgba(56,189,248,0.3))"
-            />
-          </svg>
+        {/* Large 3D spherical glass arc spanning the lower third with subtle, harmonious glass styling */}
+        <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
+          <defs>
+            <radialGradient id="sphereGrad" cx="30%" cy="30%" r="70%">
+              <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.45" />
+              <stop offset="40%" stopColor="#172554" stopOpacity="0.65" />
+              <stop offset="75%" stopColor="#0f172a" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#070b19" stopOpacity="0.95" />
+            </radialGradient>
+            <linearGradient id="arcHighlight" x1="0%" y1="60%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.45" />
+              <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#2D5BE3" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M-10,130 Q110,40 380,220 L380,480 L-10,480 Z"
+            fill="url(#sphereGrad)"
+          />
+          <path
+            d="M-10,130 Q110,40 380,220"
+            stroke="url(#arcHighlight)"
+            strokeWidth="1.5"
+            filter="drop-shadow(0 0 6px rgba(56,189,248,0.3))"
+          />
+        </svg>
 
-          {/* Secondary bottom soft glow */}
-          <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-[#2D5BE3]/30 blur-3xl pointer-events-none" />
-        </div>
-      )}
+        {/* Secondary bottom soft glow */}
+        <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-[#2D5BE3]/30 blur-3xl pointer-events-none" />
+      </div>
 
       {/* Top Header - Bot Manager Logo */}
       <div className={`h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 ${sidebarHeaderBg} relative z-10`}>
@@ -971,10 +965,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
       {/* Unified User Info & Live Status in One Box */}
       <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
-        <div className={`rounded-2xl ${isAdmin ? "bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)]" : "bg-white/10 backdrop-blur-md border border-white/15 shadow-sm"} p-2.5 space-y-2`}>
+        <div className="rounded-2xl bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] p-2.5 space-y-2">
           {/* User profile row */}
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl ${isAdmin ? "bg-white/15 border border-white/20 text-white" : "bg-white/20 text-white border border-white/25"} flex items-center justify-center font-bold text-xs shadow-inner shrink-0`}>
+            <div className="w-8 h-8 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
               {user?.name?.charAt(0).toUpperCase() ?? "S"}
             </div>
             <div className="min-w-0 flex-1">
@@ -994,13 +988,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       </div>
 
       {/* Section Header: MENU */}
-      {isAdmin && (
-        <div className="px-4 pt-2 pb-1 relative z-10">
-          <span className="text-[10px] font-extrabold text-slate-400/80 tracking-widest uppercase">
-            MENU
-          </span>
-        </div>
-      )}
+      <div className="px-4 pt-2 pb-1 relative z-10">
+        <span className="text-[10px] font-extrabold text-slate-400/80 tracking-widest uppercase">
+          MENU
+        </span>
+      </div>
 
       {/* Nav — scrolls if items overflow, fills all remaining height */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-1 space-y-1 relative z-10 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
@@ -1135,12 +1127,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
         <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
-          {isAdmin && (
-            <>
-              <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
-            </>
-          )}
+          <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
           <div className="flex items-center gap-3 relative z-10">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
