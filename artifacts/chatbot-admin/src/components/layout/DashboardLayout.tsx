@@ -965,11 +965,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className="rounded-2xl bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] p-2.5 space-y-2">
           {/* User profile row */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-xs shadow-inner shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-sm shadow-inner shrink-0">
               {user?.name?.charAt(0).toUpperCase() ?? "S"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold leading-tight text-white truncate">{user?.name ?? "softysta.com"}</p>
+              <p className={role === "client" ? "font-black text-lg tracking-tight text-white drop-shadow-sm truncate leading-tight" : "text-xs font-bold leading-tight text-white truncate"}>
+                {user?.name ?? "softysta.com"}
+              </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                 <p className="text-[10px] font-medium text-slate-300 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
