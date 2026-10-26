@@ -30,10 +30,11 @@ import {
   Database,
   Cpu,
   Coins,
-  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, type LucideIcon,
+  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
@@ -77,9 +78,23 @@ interface AppNotification {
 
 
 // â”€â”€ Admin Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function timeAgo(iso: string, lang: string = "ar") {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return lang === "ar" ? "الآن" : "just now";
+  if (m < 60) return lang === "ar" ? `منذ ${m} د` : `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return lang === "ar" ? `منذ ${h} س` : `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return lang === "ar" ? `منذ ${d} ي` : `${d}d ago`;
+}
+
 function NotificationBell() {
-  const [location, setLocation] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const { lang } = useLanguage();
+  const queryClient = useQueryClient();
+
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
   });
@@ -87,7 +102,7 @@ function NotificationBell() {
 
   const { data: notifications = [] } = useQuery<AppNotification[]>({
     queryKey: ["admin-notifications"],
-    queryFn: () => customFetch("/api/admin/notifications"),
+    queryFn: () => customFetch("/api/admin/notifications?limit=20"),
     refetchInterval: 10_000,
   });
 
@@ -105,38 +120,230 @@ function NotificationBell() {
     prevTotalRef.current = totalBadge;
   }, [totalBadge]);
 
-  const isActive = location === "/admin/notifications";
+  const markAllReadMutation = useMutation({
+    mutationFn: () => customFetch("/api/admin/notifications/mark-read", { method: "PATCH" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: () => customFetch("/api/admin/notifications", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
+  const deleteSingleMutation = useMutation({
+    mutationFn: (id: number) => customFetch(`/api/admin/notifications/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen && unreadNotifications > 0) {
+      markAllReadMutation.mutate();
+    }
+  };
+
+  const getNotifIcon = (type: string) => {
+    if (type === "new_client" || type === "client_registered") {
+      return <UserPlus className="w-4 h-4 text-emerald-400 shrink-0" />;
+    }
+    if (type === "security_alert" || type.includes("security") || type.includes("attack")) {
+      return <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />;
+    }
+    if (type === "malfunction" || type.includes("malfunction")) {
+      return <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />;
+    }
+    if (type.startsWith("renewal_reminder")) {
+      return <Clock className="w-4 h-4 text-cyan-400 shrink-0" />;
+    }
+    if (type.includes("ticket") || type.includes("problem")) {
+      return <LifeBuoy className="w-4 h-4 text-indigo-400 shrink-0" />;
+    }
+    return <Bell className="w-4 h-4 text-primary shrink-0" />;
+  };
+
+  const handleItemClick = (n: AppNotification) => {
+    setOpen(false);
+    if (n.type === "new_client" || n.type === "client_registered") {
+      setLocation("/admin/clients");
+    } else if (n.type.includes("security") || n.type === "security_alert") {
+      setLocation("/admin/attack-monitoring");
+    } else if (n.type.includes("malfunction")) {
+      setLocation("/admin/malfunctions");
+    } else if (n.type.includes("ticket") || n.type.includes("problem")) {
+      setLocation("/admin/tickets");
+    } else {
+      setLocation("/admin/notifications");
+    }
+  };
 
   return (
-    <button
-      type="button"
-      onClick={() => setLocation("/admin/notifications")}
-      className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
-        isActive ? "bg-white/25 ring-2 ring-white/30" : ""
-      } ${pulse ? "animate-bounce" : ""}`}
-      aria-label="Notifications"
-      title={lang === "ar" ? "الإشعارات" : "Notifications"}
-    >
-      <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-300" : "text-white/80"}`} />
-      {totalBadge > 0 && (
-        <span
-          className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
-            pulse ? "bg-amber-300 text-slate-900 scale-125" : "bg-rose-500 text-white border border-white/30"
-          }`}
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
+            open ? "bg-white/25 ring-2 ring-white/30" : ""
+          } ${pulse ? "animate-bounce" : ""}`}
+          aria-label="Notifications"
+          title={lang === "ar" ? "الإشعارات" : "Notifications"}
         >
-          {totalBadge > 99 ? "99+" : totalBadge}
-        </span>
-      )}
-    </button>
+          <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-300" : "text-white/80"}`} />
+          {totalBadge > 0 && (
+            <span
+              className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
+                pulse ? "bg-amber-300 text-slate-900 scale-125" : "bg-rose-500 text-white border border-white/30"
+              }`}
+            >
+              {totalBadge > 99 ? "99+" : totalBadge}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align={lang === "ar" ? "start" : "end"}
+        sideOffset={8}
+        className="w-80 sm:w-96 p-0 bg-card/95 backdrop-blur-xl border border-border/80 shadow-2xl rounded-2xl overflow-hidden z-50 text-foreground"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/40">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Bell className="w-3.5 h-3.5 text-amber-500" />
+            </div>
+            <div>
+              <span className="font-bold text-xs sm:text-sm">{lang === "ar" ? "الإشعارات" : "Notifications"}</span>
+              {totalBadge > 0 && (
+                <span className="ms-1.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  {totalBadge}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {unreadNotifications > 0 && (
+              <button
+                type="button"
+                onClick={() => markAllReadMutation.mutate()}
+                className="text-[11px] text-muted-foreground hover:text-primary px-2 py-1 rounded-md hover:bg-muted transition-colors flex items-center gap-1 cursor-pointer"
+                title={lang === "ar" ? "تحديد كمقروء" : "Mark as read"}
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "مقروء" : "Read"}</span>
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => clearAllMutation.mutate()}
+                className="text-[11px] text-muted-foreground hover:text-rose-500 px-2 py-1 rounded-md hover:bg-rose-500/10 transition-colors flex items-center gap-1 cursor-pointer"
+                title={lang === "ar" ? "مسح الكل" : "Clear all"}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "مسح" : "Clear"}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Notification list */}
+        <div className="max-h-[340px] overflow-y-auto divide-y divide-border/30">
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mb-2">
+                <CheckCircle2 className="w-6 h-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-xs font-medium text-muted-foreground">
+                {lang === "ar" ? "لا توجد إشعارات حالياً" : "No notifications right now"}
+              </p>
+              <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                {lang === "ar" ? "أنت مطلع على كل التحديثات!" : "You're all caught up!"}
+              </p>
+            </div>
+          ) : (
+            notifications.slice(0, 8).map((n) => (
+              <div
+                key={n.id}
+                onClick={() => handleItemClick(n)}
+                className={`w-full px-3.5 py-3 hover:bg-muted/60 transition-colors flex items-start gap-3 cursor-pointer group relative ${
+                  !n.isRead ? "bg-amber-500/[0.04] dark:bg-amber-500/[0.07]" : ""
+                }`}
+              >
+                <div className="mt-0.5 p-1.5 rounded-lg bg-muted border border-border/40 shrink-0">
+                  {getNotifIcon(n.type)}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={`text-xs leading-tight truncate ${!n.isRead ? "font-bold text-foreground" : "font-medium text-foreground/85"}`}>
+                      {n.title}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                      {timeAgo(n.createdAt, lang)}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                    {n.message}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0 self-center">
+                  {!n.isRead && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSingleMutation.mutate(n.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-all cursor-pointer"
+                    title={lang === "ar" ? "حذف" : "Delete"}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer: View all page */}
+        <div className="p-2 border-t border-border/50 bg-muted/30 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setLocation("/admin/notifications");
+            }}
+            className="w-full py-1.5 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>{lang === "ar" ? "عرض كل الإشعارات في صفحة مخصصة" : "View All Notifications Page"}</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
 function ClientNotificationBell() {
-  const [location, setLocation] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const { lang } = useLanguage();
+  const queryClient = useQueryClient();
+
   const { data: notifications = [] } = useQuery<AppNotification[]>({
     queryKey: ["client-notifications"],
-    queryFn: () => customFetch("/api/client/notifications"),
+    queryFn: () => customFetch("/api/client/notifications?limit=20"),
     refetchInterval: 10_000,
   });
 
@@ -159,43 +366,244 @@ function ClientNotificationBell() {
     prevCountRef.current = unread;
   }, [unread]);
 
-  const isActive = location === "/client/notifications";
+  const markAllReadMutation = useMutation({
+    mutationFn: () => customFetch("/api/client/notifications/mark-read", { method: "PATCH" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+    },
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: () => customFetch("/api/client/notifications", { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+    },
+  });
+
+  const deleteSingleMutation = useMutation({
+    mutationFn: (id: number) => customFetch(`/api/client/notifications/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+    },
+  });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen && unread > 0) {
+      markAllReadMutation.mutate();
+    }
+  };
+
+  const getClientNotifIcon = (type: string) => {
+    if (type === "quota_depleted_red" || type.includes("depleted")) {
+      return <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 animate-pulse" />;
+    }
+    if (type === "quota_warning_amber" || type.includes("amber")) {
+      return <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
+    }
+    if (type === "problem_alert" || type.includes("problem") || type.includes("ticket")) {
+      return <LifeBuoy className="w-4 h-4 text-indigo-400 shrink-0" />;
+    }
+    if (type === "handoff_request" || type.includes("handoff") || type.includes("customer_service")) {
+      return <LifeBuoy className="w-4 h-4 text-sky-400 shrink-0" />;
+    }
+    return <Clock className="w-4 h-4 text-amber-400 shrink-0" />;
+  };
+
+  const handleClientItemClick = (n: AppNotification) => {
+    setOpen(false);
+    const isRedDepleted = n.type === "quota_depleted_red" || n.type.includes("depleted");
+    const isAmberWarning = n.type === "quota_warning_amber" || n.type.includes("amber");
+    const isQuota = isRedDepleted || isAmberWarning;
+    const isProblemOrHandoff = n.type.includes("problem") || n.type.includes("handoff") || n.type.includes("lead") || n.type.includes("message");
+
+    if (isQuota) {
+      setLocation("/client/usage");
+    } else if (isProblemOrHandoff) {
+      setLocation("/client/universal-chat");
+    } else {
+      setLocation("/client/notifications");
+    }
+  };
 
   return (
-    <button
-      type="button"
-      onClick={() => setLocation("/client/notifications")}
-      className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
-        isActive ? "bg-white/25 ring-2 ring-white/30" : ""
-      } ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
-      aria-label="Notifications"
-      title={lang === "ar" ? "الإشعارات" : "Notifications"}
-    >
-      <Bell
-        className={`w-4 h-4 ${
-          hasUnreadRed
-            ? "text-rose-300 animate-pulse"
-            : hasUnreadAmber
-            ? "text-amber-300"
-            : unread > 0
-            ? "text-amber-300"
-            : "text-white/80"
-        }`}
-      />
-      {unread > 0 && (
-        <span
-          className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
-            hasUnreadRed
-              ? "bg-rose-500 text-white animate-pulse border border-white/30"
-              : pulse
-              ? "bg-amber-300 text-slate-900 scale-125"
-              : "bg-amber-400 text-slate-950 font-bold"
-          }`}
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
+            open ? "bg-white/25 ring-2 ring-white/30" : ""
+          } ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
+          aria-label="Notifications"
+          title={lang === "ar" ? "الإشعارات" : "Notifications"}
         >
-          {unread > 99 ? "99+" : unread}
-        </span>
-      )}
-    </button>
+          <Bell
+            className={`w-4 h-4 ${
+              hasUnreadRed
+                ? "text-rose-300 animate-pulse"
+                : hasUnreadAmber
+                ? "text-amber-300"
+                : unread > 0
+                ? "text-amber-300"
+                : "text-white/80"
+            }`}
+          />
+          {unread > 0 && (
+            <span
+              className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
+                hasUnreadRed
+                  ? "bg-rose-500 text-white animate-pulse border border-white/30"
+                  : pulse
+                  ? "bg-amber-300 text-slate-900 scale-125"
+                  : "bg-amber-400 text-slate-950 font-bold"
+              }`}
+            >
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align={lang === "ar" ? "start" : "end"}
+        sideOffset={8}
+        className="w-80 sm:w-96 p-0 bg-card/95 backdrop-blur-xl border border-border/80 shadow-2xl rounded-2xl overflow-hidden z-50 text-foreground"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/40">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Bell className="w-3.5 h-3.5 text-amber-500" />
+            </div>
+            <div>
+              <span className="font-bold text-xs sm:text-sm">{lang === "ar" ? "الإشعارات" : "Notifications"}</span>
+              {unread > 0 && (
+                <span className={`ms-1.5 text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                  hasUnreadRed ? "bg-rose-500/20 text-rose-500" : "bg-amber-500/20 text-amber-500"
+                }`}>
+                  {unread}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {unread > 0 && (
+              <button
+                type="button"
+                onClick={() => markAllReadMutation.mutate()}
+                className="text-[11px] text-muted-foreground hover:text-primary px-2 py-1 rounded-md hover:bg-muted transition-colors flex items-center gap-1 cursor-pointer"
+                title={lang === "ar" ? "تحديد كمقروء" : "Mark as read"}
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "مقروء" : "Read"}</span>
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => clearAllMutation.mutate()}
+                className="text-[11px] text-muted-foreground hover:text-rose-500 px-2 py-1 rounded-md hover:bg-rose-500/10 transition-colors flex items-center gap-1 cursor-pointer"
+                title={lang === "ar" ? "مسح الكل" : "Clear all"}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "مسح" : "Clear"}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Notification list */}
+        <div className="max-h-[340px] overflow-y-auto divide-y divide-border/30">
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mb-2">
+                <CheckCircle2 className="w-6 h-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-xs font-medium text-muted-foreground">
+                {lang === "ar" ? "لا توجد إشعارات حالياً" : "No notifications right now"}
+              </p>
+              <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                {lang === "ar" ? "أنت مطلع على كل التحديثات!" : "You're all caught up!"}
+              </p>
+            </div>
+          ) : (
+            notifications.slice(0, 8).map((n) => (
+              <div
+                key={n.id}
+                onClick={() => handleClientItemClick(n)}
+                className={`w-full px-3.5 py-3 hover:bg-muted/60 transition-colors flex items-start gap-3 cursor-pointer group relative ${
+                  !n.isRead ? "bg-amber-500/[0.04] dark:bg-amber-500/[0.07]" : ""
+                }`}
+              >
+                <div className="mt-0.5 p-1.5 rounded-lg bg-muted border border-border/40 shrink-0">
+                  {getClientNotifIcon(n.type)}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={`text-xs leading-tight truncate ${!n.isRead ? "font-bold text-foreground" : "font-medium text-foreground/85"}`}>
+                      {n.title}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                      {timeAgo(n.createdAt, lang)}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                    {n.message}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0 self-center">
+                  {!n.isRead && (
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${
+                      n.type.includes("depleted") ? "bg-rose-500 animate-ping" : "bg-amber-500"
+                    }`} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSingleMutation.mutate(n.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-all cursor-pointer"
+                    title={lang === "ar" ? "حذف" : "Delete"}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer: View all page + Gmail */}
+        <div className="p-2 border-t border-border/50 bg-muted/30 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setLocation("/client/notifications");
+            }}
+            className="flex-1 py-1.5 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>{lang === "ar" ? "عرض كل الإشعارات" : "View All"}</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+          <a
+            href="https://mail.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-1.5 px-2.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+            title="Gmail"
+          >
+            <Mail className="w-3.5 h-3.5 text-red-500" />
+            <span>Gmail</span>
+          </a>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
