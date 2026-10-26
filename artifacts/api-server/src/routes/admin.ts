@@ -366,21 +366,30 @@ router.get("/admin/clients", async (req, res) => {
       .where(eq(usersTable.role, "client"))
       .orderBy(usersTable.createdAt);
 
-    const companyCounts = await db
-      .select({ clientId: companiesTable.clientId, count: count() })
-      .from(companiesTable)
-      .groupBy(companiesTable.clientId);
+    const companies = await db
+      .select({ clientId: companiesTable.clientId, notificationEmail: companiesTable.notificationEmail })
+      .from(companiesTable);
 
-    const companyMap = new Map(companyCounts.map((r) => [r.clientId, r.count]));
+    const companyCountMap = new Map<number, number>();
+    const companyEmailMap = new Map<number, string>();
+    for (const comp of companies) {
+      if (comp.clientId) {
+        companyCountMap.set(comp.clientId, (companyCountMap.get(comp.clientId) ?? 0) + 1);
+        if (comp.notificationEmail && !companyEmailMap.has(comp.clientId)) {
+          companyEmailMap.set(comp.clientId, comp.notificationEmail);
+        }
+      }
+    }
 
     res.json(
       clients.map((c) => ({
         id: c.id,
         name: c.name,
         username: c.username,
+        email: (c as any).email?.trim() || c.notificationEmail?.trim() || companyEmailMap.get(c.id)?.trim() || null,
         lastLoginIp: c.lastLoginIp ?? null,
         createdAt: c.createdAt.toISOString(),
-        hasCompany: (companyMap.get(c.id) ?? 0) > 0,
+        hasCompany: (companyCountMap.get(c.id) ?? 0) > 0,
       }))
     );
   } catch (err) {
@@ -397,7 +406,7 @@ router.post("/admin/clients", async (req, res) => {
       res.status(400).json({ error: "Invalid input" });
       return;
     }
-    const { name, username, password } = parsed.data;
+    const { name, username, password, email } = parsed.data;
 
     const pwError = validatePassword(password);
     if (pwError) {
@@ -421,10 +430,18 @@ router.post("/admin/clients", async (req, res) => {
       return;
     }
 
+    const trimmedEmail = email && typeof email === "string" && email.trim() ? email.trim() : null;
     const passwordHash = await bcrypt.hash(password, 12);
     const [user] = await db
       .insert(usersTable)
-      .values({ name, username, passwordHash, role: "client" })
+      .values({
+        name,
+        username,
+        passwordHash,
+        role: "client",
+        email: trimmedEmail,
+        notificationEmail: trimmedEmail,
+      })
       .returning();
 
     await logAdminActivity(
@@ -438,6 +455,7 @@ router.post("/admin/clients", async (req, res) => {
       id: user.id,
       name: user.name,
       username: user.username,
+      email: (user as any).email ?? user.notificationEmail ?? null,
       createdAt: user.createdAt.toISOString(),
       hasCompany: false,
     });
@@ -456,7 +474,7 @@ router.put("/admin/clients/:id", async (req, res) => {
       res.status(400).json({ error: "Invalid input" });
       return;
     }
-    const { name, username, password } = body.data;
+    const { name, username, password, email } = body.data;
 
     if (password) {
       const pwError = validatePassword(password);
@@ -470,6 +488,16 @@ router.put("/admin/clients/:id", async (req, res) => {
     if (name) updates.name = name;
     if (username) updates.username = username;
     if (password) updates.passwordHash = await bcrypt.hash(password, 12);
+    if (email !== undefined) {
+      const trimmedEmail = email && typeof email === "string" && email.trim() ? email.trim() : null;
+      updates.email = trimmedEmail;
+      updates.notificationEmail = trimmedEmail;
+      await db
+        .update(companiesTable)
+        .set({ notificationEmail: trimmedEmail })
+        .where(eq(companiesTable.clientId, params.data.id))
+        .catch(() => {});
+    }
 
     const [user] = await db
       .update(usersTable)
@@ -485,6 +513,7 @@ router.put("/admin/clients/:id", async (req, res) => {
       id: user.id,
       name: user.name,
       username: user.username,
+      email: (user as any).email ?? user.notificationEmail ?? null,
       createdAt: user.createdAt.toISOString(),
       hasCompany: false,
     });

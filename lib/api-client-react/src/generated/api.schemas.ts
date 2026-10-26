@@ -76,6 +76,7 @@ export interface Client {
   id: number;
   name: string;
   username: string;
+  email?: string | null;
   lastLoginIp?: string | null;
   createdAt: string;
   hasCompany?: boolean;
@@ -85,6 +86,7 @@ export interface ClientInput {
   name: string;
   username: string;
   password: string;
+  email?: string;
 }
 
 export interface ClientUpdate {
@@ -92,6 +94,7 @@ export interface ClientUpdate {
   username?: string;
   /** @nullable */
   password?: string | null;
+  email?: string | null;
 }
 
 /**

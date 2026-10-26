@@ -54,6 +54,7 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_duration INTEGER DEFAULT 30;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_service_account_key TEXT;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_booking_rules TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT;
 
       -- Ensure all companies have an active monthly token quota assigned (default: 500,000)

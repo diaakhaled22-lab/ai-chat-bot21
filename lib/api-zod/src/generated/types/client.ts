@@ -10,6 +10,7 @@ export interface Client {
   id: number;
   name: string;
   username: string;
+  email?: string | null;
   lastLoginIp?: string | null;
   createdAt: string;
   hasCompany?: boolean;

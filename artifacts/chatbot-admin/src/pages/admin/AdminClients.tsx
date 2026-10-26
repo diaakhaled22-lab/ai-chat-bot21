@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useListClients, useCreateClient, useDeleteClient, useUpdateClient, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MoreVertical, Search, Edit } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Search, Edit, Mail } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,12 +22,14 @@ import { Users, UserCheck, Clock, ShieldCheck } from "lucide-react";
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const editFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   password: z.string().optional().refine(val => !val || val.length >= 6, {
     message: "Password must be at least 6 characters if provided",
   }),
@@ -55,6 +57,7 @@ export default function AdminClients() {
     defaultValues: {
       name: "",
       username: "",
+      email: "",
       password: "",
     },
   });
@@ -64,6 +67,7 @@ export default function AdminClients() {
     defaultValues: {
       name: "",
       username: "",
+      email: "",
       password: "",
     },
   });
@@ -73,6 +77,7 @@ export default function AdminClients() {
     editForm.reset({
       name: client.name,
       username: client.username,
+      email: client.email || "",
       password: "",
     });
   };
@@ -81,6 +86,7 @@ export default function AdminClients() {
     if (!editingClient) return;
     const payload = { ...values };
     if (!payload.password) delete payload.password;
+    if (!payload.email) payload.email = "";
     
     updateClient.mutate({ id: editingClient.id, data: payload as any }, {
       onSuccess: () => {
@@ -122,6 +128,7 @@ export default function AdminClients() {
   const filteredClients = clients?.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
     c.username.toLowerCase().includes(search.toLowerCase()) ||
+    (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
     (c.lastLoginIp && c.lastLoginIp.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -174,21 +181,28 @@ export default function AdminClients() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>{lang === "ar" ? "الاسم بالكامل" : "Full Name"}</FormLabel>
                     <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="username" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>{lang === "ar" ? "اسم المستخدم" : "Username"}</FormLabel>
                     <FormControl><Input placeholder="johndoe" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{lang === "ar" ? "بريد Gmail / البريد الإلكتروني (اختياري)" : "Gmail / Email (Optional)"}</FormLabel>
+                    <FormControl><Input placeholder="example@gmail.com" type="email" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="password" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{lang === "ar" ? "كلمة المرور" : "Password"}</FormLabel>
                     <FormControl><PasswordInput placeholder="••••••••" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -213,21 +227,28 @@ export default function AdminClients() {
               <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
                 <FormField control={editForm.control} name="name" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>{lang === "ar" ? "الاسم بالكامل" : "Full Name"}</FormLabel>
                     <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={editForm.control} name="username" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>{lang === "ar" ? "اسم المستخدم" : "Username"}</FormLabel>
                     <FormControl><Input placeholder="johndoe" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{lang === "ar" ? "بريد Gmail / البريد الإلكتروني" : "Gmail / Email"}</FormLabel>
+                    <FormControl><Input placeholder="example@gmail.com" type="email" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={editForm.control} name="password" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New Password (Optional)</FormLabel>
+                    <FormLabel>{lang === "ar" ? "كلمة المرور الجديدة (اختياري)" : "New Password (Optional)"}</FormLabel>
                     <FormControl><PasswordInput placeholder="Leave blank to keep current" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -281,7 +302,7 @@ export default function AdminClients() {
       <div className="flex items-center space-x-2 bg-card px-4 py-3 rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
         <Search className="w-5 h-5 text-muted-foreground" />
         <Input 
-          placeholder={lang === "ar" ? "بحث بالاسم، اسم المستخدم، أو عنوان IP..." : "Search clients by name, username, or IP..."} 
+          placeholder={lang === "ar" ? "بحث بالاسم، اسم المستخدم، بريد Gmail، أو عنوان IP..." : "Search clients by name, username, email, or IP..."} 
           className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -295,6 +316,7 @@ export default function AdminClients() {
               <TableHead className="w-[140px] font-semibold">{lang === "ar" ? "عنوان IP" : "IP"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "الاسم" : "Name"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "اسم المستخدم" : "Username"}</TableHead>
+              <TableHead className="font-semibold">{lang === "ar" ? "بريد Gmail" : "Gmail"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "الحالة" : "Status"}</TableHead>
               <TableHead className="font-semibold">{lang === "ar" ? "تاريخ الإنشاء" : "Created"}</TableHead>
               <TableHead className="w-[80px]"></TableHead>
@@ -307,6 +329,7 @@ export default function AdminClients() {
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell></TableCell>
@@ -314,7 +337,7 @@ export default function AdminClients() {
               ))
             ) : filteredClients?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   {lang === "ar" ? "لم يتم العثور على أي عملاء." : "No clients found."}
                 </TableCell>
               </TableRow>
@@ -335,6 +358,20 @@ export default function AdminClients() {
                   </TableCell>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.username}</TableCell>
+                  <TableCell>
+                    {client.email ? (
+                      <a
+                        href={`mailto:${client.email}`}
+                        className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono"
+                        dir="ltr"
+                      >
+                        <Mail className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                        {client.email}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {client.hasCompany ? (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500">
