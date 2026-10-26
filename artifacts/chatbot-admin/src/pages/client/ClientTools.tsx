@@ -459,7 +459,7 @@ export default function ClientTools() {
       {activeTab === "calendar" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
-          <Card className="border-border bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
+          <Card className="border-border bg-card/70 backdrop-blur-sm shadow-md shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
             <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCE7FF] bg-gradient-to-r from-blue-500/5 via-card to-background">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
@@ -538,7 +538,7 @@ export default function ClientTools() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Configuration Form Column */}
             <div className="lg:col-span-7 space-y-6">
-              <Card className="border-border bg-card shadow-sm">
+              <Card className="border-border bg-card shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <Globe className="w-4 h-4 text-primary" />
@@ -605,7 +605,7 @@ export default function ClientTools() {
                   </div>
 
                   {/* Credentials Section */}
-                  <div className="p-4 rounded-xl border border-[#DCE7FF] bg-muted/20 space-y-3">
+                  <div className="p-4 rounded-xl border border-[#DCE7FF] bg-muted/20 space-y-3 border-l-4 border-l-[#2D5BE3]">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -703,7 +703,7 @@ export default function ClientTools() {
               </Card>
 
               {/* Instructions Guide Card */}
-              <Card className="border-border bg-card/60">
+              <Card className="border-border bg-card/60 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
                     <HelpCircle className="w-4 h-4 text-primary" />
@@ -741,7 +741,7 @@ export default function ClientTools() {
 
             {/* Upcoming Appointments & Bookings Column */}
             <div className="lg:col-span-5 space-y-6">
-              <Card className="border-border bg-card shadow-sm h-full flex flex-col">
+              <Card className="border-border bg-card shadow-md shadow-[#2D5BE3]/15 h-full flex flex-col border-l-4 border-l-[#2D5BE3]">
                 <CardHeader className="flex flex-row items-center justify-between pb-3">
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
@@ -902,7 +902,7 @@ export default function ClientTools() {
                       return (
                         <div
                           key={evt.id}
-                          className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 hover:bg-background/90 transition-all space-y-2"
+                          className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 hover:bg-background/90 transition-all space-y-2 border-l-4 border-l-[#2D5BE3]"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -985,7 +985,7 @@ export default function ClientTools() {
       {activeTab === "sheets" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
-          <Card className="border-border bg-card/70 backdrop-blur-sm shadow-sm overflow-hidden">
+          <Card className="border-border bg-card/70 backdrop-blur-sm shadow-md shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
             <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCE7FF] bg-gradient-to-r from-emerald-500/5 via-card to-background">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
@@ -1089,7 +1089,7 @@ export default function ClientTools() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Configuration Form Column */}
             <div className="lg:col-span-7 space-y-6">
-              <Card className="border-border bg-card shadow-sm">
+              <Card className="border-border bg-card shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <TableProperties className="w-4 h-4 text-emerald-500" />
@@ -1156,7 +1156,7 @@ export default function ClientTools() {
                   </div>
 
                   {/* Service Account Credentials Card */}
-                  <div className="p-4 rounded-xl border border-[#DCE7FF] bg-muted/20 space-y-3">
+                  <div className="p-4 rounded-xl border border-[#DCE7FF] bg-muted/20 space-y-3 border-l-4 border-l-[#2D5BE3]">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -1237,7 +1237,7 @@ export default function ClientTools() {
               </Card>
 
               {/* Instructions Guide Card */}
-              <Card className="border-border bg-card/60">
+              <Card className="border-border bg-card/60 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
                     <HelpCircle className="w-4 h-4 text-emerald-500" />
@@ -1275,7 +1275,7 @@ export default function ClientTools() {
 
             {/* Information & Synchronized Data Details Column */}
             <div className="lg:col-span-5 space-y-6">
-              <Card className="border-border bg-card shadow-sm">
+              <Card className="border-border bg-card shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Database className="w-4 h-4 text-emerald-500" />
@@ -1289,7 +1289,7 @@ export default function ClientTools() {
                 </CardHeader>
 
                 <CardContent className="space-y-4 text-xs">
-                  <div className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 space-y-2">
+                  <div className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 space-y-2 border-l-4 border-l-[#2D5BE3]">
                     <h5 className="font-semibold text-foreground flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                       {isAr ? "تسجيل بيانات العملاء (Leads Capture)" : "Lead Capture Logging"}
@@ -1301,7 +1301,7 @@ export default function ClientTools() {
                     </p>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 space-y-2">
+                  <div className="p-3.5 rounded-xl border border-[#DCE7FF] bg-background/60 space-y-2 border-l-4 border-l-[#2D5BE3]">
                     <h5 className="font-semibold text-foreground flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                       {isAr ? "الأعمدة الموثقة في الجدول" : "Recorded Columns"}
@@ -1316,7 +1316,7 @@ export default function ClientTools() {
                     </ul>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1.5 text-emerald-700 dark:text-emerald-400">
+                  <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1.5 text-emerald-700 dark:text-emerald-400 border-l-4 border-l-[#2D5BE3]">
                     <p className="font-medium flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5" />
                       {isAr ? "مزامنة لحظية عبر جميع القنوات" : "Omnichannel Live Sync"}
