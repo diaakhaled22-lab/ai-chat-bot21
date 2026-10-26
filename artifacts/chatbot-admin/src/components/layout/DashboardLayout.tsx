@@ -920,13 +920,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#2D5BE3]/80 via-[#1d4ed8]/50 to-transparent blur-3xl pointer-events-none" />
           <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-[#38bdf8]/25 blur-2xl pointer-events-none" />
 
-          {/* Shimmering stellar particles (micro-stars) */}
-          <div className="absolute top-10 right-14 w-1.5 h-1.5 rounded-full bg-white/95 shadow-[0_0_8px_rgba(255,255,255,1)] animate-pulse pointer-events-none" />
-          <div className="absolute top-16 right-6 w-2 h-2 rounded-full bg-cyan-200/90 shadow-[0_0_10px_rgba(56,189,248,0.9)] pointer-events-none" />
-          <div className="absolute top-24 right-16 w-1 h-1 rounded-full bg-blue-100/80 shadow-[0_0_6px_rgba(45,91,227,0.85)] animate-pulse pointer-events-none" />
-          <div className="absolute top-36 right-8 w-1.5 h-1.5 rounded-full bg-sky-200/85 shadow-[0_0_7px_rgba(186,230,253,0.8)] pointer-events-none" />
-          <div className="absolute top-48 right-12 w-2 h-2 rounded-full bg-[#93c5fd]/80 shadow-[0_0_8px_rgba(96,165,250,0.8)] animate-pulse pointer-events-none" />
-
           {/* Upper sweeping arched glass wave */}
           <svg className="absolute top-[18%] -left-10 w-[380px] h-[360px] pointer-events-none" viewBox="0 0 380 360" fill="none">
             <defs>
