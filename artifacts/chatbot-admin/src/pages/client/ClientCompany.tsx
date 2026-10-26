@@ -512,7 +512,7 @@ export default function ClientCompany() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 w-full">
         <Skeleton className="h-10 w-64" />
         <Card className="bg-card">
           <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
@@ -572,7 +572,7 @@ export default function ClientCompany() {
 
   return (
     <>
-    <div className="space-y-8 max-w-4xl pb-12">
+    <div className="space-y-8 w-full pb-12">
       {/* ── Bot Manager Hero Operations Banner ── */}
       <div
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
