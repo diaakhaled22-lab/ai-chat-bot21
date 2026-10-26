@@ -881,7 +881,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     : "bg-[#102A6B] text-white";
   const sidebarHeaderBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
   const sidebarFooterBg = isAdmin ? "bg-transparent" : "bg-[#102A6B]";
-  const navbarBg = isAdmin ? "bg-[#090b16]" : "bg-[#102A6B]";
+  const navbarBg = isAdmin
+    ? "bg-[#28093c] bg-gradient-to-r from-[#28093c] via-[#1f0b32] to-[#140b26]"
+    : "bg-[#102A6B]";
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
@@ -1114,8 +1116,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
           {isAdmin && (
             <>
-              <div className="absolute top-0 right-1/4 -mt-10 w-48 h-20 rounded-full bg-purple-600/20 blur-xl pointer-events-none" />
-              <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-20 rounded-full bg-blue-500/15 blur-xl pointer-events-none" />
+              <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-purple-600/30 blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-fuchsia-600/20 blur-2xl pointer-events-none" />
             </>
           )}
           <div className="flex items-center gap-3 relative z-10">
