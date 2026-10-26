@@ -322,7 +322,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                
                 {lang === "ar" ? "مركز العمليات وإدارة المنصة" : "Bot Manager · Operations Center"}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
@@ -424,7 +424,7 @@ export default function AdminDashboard() {
             </div>
           )}
           <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live & responding
+             Live & responding
           </p>
         </div>
 
@@ -983,7 +983,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2.5">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">Bot Manager Operational Telemetry</h3>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                
                 All Systems Normal
               </span>
             </div>

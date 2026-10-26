@@ -151,7 +151,7 @@ export default function ClientSettings() {
             </div>
             <div>
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                
                 {lang === "ar" ? "تفضيلات وإعدادات الحساب" : "Account & Preferences"}
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm">{t("client_settings_title")}</h1>

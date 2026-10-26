@@ -1830,7 +1830,7 @@ export default function AdminAiQuota() {
             </div>
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                
                 {lang === "ar" ? "مركز إدارة الذكاء الاصطناعي والحصص" : "AI Quota & Telemetry"}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">

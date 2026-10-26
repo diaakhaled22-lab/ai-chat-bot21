@@ -227,7 +227,7 @@ export default function ClientDashboard() {
               <span>{lang === "ar" ? "نموذج مفتاح API الخاص" : "Own API Key Model"}</span>
               {data?.activeExecutionMode === "own_key" && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  
                   {lang === "ar" ? "نشط حالياً" : "Active"}
                 </span>
               )}
@@ -250,7 +250,7 @@ export default function ClientDashboard() {
               <span>{lang === "ar" ? "الحصة المخصصة من المسؤول" : "Admin Assigned Quota"}</span>
               {data?.activeExecutionMode === "quota" && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  
                   {lang === "ar" ? "نشط حالياً" : "Active"}
                 </span>
               )}

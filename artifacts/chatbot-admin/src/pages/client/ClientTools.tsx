@@ -396,7 +396,7 @@ export default function ClientTools() {
             </div>
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                
                 Workflow Automation & Tools
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
@@ -428,7 +428,7 @@ export default function ClientTools() {
               <CalendarIcon className="w-4 h-4" />
               {isAr ? "تقويم Google" : "Google Calendar"}
               {isCalConnected && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
               )}
             </Button>
 
@@ -448,7 +448,7 @@ export default function ClientTools() {
               <FileSpreadsheet className="w-4 h-4" />
               {isAr ? "جداول Google" : "Google Sheets"}
               {isSheetsConnected && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
               )}
             </Button>
           </div>
