@@ -274,11 +274,6 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);
 
-    const clientIp = extractClientIp(req);
-    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
-    const arpMac = await getArpMac(clientIp);
-    const finalMac = arpMac || bodyMac || null;
-
     const loginUpdates: Record<string, any> = { lastLoginIp: clientIp };
     if (finalMac) {
       loginUpdates.macAddress = finalMac;
