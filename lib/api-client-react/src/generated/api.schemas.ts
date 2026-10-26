@@ -88,6 +88,7 @@ export interface ClientInput {
   username: string;
   password: string;
   email?: string;
+  macAddress?: string | null;
 }
 
 export interface ClientUpdate {
@@ -96,6 +97,7 @@ export interface ClientUpdate {
   /** @nullable */
   password?: string | null;
   email?: string | null;
+  macAddress?: string | null;
 }
 
 /**

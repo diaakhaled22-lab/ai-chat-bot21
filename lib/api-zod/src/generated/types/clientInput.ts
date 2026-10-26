@@ -10,4 +10,6 @@ export interface ClientInput {
   name: string;
   username: string;
   password: string;
+  email?: string | null;
+  macAddress?: string | null;
 }

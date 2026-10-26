@@ -23,6 +23,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  macAddress: z.string().optional().or(z.literal("")),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -30,6 +31,7 @@ const editFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  macAddress: z.string().optional().or(z.literal("")),
   password: z.string().optional().refine(val => !val || val.length >= 6, {
     message: "Password must be at least 6 characters if provided",
   }),
@@ -58,6 +60,7 @@ export default function AdminClients() {
       name: "",
       username: "",
       email: "",
+      macAddress: "",
       password: "",
     },
   });
@@ -68,6 +71,7 @@ export default function AdminClients() {
       name: "",
       username: "",
       email: "",
+      macAddress: "",
       password: "",
     },
   });
@@ -78,39 +82,50 @@ export default function AdminClients() {
       name: client.name,
       username: client.username,
       email: client.email || "",
+      macAddress: client.macAddress || "",
       password: "",
     });
   };
 
   const onSubmitEdit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingClient) return;
-    const payload = { ...values };
+    const payload: any = { ...values };
     if (!payload.password) delete payload.password;
     if (!payload.email) payload.email = "";
+    if (payload.macAddress !== undefined) {
+      payload.macAddress = payload.macAddress ? payload.macAddress.trim() : null;
+    }
     
-    updateClient.mutate({ id: editingClient.id, data: payload as any }, {
+    updateClient.mutate({ id: editingClient.id, data: payload }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
         setEditingClient(null);
         editForm.reset();
-        toast({ title: "Client updated successfully" });
+        toast({ title: lang === "ar" ? "تم تحديث العميل بنجاح" : "Client updated successfully" });
       },
       onError: (error: any) => {
-        toast({ title: "Failed to update client", description: error.message, variant: "destructive" });
+        toast({ title: lang === "ar" ? "فشل تحديث العميل" : "Failed to update client", description: error.message, variant: "destructive" });
       }
     });
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    createClient.mutate({ data: values }, {
+    const payload: any = { ...values };
+    if (!payload.macAddress || !payload.macAddress.trim()) {
+      delete payload.macAddress;
+    } else {
+      payload.macAddress = payload.macAddress.trim();
+    }
+
+    createClient.mutate({ data: payload }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
         setIsDialogOpen(false);
         form.reset();
-        toast({ title: "Client created successfully" });
+        toast({ title: lang === "ar" ? "تم إنشاء العميل بنجاح" : "Client created successfully" });
       },
       onError: (error: any) => {
-        toast({ title: "Failed to create client", description: error.message, variant: "destructive" });
+        toast({ title: lang === "ar" ? "فشل إنشاء العميل" : "Failed to create client", description: error.message, variant: "destructive" });
       }
     });
   };
@@ -201,6 +216,13 @@ export default function AdminClients() {
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={form.control} name="macAddress" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{lang === "ar" ? "عنوان MAC (اختياري - يتم التقاطه تلقائياً عند الدخول)" : "MAC Address (Optional - auto-captured on login)"}</FormLabel>
+                    <FormControl><Input placeholder="00:1A:2B:3C:4D:5E" className="font-mono" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <FormField control={form.control} name="password" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{lang === "ar" ? "كلمة المرور" : "Password"}</FormLabel>
@@ -244,6 +266,13 @@ export default function AdminClients() {
                   <FormItem>
                     <FormLabel>{lang === "ar" ? "بريد Gmail / البريد الإلكتروني" : "Gmail / Email"}</FormLabel>
                     <FormControl><Input placeholder="example@gmail.com" type="email" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={editForm.control} name="macAddress" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{lang === "ar" ? "عنوان MAC" : "MAC Address"}</FormLabel>
+                    <FormControl><Input placeholder="00:1A:2B:3C:4D:5E" className="font-mono" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

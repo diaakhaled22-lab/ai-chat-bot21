@@ -11,4 +11,6 @@ export interface ClientUpdate {
   username?: string;
   /** @nullable */
   password?: string | null;
+  email?: string | null;
+  macAddress?: string | null;
 }

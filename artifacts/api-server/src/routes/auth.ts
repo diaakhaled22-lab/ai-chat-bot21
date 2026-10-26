@@ -398,7 +398,32 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
 
     const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
     const arpMac = await getArpMac(clientIp);
-    const finalMac = arpMac || bodyMac || null;
+    const rawMac = arpMac || bodyMac || null;
+    const finalMac = rawMac ? rawMac.replace(/-/g, ":").toUpperCase() : null;
+
+    // Block addition if a MAC address is already stored in the Clients Directory
+    if (finalMac) {
+      const [existingMacClient] = await db
+        .select({ id: usersTable.id, username: usersTable.username, name: usersTable.name })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.role, "client"),
+            eq(sql`UPPER(REPLACE(${usersTable.macAddress}, '-', ':'))`, finalMac)
+          )
+        )
+        .limit(1);
+
+      if (existingMacClient) {
+        const isAr = (req.body as any)?.lang === "ar" || req.headers["accept-language"]?.includes("ar");
+        res.status(409).json({
+          error: isAr
+            ? `يوجد حساب مسجل بالفعل من هذا الجهاز (عنوان MAC: ${finalMac}). يسمح بحساب واحد فقط لكل جهاز.`
+            : `An account already exists from this device (MAC address: ${finalMac}). Only one client account is allowed per device.`,
+        });
+        return;
+      }
+    }
 
     const passwordHash = await bcrypt.hash(password, 12);
 

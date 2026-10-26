@@ -23,6 +23,7 @@ import {
   Building2,
   UserPlus,
   Mail,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -114,6 +115,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const [regPassword, setRegPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
 
   // Mutations
   const adminLogin = useAdminLogin();
@@ -284,6 +286,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       return;
     }
 
+    setRegError(null);
     setIsRegistering(true);
     try {
       const macAddress = getDeviceMac();
@@ -335,6 +338,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       setRegPassword("");
       setLocation("/client/dashboard");
     } catch (err: any) {
+      setRegError(err.message);
       toast({
         title: lang === "ar" ? "خطأ في التسجيل" : "Registration Error",
         description: err.message,
@@ -758,7 +762,13 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       </div>
 
       {/* New Client Registration Modal */}
-      <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+      <Dialog
+        open={isRegisterOpen}
+        onOpenChange={(open) => {
+          setIsRegisterOpen(open);
+          if (!open) setRegError(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-1">
@@ -779,6 +789,12 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           </DialogHeader>
 
           <form onSubmit={handleRegisterSubmit} className="space-y-3.5 mt-2">
+            {regError && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs flex items-start gap-2.5 shadow-sm">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                <span className="leading-relaxed font-medium">{regError}</span>
+              </div>
+            )}
             <div className="text-start">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 {lang === "ar" ? "الاسم الكامل *" : "Full Name *"}

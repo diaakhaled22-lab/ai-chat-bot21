@@ -432,6 +432,30 @@ router.post("/admin/clients", async (req, res) => {
     }
 
     const trimmedEmail = email && typeof email === "string" && email.trim() ? email.trim() : null;
+    const macAddress = typeof (req.body as any)?.macAddress === "string" && (req.body as any).macAddress.trim()
+      ? (req.body as any).macAddress.trim().replace(/-/g, ":").toUpperCase()
+      : null;
+
+    if (macAddress) {
+      const [existingMac] = await db
+        .select({ id: usersTable.id, username: usersTable.username })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.role, "client"),
+            eq(sql`UPPER(REPLACE(${usersTable.macAddress}, '-', ':'))`, macAddress)
+          )
+        )
+        .limit(1);
+
+      if (existingMac) {
+        res.status(409).json({
+          error: `A client with MAC address "${macAddress}" already exists (@${existingMac.username}). Only one client account is allowed per MAC address.`,
+        });
+        return;
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
     const [user] = await db
       .insert(usersTable)
@@ -442,6 +466,7 @@ router.post("/admin/clients", async (req, res) => {
         role: "client",
         email: trimmedEmail,
         notificationEmail: trimmedEmail,
+        macAddress,
       })
       .returning();
 
@@ -458,6 +483,7 @@ router.post("/admin/clients", async (req, res) => {
       username: user.username,
       email: (user as any).email || user.notificationEmail || null,
       ip: req.ip || null,
+      mac: macAddress || null,
       source: "admin_created",
     });
 
@@ -466,6 +492,7 @@ router.post("/admin/clients", async (req, res) => {
       name: user.name,
       username: user.username,
       email: (user as any).email ?? user.notificationEmail ?? null,
+      macAddress: (user as any).macAddress ?? null,
       createdAt: user.createdAt.toISOString(),
       hasCompany: false,
     });
@@ -509,6 +536,35 @@ router.put("/admin/clients/:id", async (req, res) => {
         .catch(() => {});
     }
 
+    if ((req.body as any)?.macAddress !== undefined) {
+      const rawMac = (req.body as any)?.macAddress;
+      const normalizedMac = typeof rawMac === "string" && rawMac.trim()
+        ? rawMac.trim().replace(/-/g, ":").toUpperCase()
+        : null;
+
+      if (normalizedMac) {
+        const [existingMac] = await db
+          .select({ id: usersTable.id, username: usersTable.username })
+          .from(usersTable)
+          .where(
+            and(
+              eq(usersTable.role, "client"),
+              sql`${usersTable.id} != ${params.data.id}`,
+              eq(sql`UPPER(REPLACE(${usersTable.macAddress}, '-', ':'))`, normalizedMac)
+            )
+          )
+          .limit(1);
+
+        if (existingMac) {
+          res.status(409).json({
+            error: `Another client with MAC address "${normalizedMac}" already exists (@${existingMac.username}). Only one client account is allowed per MAC address.`,
+          });
+          return;
+        }
+      }
+      updates.macAddress = normalizedMac;
+    }
+
     const [user] = await db
       .update(usersTable)
       .set(updates)
@@ -524,6 +580,7 @@ router.put("/admin/clients/:id", async (req, res) => {
       name: user.name,
       username: user.username,
       email: (user as any).email ?? user.notificationEmail ?? null,
+      macAddress: (user as any).macAddress ?? null,
       createdAt: user.createdAt.toISOString(),
       hasCompany: false,
     });
