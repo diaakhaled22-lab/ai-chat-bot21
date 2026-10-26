@@ -877,16 +877,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const isAdmin = role === "admin";
   const sidebarAsideBg = isAdmin
-    ? "bg-[#2563eb] bg-[linear-gradient(135deg,#1e40af_0%,#2563eb_50%,#1d4ed8_100%)]"
+    ? "bg-[#2563eb] bg-[linear-gradient(135deg,#1e40af_0%,#2B4DBA_35%,#2563eb_70%,#1d4ed8_100%)]"
     : "bg-[#102A6B]";
-  const sidebarHeaderBg = isAdmin ? "bg-black/10 backdrop-blur-sm" : "bg-[#102A6B]";
-  const sidebarFooterBg = isAdmin ? "bg-black/10 backdrop-blur-sm" : "bg-[#102A6B]";
+  const sidebarHeaderBg = isAdmin ? "bg-[#2B4DBA]/20 backdrop-blur-sm" : "bg-[#102A6B]";
+  const sidebarFooterBg = isAdmin ? "bg-[#2B4DBA]/20 backdrop-blur-sm" : "bg-[#102A6B]";
 
   const sidebarContent = (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
       {isAdmin && (
         <>
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 rounded-full bg-white/[0.08] blur-2xl pointer-events-none" />
+          <div className="absolute top-1/3 -right-8 w-44 h-44 rounded-full bg-[#2B4DBA]/35 blur-3xl pointer-events-none" />
           <div className="absolute bottom-1/3 -left-12 w-48 h-48 rounded-full bg-blue-300/10 blur-3xl pointer-events-none" />
         </>
       )}
