@@ -262,7 +262,7 @@ export default function ClientChannels() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6 max-w-4xl mx-auto">
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-40 w-full" />
@@ -272,7 +272,7 @@ export default function ClientChannels() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl pb-12">
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
 
       {/* ── Bot Manager Hero Operations Banner ── */}
       <div
