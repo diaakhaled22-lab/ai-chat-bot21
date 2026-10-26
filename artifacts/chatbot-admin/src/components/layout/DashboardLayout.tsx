@@ -969,7 +969,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               {user?.name?.charAt(0).toUpperCase() ?? "S"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className={role === "client" ? "font-black text-lg tracking-tight text-white drop-shadow-sm truncate leading-tight" : "text-xs font-bold leading-tight text-white truncate"}>
+              <p className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate leading-tight">
                 {user?.name ?? "softysta.com"}
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
