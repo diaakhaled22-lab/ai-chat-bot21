@@ -920,20 +920,19 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#2D5BE3]/80 via-[#1d4ed8]/50 to-transparent blur-3xl pointer-events-none" />
           <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-[#38bdf8]/25 blur-2xl pointer-events-none" />
 
-          {/* Large 3D spherical glass arc spanning the lower third with luminous cyan/royal blue neon edge */}
+          {/* Large 3D spherical glass arc spanning the lower third with subtle, harmonious glass styling */}
           <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
             <defs>
-              <radialGradient id="sphereGrad" cx="25%" cy="25%" r="75%">
-                <stop offset="0%" stopColor="#2D5BE3" stopOpacity="0.85" />
-                <stop offset="35%" stopColor="#1d4ed8" stopOpacity="0.9" />
-                <stop offset="70%" stopColor="#172554" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#070b19" stopOpacity="1" />
+              <radialGradient id="sphereGrad" cx="30%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.45" />
+                <stop offset="40%" stopColor="#172554" stopOpacity="0.65" />
+                <stop offset="75%" stopColor="#0f172a" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#070b19" stopOpacity="0.95" />
               </radialGradient>
               <linearGradient id="arcHighlight" x1="0%" y1="60%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.95" />
-                <stop offset="45%" stopColor="#2D5BE3" stopOpacity="0.9" />
-                <stop offset="85%" stopColor="#60a5fa" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.4" />
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.45" />
+                <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#2D5BE3" stopOpacity="0.1" />
               </linearGradient>
             </defs>
             <path
@@ -943,8 +942,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             <path
               d="M-10,130 Q110,40 380,220"
               stroke="url(#arcHighlight)"
-              strokeWidth="2.5"
-              filter="drop-shadow(0 0 10px rgba(56,189,248,0.9)) drop-shadow(0 0 20px rgba(45,91,227,0.6))"
+              strokeWidth="1.5"
+              filter="drop-shadow(0 0 6px rgba(56,189,248,0.3))"
             />
           </svg>
 
