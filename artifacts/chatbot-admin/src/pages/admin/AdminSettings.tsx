@@ -299,7 +299,7 @@ export default function AdminSettings() {
       <AdminEmailSettings />
 
       {/* Language */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-primary" />
@@ -336,7 +336,7 @@ export default function AdminSettings() {
       </Card>
 
       {/* Security */}
-      <Card className="bg-card">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         <CardHeader>
           <CardTitle>Security</CardTitle>
           <CardDescription>Update your username and password.</CardDescription>

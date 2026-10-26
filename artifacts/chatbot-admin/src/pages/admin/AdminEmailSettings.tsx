@@ -80,7 +80,7 @@ export default function AdminEmailSettings() {
   if (isLoading) return null;
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="w-5 h-5 text-blue-400" />

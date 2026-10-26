@@ -277,7 +277,7 @@ export default function AdminClients() {
       </div>
 
       {/* ── Search Bar ── */}
-      <div className="flex items-center space-x-2 bg-card px-4 py-3 rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-sm">
+      <div className="flex items-center space-x-2 bg-card px-4 py-3 rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-[#2D5BE3]">
         <Search className="w-5 h-5 text-muted-foreground" />
         <Input 
           placeholder="Search clients..." 
@@ -287,7 +287,7 @@ export default function AdminClients() {
         />
       </div>
 
-      <div className="bg-card rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-2xl border border-[#DCE7FF] dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-[#2D5BE3]">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">

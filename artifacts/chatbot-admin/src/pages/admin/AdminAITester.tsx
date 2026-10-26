@@ -311,7 +311,7 @@ export default function AdminAITester() {
       </div>
 
       {/* API Key */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         <CardHeader className="pb-3 pt-4">
           <CardTitle className="text-sm flex items-center gap-2">
             <Key className="w-4 h-4 text-muted-foreground" />
@@ -360,7 +360,7 @@ export default function AdminAITester() {
       </Card>
 
       {/* Test message + controls */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         <CardContent className="pt-4 pb-4">
           <div className="flex gap-3 items-start">
             <div className="flex-1 space-y-1.5">

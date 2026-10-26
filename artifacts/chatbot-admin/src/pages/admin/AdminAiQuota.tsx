@@ -2010,7 +2010,7 @@ export default function AdminAiQuota() {
 
       {/* Feature 1: Charts Section */}
       {topCompaniesData.length > 0 && (
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden border-l-4 border-l-[#2D5BE3]">
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-emerald-400" />
@@ -2261,7 +2261,7 @@ export default function AdminAiQuota() {
           </div>
         </div>
 
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden border-l-4 border-l-[#2D5BE3]">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>

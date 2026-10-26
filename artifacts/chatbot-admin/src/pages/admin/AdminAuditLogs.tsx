@@ -87,7 +87,7 @@ export default function AdminAuditLogs() {
         </div>
       </div>
 
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden border-l-4 border-l-[#2D5BE3]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-primary" />

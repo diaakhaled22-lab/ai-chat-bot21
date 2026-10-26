@@ -93,7 +93,7 @@ function WebhookTokenCard({
   };
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -246,7 +246,7 @@ function TwoFactorAuthCard() {
   };
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -389,7 +389,7 @@ export default function AdminSecurity() {
       <TwoFactorAuthCard />
 
       {/* JWT Secret Card */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">

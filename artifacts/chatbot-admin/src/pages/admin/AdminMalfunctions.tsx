@@ -386,7 +386,7 @@ export default function AdminMalfunctions() {
               <Alert
                 key={m.id}
                 variant={m.isActive ? "destructive" : "default"}
-                className={`rounded-2xl border p-5 transition-all shadow-sm ${m.isActive ? "bg-red-500/5 border-red-500/30" : "bg-card border-[#DCE7FF] dark:border-slate-800"}`}
+                className={`rounded-2xl border p-5 transition-all shadow-sm border-l-4 border-l-[#2D5BE3] ${m.isActive ? "bg-red-500/5 border-red-500/30" : "bg-card border-[#DCE7FF] dark:border-slate-800"}`}
               >
                 {m.isActive ? (
                   <AlertTriangle className="h-5 w-5" />

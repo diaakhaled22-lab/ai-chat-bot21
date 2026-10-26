@@ -179,7 +179,7 @@ function TicketCard({
   };
 
   return (
-    <div className={`bg-card border rounded-xl overflow-hidden transition-all shadow-sm ${
+    <div className={`bg-card border rounded-xl overflow-hidden transition-all shadow-sm border-l-4 border-l-[#2D5BE3] ${
       isOpen ? "border-amber-500/40 hover:border-amber-500/60" : "border-border/60 hover:border-primary/40"
     }`}>
 

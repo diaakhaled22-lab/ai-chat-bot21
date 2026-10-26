@@ -415,7 +415,7 @@ export default function AdminChatLogs() {
       </div>
 
       {/* Retention Policy */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm shrink-0">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm shrink-0 border-l-4 border-l-[#2D5BE3]">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
@@ -613,7 +613,7 @@ export default function AdminChatLogs() {
       </div>
 
       {/* Inbox View Layout */}
-      <Card className="flex-1 min-h-[600px] overflow-hidden flex border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+      <Card className="flex-1 min-h-[600px] overflow-hidden flex border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
         {/* Left Pane: Sessions List */}
         <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-3 border-b border-border bg-card font-medium text-sm text-muted-foreground shrink-0">

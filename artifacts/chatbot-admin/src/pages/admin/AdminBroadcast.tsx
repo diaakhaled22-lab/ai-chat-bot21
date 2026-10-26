@@ -205,7 +205,7 @@ export default function AdminBroadcast() {
 
       <div className="grid gap-6">
         {/* Compose card */}
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-primary" />
@@ -243,7 +243,7 @@ export default function AdminBroadcast() {
         </Card>
 
         {/* Target & Preview card */}
-        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+        <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
           <CardHeader className="pb-4">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="w-4 h-4 text-primary" />
@@ -341,7 +341,7 @@ export default function AdminBroadcast() {
 
         {/* Notification preview */}
         {(title || message) && (
-          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm">
+          <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">Notification Preview</span>
