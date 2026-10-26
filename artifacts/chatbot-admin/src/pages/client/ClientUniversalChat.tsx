@@ -546,7 +546,7 @@ export default function ClientUniversalChat() {
       </div>
 
       {/* Retention Policy Banner */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 shrink-0 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 shrink-0 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
         <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -588,7 +588,7 @@ export default function ClientUniversalChat() {
         {/* Total Conversations */}
         <Card 
           onClick={() => setChannelFilter("all")}
-          className={`p-4 border transition-all cursor-pointer hover:shadow-md border-l-4 border-l-[#2D5BE3] ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "border-[#DCE7FF] bg-card/60"}`}
+          className={`p-4 border transition-all cursor-pointer border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "border-[#DCE7FF] bg-card/60"}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
@@ -609,7 +609,7 @@ export default function ClientUniversalChat() {
         {/* Active Problems / Handoffs */}
         <Card 
           onClick={() => setChannelFilter(channelFilter === "problems" ? "all" : "problems")}
-          className={`p-4 border transition-all cursor-pointer hover:shadow-md border-l-4 border-l-[#2D5BE3] ${channelFilter === "problems" ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30" : kpis.activeHandoffCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-[#DCE7FF] bg-card/60"}`}
+          className={`p-4 border transition-all cursor-pointer border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 ${channelFilter === "problems" ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30" : kpis.activeHandoffCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-[#DCE7FF] bg-card/60"}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
@@ -632,7 +632,7 @@ export default function ClientUniversalChat() {
         </Card>
 
         {/* Unread Messages */}
-        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3]">
+        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "رسائل غير مقروءة" : "Unread Messages"}
@@ -652,7 +652,7 @@ export default function ClientUniversalChat() {
         </Card>
 
         {/* AI Automation Rate */}
-        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3]">
+        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "أتمتة الذكاء الاصطناعي" : "AI Resolution Rate"}
@@ -736,7 +736,7 @@ export default function ClientUniversalChat() {
       </div>
 
       {/* Inbox View Layout */}
-      <Card className="flex-1 overflow-hidden flex border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm h-full border-l-4 border-l-[#2D5BE3]">
+      <Card className="flex-1 overflow-hidden flex border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 h-full border-l-4 border-l-[#2D5BE3]">
         
         {/* Left Pane: Sessions List */}
         <div className={`w-full md:w-1/3 border-r border-border flex-col bg-muted/10 ${selectedSessionId ? 'hidden md:flex' : 'flex'}`}>

@@ -103,7 +103,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-5 flex items-start gap-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-5 flex items-start gap-4 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -368,7 +368,7 @@ export default function ClientApiTokens() {
             <>
               {/* Pie charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
                   <h2 className="text-base font-semibold mb-1">{t("usage_tokens_chart")}</h2>
                   <p className="text-xs text-muted-foreground mb-4">
                     {lang === "ar" ? "رسائل العملاء (مدخلات) مقابل ردود البوت (مخرجات)" : "Customer messages (input) vs bot responses (output)"}
@@ -398,7 +398,7 @@ export default function ClientApiTokens() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
                   <h2 className="text-base font-semibold mb-1">{t("usage_channel_breakdown")}</h2>
                   <p className="text-xs text-muted-foreground mb-4">
                     {lang === "ar" ? "إجمالي الرموز المستهلكة عبر كل قناة تواصل" : "Total tokens consumed across each messaging channel"}
@@ -444,7 +444,7 @@ export default function ClientApiTokens() {
 
               {/* Breakdown table */}
               {data!.byChannel.length > 0 && (
-                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl overflow-hidden shadow-sm border-l-4 border-l-[#2D5BE3]">
+                <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl overflow-hidden shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                   <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                     <h2 className="text-base font-semibold">{t("usage_channel_breakdown")}</h2>
                     <span className="text-xs text-muted-foreground">{rangeLabel}</span>

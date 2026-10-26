@@ -109,7 +109,7 @@ export default function ClientWebhookHistory() {
         </div>
       </div>
 
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm border-l-4 border-l-[#2D5BE3]">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-amber-400" />

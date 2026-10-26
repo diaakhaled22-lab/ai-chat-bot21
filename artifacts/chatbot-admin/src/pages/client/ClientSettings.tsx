@@ -162,7 +162,7 @@ export default function ClientSettings() {
       </div>
 
       {/* Language */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
         <CardHeader className="p-5 sm:p-6 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-800/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
@@ -227,7 +227,7 @@ export default function ClientSettings() {
       </Card>
 
       {/* Account credentials */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
         <CardHeader className="p-5 sm:p-6 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/50 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-inner">

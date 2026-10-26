@@ -259,7 +259,7 @@ export default function ClientSupport() {
 
       {/* Submit form */}
       {showForm && (
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 sm:p-6 space-y-4 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
           <h2 className="font-semibold text-sm sm:text-base">{t("support_new_ticket")}</h2>
           <div className="space-y-3">
             <div>
@@ -303,7 +303,7 @@ export default function ClientSupport() {
       {/* Stats row (Transparent White Frosted Glass with Royal Blue Left Border) */}
       {tickets.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
             <div>
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t("support_pending")}</p>
               <p className="text-3xl font-black text-amber-500 mt-1 tabular-nums">{openCount}</p>
@@ -312,7 +312,7 @@ export default function ClientSupport() {
               <AlertCircle className="w-6 h-6" />
             </div>
           </div>
-          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
             <div>
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{t("support_resolved")}</p>
               <p className="text-3xl font-black text-emerald-500 mt-1 tabular-nums">{resolvedCount}</p>
@@ -321,7 +321,7 @@ export default function ClientSupport() {
               <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
-          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between sm:col-span-2 lg:col-span-1 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+          <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between sm:col-span-2 lg:col-span-1 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
             <div>
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{lang === "ar" ? "إجمالي التذاكر" : "Total Tickets"}</p>
               <p className="text-3xl font-black text-foreground mt-1 tabular-nums">{tickets.length}</p>

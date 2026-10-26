@@ -160,7 +160,7 @@ export default function ClientLeads() {
       </div>
 
       {/* Retention Policy Banner */}
-      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm shrink-0 border-l-4 border-l-[#2D5BE3]">
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 shrink-0 border-l-4 border-l-[#2D5BE3]">
         <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
@@ -225,7 +225,7 @@ export default function ClientLeads() {
         </div>
       </div>
 
-      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex-1 flex flex-col min-h-[300px] border-l-4 border-l-[#2D5BE3]">
+      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-md shadow-[#2D5BE3]/15 flex-1 flex flex-col min-h-[300px] border-l-4 border-l-[#2D5BE3]">
         <div className="overflow-x-auto flex-1 max-w-[100vw] sm:max-w-none">
           <table className="w-full text-sm text-left whitespace-nowrap min-w-[800px]">
             <thead className="text-xs text-muted-foreground bg-muted/30 uppercase sticky top-0">

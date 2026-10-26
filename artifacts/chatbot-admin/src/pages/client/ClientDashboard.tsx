@@ -77,7 +77,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden group border-l-4 border-l-[#2D5BE3]">
+    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 transition-all overflow-hidden group border-l-4 border-l-[#2D5BE3]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
         <CardTitle className="text-xs sm:text-sm font-semibold text-muted-foreground truncate pr-2">
           {label}
@@ -207,7 +207,7 @@ export default function ClientDashboard() {
       </div>
 
       {/* Filter Buttons Group */}
-      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3.5 shadow-sm space-y-3.5 border-l-4 border-l-[#2D5BE3]">
+      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3.5 shadow-md shadow-[#2D5BE3]/15 space-y-3.5 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="inline-flex items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/40 rounded-xl border border-[#DCE7FF] dark:border-slate-800">
             {/* Filter 1: Own API Key Model */}
@@ -337,7 +337,7 @@ export default function ClientDashboard() {
         <>
           {filterMode === "quota" ? (
             hasQuota ? (
-              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm border-l-4 border-l-[#2D5BE3]">
+              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-amber-500" />
@@ -383,7 +383,7 @@ export default function ClientDashboard() {
                 )}
               </div>
             ) : (
-              <div className="bg-card border border-dashed border-[#DCE7FF] dark:border-slate-700 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
+              <div className="bg-card border border-dashed border-[#DCE7FF] dark:border-slate-700 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-500">
                     <Coins className="w-5 h-5" />
@@ -408,7 +408,7 @@ export default function ClientDashboard() {
               </div>
             )
           ) : (
-            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-sm border-l-4 border-l-[#2D5BE3]">
+            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 flex items-center justify-between flex-wrap gap-4 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
               <div className="flex items-center gap-3">
                 <div className={`p-2.5 rounded-lg ${
                   data?.hasOwnApiKey ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
@@ -553,7 +553,7 @@ export default function ClientDashboard() {
           {totalTokens > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Token split pie */}
-              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
                 <h2 className="text-base font-semibold mb-1">
                   {lang === "ar" ? "توزيع الرموز" : "Token Split"}
                 </h2>
@@ -574,7 +574,7 @@ export default function ClientDashboard() {
               </div>
 
               {/* Channel breakdown pie */}
-              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+              <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-6 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
                 <h2 className="text-base font-semibold mb-1">
                   {lang === "ar" ? "توزيع القنوات" : "By Channel"}
                 </h2>
@@ -604,7 +604,7 @@ export default function ClientDashboard() {
 
           {/* Channel breakdown table */}
           {(data?.byChannel ?? []).length > 0 && (
-            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm border-l-4 border-l-[#2D5BE3]">
+            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl overflow-hidden shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
               <div className="px-6 py-4 border-b border-border flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" />
                 <h2 className="text-base font-semibold">
@@ -654,7 +654,7 @@ export default function ClientDashboard() {
           {/* Sentiment Analysis Card */}
           {sentiments && (
             <div className="grid gap-4 md:grid-cols-2 mt-4">
-              <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#2D5BE3]">
+              <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
                 <CardHeader>
                   <CardTitle className="text-sm font-medium flex items-center">
                     {lang === "ar" ? "تحليل مشاعر العملاء (ذكاء اصطناعي)" : "Customer Sentiment (AI)"}
@@ -707,7 +707,7 @@ export default function ClientDashboard() {
 
           {/* Empty state when no messages */}
           {totalTokens === 0 && (
-            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-12 flex flex-col items-center gap-3 text-muted-foreground shadow-sm border-l-4 border-l-[#2D5BE3]">
+            <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-12 flex flex-col items-center gap-3 text-muted-foreground shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
               <Coins className="w-12 h-12 opacity-20" />
               <p className="text-lg font-medium">
                 {lang === "ar" ? "لا يوجد استهلاك هذا الشهر" : "No usage this month"}
