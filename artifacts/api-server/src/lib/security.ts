@@ -276,7 +276,8 @@ export interface FailedLoginResult {
 
 export interface AttackMonitoringSnapshot {
   logs: AttackLogEntry[];
-  blockedIps: Array<{ ip: string; blockedAt: string }>;
+  blockedIps: Array<{ ip: string; macAddress?: string | null; blockedAt: string }>;
+  blockedMacs: Array<{ macAddress: string; blockedAt: string }>;
   analytics: {
     totalFailedAttempts: number;
     recentFailedAttempts: number;
@@ -295,6 +296,8 @@ export interface AttackMonitoringSnapshot {
 
 const loginAttempts = new Map<string, LoginAttempt>();
 const blockedIps = new Map<string, number>();
+const blockedMacs = new Map<string, number>();
+const ipToMacMap = new Map<string, string>();
 const attackLogs: AttackLogEntry[] = [];
 let nextAttackLogId = 1;
 
@@ -346,34 +349,60 @@ export async function clearAttackLogs(): Promise<void> {
   }
 }
 
+function normalizeMac(mac?: string | null): string | null {
+  if (!mac || typeof mac !== "string") return null;
+  const clean = mac.trim().replace(/-/g, ":").toUpperCase();
+  if (clean === "—" || clean === "UNKNOWN" || clean === "" || clean.length < 11) return null;
+  return clean;
+}
+
 export async function loadBlockedIpsFromDb() {
   try {
-    const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
-    if (row && row.value) {
-      const ips: Record<string, number> = JSON.parse(row.value);
+    const [ipRow] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
+    if (ipRow && ipRow.value) {
+      const ips: Record<string, number> = JSON.parse(ipRow.value);
       for (const [ip, timestamp] of Object.entries(ips)) {
         if (!isLoopbackIp(ip)) {
           blockedIps.set(ip, timestamp);
         }
       }
     }
+    const [macRow] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_macs"));
+    if (macRow && macRow.value) {
+      const macs: Record<string, number> = JSON.parse(macRow.value);
+      for (const [mac, timestamp] of Object.entries(macs)) {
+        const norm = normalizeMac(mac);
+        if (norm) {
+          blockedMacs.set(norm, timestamp);
+        }
+      }
+    }
   } catch (err) {
-    logger.error({ err }, "Failed to load blocked IPs from DB");
+    logger.error({ err }, "Failed to load blocked IPs and MACs from DB");
   }
 }
 
 async function saveBlockedIpsToDb() {
   try {
     const ips = Object.fromEntries(blockedIps);
-    const value = JSON.stringify(ips);
-    const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
-    if (existing) {
-      await db.update(adminConfigTable).set({ value }).where(eq(adminConfigTable.key, "blocked_ips"));
+    const ipValue = JSON.stringify(ips);
+    const [existingIp] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
+    if (existingIp) {
+      await db.update(adminConfigTable).set({ value: ipValue }).where(eq(adminConfigTable.key, "blocked_ips"));
     } else {
-      await db.insert(adminConfigTable).values({ key: "blocked_ips", value });
+      await db.insert(adminConfigTable).values({ key: "blocked_ips", value: ipValue });
+    }
+
+    const macs = Object.fromEntries(blockedMacs);
+    const macValue = JSON.stringify(macs);
+    const [existingMac] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_macs"));
+    if (existingMac) {
+      await db.update(adminConfigTable).set({ value: macValue }).where(eq(adminConfigTable.key, "blocked_macs"));
+    } else {
+      await db.insert(adminConfigTable).values({ key: "blocked_macs", value: macValue });
     }
   } catch (err) {
-    logger.error({ err }, "Failed to save blocked IPs to DB");
+    logger.error({ err }, "Failed to save blocked IPs and MACs to DB");
   }
 }
 
@@ -520,10 +549,19 @@ export function isAccountLocked(username: string): number {
  * Checks whether the source IP has been blocked after repeated attempts during
  * an account lockout.
  */
-export function isIpBlocked(ip: string): boolean {
+export function isIpBlocked(ip: string, macAddress?: string | null): boolean {
   const norm = normalizeIp(ip);
-  if (isLoopbackIp(norm)) return false;
-  return blockedIps.has(norm);
+  if (!isLoopbackIp(norm) && blockedIps.has(norm)) return true;
+  const normMac = normalizeMac(macAddress);
+  if (normMac && blockedMacs.has(normMac)) return true;
+  const mappedMac = ipToMacMap.get(norm);
+  if (mappedMac && blockedMacs.has(mappedMac)) return true;
+  return false;
+}
+
+export function isMacBlocked(macAddress?: string | null): boolean {
+  const normMac = normalizeMac(macAddress);
+  return normMac ? blockedMacs.has(normMac) : false;
 }
 
 /**
@@ -538,14 +576,26 @@ export function recordBlockedLoginAttempt(username: string, ip: string, macAddre
 
   if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
     const normalizedIp = normalizeIp(ip);
+    const normMac = normalizeMac(macAddress);
+    let newlyBlocked = false;
+
     if (!isLoopbackIp(normalizedIp) && !blockedIps.has(normalizedIp)) {
       blockedIps.set(normalizedIp, Date.now());
+      newlyBlocked = true;
+    }
+    if (normMac && !blockedMacs.has(normMac)) {
+      blockedMacs.set(normMac, Date.now());
+      ipToMacMap.set(normalizedIp, normMac);
+      newlyBlocked = true;
+    }
+
+    if (newlyBlocked) {
       void saveBlockedIpsToDb();
       void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
       appendAttackLog(ip, username, attempts, "ip_blocked", Date.now(), macAddress);
       logger.warn(
-        { username: username.toLowerCase(), ip: normalizedIp, attempts },
-        "IP blocked after suspicious activity during account lockout",
+        { username: username.toLowerCase(), ip: normalizedIp, macAddress: normMac, attempts },
+        "IP and MAC address blocked after suspicious activity during account lockout",
       );
     }
     return true;
@@ -581,6 +631,10 @@ export function recordFailedLogin(username: string, ip: string, macAddress?: str
   ipEntry.failureTimes.push(now);
   const ipAttempts = ipEntry.failureTimes.length;
 
+  const normMac = normalizeMac(macAddress);
+  if (normMac && !isLoopbackIp(normalizedIp)) {
+    ipToMacMap.set(normalizedIp, normMac);
+  }
   const currentAttempts = Math.max(userAttempts, ipAttempts);
   appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "failed_attempt", now, macAddress);
   logger.warn({ username: normUser, ip: normalizedIp, userAttempts, ipAttempts }, "Failed login attempt");
@@ -678,7 +732,20 @@ export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
     logs: [...attackLogs].reverse(),
     analytics: getAttackAnalytics(),
     blockedIps: [...blockedIps.entries()]
-      .map(([ip, blockedAt]) => ({ ip, blockedAt: new Date(blockedAt).toISOString() }))
+      .map(([ip, blockedAt]) => {
+        const foundLog = attackLogs.find((l) => l.ip === ip && l.macAddress && l.macAddress !== "—");
+        return {
+          ip,
+          macAddress: foundLog ? foundLog.macAddress : ipToMacMap.get(ip) || null,
+          blockedAt: new Date(blockedAt).toISOString(),
+        };
+      })
+      .sort((a, b) => b.blockedAt.localeCompare(a.blockedAt)),
+    blockedMacs: [...blockedMacs.entries()]
+      .map(([macAddress, blockedAt]) => ({
+        macAddress,
+        blockedAt: new Date(blockedAt).toISOString(),
+      }))
       .sort((a, b) => b.blockedAt.localeCompare(a.blockedAt)),
     policy: {
       warningThreshold: WARNING_LOGIN_ATTEMPTS,
@@ -702,21 +769,51 @@ export function resetLoginAttempts(username: string, ip?: string): void {
 
 export function manualBlockIp(ip: string, macAddress?: string | null): void {
   const normalizedIp = normalizeIp(ip);
-  if (!blockedIps.has(normalizedIp)) {
+  const normMac = normalizeMac(macAddress);
+  let changed = false;
+
+  if (normalizedIp && normalizedIp !== "unknown" && !blockedIps.has(normalizedIp)) {
     blockedIps.set(normalizedIp, Date.now());
+    changed = true;
+  }
+  if (normMac && !blockedMacs.has(normMac)) {
+    blockedMacs.set(normMac, Date.now());
+    if (normalizedIp) ipToMacMap.set(normalizedIp, normMac);
+    changed = true;
+  }
+
+  if (changed) {
     void saveBlockedIpsToDb();
-    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked", Date.now(), macAddress);
-    logger.info({ ip: normalizedIp }, "IP manually blocked by admin");
+    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked", Date.now(), normMac);
+    logger.info({ ip: normalizedIp, macAddress: normMac }, "IP and MAC manually blocked by admin");
   }
 }
 
 export function manualUnblockIp(ip: string, macAddress?: string | null): void {
   const normalizedIp = normalizeIp(ip);
-  if (blockedIps.has(normalizedIp)) {
+  const normMac = normalizeMac(macAddress);
+  let changed = false;
+
+  if (normalizedIp && blockedIps.has(normalizedIp)) {
     blockedIps.delete(normalizedIp);
+    changed = true;
+  }
+  if (normMac && blockedMacs.has(normMac)) {
+    blockedMacs.delete(normMac);
+    changed = true;
+  }
+
+  // Also check if any associated MAC was mapped
+  const mappedMac = ipToMacMap.get(normalizedIp);
+  if (mappedMac && blockedMacs.has(mappedMac)) {
+    blockedMacs.delete(mappedMac);
+    changed = true;
+  }
+
+  if (changed) {
     void saveBlockedIpsToDb();
-    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked", Date.now(), macAddress);
-    logger.info({ ip: normalizedIp }, "IP manually unblocked by admin");
+    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked", Date.now(), normMac || mappedMac);
+    logger.info({ ip: normalizedIp, macAddress: normMac }, "IP and MAC manually unblocked by admin");
   }
 }
 
