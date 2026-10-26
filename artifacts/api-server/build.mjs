@@ -28,6 +28,12 @@ async function buildAll() {
     // - uses native modules and loads them dynamically (e.g. sharp)
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
+      "pdf-parse",
+      "xlsx",
+      "@google-cloud/storage",
+      "@google/generative-ai",
+      "openai",
+      "@anthropic-ai/sdk",
       "*.node",
       "sharp",
       "better-sqlite3",
@@ -102,7 +108,7 @@ async function buildAll() {
       "puppeteer-core",
       "electron",
     ],
-    sourcemap: "linked",
+    sourcemap: process.env.ENABLE_SOURCEMAP === "true" ? "linked" : false,
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
