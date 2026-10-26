@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db, usersTable, passwordResetTokensTable, companiesTable } from "@workspace/db";
+import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
@@ -334,6 +334,25 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     req.session.userId = newUser.id;
     req.session.role = "client";
     req.session.name = newUser.name;
+
+    // Send in-app notification to all admins so they immediately see the new client
+    try {
+      const admins = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.role, "admin"));
+
+      for (const admin of admins) {
+        await db.insert(notificationsTable).values({
+          userId: admin.id,
+          type: "client_registered",
+          title: "New Client Registered",
+          message: `New client "${newUser.name}" (@${newUser.username}) registered from IP: ${clientIp || "unknown"}.`,
+        }).catch(() => {});
+      }
+    } catch (notifErr) {
+      logger.warn({ notifErr }, "Failed to dispatch admin notification for new client");
+    }
 
     res.status(201).json({
       role: "client",
