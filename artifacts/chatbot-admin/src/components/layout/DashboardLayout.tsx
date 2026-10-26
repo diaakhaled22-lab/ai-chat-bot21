@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
@@ -75,57 +74,12 @@ interface AppNotification {
   createdAt: string;
 }
 
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+
 
 // â”€â”€ Admin Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-interface NotificationBellProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-}
-
-function NotificationBell({
-  open: controlledOpen,
-  onOpenChange: setControlledOpen,
-}: NotificationBellProps = {}) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = controlledOpen !== undefined;
-  const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = (val: boolean | ((prev: boolean) => boolean)) => {
-    const nextVal = typeof val === "function" ? val(open) : val;
-    if (isControlled) {
-      setControlledOpen?.(nextVal);
-    } else {
-      setInternalOpen(nextVal);
-    }
-  };
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const { t, lang } = useLanguage();
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      customFetch(`/api/admin/notifications/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
-    },
-  });
-
-  const clearAllMutation = useMutation({
-    mutationFn: () =>
-      customFetch("/api/admin/notifications", { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
-    },
-  });
-
+function NotificationBell() {
+  const [location, setLocation] = useLocation();
+  const { lang } = useLanguage();
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
   });
@@ -137,15 +91,6 @@ function NotificationBell({
     refetchInterval: 10_000,
   });
 
-  const reminders = notifications.filter((n) => n.type.startsWith("renewal_reminder"));
-  const securityAlerts = notifications.filter((n) => n.type === "security_alert");
-  const malfunctions = notifications.filter((n) => n.type === "malfunction");
-  const generalNotifications = notifications.filter(
-    (n) =>
-      !n.type.startsWith("renewal_reminder") &&
-      n.type !== "security_alert" &&
-      n.type !== "malfunction"
-  );
   const unreadNotifications = notifications.filter((n) => !n.isRead).length;
   const totalBadge = openTicketCount + unreadNotifications;
 
@@ -160,537 +105,100 @@ function NotificationBell({
     prevTotalRef.current = totalBadge;
   }, [totalBadge]);
 
-  const { data: tickets = [], isFetching: ticketsFetching } = useQuery<Ticket[]>({
-    queryKey: ["admin-tickets-bell"],
-    queryFn: () => customFetch("/api/admin/tickets"),
-    enabled: open,
-    select: (data: Ticket[]) => data.filter((t) => t.status === "open").slice(0, 5),
-  });
-
-  useEffect(() => {
-    if (open && unreadNotifications > 0) {
-      customFetch("/api/admin/notifications/mark-read", { method: "PATCH" }).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
-      });
-    }
-  }, [open, unreadNotifications, queryClient]);
+  const isActive = location === "/admin/notifications";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center ${open ? "bg-white/25 ring-2 ring-white/30" : ""} ${pulse ? "animate-bounce" : ""}`}
-          aria-label="Notifications"
+    <button
+      type="button"
+      onClick={() => setLocation("/admin/notifications")}
+      className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
+        isActive ? "bg-white/25 ring-2 ring-white/30" : ""
+      } ${pulse ? "animate-bounce" : ""}`}
+      aria-label="Notifications"
+      title={lang === "ar" ? "الإشعارات" : "Notifications"}
+    >
+      <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-300" : "text-white/80"}`} />
+      {totalBadge > 0 && (
+        <span
+          className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
+            pulse ? "bg-amber-300 text-slate-900 scale-125" : "bg-rose-500 text-white border border-white/30"
+          }`}
         >
-          <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-300" : "text-white/80"}`} />
-          {totalBadge > 0 && (
-            <span className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${pulse ? "bg-amber-300 text-slate-900 scale-125" : "bg-rose-500 text-white border border-white/30"}`}>
-              {totalBadge > 99 ? "99+" : totalBadge}
-            </span>
-          )}
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent align="end" sideOffset={8} className="w-80 p-0 bg-card border-border shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-amber-400" />
-            <span className="font-semibold text-sm">{t("notif_title")}</span>
-            {totalBadge > 0 && (
-              <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {totalBadge}
-              </span>
-            )}
-          </div>
-          {notifications.length > 0 && (
-            <button
-              type="button"
-              title={lang === "ar" ? "مسح كل الإشعارات" : "Clear all notifications"}
-              onClick={() => clearAllMutation.mutate()}
-              disabled={clearAllMutation.isPending}
-              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{lang === "ar" ? "مسح الكل" : "Clear all"}</span>
-            </button>
-          )}
-        </div>
-
-        <div className="max-h-[360px] overflow-y-auto divide-y divide-border/40">
-          {/* Renewal reminders section */}
-          {reminders.length > 0 && (
-            <div>
-              <div className="px-4 py-1.5 bg-muted/30">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("notif_renewal_reminders")}
-                </span>
-              </div>
-              {reminders.slice(0, 5).map((n) => (
-                <div key={n.id} className={`px-4 py-3 flex items-start gap-3 group ${!n.isRead ? "bg-amber-500/5" : ""}`}>
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
-                  </div>
-                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 mt-1.5" />}
-                  <button
-                    type="button"
-                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMutation.mutate(n.id);
-                    }}
-                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Security alerts section */}
-          {securityAlerts.length > 0 && (
-            <div>
-              <div className="px-4 py-1.5 bg-red-500/10">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-red-300">
-                  Security Alerts
-                </span>
-              </div>
-              {securityAlerts.slice(0, 5).map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => { setOpen(false); setLocation("/admin/attack-monitoring"); }}
-                  className={`w-full text-left px-4 py-3 hover:bg-red-500/10 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-red-500/5" : ""}`}
-                >
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
-                  </div>
-                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 mt-1.5" />}
-                  <button
-                    type="button"
-                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMutation.mutate(n.id);
-                    }}
-                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Malfunctions section */}
-          {malfunctions.length > 0 && (
-            <div>
-              <div className="px-4 py-1.5 bg-rose-500/10">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">
-                  {lang === "ar" ? "بلاغات الأعطال" : "Reported Malfunctions"}
-                </span>
-              </div>
-              {malfunctions.slice(0, 5).map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => { setOpen(false); setLocation("/admin/malfunctions"); }}
-                  className={`w-full text-left px-4 py-3 hover:bg-rose-500/10 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-rose-500/5" : ""}`}
-                >
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">{n.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.message}</p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
-                  </div>
-                  {!n.isRead && <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0 mt-1.5" />}
-                  <button
-                    type="button"
-                    title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteMutation.mutate(n.id);
-                    }}
-                    className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Client & System Updates section */}
-          {generalNotifications.length > 0 && (
-            <div>
-              <div className="px-4 py-1.5 bg-blue-500/10 flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-400">
-                  {t("notif_system_updates")}
-                </span>
-                <span className="text-[10px] text-muted-foreground">{generalNotifications.length}</span>
-              </div>
-              {generalNotifications.slice(0, 10).map((n) => {
-                const isNewClient = n.type === "new_client" || n.type === "client_registered";
-                const isClientUpdate = n.type.includes("client") || n.type.includes("credential");
-                const isTicketNotif = n.type.includes("ticket");
-                return (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      setOpen(false);
-                      if (isNewClient) {
-                        setLocation("/admin/clients");
-                      } else if (isClientUpdate) {
-                        setLocation("/admin/companies");
-                      } else if (isTicketNotif) {
-                        setLocation("/admin/tickets");
-                      }
-                    }}
-                    className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-blue-500/5" : ""}`}
-                  >
-                    {isNewClient ? (
-                      <UserPlus className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    ) : isClientUpdate ? (
-                      <KeyRound className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                    ) : isTicketNotif ? (
-                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    ) : (
-                      <Bell className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium leading-tight">{n.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">{n.message}</p>
-                      <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
-                    </div>
-                    {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0 mt-1.5" />}
-                    <button
-                      type="button"
-                      title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteMutation.mutate(n.id);
-                      }}
-                      className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Open tickets section */}
-          {tickets.length > 0 && (
-            <div>
-              <div className="px-4 py-1.5 bg-muted/30">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("notif_customer_problems")}
-                  {openTicketCount > 0 && <span className="ml-1 text-amber-400">· {openTicketCount} {t("notif_open")}</span>}
-                </span>
-              </div>
-              <ul>
-                {tickets.map((ticket, i) => (
-                  <li key={ticket.id}>
-                    <button
-                      onClick={() => { setOpen(false); setLocation("/admin/tickets"); }}
-                      className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-start gap-3 ${i < tickets.length - 1 ? "border-b border-border/50" : ""}`}
-                    >
-                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium leading-tight truncate">{ticket.title}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-xs text-muted-foreground truncate">{ticket.clientName}</span>
-                          <span className="text-muted-foreground/40 text-xs">·</span>
-                          <span className="text-xs text-muted-foreground shrink-0">{timeAgo(ticket.createdAt)}</span>
-                        </div>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Empty state: shown only when there are truly no notifications and no tickets */}
-          {notifications.length === 0 && tickets.length === 0 && !ticketsFetching && (
-            <div className="flex flex-col items-center justify-center h-28 gap-2 text-muted-foreground">
-              <CheckCircle2 className="w-7 h-7 opacity-20" />
-              <p className="text-xs">{t("notif_no_notifications")}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-border px-4 py-2.5">
-          <button
-            onClick={() => { setOpen(false); setLocation("/admin/tickets"); }}
-            className="w-full text-center text-xs text-primary hover:text-primary/80 font-medium transition-colors py-0.5"
-          >
-            {t("notif_view_all")}
-          </button>
-        </div>
-      </PopoverContent>
-    </Popover>
+          {totalBadge > 99 ? "99+" : totalBadge}
+        </span>
+      )}
+    </button>
   );
 }
 
-// â”€â”€ Client Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function ClientNotificationBell({
-  open: controlledOpen,
-  onOpenChange: setControlledOpen,
-}: NotificationBellProps = {}) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = controlledOpen !== undefined;
-  const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = (val: boolean | ((prev: boolean) => boolean)) => {
-    const nextVal = typeof val === "function" ? val(open) : val;
-    if (isControlled) {
-      setControlledOpen?.(nextVal);
-    } else {
-      setInternalOpen(nextVal);
-    }
-  };
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const { t, lang } = useLanguage();
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      customFetch(`/api/client/notifications/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
-    },
-  });
-
-  const clearAllMutation = useMutation({
-    mutationFn: () =>
-      customFetch("/api/client/notifications", { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
-    },
-  });
-
-  const { data: notifications = [], refetch } = useQuery<AppNotification[]>({
+function ClientNotificationBell() {
+  const [location, setLocation] = useLocation();
+  const { lang } = useLanguage();
+  const { data: notifications = [] } = useQuery<AppNotification[]>({
     queryKey: ["client-notifications"],
     queryFn: () => customFetch("/api/client/notifications"),
-    refetchInterval: 5_000,
+    refetchInterval: 10_000,
   });
 
   const unread = notifications.filter((n) => !n.isRead).length;
-  const hasUnreadRed = notifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
-  const hasUnreadAmber = notifications.some((n) => !n.isRead && (n.type === "quota_warning_amber" || n.type.includes("amber")));
-  const hasUnreadHandoff = notifications.some(
-    (n) => !n.isRead && (n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service") || n.type === "ticket" || n.type === "problem_alert" || n.type.includes("problem"))
+  const hasUnreadRed = notifications.some(
+    (n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted"))
+  );
+  const hasUnreadAmber = notifications.some(
+    (n) => !n.isRead && (n.type === "quota_warning_amber" || n.type.includes("amber"))
   );
 
-  const prevUnreadRef = useRef<number | null>(null);
+  const prevCountRef = useRef<number | null>(null);
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
-    if (unread > 0 && prevUnreadRef.current !== null && unread > prevUnreadRef.current) {
+    if (unread > 0 && prevCountRef.current !== null && unread > prevCountRef.current) {
       setPulse(true);
       setTimeout(() => setPulse(false), 2000);
     }
-    prevUnreadRef.current = unread;
+    prevCountRef.current = unread;
   }, [unread]);
 
-  useEffect(() => {
-    if (open && unread > 0) {
-      customFetch("/api/client/notifications/mark-read", { method: "PATCH" }).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
-      });
-    }
-  }, [open]);
+  const isActive = location === "/client/notifications";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center ${open ? "bg-white/25 ring-2 ring-white/30" : ""} ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
-          aria-label="Notifications"
-        >
-          <Bell className={`w-4 h-4 ${
+    <button
+      type="button"
+      onClick={() => setLocation("/client/notifications")}
+      className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
+        isActive ? "bg-white/25 ring-2 ring-white/30" : ""
+      } ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
+      aria-label="Notifications"
+      title={lang === "ar" ? "الإشعارات" : "Notifications"}
+    >
+      <Bell
+        className={`w-4 h-4 ${
+          hasUnreadRed
+            ? "text-rose-300 animate-pulse"
+            : hasUnreadAmber
+            ? "text-amber-300"
+            : unread > 0
+            ? "text-amber-300"
+            : "text-white/80"
+        }`}
+      />
+      {unread > 0 && (
+        <span
+          className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
             hasUnreadRed
-              ? "text-rose-300 animate-pulse"
-              : hasUnreadAmber
-              ? "text-amber-300"
-              : unread > 0
-              ? "text-amber-300"
-              : "text-white/80"
-          }`} />
-          {unread > 0 && (
-            <span className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
-              hasUnreadRed
-                ? "bg-rose-500 text-white animate-pulse border border-white/30"
-                : pulse
-                ? "bg-amber-300 text-slate-900 scale-125"
-                : "bg-amber-400 text-slate-950 font-bold"
-            }`}>
-              {unread > 99 ? "99+" : unread}
-            </span>
-          )}
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent align="end" sideOffset={8} className="w-80 p-0 bg-card border-border shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-amber-400" />
-            <span className="font-semibold text-sm">{t("notif_title")}</span>
-            {unread > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                hasUnreadRed ? "bg-rose-500/20 text-rose-400" : "bg-amber-500/20 text-amber-400"
-              }`}>
-                {unread} {t("notif_new")}
-              </span>
-            )}
-          </div>
-          {notifications.length > 0 && (
-            <button
-              type="button"
-              title={lang === "ar" ? "مسح كل الإشعارات" : "Clear all notifications"}
-              onClick={() => clearAllMutation.mutate()}
-              disabled={clearAllMutation.isPending}
-              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{lang === "ar" ? "مسح الكل" : "Clear all"}</span>
-            </button>
-          )}
-        </div>
-
-        <div className="max-h-72 overflow-y-auto">
-          {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-24 gap-2 text-muted-foreground">
-              <CheckCircle2 className="w-7 h-7 opacity-20" />
-              <p className="text-xs">{t("notif_client_no_notifications")}</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-border/40">
-              {notifications.map((n) => {
-                const isRedDepleted = n.type === "quota_depleted_red" || n.type.includes("depleted");
-                const isAmberWarning = n.type === "quota_warning_amber" || n.type.includes("amber");
-                const isProblemAlert = n.type === "problem_alert" || n.type === "ticket" || n.type.includes("problem");
-                const isHandoffAlert = isProblemAlert || n.type === "handoff_request" || n.type.includes("handoff") || n.type.includes("customer_service");
-                const isQuotaAlert = isRedDepleted || isAmberWarning;
-
-                return (
-                  <li 
-                    key={n.id} 
-                    className={`px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors group ${
-                      isRedDepleted
-                        ? "bg-rose-500/10 border-r-2 border-rose-500 dark:bg-rose-950/20"
-                        : isAmberWarning
-                        ? "bg-amber-500/10 border-r-2 border-amber-500 dark:bg-amber-950/20"
-                        : isProblemAlert
-                        ? "bg-indigo-500/10 border-r-2 border-indigo-500 dark:bg-indigo-950/20"
-                        : isHandoffAlert
-                        ? "bg-sky-500/10 border-r-2 border-sky-500 dark:bg-sky-950/20"
-                        : !n.isRead
-                        ? "bg-amber-500/5"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      setOpen(false);
-                      if (isQuotaAlert) {
-                        setLocation("/client/usage");
-                      } else if (isHandoffAlert || isProblemAlert || n.type === "new_message" || n.type === "new_conversation" || n.type.includes("lead")) {
-                        setLocation("/client/universal-chat");
-                      }
-                    }}
-                  >
-                    {isRedDepleted ? (
-                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 animate-pulse" />
-                    ) : isAmberWarning ? (
-                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    ) : isProblemAlert ? (
-                      <LifeBuoy className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5 animate-pulse" />
-                    ) : isHandoffAlert ? (
-                      <LifeBuoy className="w-4 h-4 text-sky-400 shrink-0 mt-0.5 animate-pulse" />
-                    ) : (
-                      <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-sm font-semibold leading-tight">{n.title}</p>
-                        {isProblemAlert && (
-                          <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-400 px-1.5 py-0.2 rounded border border-indigo-500/30">
-                            {lang === "ar" ? "مشكلة ⚠️" : "Problem ⚠️"}
-                          </span>
-                        )}
-                        {isRedDepleted && (
-                          <span className="text-[9px] font-bold bg-rose-500/20 text-rose-500 dark:text-rose-400 px-1.5 py-0.2 rounded border border-rose-500/30">
-                            {lang === "ar" ? "نفد الرصيد 🔴" : "Depleted 🔴"}
-                          </span>
-                        )}
-                        {isAmberWarning && (
-                          <span className="text-[9px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded border border-amber-500/30">
-                            {lang === "ar" ? "أقل من 20% 🟡" : "< 20% 🟡"}
-                          </span>
-                        )}
-                        {isHandoffAlert && (
-                          <span className="text-[9px] font-bold bg-sky-500/20 text-sky-500 dark:text-sky-400 px-1.5 py-0.2 rounded border border-sky-500/30">
-                            {lang === "ar" ? "خدمة عملاء 🎧" : "Support 🎧"}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug break-words">{n.message}</p>
-                      <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(n.createdAt)}</p>
-                    </div>
-                    {!n.isRead && (
-                      <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
-                        isRedDepleted ? "bg-rose-500 animate-ping" : isHandoffAlert ? "bg-sky-400 animate-pulse" : "bg-amber-400"
-                      }`} />
-                    )}
-                    <button
-                      type="button"
-                      title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteMutation.mutate(n.id);
-                      }}
-                      className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded transition-colors shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        <div className="px-3 py-2 border-t border-border bg-muted/30 flex items-center justify-between text-xs">
-          <button
-            type="button"
-            onClick={() => { setOpen(false); setLocation("/client/usage"); }}
-            className="text-xs text-primary hover:underline font-medium"
-          >
-            {lang === "ar" ? "عرض تفاصيل الحصة ←" : "View Quota Details →"}
-          </button>
-          <a
-            href="https://mail.google.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-primary hover:underline font-medium transition-colors"
-          >
-            <Mail className="w-3.5 h-3.5 text-red-500" />
-            <span>{lang === "ar" ? "فتح بريد Gmail ↗" : "Open Gmail ↗"}</span>
-          </a>
-          <span className="text-[10px] text-muted-foreground">
-            {lang === "ar" ? "إشعارات البريد متزامنة" : "Email alerts synced"}
-          </span>
-        </div>
-      </PopoverContent>
-    </Popover>
+              ? "bg-rose-500 text-white animate-pulse border border-white/30"
+              : pulse
+              ? "bg-amber-300 text-slate-900 scale-125"
+              : "bg-amber-400 text-slate-950 font-bold"
+          }`}
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </button>
   );
 }
 
-// â”€â”€ Badge components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function OpenTicketsBadge() {
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
@@ -874,17 +382,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const { t, lang } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
-  const [notifOpen, setNotifOpen] = useState(false);
   const queryClient = useQueryClient();
-
-  const handleToggleNotifications = () => {
-    if (mobileMenuOpen) {
-      setMobileMenuOpen(false);
-      setTimeout(() => setNotifOpen(true), 150);
-    } else {
-      setNotifOpen((prev) => !prev);
-    }
-  };
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -898,12 +396,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const adminLinks: NavLink[] = [
     { href: "/admin/dashboard",          label: "Dashboard",          icon: LayoutDashboard },
     {
-      href: "#notifications",
+      href: "/admin/notifications",
       label: t("notif_title") || (lang === "ar" ? "الإشعارات" : "Notifications"),
       icon: Bell,
       notifBadge: true,
-      isAction: true,
-      onClick: handleToggleNotifications,
     },
     { href: "/admin/clients",            label: "Clients",            icon: Users },
     { href: "/admin/companies",          label: "Companies",          icon: Building2 },
@@ -950,12 +446,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const clientLinks: NavLink[] = [
     { href: "/client/dashboard",        label: t("nav_dashboard") || "Dashboard",  icon: LayoutDashboard },
     {
-      href: "#notifications",
+      href: "/client/notifications",
       label: t("notif_title") || (lang === "ar" ? "الإشعارات" : "Notifications"),
       icon: Bell,
       notifBadge: true,
-      isAction: true,
-      onClick: handleToggleNotifications,
     },
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
     { href: "/client/ai-model",         label: t("nav_ai_model") || "AI Model & Provider", icon: Cpu },
@@ -1226,6 +720,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
               {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
               {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} />}
+              {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isActive} />}
+              {link.notifBadge && role === "client" && <ClientNotificationBadge isActive={isActive} />}
             </Link>
           );
         })}
@@ -1286,9 +782,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             <LanguageToggle />
             <ThemeToggle />
             {role === "admin" ? (
-              <NotificationBell open={notifOpen} onOpenChange={setNotifOpen} />
+              <NotificationBell />
             ) : (
-              <ClientNotificationBell open={notifOpen} onOpenChange={setNotifOpen} />
+              <ClientNotificationBell />
             )}
           </div>
         </header>

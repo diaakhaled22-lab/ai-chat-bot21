@@ -27,6 +27,7 @@ import AdminAITester from "@/pages/admin/AdminAITester";
 import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
 import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
 import AdminAiQuota from "@/pages/admin/AdminAiQuota";
+import AdminNotifications from "@/pages/admin/AdminNotifications";
 
 import ClientCompany from "./pages/client/ClientCompany";
 import ClientAiModel from "./pages/client/ClientAiModel";
@@ -47,6 +48,7 @@ import ClientChannels from "@/pages/client/ClientChannels";
 import ClientDashboard from "@/pages/client/ClientDashboard";
 import ClientQuickReplies from "@/pages/client/ClientQuickReplies";
 import ClientTools from "@/pages/client/ClientTools";
+import ClientNotifications from "@/pages/client/ClientNotifications";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -168,6 +170,9 @@ function Router() {
       <Route path="/admin/ai-quota">
         {() => <ProtectedRoute component={AdminAiQuota} allowedRole="admin" />}
       </Route>
+      <Route path="/admin/notifications">
+        {() => <ProtectedRoute component={AdminNotifications} allowedRole="admin" />}
+      </Route>
 
       {/* Client Routes */}
               <Route path="/client">
@@ -175,6 +180,9 @@ function Router() {
         </Route>
         <Route path="/client/dashboard">
           {() => <ProtectedRoute component={ClientDashboard} allowedRole="client" />}
+        </Route>
+        <Route path="/client/notifications">
+          {() => <ProtectedRoute component={ClientNotifications} allowedRole="client" />}
         </Route>
               <Route path="/client/company">
           {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}

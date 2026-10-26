@@ -2417,6 +2417,7 @@ router.get("/client/notifications", async (req, res) => {
       )
       .catch((e) => logger.warn({ err: e }, "Failed to clean up legacy new_message notifications"));
 
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 500);
     const items = await db
       .select()
       .from(notificationsTable)
@@ -2427,7 +2428,7 @@ router.get("/client/notifications", async (req, res) => {
         )
       )
       .orderBy(desc(notificationsTable.createdAt))
-      .limit(20);
+      .limit(limit);
     res.json(items.map((n) => ({
       id: n.id,
       type: n.type,
@@ -2770,6 +2771,25 @@ router.patch("/client/notifications/mark-read", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Mark client notifications read error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /client/notifications/:id/read
+router.patch("/client/notifications/:id/read", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    await db
+      .update(notificationsTable)
+      .set({ isRead: true })
+      .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, req.session.userId!)));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark single client notification read error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

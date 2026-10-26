@@ -3073,12 +3073,13 @@ router.post("/admin/companies/:id/test-ai", async (req, res) => {
 // GET /admin/notifications
 router.get("/admin/notifications", async (req, res) => {
   try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 500);
     const items = await db
       .select()
       .from(notificationsTable)
       .where(eq(notificationsTable.userId, req.session.userId!))
       .orderBy(desc(notificationsTable.createdAt))
-      .limit(20);
+      .limit(limit);
     res.json(items.map((n) => ({
       id: n.id,
       type: n.type,
@@ -3276,6 +3277,25 @@ router.patch("/admin/notifications/mark-read", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Mark admin notifications read error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /admin/notifications/:id/read
+router.patch("/admin/notifications/:id/read", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    await db
+      .update(notificationsTable)
+      .set({ isRead: true })
+      .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, req.session.userId!)));
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark single admin notification read error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
