@@ -51,6 +51,9 @@ interface NavLink {
   badge?: boolean;
   ticketBadge?: boolean;
   clientChatBadge?: boolean;
+  notifBadge?: boolean;
+  isAction?: boolean;
+  onClick?: () => void;
   children?: NavLink[];
 }
 
@@ -83,8 +86,26 @@ function timeAgo(iso: string) {
 }
 
 // â”€â”€ Admin Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function NotificationBell() {
-  const [open, setOpen] = useState(false);
+interface NotificationBellProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+function NotificationBell({
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
+}: NotificationBellProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (val: boolean | ((prev: boolean) => boolean)) => {
+    const nextVal = typeof val === "function" ? val(open) : val;
+    if (isControlled) {
+      setControlledOpen?.(nextVal);
+    } else {
+      setInternalOpen(nextVal);
+    }
+  };
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { t, lang } = useLanguage();
@@ -418,8 +439,21 @@ function NotificationBell() {
 }
 
 // â”€â”€ Client Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function ClientNotificationBell() {
-  const [open, setOpen] = useState(false);
+function ClientNotificationBell({
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
+}: NotificationBellProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (val: boolean | ((prev: boolean) => boolean)) => {
+    const nextVal = typeof val === "function" ? val(open) : val;
+    if (isControlled) {
+      setControlledOpen?.(nextVal);
+    } else {
+      setInternalOpen(nextVal);
+    }
+  };
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { t, lang } = useLanguage();
@@ -743,6 +777,63 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   );
 }
 
+function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
+  const { data: stats } = useGetAdminStats({
+    query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
+  });
+  const openTicketCount: number = (stats as any)?.openTicketCount ?? 0;
+
+  const { data: notifications = [] } = useQuery<AppNotification[]>({
+    queryKey: ["admin-notifications"],
+    queryFn: () => customFetch("/api/admin/notifications"),
+    refetchInterval: 10_000,
+  });
+
+  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
+  const totalBadge = openTicketCount + unreadNotifications;
+
+  if (totalBadge === 0) return null;
+
+  return (
+    <span
+      className={`ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all shadow-sm ${
+        isActive
+          ? "bg-amber-300 text-slate-900"
+          : "bg-rose-500 text-white border border-white/20"
+      }`}
+    >
+      {totalBadge > 99 ? "99+" : totalBadge}
+    </span>
+  );
+}
+
+function ClientNotificationBadge({ isActive }: { isActive?: boolean }) {
+  const { data: notifications = [] } = useQuery<AppNotification[]>({
+    queryKey: ["client-notifications"],
+    queryFn: () => customFetch("/api/client/notifications"),
+    refetchInterval: 10_000,
+  });
+
+  const unread = notifications.filter((n) => !n.isRead).length;
+  const hasUnreadRed = notifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
+
+  if (unread === 0) return null;
+
+  return (
+    <span
+      className={`ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all shadow-sm ${
+        hasUnreadRed
+          ? "bg-rose-500 text-white animate-pulse border border-white/20"
+          : isActive
+          ? "bg-amber-300 text-slate-900"
+          : "bg-amber-400 text-slate-950 font-bold"
+      }`}
+    >
+      {unread > 99 ? "99+" : unread}
+    </span>
+  );
+}
+
 // â”€â”€ Theme Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ThemeToggle() {
   const { theme, toggle } = useTheme();
@@ -783,7 +874,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const { t, lang } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+  const [notifOpen, setNotifOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleToggleNotifications = () => {
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+      setTimeout(() => setNotifOpen(true), 150);
+    } else {
+      setNotifOpen((prev) => !prev);
+    }
+  };
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -796,6 +897,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const adminLinks: NavLink[] = [
     { href: "/admin/dashboard",          label: "Dashboard",          icon: LayoutDashboard },
+    {
+      href: "#notifications",
+      label: t("notif_title") || (lang === "ar" ? "الإشعارات" : "Notifications"),
+      icon: Bell,
+      notifBadge: true,
+      isAction: true,
+      onClick: handleToggleNotifications,
+    },
     { href: "/admin/clients",            label: "Clients",            icon: Users },
     { href: "/admin/companies",          label: "Companies",          icon: Building2 },
     { href: "/admin/ai-quota",           label: "AI / Quota",         icon: Cpu },
@@ -840,6 +949,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const clientLinks: NavLink[] = [
     { href: "/client/dashboard",        label: t("nav_dashboard") || "Dashboard",  icon: LayoutDashboard },
+    {
+      href: "#notifications",
+      label: t("notif_title") || (lang === "ar" ? "الإشعارات" : "Notifications"),
+      icon: Bell,
+      notifBadge: true,
+      isAction: true,
+      onClick: handleToggleNotifications,
+    },
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
     { href: "/client/ai-model",         label: t("nav_ai_model") || "AI Model & Provider", icon: Cpu },
     ...(isTokensMode
@@ -1072,6 +1189,27 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             );
           }
 
+          if (link.isAction || link.onClick) {
+            const isNotifActive = notifOpen && link.notifBadge;
+            return (
+              <button
+                key={link.href}
+                type="button"
+                onClick={link.onClick}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-start cursor-pointer select-none ${
+                  isNotifActive
+                    ? "bg-white/20 backdrop-blur-md text-white font-semibold border border-white/25 shadow-md shadow-black/25 ring-1 ring-white/30"
+                    : "text-slate-300/85 hover:text-white hover:bg-white/[0.08]"
+                }`}
+              >
+                <Icon className={`w-4 h-4 shrink-0 ${isNotifActive ? "text-amber-300" : "text-slate-300/80"}`} />
+                <span className="flex-1 truncate">{link.label}</span>
+                {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isNotifActive} />}
+                {link.notifBadge && role === "client" && <ClientNotificationBadge isActive={isNotifActive} />}
+              </button>
+            );
+          }
+
           return (
             <Link
               key={link.href}
@@ -1147,7 +1285,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           <div className="flex items-center gap-2 relative z-10">
             <LanguageToggle />
             <ThemeToggle />
-            {role === "admin" ? <NotificationBell /> : <ClientNotificationBell />}
+            {role === "admin" ? (
+              <NotificationBell open={notifOpen} onOpenChange={setNotifOpen} />
+            ) : (
+              <ClientNotificationBell open={notifOpen} onOpenChange={setNotifOpen} />
+            )}
           </div>
         </header>
 
