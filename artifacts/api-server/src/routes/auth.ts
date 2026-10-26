@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable } from "@workspace/db";
-import { eq, and, gt, sql } from "drizzle-orm";
+import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, getEmailConfig, isEmailConfigured } from "../lib/email";
@@ -314,8 +314,59 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    if (trimmedEmail) {
+      const [existingEmail] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.role, "client"),
+            or(
+              eq(usersTable.email, trimmedEmail),
+              eq(usersTable.notificationEmail, trimmedEmail)
+            )
+          )
+        )
+        .limit(1);
+
+      if (existingEmail) {
+        const isAr = (req.body as any)?.lang === "ar" || req.headers["accept-language"]?.includes("ar");
+        res.status(409).json({
+          error: isAr
+            ? `يوجد حساب مسجل بالفعل بهذا البريد الإلكتروني (${trimmedEmail}).`
+            : `An account with email "${trimmedEmail}" already exists.`,
+        });
+        return;
+      }
+    }
+
     const clientIp = extractClientIp(req);
+
+    // Block addition if an IP address is already stored in the Clients Directory
+    if (clientIp && clientIp !== "unknown") {
+      const [existingIpClient] = await db
+        .select({ id: usersTable.id, username: usersTable.username, name: usersTable.name })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.role, "client"),
+            eq(usersTable.lastLoginIp, clientIp)
+          )
+        )
+        .limit(1);
+
+      if (existingIpClient) {
+        const isAr = (req.body as any)?.lang === "ar" || req.headers["accept-language"]?.includes("ar");
+        res.status(409).json({
+          error: isAr
+            ? `يوجد حساب مسجل بالفعل من عنوان IP هذا (${clientIp}). يسمح بحساب واحد فقط لكل عنوان IP.`
+            : `An account already exists from this IP address (${clientIp}). Only one client account is allowed per IP address.`,
+        });
+        return;
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
 
     const [newUser] = await db
       .insert(usersTable)

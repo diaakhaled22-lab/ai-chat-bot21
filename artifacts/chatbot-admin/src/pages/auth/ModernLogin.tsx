@@ -266,6 +266,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           username: regUsername.trim(),
           email: regEmail.trim() || undefined,
           password: regPassword,
+          lang,
         }),
         credentials: "include",
       });
