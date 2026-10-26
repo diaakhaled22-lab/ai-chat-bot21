@@ -270,9 +270,25 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         credentials: "include",
       });
 
-      const data = await res.json().catch(() => ({}));
+      let errorMsg = "";
+      try {
+        const text = await res.text();
+        try {
+          const parsed = JSON.parse(text);
+          errorMsg = parsed.error || parsed.message || "";
+        } catch {
+          if (res.status === 404) {
+            errorMsg = lang === "ar"
+              ? "مسار تسجيل العميل غير مفعل على الخادم. يرجى إعادة تشغيل خادم api-server."
+              : "Registration route not found (404). Please rebuild and restart the api-server.";
+          } else {
+            errorMsg = text.slice(0, 150);
+          }
+        }
+      } catch {}
+
       if (!res.ok) {
-        throw new Error(data.error || (lang === "ar" ? "فشل إنشاء الحساب" : "Failed to create account"));
+        throw new Error(errorMsg || (lang === "ar" ? "فشل إنشاء الحساب" : "Failed to create account"));
       }
 
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });

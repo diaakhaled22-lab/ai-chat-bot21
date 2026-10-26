@@ -285,16 +285,17 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
 
     const cleanUsername = username.trim().toLowerCase();
 
-    if (!password || typeof password !== "string") {
-      res.status(400).json({ error: "Password is required" });
+    if (!password || typeof password !== "string" || password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
       return;
     }
 
-    const pwError = validatePassword(password);
-    if (pwError) {
-      res.status(400).json({ error: pwError });
-      return;
-    }
+    // Ensure columns exist on users table
+    await db.execute(sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email TEXT;
+    `).catch((e) => logger.warn({ err: e }, "Failed to ensure users columns in register"));
 
     const [existing] = await db
       .select({ id: usersTable.id })
@@ -342,7 +343,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     });
   } catch (err: any) {
     logger.error({ err }, "Client registration error");
-    res.status(500).json({ error: "Failed to create account" });
+    res.status(500).json({ error: err?.message || "Failed to create account" });
   }
 });
 
