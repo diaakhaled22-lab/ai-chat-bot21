@@ -476,4 +476,116 @@ export async function sendMalfunctionNotification(input: {
   }
 }
 
+export async function sendNewClientNotification(client: {
+  id: number;
+  name: string;
+  username: string;
+  email?: string | null;
+  ip?: string | null;
+  source?: "self_registration" | "admin_created";
+}) {
+  const isSelf = client.source !== "admin_created";
+  const title = isSelf ? "New Client Registered" : "New Client Account Created";
+  const message = isSelf
+    ? `New client "${client.name}" (@${client.username}) registered successfully.${client.email ? ` Email: ${client.email}.` : ""}${client.ip ? ` IP: ${client.ip}.` : ""}`
+    : `New client account "${client.name}" (@${client.username}) was added.${client.email ? ` Email: ${client.email}.` : ""}`;
+
+  // 1. In-App Notification in Admin notification panel (bell icon)
+  try {
+    const admins = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+
+    if (admins.length > 0) {
+      await db.insert(notificationsTable).values(
+        admins.map((admin) => ({
+          userId: admin.id,
+          type: "new_client",
+          title,
+          message,
+          companyId: null,
+          isRead: false,
+        }))
+      );
+    }
+    logger.info({ clientId: client.id, adminCount: admins.length }, "New client notification added to admin notification panel");
+  } catch (err) {
+    logger.error({ err, clientId: client.id }, "Failed to add new client notification to admin panel");
+  }
+
+  // 2. Email notification via "Email Notifications" settings
+  try {
+    const cfg = await getEmailConfig();
+    if (!isEmailConfigured(cfg)) {
+      logger.info({ clientId: client.id }, "Email Notifications are not fully configured — skipped sending new client email.");
+      return;
+    }
+
+    const transporter = buildTransporter(cfg);
+    await transporter.sendMail({
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
+      to: cfg.recipientEmail,
+      subject: `[New Client] ${client.name} (@${client.username})`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:580px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+          <!-- Header -->
+          <div style="background:linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%);padding:28px 24px;text-align:center;color:#ffffff;">
+            <div style="display:inline-block;width:52px;height:52px;line-height:52px;background:rgba(255,255,255,0.18);border-radius:14px;margin-bottom:12px;font-size:24px;">
+              👤
+            </div>
+            <h1 style="margin:0;font-size:20px;font-weight:700;color:#ffffff;">${escapeHtml(title)}</h1>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.9);">
+              ${isSelf ? "A new client has self-registered via the Client Portal" : "A new client account was created in Bot Manager"}
+            </p>
+          </div>
+
+          <!-- Body Content -->
+          <div style="padding:24px;">
+            <p style="font-size:14px;color:#475569;margin:0 0 16px;line-height:1.5;">
+              Hello Admin, a new client account has been added to your Bot Manager platform. Here are the account details:
+            </p>
+
+            <table style="width:100%;border-collapse:separate;border-spacing:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:20px;">
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;width:35%;">Client Name</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(client.name)}</td>
+              </tr>
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">Username</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#2563eb;font-weight:600;">@${escapeHtml(client.username)}</td>
+              </tr>
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">Gmail / Email</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155;">${client.email ? escapeHtml(client.email) : "<span style='color:#94a3b8;'>—</span>"}</td>
+              </tr>
+              <tr>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">IP Address</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${client.ip ? escapeHtml(client.ip) : "<span style='color:#94a3b8;'>—</span>"}</td>
+              </tr>
+              <tr>
+                <td style="padding:12px 16px;font-size:12px;font-weight:600;color:#64748b;">Date Added</td>
+                <td style="padding:12px 16px;font-size:13px;color:#334155;">${new Date().toLocaleString()}</td>
+              </tr>
+            </table>
+
+            <div style="text-align:center;margin-top:20px;">
+              <p style="font-size:12px;color:#64748b;margin:0 0 12px;">Log in to Bot Manager Admin &gt; Clients Directory to configure or attach companies.</p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="padding:14px 24px;background:#f1f5f9;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#64748b;">
+            This email was sent automatically based on your <strong>Email Notifications</strong> configuration in Bot Manager.
+          </div>
+        </div>
+      `,
+    });
+
+    logger.info({ clientId: client.id, recipient: cfg.recipientEmail }, "New client notification email sent successfully");
+  } catch (emailErr) {
+    logger.warn({ emailErr, clientId: client.id }, "Failed to send new client email notification (non-fatal)");
+  }
+}
+
 

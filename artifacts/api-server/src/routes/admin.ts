@@ -21,7 +21,7 @@ import { logger } from "../lib/logger";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, buildOpenRouterChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, clearAttackLogs, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
-import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
+import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, sendNewClientNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
@@ -450,6 +450,15 @@ router.post("/admin/clients", async (req, res) => {
       `Created client "${user.name}" (${user.username})`,
       req.ip || null,
     );
+
+    void sendNewClientNotification({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      email: (user as any).email || user.notificationEmail || null,
+      ip: req.ip || null,
+      source: "admin_created",
+    });
 
     res.status(201).json({
       id: user.id,

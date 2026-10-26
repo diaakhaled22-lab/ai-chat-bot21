@@ -5,7 +5,7 @@ import { db, usersTable, passwordResetTokensTable, companiesTable, notifications
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
-import { sendAttackSpikeNotification, sendPasswordResetEmail, getEmailConfig, isEmailConfigured } from "../lib/email";
+import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured } from "../lib/email";
 import {
   authLimiter,
   sensitiveLimiter,
@@ -386,24 +386,15 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     req.session.role = "client";
     req.session.name = newUser.name;
 
-    // Send in-app notification to all admins so they immediately see the new client
-    try {
-      const admins = await db
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(eq(usersTable.role, "admin"));
-
-      for (const admin of admins) {
-        await db.insert(notificationsTable).values({
-          userId: admin.id,
-          type: "client_registered",
-          title: "New Client Registered",
-          message: `New client "${newUser.name}" (@${newUser.username}) registered from IP: ${clientIp || "unknown"}.`,
-        }).catch(() => {});
-      }
-    } catch (notifErr) {
-      logger.warn({ notifErr }, "Failed to dispatch admin notification for new client");
-    }
+    // Send in-app notification to all admins + email via "Email Notifications" settings
+    void sendNewClientNotification({
+      id: newUser.id,
+      name: newUser.name,
+      username: newUser.username,
+      email: (newUser as any).email || newUser.notificationEmail || null,
+      ip: clientIp || null,
+      source: "self_registration",
+    });
 
     res.status(201).json({
       role: "client",

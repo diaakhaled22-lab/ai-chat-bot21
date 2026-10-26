@@ -30,7 +30,7 @@ import {
   Database,
   Cpu,
   Coins,
-  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, type LucideIcon,
+  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -313,6 +313,7 @@ function NotificationBell() {
                 <span className="text-[10px] text-muted-foreground">{generalNotifications.length}</span>
               </div>
               {generalNotifications.slice(0, 10).map((n) => {
+                const isNewClient = n.type === "new_client" || n.type === "client_registered";
                 const isClientUpdate = n.type.includes("client") || n.type.includes("credential");
                 const isTicketNotif = n.type.includes("ticket");
                 return (
@@ -320,7 +321,9 @@ function NotificationBell() {
                     key={n.id}
                     onClick={() => {
                       setOpen(false);
-                      if (isClientUpdate) {
+                      if (isNewClient) {
+                        setLocation("/admin/clients");
+                      } else if (isClientUpdate) {
                         setLocation("/admin/companies");
                       } else if (isTicketNotif) {
                         setLocation("/admin/tickets");
@@ -328,7 +331,9 @@ function NotificationBell() {
                     }}
                     className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-start gap-3 cursor-pointer group ${!n.isRead ? "bg-blue-500/5" : ""}`}
                   >
-                    {isClientUpdate ? (
+                    {isNewClient ? (
+                      <UserPlus className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    ) : isClientUpdate ? (
                       <KeyRound className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                     ) : isTicketNotif ? (
                       <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
