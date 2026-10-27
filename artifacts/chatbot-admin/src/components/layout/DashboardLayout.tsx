@@ -38,7 +38,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
-import { ClinicHeroHeader } from "@/components/ClinicHeroHeader";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -1160,9 +1159,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
           <div className={location === "/client/support" || location === "/admin/broadcast" || location === "/admin/ai-tester" || location === "/admin/settings" || location === "/client/settings" || location === "/client/company" || location === "/client/ai-model" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
-            {isClinic && location !== "/client/leads" && (
-              <ClinicHeroHeader companyName={(clientCompany as any)?.name} />
-            )}
             {children}
           </div>
         </div>
