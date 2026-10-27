@@ -540,6 +540,7 @@ router.put("/client/company", async (req, res) => {
     if (data.fabPositionY !== undefined) updates.fabPositionY = data.fabPositionY;
     if ((data as any).voiceReplyEnabled !== undefined) updates.voiceReplyEnabled = (data as any).voiceReplyEnabled;
     if ((data as any).voiceReplyVoice !== undefined) updates.voiceReplyVoice = (data as any).voiceReplyVoice;
+    if ((req.body as any)?.businessType !== undefined) updates.businessType = (req.body as any).businessType;
 
     let company: typeof companiesTable.$inferSelect | undefined;
     try {
@@ -3413,6 +3414,80 @@ router.delete("/client/leads/:id", async (req, res) => {
   } catch (err: any) {
     logger.error("Error deleting lead:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/client/leads", async (req, res) => {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Client access required" });
+    return;
+  }
+  try {
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+    const { name, phone, email, interest, appointmentDate, doctor, bookingType, status, notes, channel } = req.body;
+    const [created] = await db.insert(leadsTable).values({
+      companyId: company.id,
+      sessionId: `manual_${Date.now()}`,
+      channel: channel || "manual",
+      name: name || null,
+      phone: phone || null,
+      email: email || null,
+      interest: interest || null,
+      appointmentDate: appointmentDate || null,
+      doctor: doctor || null,
+      status: status || "pending",
+      bookingType: bookingType || "new_checkup",
+      notes: notes || null,
+    }).returning();
+    res.status(201).json(created);
+  } catch (err: any) {
+    logger.error("Error creating lead:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch("/client/leads/:id", async (req, res) => {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Client access required" });
+    return;
+  }
+  try {
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId));
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+    const leadId = parseInt(req.params.id);
+    if (isNaN(leadId)) {
+      res.status(400).json({ error: "Invalid lead ID" });
+      return;
+    }
+    const [lead] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.companyId, company.id)));
+    if (!lead) {
+      res.status(404).json({ error: "Lead not found" });
+      return;
+    }
+    const { status, appointmentDate, doctor, bookingType, notes, name, phone, email, interest } = req.body;
+    const updates: Record<string, any> = {};
+    if (status !== undefined) updates.status = status;
+    if (appointmentDate !== undefined) updates.appointmentDate = appointmentDate;
+    if (doctor !== undefined) updates.doctor = doctor;
+    if (bookingType !== undefined) updates.bookingType = bookingType;
+    if (notes !== undefined) updates.notes = notes;
+    if (name !== undefined) updates.name = name;
+    if (phone !== undefined) updates.phone = phone;
+    if (email !== undefined) updates.email = email;
+    if (interest !== undefined) updates.interest = interest;
+
+    const [updated] = await db.update(leadsTable).set(updates).where(eq(leadsTable.id, leadId)).returning();
+    res.json(updated);
+  } catch (err: any) {
+    logger.error("Error updating lead:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

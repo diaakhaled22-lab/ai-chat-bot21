@@ -588,16 +588,32 @@ export async function notifyNewLead(
     email?: string | null;
     phone?: string | null;
     interest?: string | null;
+    appointmentDate?: string | null;
+    doctor?: string | null;
+    bookingType?: string | null;
+    notes?: string | null;
+    status?: string | null;
     channel?: string;
     sessionId?: string;
   }
 ) {
-  const eventType = "New lead";
-  const leadIdentifier = lead.name || lead.phone || lead.email || "New Customer";
+  const isClinicBooking = Boolean(lead.appointmentDate || lead.doctor);
+  const eventType = isClinicBooking ? "New Clinic Booking / Patient Lead" : "New lead";
+  const leadIdentifier = lead.name || lead.phone || lead.email || (isClinicBooking ? "New Patient" : "New Customer");
+  const eventDetails: Record<string, string> = {
+    Interest: lead.interest || (isClinicBooking ? "Clinic Appointment" : "General Inquiry"),
+    Channel: lead.channel || "N/A",
+  };
+  if (lead.appointmentDate) eventDetails["Appointment Date / Time"] = lead.appointmentDate;
+  if (lead.doctor) eventDetails["Doctor / Specialty"] = lead.doctor;
+  if (lead.bookingType) eventDetails["Booking Type"] = lead.bookingType;
+  if (lead.notes) eventDetails["Notes / Symptoms"] = lead.notes;
+  if (lead.status) eventDetails["Status"] = lead.status;
+
   const html = buildNotificationHtml({
     companyName: company.name,
     eventType,
-    title: `New Lead Captured: ${leadIdentifier}`,
+    title: isClinicBooking ? `New Patient Appointment: ${leadIdentifier}` : `New Lead Captured: ${leadIdentifier}`,
     customerDetails: {
       Name: lead.name || "N/A",
       Email: lead.email || "N/A",
@@ -605,14 +621,11 @@ export async function notifyNewLead(
       Channel: lead.channel || "N/A",
       "Session ID": lead.sessionId || "N/A",
     },
-    eventDetails: {
-      Interest: lead.interest || "General Inquiry",
-      Channel: lead.channel || "N/A",
-    },
+    eventDetails,
   });
   return sendCompanyNotification(
     company.id,
-    `[${eventType}] ${company.name} - Lead: ${leadIdentifier}`,
+    `[${eventType}] ${company.name} - ${leadIdentifier}`,
     html,
     { eventType }
   );

@@ -315,12 +315,17 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
         try {
           const [newLead] = await db.insert(leadsTable).values({
             companyId: company.id,
-            sessionId: sessionId ?? null,
-            channel: channel as "telegram" | "whatsapp" | "messenger" | "website",
+            sessionId: sessionId ?? "webhook",
+            channel: (channel as string) || "webhook",
             name: leadData.name ?? null,
             phone: leadData.phone ?? null,
             email: leadData.email ?? null,
-            notes: leadData.notes || leadData.interest || customerMessage,
+            interest: leadData.interest ?? null,
+            appointmentDate: leadData.appointmentDate ?? null,
+            doctor: leadData.doctor ?? null,
+            status: "pending",
+            bookingType: leadData.bookingType ?? "new_checkup",
+            notes: leadData.notes || customerMessage || null,
           }).returning();
 
           if (newLead) {
@@ -434,12 +439,17 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
         try {
           const [newLead] = await db.insert(leadsTable).values({
             companyId: company.id,
-            sessionId: sessionId ?? null,
-            channel: channel as "telegram" | "whatsapp" | "messenger" | "website",
+            sessionId: sessionId ?? "webhook",
+            channel: (channel as string) || "webhook",
             name: leadData.name ?? null,
             phone: leadData.phone ?? null,
             email: leadData.email ?? null,
-            notes: leadData.notes || leadData.interest || customerMessage,
+            interest: leadData.interest ?? null,
+            appointmentDate: leadData.appointmentDate ?? null,
+            doctor: leadData.doctor ?? null,
+            status: "pending",
+            bookingType: leadData.bookingType ?? "new_checkup",
+            notes: leadData.notes || customerMessage || null,
           }).returning();
 
           if (newLead) {

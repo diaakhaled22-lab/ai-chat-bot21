@@ -370,6 +370,10 @@ router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verify
             email: leadData.email || existingLead.email,
             phone: leadData.phone || existingLead.phone,
             interest: leadData.interest || existingLead.interest,
+            appointmentDate: leadData.appointmentDate || existingLead.appointmentDate,
+            doctor: leadData.doctor || existingLead.doctor,
+            bookingType: leadData.bookingType || existingLead.bookingType,
+            notes: leadData.notes || existingLead.notes,
             sessionId: sessionId,
             channel: "messenger" // Update channel to the most recent one used
           })
@@ -383,6 +387,11 @@ router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verify
           email: leadData.email || null,
           phone: leadData.phone || null,
           interest: leadData.interest || null,
+          appointmentDate: leadData.appointmentDate || null,
+          doctor: leadData.doctor || null,
+          status: "pending",
+          bookingType: leadData.bookingType || "new_checkup",
+          notes: leadData.notes || null,
         });
 
         // Event 3: New lead
@@ -393,6 +402,10 @@ router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verify
             email: leadData.email || null,
             phone: leadData.phone || null,
             interest: leadData.interest || null,
+            appointmentDate: leadData.appointmentDate || null,
+            doctor: leadData.doctor || null,
+            bookingType: leadData.bookingType || null,
+            notes: leadData.notes || null,
             channel: "messenger",
             sessionId,
           }
@@ -662,6 +675,10 @@ router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhoo
             email: leadData.email || existingLead.email,
             phone: leadData.phone || existingLead.phone,
             interest: leadData.interest || existingLead.interest,
+            appointmentDate: leadData.appointmentDate || existingLead.appointmentDate,
+            doctor: leadData.doctor || existingLead.doctor,
+            bookingType: leadData.bookingType || existingLead.bookingType,
+            notes: leadData.notes || existingLead.notes,
             sessionId: sessionId,
             channel: "messenger" // Update channel to the most recent one used
           })
@@ -675,6 +692,11 @@ router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhoo
           email: leadData.email || null,
           phone: leadData.phone || null,
           interest: leadData.interest || null,
+          appointmentDate: leadData.appointmentDate || null,
+          doctor: leadData.doctor || null,
+          status: "pending",
+          bookingType: leadData.bookingType || "new_checkup",
+          notes: leadData.notes || null,
         });
 
         // Event 3: New lead
@@ -685,6 +707,10 @@ router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhoo
             email: leadData.email || null,
             phone: leadData.phone || null,
             interest: leadData.interest || null,
+            appointmentDate: leadData.appointmentDate || null,
+            doctor: leadData.doctor || null,
+            bookingType: leadData.bookingType || null,
+            notes: leadData.notes || null,
             channel: "messenger",
             sessionId,
           }

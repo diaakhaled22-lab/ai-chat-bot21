@@ -10,6 +10,11 @@ export const leadsTable = pgTable("leads", {
   email: text("email"),
   phone: text("phone"),
   interest: text("interest"),
+  appointmentDate: text("appointment_date"),
+  doctor: text("doctor"),
+  status: text("status").notNull().default("pending"),
+  bookingType: text("booking_type").default("new_checkup"),
+  notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

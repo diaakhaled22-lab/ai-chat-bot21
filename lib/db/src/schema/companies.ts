@@ -66,6 +66,7 @@ export const companiesTable = pgTable("companies", {
   allowSourceWordpress: boolean("allow_source_wordpress").notNull().default(true),
   allowSourceRestApi: boolean("allow_source_rest_api").notNull().default(true),
   allowSourceShopify: boolean("allow_source_shopify").notNull().default(true),
+  businessType: text("business_type").notNull().default("general"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

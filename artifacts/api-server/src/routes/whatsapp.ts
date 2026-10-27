@@ -420,6 +420,10 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
             email: leadData.email || existingLead.email,
             phone: leadData.phone || existingLead.phone,
             interest: leadData.interest || existingLead.interest,
+            appointmentDate: leadData.appointmentDate || existingLead.appointmentDate,
+            doctor: leadData.doctor || existingLead.doctor,
+            bookingType: leadData.bookingType || existingLead.bookingType,
+            notes: leadData.notes || existingLead.notes,
             sessionId: sessionId,
             channel: "whatsapp" // Update channel to the most recent one used
           })
@@ -433,6 +437,11 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
           email: leadData.email || null,
           phone: leadData.phone || null,
           interest: leadData.interest || null,
+          appointmentDate: leadData.appointmentDate || null,
+          doctor: leadData.doctor || null,
+          status: "pending",
+          bookingType: leadData.bookingType || "new_checkup",
+          notes: leadData.notes || null,
         });
 
         // Event 3: New lead
@@ -443,6 +452,10 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
             email: leadData.email || null,
             phone: leadData.phone || null,
             interest: leadData.interest || null,
+            appointmentDate: leadData.appointmentDate || null,
+            doctor: leadData.doctor || null,
+            bookingType: leadData.bookingType || null,
+            notes: leadData.notes || null,
             channel: "whatsapp",
             sessionId,
           }
@@ -767,6 +780,10 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
             email: leadData.email || existingLead.email,
             phone: leadData.phone || existingLead.phone,
             interest: leadData.interest || existingLead.interest,
+            appointmentDate: leadData.appointmentDate || existingLead.appointmentDate,
+            doctor: leadData.doctor || existingLead.doctor,
+            bookingType: leadData.bookingType || existingLead.bookingType,
+            notes: leadData.notes || existingLead.notes,
             sessionId: sessionId,
             channel: "whatsapp" // Update channel to the most recent one used
           })
@@ -780,6 +797,11 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
           email: leadData.email || null,
           phone: leadData.phone || null,
           interest: leadData.interest || null,
+          appointmentDate: leadData.appointmentDate || null,
+          doctor: leadData.doctor || null,
+          status: "pending",
+          bookingType: leadData.bookingType || "new_checkup",
+          notes: leadData.notes || null,
         });
 
         // Event 3: New lead
@@ -790,6 +812,10 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
             email: leadData.email || null,
             phone: leadData.phone || null,
             interest: leadData.interest || null,
+            appointmentDate: leadData.appointmentDate || null,
+            doctor: leadData.doctor || null,
+            bookingType: leadData.bookingType || null,
+            notes: leadData.notes || null,
             channel: "whatsapp",
             sessionId,
           }

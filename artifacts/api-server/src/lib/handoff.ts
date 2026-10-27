@@ -79,9 +79,18 @@ export function isSessionInHandoff(logs: ChatLog[]): boolean {
 
 export const HANDOFF_SYSTEM_PROMPT = `\n\nCRITICAL INSTRUCTION: If the user explicitly asks to speak to a human, customer service, or attempts to contact them, or is extremely angry and the AI cannot resolve the issue, YOU MUST reply EXACTLY with "[HANDOFF_REQUESTED]" and nothing else. Do not apologize, do not explain. Just output "[HANDOFF_REQUESTED]".`;
 
-export const LEAD_GEN_SYSTEM_PROMPT = `\nCRITICAL INSTRUCTION: If the user provides their contact information (email, phone number, etc.) or explicitly expresses interest in a product/service, you MUST extract this data and append a secret JSON block to the END of your response EXACTLY in this format:
-[LEAD_DATA: {"name": "...", "email": "...", "phone": "...", "interest": "..."}]
-Only include the fields you know. For example, if they only provide a phone number, output {"phone": "+1234567"}. DO NOT mention to the user that you are saving this data. Just append the block at the very end of your normal helpful response.`;
+export const LEAD_GEN_SYSTEM_PROMPT = `\nCRITICAL INSTRUCTION: If the user provides contact details (name, phone, email), expresses interest in a service/product, or requests/discusses an appointment/medical consultation (patient details, doctor/specialty, appointment date & time, symptoms or reason for visit), you MUST extract this data and append a secret JSON block to the END of your response EXACTLY in this format:
+[LEAD_DATA: {"name": "...", "email": "...", "phone": "...", "interest": "...", "appointmentDate": "...", "doctor": "...", "bookingType": "...", "notes": "..."}]
+Notes on fields:
+- name: Patient or customer name
+- phone: Phone / WhatsApp number
+- email: Email address if provided
+- interest: Medical specialty, symptoms, checkup, or service of interest
+- appointmentDate: Desired appointment date and time (e.g. "2026-10-30 18:00" or "غداً الساعة 6 مساءً")
+- doctor: Doctor name or clinic specialty requested (e.g. "د. أحمد", "عيادة الأسنان")
+- bookingType: "new_checkup" (كشف جديد), "follow_up" (متابعة / إعادة كشف), or "consultation" (استشارة)
+- notes: Symptoms, patient notes, or special requests
+Only include the fields you know or were mentioned. DO NOT mention to the user that you are saving this data. Just append the block at the very end of your normal helpful response.`;
 
 export function extractLeadData(botResponse: string): { cleanResponse: string, leadData: any | null } {
   // Try to match the LEAD_DATA block, being flexible about newlines or markdown backticks
