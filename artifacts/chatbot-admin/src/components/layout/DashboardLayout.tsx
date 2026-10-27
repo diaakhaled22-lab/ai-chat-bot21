@@ -974,7 +974,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <p className="text-[10px] font-medium text-slate-300 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
+                <p className="text-[11px] font-semibold text-slate-200 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
               </div>
             </div>
           </div>
@@ -1007,23 +1007,23 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     }));
                     setLocation(link.href);
                   }}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none ${
+                  className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none ${
                     isParentActive
-                      ? "bg-white/15 backdrop-blur-md text-white font-semibold border border-white/20 shadow-md"
-                      : "text-slate-300/85 hover:text-white hover:bg-white/[0.08]"
+                      ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/20"
+                      : "text-slate-100 hover:text-white hover:bg-white/12"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isParentActive ? "text-white" : "text-slate-300/80"}`} />
+                  <Icon className={`w-5 h-5 shrink-0 transition-colors ${isParentActive ? "text-white" : "text-sky-300 group-hover:text-white"}`} />
                   <span className="flex-1 truncate">{link.label}</span>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isExpanded ? "rotate-0 text-white" : "-rotate-90 text-slate-400"
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isExpanded ? "rotate-0 text-white" : "-rotate-90 text-slate-300"
                     }`}
                   />
                 </div>
 
                 {isExpanded && (
-                  <div className="ps-4 pe-1 space-y-0.5 pt-1 pb-1 bg-black/20 backdrop-blur-sm rounded-xl border border-white/10 my-1">
+                  <div className="ps-3.5 pe-1.5 space-y-1 pt-1.5 pb-1.5 bg-black/25 backdrop-blur-sm rounded-xl border border-white/10 my-1">
                     {link.children.map((child) => {
                       const ChildIcon = child.icon;
                       const isSubActive = location === child.href;
@@ -1032,13 +1032,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           key={child.href}
                           href={child.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                          className={`group flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs sm:text-[13px] font-medium transition-all ${
                             isSubActive
-                              ? "bg-white/20 text-white font-semibold shadow-sm border border-white/20"
-                              : "text-slate-300/75 hover:text-white hover:bg-white/[0.08]"
+                              ? "bg-white/20 text-white font-bold shadow-sm border border-white/25"
+                              : "text-slate-200 hover:text-white hover:bg-white/12"
                           }`}
                         >
-                          <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-white" : "text-slate-400"}`} />
+                          <ChildIcon className={`w-4 h-4 shrink-0 transition-colors ${isSubActive ? "text-white" : "text-sky-300/90 group-hover:text-white"}`} />
                           <span className="flex-1 truncate">{child.label}</span>
                         </Link>
                       );
@@ -1056,13 +1056,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 key={link.href}
                 type="button"
                 onClick={link.onClick}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-start cursor-pointer select-none ${
+                className={`group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-start cursor-pointer select-none ${
                   isNotifActive
-                    ? "bg-white/20 backdrop-blur-md text-white font-semibold border border-white/25 shadow-md shadow-black/25 ring-1 ring-white/30"
-                    : "text-slate-300/85 hover:text-white hover:bg-white/[0.08]"
+                    ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/25 ring-1 ring-white/30"
+                    : "text-slate-100 hover:text-white hover:bg-white/12"
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isNotifActive ? "text-amber-300" : "text-slate-300/80"}`} />
+                <Icon className={`w-5 h-5 shrink-0 transition-colors ${isNotifActive ? "text-amber-300" : "text-sky-300 group-hover:text-white"}`} />
                 <span className="flex-1 truncate">{link.label}</span>
                 {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isNotifActive} />}
                 {link.notifBadge && role === "client" && <ClientNotificationBadge isActive={isNotifActive} />}
@@ -1075,13 +1075,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               key={link.href}
               href={link.href}
               onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-white/15 backdrop-blur-md text-white font-semibold border border-white/20 shadow-md shadow-black/25"
-                  : "text-slate-300/85 hover:text-white hover:bg-white/[0.08]"
+                  ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/25"
+                  : "text-slate-100 hover:text-white hover:bg-white/12"
               }`}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-300/80"}`} />
+              <Icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-white" : "text-sky-300 group-hover:text-white"}`} />
               <span className="flex-1 truncate">{link.label}</span>
               {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
               {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
@@ -1097,11 +1097,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       <div className={`p-3 border-t border-white/10 ${sidebarFooterBg} shrink-0 relative z-10`}>
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 text-slate-300/85 hover:text-white hover:bg-white/[0.08] rounded-xl transition-all"
+          className="w-full justify-start gap-3 text-slate-100 hover:text-white hover:bg-rose-500/20 font-medium rounded-xl transition-all"
           onClick={handleLogout}
           disabled={logout.isPending}
         >
-          <LogOut className="w-4 h-4 text-slate-300" />
+          <LogOut className="w-5 h-5 text-rose-300 shrink-0" />
           {t("nav_sign_out")}
         </Button>
       </div>
@@ -1179,18 +1179,18 @@ function LiveStatusBar() {
   return (
     <Link
       href="/admin/malfunctions"
-      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white px-1 py-0.5 transition-colors rounded-lg hover:bg-white/5"
+      className="flex items-center gap-2 text-xs text-slate-100 hover:text-white px-1.5 py-1 transition-colors rounded-lg hover:bg-white/10"
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-medium"}>
+      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-semibold text-slate-100"}>
         {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues") : (lang === "ar" ? "النظام يعمل" : "Live")}
       </span>
       {stats?.activeCompanies !== undefined && (
-        <span className={`ms-auto flex items-center gap-1 text-blue-200/90 font-semibold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
-          <Activity className="w-3 h-3" />
+        <span className={`ms-auto flex items-center gap-1.5 text-sky-200 font-bold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
+          <Activity className="w-3.5 h-3.5 text-sky-300" />
           <span>{stats.activeCompanies} {lang === "ar" ? "نشط" : "active"}</span>
         </span>
       )}
@@ -1220,18 +1220,18 @@ function ClientLiveStatusBar() {
   return (
     <Link
       href="/client/malfunctions"
-      className="flex items-center gap-2 text-xs text-blue-100/90 hover:text-white px-1 py-0.5 transition-colors rounded-lg hover:bg-white/5"
+      className="flex items-center gap-2 text-xs text-slate-100 hover:text-white px-1.5 py-1 transition-colors rounded-lg hover:bg-white/10"
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-medium"}>
+      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-semibold text-slate-100"}>
         {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues") : (lang === "ar" ? "النظام يعمل" : "Live")}
       </span>
       {usage && (
-        <span className={`ms-auto flex items-center gap-1 text-blue-200/90 font-semibold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
-          <Activity className="w-3 h-3" />
+        <span className={`ms-auto flex items-center gap-1.5 text-sky-200 font-bold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
+          <Activity className="w-3.5 h-3.5 text-sky-300" />
           <span>{lang === "ar" ? `اليوم ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
         </span>
       )}
