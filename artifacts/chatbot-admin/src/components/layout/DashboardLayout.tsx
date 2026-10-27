@@ -30,7 +30,7 @@ import {
   Database,
   Cpu,
   Coins,
-  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, type LucideIcon,
+  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
+import { ClinicHeroHeader } from "@/components/ClinicHeroHeader";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -850,6 +851,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   });
 
   const isTokensMode = (clientCompany as any)?.aiExecutionMode === "tokens";
+  const isClinic = role === "client" && (clientCompany as any)?.businessType === "clinic";
 
   const clientLinks: NavLink[] = [
     { href: "/client/dashboard",        label: t("nav_dashboard") || "Dashboard",  icon: LayoutDashboard },
@@ -886,7 +888,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       ],
     },
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },
-    { href: "/client/leads",            label: lang === "ar" ? "العملاء المحتملين" : "Leads CRM", icon: Users },
+    {
+      href: "/client/leads",
+      label: isClinic
+        ? (lang === "ar" ? "سجل المرضى والحجوزات" : "Appointments CRM")
+        : (lang === "ar" ? "العملاء المحتملين" : "Leads CRM"),
+      icon: isClinic ? Stethoscope : Users,
+    },
     { href: "/client/universal-chat",   label: t("nav_universal_chat"),  icon: Sparkles, clientChatBadge: true },
     { href: "/client/widget-preview",   label: t("nav_widget_preview"),  icon: Bot },
     { href: "/client/support",          label: t("nav_support"),         icon: LifeBuoy },
@@ -1152,6 +1160,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
           <div className={location === "/client/support" || location === "/admin/broadcast" || location === "/admin/ai-tester" || location === "/admin/settings" || location === "/client/settings" || location === "/client/company" || location === "/client/ai-model" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
+            {isClinic && location !== "/client/leads" && (
+              <ClinicHeroHeader companyName={(clientCompany as any)?.name} />
+            )}
             {children}
           </div>
         </div>
