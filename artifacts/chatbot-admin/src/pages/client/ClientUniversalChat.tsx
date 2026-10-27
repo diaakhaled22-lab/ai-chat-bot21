@@ -891,7 +891,7 @@ export default function ClientUniversalChat() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                   {selectedSession.messages.map(log => (
                     <div key={log.id} className="space-y-4">
-                      {log.customerMessage && (
+                      {Boolean(log.customerMessage && log.customerMessage.trim()) && (
                         <div className="flex items-end gap-2">
                           <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
                             <User className="w-4 h-4 text-secondary-foreground/70" />

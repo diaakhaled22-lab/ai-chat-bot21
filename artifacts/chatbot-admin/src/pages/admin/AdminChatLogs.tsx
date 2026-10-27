@@ -769,19 +769,21 @@ export default function AdminChatLogs() {
                 {selectedSession.messages.map((log) => (
                   <div key={log.id} className="space-y-4">
                     {/* Customer Bubble */}
-                    <div className="flex items-end gap-2">
-                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4 text-secondary-foreground/70" />
-                      </div>
-                      <div className="flex flex-col gap-1 max-w-[75%]">
-                        <div className="bg-secondary text-secondary-foreground rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
-                          {log.customerMessage}
+                    {Boolean(log.customerMessage && log.customerMessage.trim()) && (
+                      <div className="flex items-end gap-2">
+                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4 text-secondary-foreground/70" />
                         </div>
-                        <span className="text-[10px] text-muted-foreground ml-2">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </span>
+                        <div className="flex flex-col gap-1 max-w-[75%]">
+                          <div className="bg-secondary text-secondary-foreground rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">
+                            {log.customerMessage}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground ml-2">
+                            {new Date(log.createdAt).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Bot Bubble */}
                     {log.botResponse && (
