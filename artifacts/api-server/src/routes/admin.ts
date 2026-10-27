@@ -694,6 +694,7 @@ router.get("/admin/companies", async (req, res) => {
         allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
         allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
         allowSourceShopify: company.allowSourceShopify === false ? false : true,
+        businessType: company.businessType || "general",
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString(),
       }))
@@ -815,6 +816,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
+      businessType: company.businessType || "general",
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -858,6 +860,9 @@ router.patch("/admin/companies/:id", async (req, res) => {
       const [existing] = await db.select({ resendApiKey: companiesTable.resendApiKey }).from(companiesTable).where(eq(companiesTable.id, id)).limit(1);
       updateValues.resendApiKey = preserveMaskedSecret(resendApiKey, existing?.resendApiKey);
     }
+    if ((req.body as any)?.businessType !== undefined) {
+      updateValues.businessType = (req.body as any).businessType === "clinic" ? "clinic" : "general";
+    }
 
     const [row] = await db
       .update(companiesTable)
@@ -865,6 +870,21 @@ router.patch("/admin/companies/:id", async (req, res) => {
       .where(eq(companiesTable.id, id))
       .returning();
     if (!row) { res.status(404).json({ error: "Company not found" }); return; }
+
+    if (updateValues.businessType !== undefined) {
+      const [adminUser] = await db
+        .select({ username: usersTable.username })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.session.userId!));
+      const performedBy = adminUser?.username ?? "admin";
+      await db.insert(companyActivityLogsTable).values({
+        companyId: id,
+        action: "business_type_updated",
+        performedBy,
+        note: `Admin set company business type to: ${updateValues.businessType === "clinic" ? "Clinic & Appointments CRM (عيادة طبية)" : "General Leads CRM (شركة عامة)"}`,
+      });
+    }
+
     const [clientRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.clientId));
     res.json({
       id: row.id,
@@ -872,6 +892,7 @@ router.patch("/admin/companies/:id", async (req, res) => {
       clientName: clientRow?.name ?? null,
       myId: row.myId ?? null,
       name: row.name,
+      businessType: row.businessType ?? "general",
       notificationEmail: row.notificationEmail ?? null,
       resendApiKey: maskApiKey(row.resendApiKey),
       isActive: row.isActive,

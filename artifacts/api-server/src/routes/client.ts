@@ -141,6 +141,7 @@ router.get("/client/company", async (req, res) => {
       allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
+      businessType: company.businessType || "general",
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -654,6 +655,7 @@ router.put("/client/company", async (req, res) => {
       allowSourceWordpress: company.allowSourceWordpress === false ? false : true,
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
+      businessType: company.businessType || "general",
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });

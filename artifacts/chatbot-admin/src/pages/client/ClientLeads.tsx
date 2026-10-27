@@ -50,15 +50,17 @@ export default function ClientLeads() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mode: "clinic" (سجل حجوزات ومرضى العيادات) vs "general" (الوضع العام للعملاء المحتملين)
-  const [crmMode, setCrmMode] = useState<"clinic" | "general">(() => {
-    return (localStorage.getItem("leads_crm_mode") as "clinic" | "general") || "clinic";
+  // Mode is strictly determined by what the administrator configured for this company:
+  const { data: companyData } = useQuery<{ businessType?: string }>({
+    queryKey: ["client-company-business-type"],
+    queryFn: async () => {
+      const res = await fetch("/api/client/company", { credentials: "include" });
+      if (!res.ok) return { businessType: "general" };
+      return res.json();
+    },
   });
 
-  const handleModeChange = (mode: "clinic" | "general") => {
-    setCrmMode(mode);
-    localStorage.setItem("leads_crm_mode", mode);
-  };
+  const crmMode: "clinic" | "general" = companyData?.businessType === "clinic" ? "clinic" : "general";
 
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
@@ -555,34 +557,23 @@ export default function ClientLeads() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Mode Switcher */}
-            <div className="bg-black/20 p-1 rounded-2xl border border-white/20 backdrop-blur-md flex items-center">
-              <Button
-                variant={crmMode === "clinic" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleModeChange("clinic")}
-                className={`rounded-xl text-xs font-semibold px-3 py-1.5 transition-all ${
-                  crmMode === "clinic"
-                    ? "bg-white text-teal-800 shadow-md hover:bg-white/90"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <Stethoscope className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
-                {lang === "ar" ? "وضع العيادات والمواعيد" : "Clinic Mode"}
-              </Button>
-              <Button
-                variant={crmMode === "general" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => handleModeChange("general")}
-                className={`rounded-xl text-xs font-semibold px-3 py-1.5 transition-all ${
-                  crmMode === "general"
-                    ? "bg-white text-blue-800 shadow-md hover:bg-white/90"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5 mr-1.5 ml-1.5" />
-                {lang === "ar" ? "الوضع العام" : "General Mode"}
-              </Button>
+            {/* Business Activity Type Badge (Strictly Set by Admin) */}
+            <div className="bg-black/20 px-3.5 py-2 rounded-2xl border border-white/20 backdrop-blur-md flex items-center gap-2">
+              {crmMode === "clinic" ? (
+                <>
+                  <Stethoscope className="w-4 h-4 text-teal-300 shrink-0" />
+                  <span className="text-xs font-semibold text-white">
+                    {lang === "ar" ? "نشاط العيادات (محدد من الإدارة)" : "Clinic Mode (Admin Configured)"}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Building2 className="w-4 h-4 text-blue-300 shrink-0" />
+                  <span className="text-xs font-semibold text-white">
+                    {lang === "ar" ? "النشاط العام (محدد من الإدارة)" : "General Mode (Admin Configured)"}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Add Appointment Button */}

@@ -15,7 +15,7 @@ import {
   Gauge, AlertTriangle, Zap, FlaskConical, Loader2, CheckCircle, Bot,
   MessageSquare, Globe, Send, Phone, Sheet, Activity,
   TrendingUp, Users, ShieldCheck, Timer, X, ChevronRight,
-  Power, RefreshCw, Sparkles, RotateCcw, Database, FileText, Plug, Code2, ShoppingBag,
+  Power, RefreshCw, Sparkles, RotateCcw, Database, FileText, Plug, Code2, ShoppingBag, Stethoscope,
 } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
@@ -74,10 +74,11 @@ type Company = {
   allowSourceWordpress?: boolean | null;
   allowSourceRestApi?: boolean | null;
   allowSourceShopify?: boolean | null;
+  businessType?: string | null;
   createdAt: string;
 };
 
-type Filter = "all" | "active" | "inactive" | "expiring";
+type Filter = "all" | "active" | "inactive" | "expiring" | "clinic" | "general";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function formatQuota(n: number) {
@@ -470,6 +471,8 @@ export default function AdminCompanies() {
   const [aiTestResult, setAiTestResult] = useState<{
     status: string; provider?: string; model?: string; reply?: string; message?: string;
   } | null>(null);
+  const [businessTypeTarget, setBusinessTypeTarget] = useState<Company | null>(null);
+  const [businessTypeInput, setBusinessTypeInput] = useState<"general" | "clinic">("general");
   const [permissionsTarget, setPermissionsTarget] = useState<Company | null>(null);
   const [permissionsForm, setPermissionsForm] = useState({
     allowSourceWebsite: true,
@@ -493,7 +496,9 @@ export default function AdminCompanies() {
       return d !== null && d >= 0 && d <= 7;
     });
     const totalQuota = all.reduce((sum, c) => sum + (c.monthlyTokenQuota ?? 0), 0);
-    return { total: all.length, active: active.length, inactive: all.length - active.length, expiring: expiring.length, totalQuota };
+    const clinics = all.filter((c) => c.businessType === "clinic").length;
+    const general = all.filter((c) => c.businessType !== "clinic").length;
+    return { total: all.length, active: active.length, inactive: all.length - active.length, expiring: expiring.length, clinics, general, totalQuota };
   }, [companies]);
 
   // ── Filtered list ────────────────────────────────────────────────────────────
@@ -504,6 +509,8 @@ export default function AdminCompanies() {
       if (!matchesSearch) return false;
       if (filter === "active") return c.isActive;
       if (filter === "inactive") return !c.isActive;
+      if (filter === "clinic") return c.businessType === "clinic";
+      if (filter === "general") return c.businessType !== "clinic";
       if (filter === "expiring") {
         const d = getDaysRemaining(c.activationEnd);
         return d !== null && d >= 0 && d <= 7;
@@ -635,6 +642,33 @@ export default function AdminCompanies() {
       toast({ title: "Failed to save permissions", description: err.message, variant: "destructive" }),
   });
 
+  const updateBusinessTypeMutation = useMutation({
+    mutationFn: async ({ id, businessType }: { id: number; businessType: string }) => {
+      const res = await fetch(`/api/admin/companies/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ businessType }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update business type");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/company"] });
+      setBusinessTypeTarget(null);
+      toast({
+        title: lang === "ar" ? "تم تحديد نوع النشاط بنجاح" : "Business type updated successfully",
+      });
+    },
+    onError: (err: any) =>
+      toast({ title: "Failed to update business type", description: err.message, variant: "destructive" }),
+  });
+
   const openPermissionsDialog = (company: Company) => {
     setPermissionsTarget(company);
     setPermissionsForm({
@@ -698,6 +732,8 @@ export default function AdminCompanies() {
     { key: "active",   label: "Active",         count: stats.active   },
     { key: "inactive", label: "Inactive",       count: stats.inactive },
     { key: "expiring", label: "Expiring Soon",  count: stats.expiring },
+    { key: "clinic",   label: lang === "ar" ? "عيادات طبية" : "Clinics", count: stats.clinics },
+    { key: "general",  label: lang === "ar" ? "شركات عامة" : "General", count: stats.general },
   ];
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -851,7 +887,22 @@ export default function AdminCompanies() {
 
                   {/* Company Name */}
                   <div className="px-2 min-w-0 flex justify-center relative -left-[35px]">
-                      <span className="text-sm truncate">{company.name}</span>
+                      <div className="flex flex-col items-center">
+                        <span className="text-sm truncate font-medium">{company.name}</span>
+                        <div className="mt-1">
+                          {company.businessType === "clinic" ? (
+                            <Badge variant="outline" className="bg-teal-500/10 text-teal-600 border-teal-500/30 gap-1 text-[10px] px-1.5 py-0 h-4">
+                              <Stethoscope className="w-2.5 h-2.5" />
+                              {lang === "ar" ? "عيادة طبية" : "Clinic"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20 gap-1 text-[10px] px-1.5 py-0 h-4">
+                              <Building2 className="w-2.5 h-2.5" />
+                              {lang === "ar" ? "شركة عامة" : "General"}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                   </div>
 
                   {/* Client */}
@@ -960,6 +1011,13 @@ export default function AdminCompanies() {
                         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                           {company.name}
                         </DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => {
+                          setBusinessTypeTarget(company);
+                          setBusinessTypeInput((company.businessType as "general" | "clinic") || "general");
+                        }}>
+                          <Stethoscope className="w-4 h-4 mr-2 text-teal-500" />
+                          {lang === "ar" ? "تحديد نوع النشاط (عيادة / عام)" : "Set Business Type"}
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
 
                         <DropdownMenuItem onClick={() => setViewCompany(company)}>
@@ -1499,6 +1557,109 @@ export default function AdminCompanies() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Business Type Dialog (Admin determines Clinic vs General) ── */}
+      <Dialog open={!!businessTypeTarget} onOpenChange={(open) => !open && setBusinessTypeTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-teal-600">
+              <Stethoscope className="w-5 h-5" />
+              <DialogTitle>
+                {lang === "ar" ? "تحديد نوع نشاط الشركة" : "Set Business Activity Type"}
+              </DialogTitle>
+            </div>
+            <DialogDescription>
+              {businessTypeTarget?.name} · {lang === "ar" ? "حدد كمدير نوع النظام المناسب لهذه الشركة للتحكم في واجهة الـ CRM والقنوات." : "Configure whether this client operates as a Medical Clinic or a General Business."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {/* Option 1: Clinic */}
+            <div
+              onClick={() => setBusinessTypeInput("clinic")}
+              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
+                businessTypeInput === "clinic"
+                  ? "border-teal-600 bg-teal-500/10 shadow-sm"
+                  : "border-border/60 hover:border-teal-600/40 bg-card"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-600 flex items-center justify-center shrink-0 mt-0.5">
+                <Stethoscope className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-foreground">
+                    {lang === "ar" ? "🩺 عيادة طبية / مركز صحي (Clinic CRM)" : "Medical Clinic / Healthcare"}
+                  </p>
+                  {businessTypeInput === "clinic" && (
+                    <Badge className="bg-teal-600 text-white text-[10px]">
+                      {lang === "ar" ? "المحدد" : "Selected"}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  {lang === "ar"
+                    ? "تفعيل سجل حجوزات المرضى، الأطباء المعالجين، ومواعيد الكشف التلقائية عبر كافة القنوات (واتساب، تليجرام، ماسنجر، الموقع، والويب هوك)."
+                    : "Enables Patient Appointments CRM, Doctors registry, booking types, and clinic statuses across all channels."}
+                </p>
+              </div>
+            </div>
+
+            {/* Option 2: General */}
+            <div
+              onClick={() => setBusinessTypeInput("general")}
+              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
+                businessTypeInput === "general"
+                  ? "border-blue-600 bg-blue-500/10 shadow-sm"
+                  : "border-border/60 hover:border-blue-600/40 bg-card"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-foreground">
+                    {lang === "ar" ? "💼 شركة عامة / متجر إلكتروني (General Leads CRM)" : "General Business / E-commerce"}
+                  </p>
+                  {businessTypeInput === "general" && (
+                    <Badge className="bg-blue-600 text-white text-[10px]">
+                      {lang === "ar" ? "المحدد" : "Selected"}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  {lang === "ar"
+                    ? "تفعيل سجل العملاء المحتملين العام لتتبع بيانات التواصل والاهتمامات والطلبات التجارية التقليدية."
+                    : "Standard Leads CRM tracking contact info, interest, channels, and general customer inquiries."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setBusinessTypeTarget(null)}>
+              {t("btn_cancel")}
+            </Button>
+            <Button
+              size="sm"
+              className="bg-teal-600 hover:bg-teal-700 text-white font-semibold"
+              onClick={() => {
+                if (businessTypeTarget) {
+                  updateBusinessTypeMutation.mutate({
+                    id: businessTypeTarget.id,
+                    businessType: businessTypeInput,
+                  });
+                }
+              }}
+              disabled={updateBusinessTypeMutation.isPending}
+            >
+              {updateBusinessTypeMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {lang === "ar" ? "حفظ التغييرات" : "Save Business Type"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!viewCompany} onOpenChange={(open) => !open && setViewCompany(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1521,7 +1682,21 @@ export default function AdminCompanies() {
             <div className="space-y-5 pt-2">
 
               {/* Status + Subscription */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="bg-muted/30 rounded-xl p-3 border border-border">
+                  <p className="text-xs text-muted-foreground mb-1.5">{lang === "ar" ? "نوع النشاط" : "Business Type"}</p>
+                  {viewCompany.businessType === "clinic" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 border border-teal-500/20">
+                      <Stethoscope className="w-3 h-3 text-teal-600" />
+                      {lang === "ar" ? "عيادة طبية" : "Clinic CRM"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                      <Building2 className="w-3 h-3 text-blue-600" />
+                      {lang === "ar" ? "شركة عامة" : "General CRM"}
+                    </span>
+                  )}
+                </div>
                 <div className="bg-muted/30 rounded-xl p-3 border border-border">
                   <p className="text-xs text-muted-foreground mb-1.5">Status</p>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
