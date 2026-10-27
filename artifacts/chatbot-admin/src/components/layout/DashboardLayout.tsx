@@ -30,7 +30,7 @@ import {
   Database,
   Cpu,
   Coins,
-  PenTool, Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, type LucideIcon,
+  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -866,7 +866,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       ? [{ href: "/client/api-tokens",  label: lang === "ar" ? "رموز API" : "API Tokens", icon: KeyRound }]
       : [{ href: "/client/usage",       label: lang === "ar" ? "الحصة الشهرية (Quota)" : "Token Quota", icon: Coins }]
     ),
-    { href: "/client/prompts",          label: t("nav_prompts") || "Prompts", icon: PenTool },
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
     {
