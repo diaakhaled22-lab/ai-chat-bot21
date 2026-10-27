@@ -644,17 +644,11 @@ export default function AdminCompanies() {
 
   const updateBusinessTypeMutation = useMutation({
     mutationFn: async ({ id, businessType }: { id: number; businessType: string }) => {
-      const res = await fetch(`/api/admin/companies/${id}`, {
-        method: "PATCH",
+      return customFetch(`/api/admin/companies/${id}/business-type`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ businessType }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to update business type");
-      }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });

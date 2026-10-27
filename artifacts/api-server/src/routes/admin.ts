@@ -46,6 +46,27 @@ async function ensureQuotaColumns(): Promise<void> {
   }
 }
 
+let businessTypeEnsured = false;
+async function ensureBusinessTypeSchema(): Promise<void> {
+  if (businessTypeEnsured) return;
+  try {
+    const { pool } = await import("@workspace/db");
+    if (pool) {
+      await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {});
+      await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_date TEXT;`).catch(() => {});
+      await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS doctor TEXT;`).catch(() => {});
+      await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';`).catch(() => {});
+      await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS booking_type TEXT DEFAULT 'new_checkup';`).catch(() => {});
+      await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT;`).catch(() => {});
+    } else {
+      await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {});
+    }
+    businessTypeEnsured = true;
+  } catch (err) {
+    logger.warn({ err }, "Could not ensure business_type schema");
+  }
+}
+
 function toIsoOrNull(val: Date | string | null | undefined): string | null {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val.toISOString();
@@ -609,6 +630,7 @@ router.delete("/admin/clients/:id", async (req, res) => {
 // GET /admin/companies
 router.get("/admin/companies", async (req, res) => {
   await ensureQuotaColumns();
+  await ensureBusinessTypeSchema();
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
@@ -831,6 +853,7 @@ router.patch("/admin/companies/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+    await ensureBusinessTypeSchema();
     const { myId, securityPrompt, systemPrompt, notificationEmail, resendApiKey } = req.body as {
       myId?: string | null;
       securityPrompt?: string | null;
@@ -864,25 +887,49 @@ router.patch("/admin/companies/:id", async (req, res) => {
       updateValues.businessType = (req.body as any).businessType === "clinic" ? "clinic" : "general";
     }
 
-    const [row] = await db
-      .update(companiesTable)
-      .set(updateValues)
-      .where(eq(companiesTable.id, id))
-      .returning();
+    let row: typeof companiesTable.$inferSelect | undefined;
+    try {
+      const rows = await db
+        .update(companiesTable)
+        .set(updateValues)
+        .where(eq(companiesTable.id, id))
+        .returning();
+      row = rows[0];
+    } catch (dbErr: any) {
+      if (dbErr?.message?.includes("business_type") || dbErr?.code === "42703") {
+        try {
+          const { pool } = await import("@workspace/db");
+          if (pool) {
+            await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {});
+            const rows = await db
+              .update(companiesTable)
+              .set(updateValues)
+              .where(eq(companiesTable.id, id))
+              .returning();
+            row = rows[0];
+          }
+        } catch {}
+      }
+      if (!row) throw dbErr;
+    }
     if (!row) { res.status(404).json({ error: "Company not found" }); return; }
 
     if (updateValues.businessType !== undefined) {
-      const [adminUser] = await db
-        .select({ username: usersTable.username })
-        .from(usersTable)
-        .where(eq(usersTable.id, req.session.userId!));
-      const performedBy = adminUser?.username ?? "admin";
-      await db.insert(companyActivityLogsTable).values({
-        companyId: id,
-        action: "business_type_updated",
-        performedBy,
-        note: `Admin set company business type to: ${updateValues.businessType === "clinic" ? "Clinic & Appointments CRM (عيادة طبية)" : "General Leads CRM (شركة عامة)"}`,
-      });
+      try {
+        const [adminUser] = await db
+          .select({ username: usersTable.username })
+          .from(usersTable)
+          .where(eq(usersTable.id, req.session.userId!));
+        const performedBy = adminUser?.username ?? "admin";
+        await db.insert(companyActivityLogsTable).values({
+          companyId: id,
+          action: "business_type_updated",
+          performedBy,
+          note: `Admin set company business type to: ${updateValues.businessType === "clinic" ? "Clinic & Appointments CRM (عيادة طبية)" : "General Leads CRM (شركة عامة)"}`,
+        });
+      } catch (logErr) {
+        logger.warn({ logErr }, "Failed to log activity for business_type_updated");
+      }
     }
 
     const [clientRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.clientId));
@@ -899,9 +946,61 @@ router.patch("/admin/companies/:id", async (req, res) => {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     });
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err }, "Update company myId error");
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err?.message || "Internal server error" });
+  }
+});
+
+// PUT /admin/companies/:id/business-type
+router.put("/admin/companies/:id/business-type", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+    await ensureBusinessTypeSchema();
+
+    const rawType = (req.body as any)?.businessType;
+    const businessType = rawType === "clinic" ? "clinic" : "general";
+
+    const { pool } = await import("@workspace/db");
+    if (pool) {
+      await pool.query(
+        `ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`
+      ).catch(() => {});
+      await pool.query(
+        `UPDATE companies SET business_type = $1 WHERE id = $2;`,
+        [businessType, id]
+      );
+    } else {
+      await db
+        .update(companiesTable)
+        .set({ businessType })
+        .where(eq(companiesTable.id, id));
+    }
+
+    try {
+      const [adminUser] = await db
+        .select({ username: usersTable.username })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.session.userId!));
+      const performedBy = adminUser?.username ?? "admin";
+      await db.insert(companyActivityLogsTable).values({
+        companyId: id,
+        action: "business_type_updated",
+        performedBy,
+        note: `Admin set company business type to: ${businessType === "clinic" ? "Clinic & Appointments CRM (عيادة طبية)" : "General Leads CRM (شركة عامة)"}`,
+      });
+    } catch (logErr) {
+      logger.warn({ logErr }, "Failed to insert activity log for business type update");
+    }
+
+    res.json({ ok: true, businessType });
+  } catch (err: any) {
+    logger.error({ err }, "Set company business type error");
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 
