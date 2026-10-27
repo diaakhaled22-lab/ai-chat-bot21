@@ -46,6 +46,7 @@ interface DashboardData {
   periodLabel: string;
   sentiments: { positive: number; neutral: number; negative: number; angry: number };
   intents: Array<{ name: string; count: number }>;
+  businessType?: string;
   hasCompany: boolean;
 }
 
@@ -147,13 +148,17 @@ export default function ClientDashboard() {
 
   const sentiments = data?.sentiments;
 
+  const isClinic = data?.businessType === "clinic";
+
   return (
     <div className="space-y-6">
       {/* ── Bot Manager Hero Operations Banner matching Login aesthetic ── */}
       <div
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
-          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+          background: isClinic
+            ? "linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)"
+            : "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
         }}
       >
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />

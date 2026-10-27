@@ -1673,6 +1673,7 @@ router.get("/client/dashboard", async (req, res) => {
       sentiments,
       intents: Object.entries(intents).map(([name, count]) => ({ name, count })).sort((a,b)=>b.count-a.count),
       periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
+      businessType: (company as any).businessType || "general",
       hasCompany: true,
     });
   } catch (err) {

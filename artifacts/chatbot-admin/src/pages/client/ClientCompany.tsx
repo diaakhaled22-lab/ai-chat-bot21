@@ -577,7 +577,9 @@ export default function ClientCompany() {
       <div
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
-          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+          background: (company as any)?.businessType === "clinic"
+            ? "linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)"
+            : "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
         }}
       >
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
