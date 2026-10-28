@@ -30,6 +30,7 @@ import AdminAiQuota from "@/pages/admin/AdminAiQuota";
 import AdminNotifications from "@/pages/admin/AdminNotifications";
 
 import ClientCompany from "./pages/client/ClientCompany";
+import ClientPackages from "./pages/client/ClientPackages";
 import ClientAiModel from "./pages/client/ClientAiModel";
 import ClientPrompts from "./pages/client/ClientPrompts";
 import ClientKnowledge from "@/pages/client/ClientKnowledge";
@@ -186,6 +187,9 @@ function Router() {
         </Route>
               <Route path="/client/company">
           {() => <ProtectedRoute component={ClientCompany} allowedRole="client" />}
+        </Route>
+        <Route path="/client/packages">
+          {() => <ProtectedRoute component={ClientPackages} allowedRole="client" />}
         </Route>
         <Route path="/client/ai-model">
           {() => <ProtectedRoute component={ClientAiModel} allowedRole="client" />}

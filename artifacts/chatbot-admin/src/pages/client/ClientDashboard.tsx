@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -110,6 +110,7 @@ const PieTooltip = ({ active, payload }: any) => {
 
 export default function ClientDashboard() {
   const { lang } = useLanguage();
+  const [, setLocation] = useLocation();
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery<DashboardData>({
     queryKey: ["client-dashboard"],
@@ -117,6 +118,14 @@ export default function ClientDashboard() {
     refetchInterval: 60 * 1000,
     retry: false,
   });
+
+  useEffect(() => {
+    if (!isLoading && data) {
+      if (!data.hasCompany || !data.isActive) {
+        setLocation("/client/company");
+      }
+    }
+  }, [isLoading, data, setLocation]);
 
   const [filterMode, setFilterMode] = useState<"own_key" | "quota">("own_key");
   const [userSelected, setUserSelected] = useState(false);

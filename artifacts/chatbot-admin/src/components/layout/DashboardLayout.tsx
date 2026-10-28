@@ -30,7 +30,7 @@ import {
   Database,
   Cpu,
   Coins,
-  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, type LucideIcon,
+  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -841,7 +841,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/settings",           label: "Settings",           icon: Settings },
   ];
 
-  const { data: clientCompany } = useGetClientCompany({
+  const { data: clientCompany, isLoading: isCompanyLoading } = useGetClientCompany({
     query: {
       queryKey: getGetClientCompanyQueryKey(),
       enabled: role === "client",
@@ -851,8 +851,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const isTokensMode = (clientCompany as any)?.aiExecutionMode === "tokens";
   const isClinic = role === "client" && (clientCompany as any)?.businessType === "clinic";
+  const isNewClient = role === "client" && (!clientCompany || !(clientCompany as any)?.isActive);
 
-  const clientLinks: NavLink[] = [
+  // Initial navigation for new/inactive client: Company Profile, Packages, Support & Tickets, Settings
+  const initialClientLinks: NavLink[] = [
+    { href: "/client/company",          label: t("nav_company") || (lang === "ar" ? "ملف الشركة" : "Company Profile"), icon: Building2 },
+    { href: "/client/packages",         label: t("nav_packages") || (lang === "ar" ? "الباقات والاشتراكات" : "Packages & Plans"), icon: Package },
+    { href: "/client/support",          label: t("nav_support") || (lang === "ar" ? "الدعم والتذاكر" : "Support & Tickets"), icon: LifeBuoy },
+    { href: "/client/settings",         label: t("nav_settings") || (lang === "ar" ? "الإعدادات" : "Settings"), icon: Settings },
+  ];
+
+  const fullClientLinks: NavLink[] = [
     { href: "/client/dashboard",        label: t("nav_dashboard") || "Dashboard",  icon: LayoutDashboard },
     {
       href: "/client/notifications",
@@ -861,6 +870,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       notifBadge: true,
     },
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
+    { href: "/client/packages",         label: t("nav_packages") || (lang === "ar" ? "الباقات والاشتراكات" : "Packages & Plans"), icon: Package },
     { href: "/client/ai-model",         label: t("nav_ai_model") || "AI Model & Provider", icon: Cpu },
     ...(isTokensMode
       ? [{ href: "/client/api-tokens",  label: lang === "ar" ? "رموز API" : "API Tokens", icon: KeyRound }]
@@ -900,6 +910,28 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/webhook-history",  label: t("nav_webhook_history"), icon: Zap },
     { href: "/client/settings",         label: t("nav_settings"),        icon: Settings },
   ];
+
+  const clientLinks = isNewClient ? initialClientLinks : fullClientLinks;
+
+  useEffect(() => {
+    if (role === "client" && !isCompanyLoading) {
+      if (isNewClient) {
+        const allowedInitialPaths = [
+          "/client/company",
+          "/client/packages",
+          "/client/support",
+          "/client/settings",
+          "/client/notifications",
+        ];
+        if (
+          location.startsWith("/client") &&
+          !allowedInitialPaths.some((p) => location === p || location.startsWith(p + "/"))
+        ) {
+          setLocation("/client/company");
+        }
+      }
+    }
+  }, [role, isCompanyLoading, isNewClient, location, setLocation]);
 
   const links = role === "admin" ? adminLinks : clientLinks;
   const allLinks = links.flatMap((l) => (l.children ? [l, ...l.children] : [l]));

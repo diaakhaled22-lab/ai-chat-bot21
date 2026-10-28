@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Cpu } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Cpu, Package } from "lucide-react";
 
 /** Compute the same SHA-256 based webhook secret as the backend (first 32 hex chars). */
 async function telegramWebhookSecret(token: string): Promise<string> {
@@ -607,16 +607,26 @@ export default function ClientCompany() {
       </div>
 
       {company && !company.isActive && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-4 text-sm">
-          <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-          <div className="space-y-1">
-            <p className="font-semibold text-red-600 dark:text-red-400">{lang === "ar" ? "البوت غير نشط — يرجى التواصل مع المسؤول لتفعيل الحساب" : "Chatbot is inactive — contact your admin"}</p>
-            <p className="text-red-600/80 dark:text-red-400/80">
-              {lang === "ar"
-                ? "لم يتم تفعيل اشتراكك بعد. جميع القنوات (تليجرام، واتساب، ماسنجر، ويدجت الموقع) لن ترد على الرسائل حتى يتم تفعيل الحساب."
-                : "Your subscription has not been activated yet. All channels (Telegram, WhatsApp, Messenger, Website Widget) will not respond to messages until an admin activates your account."}
-            </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 text-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-semibold text-amber-600 dark:text-amber-400">
+                {lang === "ar" ? "الحساب غير نشط حالياً — بانتظار تفعيل الباقة" : "Account is inactive — awaiting plan activation"}
+              </p>
+              <p className="text-amber-600/80 dark:text-amber-400/80 text-xs leading-relaxed max-w-2xl">
+                {lang === "ar"
+                  ? "يرجى إكمال بيانات شركتك أدناه، ثم التوجه إلى صفحة 'الباقات والاشتراكات' لاختيار الباقة المناسبة وتأكيد التفعيل مع فريق الدعم."
+                  : "Please complete your company details below, then head to 'Packages & Plans' to select a tier and request account activation."}
+              </p>
+            </div>
           </div>
+          <Link href="/client/packages">
+            <Button size="sm" className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white rounded-xl text-xs font-bold gap-1.5 shrink-0 shadow-md">
+              <Package className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "عرض الباقات والاشتراك" : "View Packages & Plans"}</span>
+            </Button>
+          </Link>
         </div>
       )}
 
