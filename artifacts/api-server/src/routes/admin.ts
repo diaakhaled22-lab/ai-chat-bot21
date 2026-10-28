@@ -25,6 +25,7 @@ import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventE
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
 import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem, type PackagesCatalog } from "../lib/packagesCatalog";
+import { getExchangeRates, saveExchangeRates, type CurrencyRatesData } from "../lib/currencyRates";
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
@@ -4350,6 +4351,68 @@ router.get(["/admin/packages", "/packages/catalog", "/packages"], handleGetPacka
 router.put(["/admin/packages", "/packages"], handleUpdatePackages);
 router.post(["/admin/packages", "/packages"], handleUpdatePackages);
 router.post(["/admin/packages/reset", "/packages/reset"], handleResetPackages);
+
+// ── Currency Exchange Rates Management ───────────────────────────────────────
+router.get("/admin/currency-rates", async (_req, res) => {
+  try {
+    const data = await getExchangeRates();
+    res.json(data);
+  } catch (err: any) {
+    logger.error({ err }, "Get admin currency rates error");
+    res.status(500).json({ error: "Failed to load currency rates" });
+  }
+});
+
+router.post("/admin/currency-rates/sync", async (req, res) => {
+  try {
+    const data = await getExchangeRates(true);
+    await logAdminActivity(
+      req.session.userId!,
+      "Sync Currency Rates",
+      `Manually synced daily live exchange rates (SAR: ${data.rates.SAR}, AED: ${data.rates.AED}, EGP: ${data.rates.EGP})`,
+      req.ip || null
+    );
+    res.json(data);
+  } catch (err: any) {
+    logger.error({ err }, "Sync currency rates error");
+    res.status(500).json({ error: "Failed to sync exchange rates" });
+  }
+});
+
+router.put("/admin/currency-rates", async (req, res) => {
+  try {
+    const { rates, autoSync } = req.body as {
+      rates?: Record<string, number>;
+      autoSync?: boolean;
+    };
+
+    const current = await getExchangeRates();
+    const updated: CurrencyRatesData = {
+      base: "USD",
+      rates: {
+        ...current.rates,
+        ...(rates || {}),
+        USD: 1.0,
+      },
+      lastUpdated: new Date().toISOString(),
+      source: autoSync === false ? "cache" : current.source,
+      autoSync: autoSync !== false,
+    };
+
+    await saveExchangeRates(updated);
+    await logAdminActivity(
+      req.session.userId!,
+      "Update Currency Rates",
+      `Admin updated exchange rates configuration (autoSync: ${updated.autoSync})`,
+      req.ip || null
+    );
+
+    res.json(updated);
+  } catch (err: any) {
+    logger.error({ err }, "Update currency rates error");
+    res.status(500).json({ error: "Failed to update currency rates" });
+  }
+});
 
 export default router;
 

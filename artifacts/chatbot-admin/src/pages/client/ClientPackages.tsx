@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { useExchangeRates, CURRENCY_METADATA } from "@/hooks/use-exchange-rates";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,7 +263,11 @@ export default function ClientPackages() {
   const isActive = Boolean(company && (company as any)?.isActive);
   const currentTokens = (company as any)?.monthlyTokenQuota ?? null;
 
-  const currencyCfg = CURRENCIES[selectedCurrency];
+  const { getRate, lastUpdated } = useExchangeRates();
+  const currencyCfg: CurrencyConfig = {
+    ...CURRENCIES[selectedCurrency],
+    exchangeRate: getRate(selectedCurrency),
+  };
 
   const calcPrice = (priceUsd: number) => {
     let finalUsd = priceUsd;
@@ -390,26 +395,38 @@ export default function ClientPackages() {
           </div>
 
           {/* Quick Currency Selector */}
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl self-stretch md:self-auto justify-center">
-            {(Object.keys(CURRENCIES) as CurrencyCode[]).map((cur) => {
-              const cfg = CURRENCIES[cur];
-              const isSel = selectedCurrency === cur;
-              return (
-                <button
-                  key={cur}
-                  type="button"
-                  onClick={() => setSelectedCurrency(cur)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isSel
-                      ? "bg-white text-slate-900 shadow-md scale-105"
-                      : "text-white/80 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <span>{cfg.flag}</span>
-                  <span>{cfg.code}</span>
-                </button>
-              );
-            })}
+          <div className="flex flex-col items-center md:items-end gap-1.5 self-stretch md:self-auto">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl justify-center">
+              {(Object.keys(CURRENCIES) as CurrencyCode[]).map((cur) => {
+                const cfg = CURRENCIES[cur];
+                const isSel = selectedCurrency === cur;
+                return (
+                  <button
+                    key={cur}
+                    type="button"
+                    onClick={() => setSelectedCurrency(cur)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isSel
+                        ? "bg-white text-slate-900 shadow-md scale-105"
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <span>{cfg.flag}</span>
+                    <span>{cfg.code}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-blue-200/90 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>
+                {selectedCurrency === "USD"
+                  ? lang === "ar"
+                    ? "أسعار الصرف متزامنة يومياً"
+                    : "Exchange rates auto-synced daily"
+                  : `1$ ≈ ${currencyCfg.exchangeRate.toFixed(2)} ${currencyCfg.symbol} (${lang === "ar" ? "سعر اليوم المباشر" : "Live daily rate"})`}
+              </span>
+            </div>
           </div>
         </div>
       </div>

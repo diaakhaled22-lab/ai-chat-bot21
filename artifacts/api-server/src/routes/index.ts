@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { getExchangeRates } from "../lib/currencyRates";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import adminRouter from "./admin";
@@ -32,5 +33,15 @@ router.use(knowledgeFilesRouter);
 router.use(wordpressRouter);
 router.use(restApiRouter);
 router.use(shopifyRouter);
+
+// Public / client currency rates endpoint (auto-synced daily)
+router.get(["/currency-rates", "/currencies/rates", "/exchange-rates"], async (_req, res) => {
+  try {
+    const data = await getExchangeRates();
+    res.json(data);
+  } catch {
+    res.status(500).json({ error: "Failed to load exchange rates" });
+  }
+});
 
 export default router;

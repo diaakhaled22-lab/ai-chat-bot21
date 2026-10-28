@@ -24,6 +24,7 @@ import { loadBlockedIpsFromDb, loadTotpSecretsFromDb, loadAttackLogsFromDb } fro
 import { ensureEmailNotificationSchema, notifySubscriptionExpiringSoon, notifySubscriptionExpired } from "./lib/companyNotification";
 import { ensureRagSchema } from "./lib/knowledgeRag";
 import { ensureVoiceSchema } from "./lib/audio";
+import { getExchangeRates } from "./lib/currencyRates";
 
 const rawPort = process.env["API_PORT"] || (process.env["PORT"] && process.env["PORT"] !== "3000" && process.env["PORT"] !== "5173" ? process.env["PORT"] : "8080");
 const port = Number(rawPort) || 8080;
@@ -155,6 +156,24 @@ async function sendRenewalReminders() {
 
 setInterval(sendRenewalReminders, 60 * 60 * 1000);
 sendRenewalReminders();
+
+// Daily automated currency exchange rates synchronization (every 12 hours)
+setInterval(async () => {
+  try {
+    await getExchangeRates(true);
+  } catch (err) {
+    logger.error({ err }, "Daily currency sync failed");
+  }
+}, 12 * 60 * 60 * 1000);
+
+// Initial currency exchange rates sync on startup
+setTimeout(async () => {
+  try {
+    await getExchangeRates();
+  } catch (err) {
+    logger.warn({ err }, "Initial currency exchange rates sync check failed");
+  }
+}, 3000);
 
 // Auto-purge chat logs: Default is permanent retention (0 = never delete).
 // Chat logs, token metrics, and dashboard statistics are preserved permanently even if subscription is not active.

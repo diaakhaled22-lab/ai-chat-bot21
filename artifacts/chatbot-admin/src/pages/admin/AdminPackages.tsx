@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import {
   Save,
   Search,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 
 export interface PackageItem {
@@ -77,13 +79,6 @@ export interface PackagesCatalog {
   updatedAt?: string;
 }
 
-const EXCHANGE_RATES = {
-  USD: 1.0,
-  SAR: 3.75,
-  AED: 3.67,
-  EGP: 48.5,
-};
-
 const COLOR_PRESETS = [
   { name: "Blue", hex: "#2D5BE3" },
   { name: "Cyan", hex: "#0284c7" },
@@ -97,6 +92,14 @@ export default function AdminPackages() {
   const { lang } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { rates: liveRates, syncLiveRates, isSyncing, lastUpdated: ratesLastUpdated } = useExchangeRates();
+
+  const EXCHANGE_RATES = {
+    USD: 1.0,
+    SAR: liveRates.SAR || 3.75,
+    AED: liveRates.AED || 3.6725,
+    EGP: liveRates.EGP || 56.09,
+  };
 
   const [activeTab, setActiveTab] = useState<"plans" | "topups">("plans");
   const [searchQuery, setSearchQuery] = useState("");
@@ -381,6 +384,25 @@ export default function AdminPackages() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 self-stretch md:self-auto">
+            <Button
+              variant="outline"
+              onClick={() => {
+                syncLiveRates(undefined as any, {
+                  onSuccess: () => {
+                    toast({
+                      title: lang === "ar" ? "تم تحديث أسعار الصرف" : "Exchange Rates Synced",
+                      description: lang === "ar" ? "تم جلب أحدث أسعار العملات الحية وتحديث أسعار المنصة" : "Live daily exchange rates updated",
+                    });
+                  },
+                });
+              }}
+              disabled={isSyncing}
+              className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-400/30 rounded-xl text-xs font-bold gap-1.5 cursor-pointer backdrop-blur-md"
+              title={lang === "ar" ? "تحديث أسعار الصرف الحية اليومية الآن" : "Sync live daily exchange rates"}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              <span>{isSyncing ? (lang === "ar" ? "جارٍ المزامنة..." : "Syncing...") : (lang === "ar" ? "تحديث أسعار العملات" : "Sync Rates")}</span>
+            </Button>
             <Button
               onClick={handleOpenAddPlan}
               className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white rounded-xl text-xs font-bold gap-2 shadow-lg cursor-pointer"

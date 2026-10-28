@@ -4,6 +4,7 @@ import { customFetch } from "@workspace/api-client-react";
 import QuotaAICard from "@/components/QuotaAICard";
 import { AI_PROVIDERS, getModelPricingDetails, type AiProvider } from "@/lib/ai-models";
 import { useLanguage } from "@/hooks/use-language";
+import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,7 +121,7 @@ const QUOTA_PRESETS = [
   { label: "10M", value: 10_000_000 },
 ];
 
-export type CurrencyCode = "USD" | "SAR" | "EGP";
+export type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
 
 export interface CurrencyConfig {
   code: CurrencyCode;
@@ -148,13 +149,21 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
     flag: "🇸🇦",
     exchangeRate: 3.75,
   },
+  AED: {
+    code: "AED",
+    symbol: "AED",
+    nameAr: "AED",
+    nameEn: "UAE Dirham",
+    flag: "🇦🇪",
+    exchangeRate: 3.67,
+  },
   EGP: {
     code: "EGP",
     symbol: "EGP",
     nameAr: "EGP",
     nameEn: "Egyptian Pound",
     flag: "🇪🇬",
-    exchangeRate: 48.50,
+    exchangeRate: 56.09,
   },
 };
 
@@ -714,6 +723,11 @@ export default function AdminAiQuota() {
   const { lang } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { rates: liveRates } = useExchangeRates();
+
+  if (liveRates.SAR) CURRENCIES.SAR.exchangeRate = liveRates.SAR;
+  if (liveRates.AED) CURRENCIES.AED.exchangeRate = liveRates.AED;
+  if (liveRates.EGP) CURRENCIES.EGP.exchangeRate = liveRates.EGP;
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("tokens");
