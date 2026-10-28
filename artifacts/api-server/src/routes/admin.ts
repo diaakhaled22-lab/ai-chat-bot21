@@ -69,6 +69,22 @@ async function ensureBusinessTypeSchema(): Promise<void> {
   }
 }
 
+let enabledPagesColumnEnsured = false;
+async function ensureEnabledClientPagesSchema(): Promise<void> {
+  if (enabledPagesColumnEnsured) return;
+  try {
+    const { pool } = await import("@workspace/db");
+    if (pool) {
+      await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+    } else {
+      await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+    }
+    enabledPagesColumnEnsured = true;
+  } catch (err) {
+    logger.warn({ err }, "Could not ensure enabled_client_pages schema");
+  }
+}
+
 function toIsoOrNull(val: Date | string | null | undefined): string | null {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val.toISOString();
@@ -633,6 +649,7 @@ router.delete("/admin/clients/:id", async (req, res) => {
 router.get("/admin/companies", async (req, res) => {
   await ensureQuotaColumns();
   await ensureBusinessTypeSchema();
+  await ensureEnabledClientPagesSchema();
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
@@ -687,14 +704,21 @@ router.get("/admin/companies", async (req, res) => {
         quotaStartDate: toIsoOrNull(company.quotaStartDate),
         quotaEndDate: toIsoOrNull(company.quotaEndDate),
         systemPrompt: company.systemPrompt,
-          securityPrompt: company.securityPrompt,
+        securityPrompt: company.securityPrompt,
         googleSheetsEnabled: company.googleSheetsEnabled,
         googleSheetsLink: company.googleSheetsLink,
         googleSheetsName: company.googleSheetsName,
         googleSheetsPage: company.googleSheetsPage,
         serviceAccountKey: maskApiKey(company.serviceAccountKey),
+        googleCalendarEnabled: company.googleCalendarEnabled ?? false,
+        googleCalendarId: company.googleCalendarId ?? null,
+        googleCalendarTimezone: company.googleCalendarTimezone ?? "UTC",
+        googleCalendarDuration: company.googleCalendarDuration ?? 30,
+        googleCalendarBookingRules: company.googleCalendarBookingRules ?? null,
+        googleCalendarServiceAccountKey: maskApiKey(company.googleCalendarServiceAccountKey),
         aiProvider: company.aiProvider ?? null,
         aiModel: company.aiModel ?? null,
+        aiExecutionMode: company.aiExecutionMode || "quota",
         aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
         aiAgentUrl: company.aiAgentUrl,
         monthlyTokenQuota: company.monthlyTokenQuota ?? null,
@@ -703,12 +727,15 @@ router.get("/admin/companies", async (req, res) => {
         telegramBotUsername: company.telegramBotUsername,
         telegramEnabled: company.telegramEnabled,
         whatsappApiToken: maskApiKey(company.whatsappApiToken),
+        whatsappPhoneNumberId: company.whatsappPhoneNumberId,
+        whatsappBusinessAccountId: company.whatsappBusinessAccountId,
         whatsappNumber: company.whatsappNumber,
         whatsappEnabled: company.whatsappEnabled,
         messengerApiKey: maskApiKey(company.messengerApiKey),
         messengerPageId: company.messengerPageId,
         messengerEnabled: company.messengerEnabled,
         websiteChatbotKey: company.websiteChatbotKey,
+        widgetAllowedDomains: company.widgetAllowedDomains ?? null,
         widgetEnabled: company.widgetEnabled,
         websiteDataUrl: company.websiteDataUrl,
         websiteAutoSync: company.websiteAutoSync,
@@ -719,6 +746,15 @@ router.get("/admin/companies", async (req, res) => {
         allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
         allowSourceShopify: company.allowSourceShopify === false ? false : true,
         businessType: company.businessType || "general",
+        enabledClientPages: (company as any).enabledClientPages
+          ? (() => {
+              try {
+                return JSON.parse((company as any).enabledClientPages);
+              } catch {
+                return null;
+              }
+            })()
+          : null,
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString(),
       }))
@@ -778,6 +814,8 @@ router.get("/admin/companies/:id/data-sources", async (req, res) => {
 // GET /admin/companies/:id
 router.get("/admin/companies/:id", async (req, res) => {
   await ensureQuotaColumns();
+  await ensureBusinessTypeSchema();
+  await ensureEnabledClientPagesSchema();
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
@@ -813,25 +851,39 @@ router.get("/admin/companies/:id", async (req, res) => {
       quotaStartDate: toIsoOrNull(company.quotaStartDate),
       quotaEndDate: toIsoOrNull(company.quotaEndDate),
       systemPrompt: company.systemPrompt,
-          securityPrompt: company.securityPrompt,
-        googleSheetsEnabled: company.googleSheetsEnabled,
+      securityPrompt: company.securityPrompt,
+      googleSheetsEnabled: company.googleSheetsEnabled,
       googleSheetsLink: company.googleSheetsLink,
       googleSheetsName: company.googleSheetsName,
       googleSheetsPage: company.googleSheetsPage,
       serviceAccountKey: maskApiKey(company.serviceAccountKey),
+      googleCalendarEnabled: company.googleCalendarEnabled ?? false,
+      googleCalendarId: company.googleCalendarId ?? null,
+      googleCalendarTimezone: company.googleCalendarTimezone ?? "UTC",
+      googleCalendarDuration: company.googleCalendarDuration ?? 30,
+      googleCalendarBookingRules: company.googleCalendarBookingRules ?? null,
+      googleCalendarServiceAccountKey: maskApiKey(company.googleCalendarServiceAccountKey),
+      aiProvider: company.aiProvider ?? null,
+      aiModel: company.aiModel ?? null,
+      aiExecutionMode: company.aiExecutionMode || "quota",
       aiAgentApiKey: maskApiKey(company.aiAgentApiKey),
       aiAgentUrl: company.aiAgentUrl,
       monthlyTokenQuota: company.monthlyTokenQuota ?? null,
       chatLogRetentionDays: company.chatLogRetentionDays ?? null,
       telegramBotApiKey: maskApiKey(company.telegramBotApiKey),
       telegramBotUsername: company.telegramBotUsername,
+      telegramEnabled: company.telegramEnabled ?? false,
       whatsappApiToken: maskApiKey(company.whatsappApiToken),
       whatsappPhoneNumberId: company.whatsappPhoneNumberId,
       whatsappBusinessAccountId: company.whatsappBusinessAccountId,
       whatsappNumber: company.whatsappNumber,
+      whatsappEnabled: company.whatsappEnabled ?? false,
       messengerApiKey: maskApiKey(company.messengerApiKey),
       messengerPageId: company.messengerPageId,
+      messengerEnabled: company.messengerEnabled ?? false,
       websiteChatbotKey: company.websiteChatbotKey,
+      widgetAllowedDomains: company.widgetAllowedDomains ?? null,
+      widgetEnabled: company.widgetEnabled ?? false,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
@@ -841,6 +893,15 @@ router.get("/admin/companies/:id", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      enabledClientPages: (company as any).enabledClientPages
+        ? (() => {
+            try {
+              return JSON.parse((company as any).enabledClientPages);
+            } catch {
+              return null;
+            }
+          })()
+        : null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -850,109 +911,306 @@ router.get("/admin/companies/:id", async (req, res) => {
   }
 });
 
-// PATCH /admin/companies/:id  â€” update myId (custom reference)
-router.patch("/admin/companies/:id", async (req, res) => {
+// Comprehensive Company Update Handler (PATCH /admin/companies/:id and PUT /admin/companies/:id)
+async function handleUpdateCompany(req: any, res: any) {
   try {
     const id = Number(req.params.id);
-    if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
     await ensureBusinessTypeSchema();
-    const { myId, securityPrompt, systemPrompt, notificationEmail, resendApiKey } = req.body as {
-      myId?: string | null;
-      securityPrompt?: string | null;
-      systemPrompt?: string | null;
-      notificationEmail?: string | null;
-      resendApiKey?: string | null;
-    };
-    // Basic length validation
-    if (myId && typeof myId === 'string' && myId.length > 255) {
-      res.status(400).json({ error: "myId is too long (max 255 characters)" });
+    await ensureEnabledClientPagesSchema();
+
+    const [existing] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ error: "Company not found" });
       return;
     }
-    if (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.length > 50000) {
-      res.status(400).json({ error: "systemPrompt is too long (max 50000 characters)" });
-      return;
-    }
-    if (securityPrompt && typeof securityPrompt === 'string' && securityPrompt.length > 50000) {
-      res.status(400).json({ error: "securityPrompt is too long (max 50000 characters)" });
-      return;
-    }
+
+    const body = req.body || {};
     const updateValues: Record<string, any> = {};
-    if (myId !== undefined) updateValues.myId = myId;
-    if (securityPrompt !== undefined) updateValues.securityPrompt = securityPrompt;
-    if (systemPrompt !== undefined) updateValues.systemPrompt = systemPrompt;
-    if (notificationEmail !== undefined) updateValues.notificationEmail = notificationEmail ? notificationEmail.trim() : null;
-    if (resendApiKey !== undefined) {
-      const [existing] = await db.select({ resendApiKey: companiesTable.resendApiKey }).from(companiesTable).where(eq(companiesTable.id, id)).limit(1);
-      updateValues.resendApiKey = preserveMaskedSecret(resendApiKey, existing?.resendApiKey);
+
+    // 1. Profile & Info
+    if (body.name !== undefined && typeof body.name === "string" && body.name.trim()) {
+      updateValues.name = body.name.trim();
     }
-    if ((req.body as any)?.businessType !== undefined) {
-      updateValues.businessType = (req.body as any).businessType === "clinic" ? "clinic" : "general";
+    if (body.myId !== undefined) {
+      updateValues.myId = body.myId ? String(body.myId).trim() : null;
+    }
+    if (body.generalInfo !== undefined) {
+      updateValues.generalInfo = body.generalInfo ?? null;
+    }
+    if (body.notificationEmail !== undefined) {
+      updateValues.notificationEmail = body.notificationEmail ? String(body.notificationEmail).trim() : null;
+    }
+    if (body.resendApiKey !== undefined) {
+      updateValues.resendApiKey = preserveMaskedSecret(body.resendApiKey, existing.resendApiKey);
+    }
+    if (body.businessType !== undefined) {
+      updateValues.businessType = body.businessType === "clinic" ? "clinic" : "general";
     }
 
-    let row: typeof companiesTable.$inferSelect | undefined;
+    // 2. AI Model & Prompts
+    if (body.systemPrompt !== undefined) {
+      updateValues.systemPrompt = body.systemPrompt ?? null;
+    }
+    if (body.securityPrompt !== undefined) {
+      updateValues.securityPrompt = body.securityPrompt ?? null;
+    }
+    if (body.aiProvider !== undefined) {
+      updateValues.aiProvider = body.aiProvider || null;
+    }
+    if (body.aiModel !== undefined) {
+      updateValues.aiModel = body.aiModel || null;
+    }
+    if (body.aiExecutionMode !== undefined) {
+      updateValues.aiExecutionMode = body.aiExecutionMode === "tokens" ? "tokens" : "quota";
+    }
+    if (body.aiAgentApiKey !== undefined) {
+      updateValues.aiAgentApiKey = preserveMaskedSecret(body.aiAgentApiKey, existing.aiAgentApiKey);
+    }
+    if (body.aiAgentUrl !== undefined) {
+      updateValues.aiAgentUrl = body.aiAgentUrl ? String(body.aiAgentUrl).trim() : null;
+    }
+
+    // 3. Status & Quota & Subscription
+    if (body.isActive !== undefined) {
+      updateValues.isActive = Boolean(body.isActive);
+    }
+    if (body.monthlyTokenQuota !== undefined) {
+      updateValues.monthlyTokenQuota = body.monthlyTokenQuota === null || body.monthlyTokenQuota === "" ? null : Number(body.monthlyTokenQuota);
+    }
+    if (body.chatLogRetentionDays !== undefined) {
+      updateValues.chatLogRetentionDays = body.chatLogRetentionDays === null || body.chatLogRetentionDays === "" ? null : Number(body.chatLogRetentionDays);
+    }
+    if (body.activationStart !== undefined) {
+      updateValues.activationStart = body.activationStart ? new Date(body.activationStart) : null;
+    }
+    if (body.activationEnd !== undefined) {
+      updateValues.activationEnd = body.activationEnd ? new Date(body.activationEnd) : null;
+    }
+
+    // 4. Telegram
+    if (body.telegramEnabled !== undefined) {
+      updateValues.telegramEnabled = Boolean(body.telegramEnabled);
+    }
+    if (body.telegramBotApiKey !== undefined) {
+      updateValues.telegramBotApiKey = preserveMaskedSecret(body.telegramBotApiKey, existing.telegramBotApiKey);
+    }
+    if (body.telegramBotUsername !== undefined) {
+      updateValues.telegramBotUsername = body.telegramBotUsername ? String(body.telegramBotUsername).trim() : null;
+    }
+
+    // 5. WhatsApp
+    if (body.whatsappEnabled !== undefined) {
+      updateValues.whatsappEnabled = Boolean(body.whatsappEnabled);
+    }
+    if (body.whatsappApiToken !== undefined) {
+      updateValues.whatsappApiToken = preserveMaskedSecret(body.whatsappApiToken, existing.whatsappApiToken);
+    }
+    if (body.whatsappPhoneNumberId !== undefined) {
+      updateValues.whatsappPhoneNumberId = body.whatsappPhoneNumberId ? String(body.whatsappPhoneNumberId).trim() : null;
+    }
+    if (body.whatsappBusinessAccountId !== undefined) {
+      updateValues.whatsappBusinessAccountId = body.whatsappBusinessAccountId ? String(body.whatsappBusinessAccountId).trim() : null;
+    }
+    if (body.whatsappNumber !== undefined) {
+      updateValues.whatsappNumber = body.whatsappNumber ? String(body.whatsappNumber).trim() : null;
+    }
+
+    // 6. Messenger
+    if (body.messengerEnabled !== undefined) {
+      updateValues.messengerEnabled = Boolean(body.messengerEnabled);
+    }
+    if (body.messengerApiKey !== undefined) {
+      updateValues.messengerApiKey = preserveMaskedSecret(body.messengerApiKey, existing.messengerApiKey);
+    }
+    if (body.messengerPageId !== undefined) {
+      updateValues.messengerPageId = body.messengerPageId ? String(body.messengerPageId).trim() : null;
+    }
+
+    // 7. Web Widget
+    if (body.widgetEnabled !== undefined) {
+      updateValues.widgetEnabled = Boolean(body.widgetEnabled);
+    }
+    if (body.websiteChatbotKey !== undefined) {
+      updateValues.websiteChatbotKey = body.websiteChatbotKey ? String(body.websiteChatbotKey).trim() : null;
+    }
+    if (body.widgetAllowedDomains !== undefined) {
+      updateValues.widgetAllowedDomains = body.widgetAllowedDomains ? String(body.widgetAllowedDomains).trim() : null;
+    }
+
+    // 8. Google Sheets
+    if (body.googleSheetsEnabled !== undefined) {
+      updateValues.googleSheetsEnabled = Boolean(body.googleSheetsEnabled);
+    }
+    if (body.googleSheetsLink !== undefined) {
+      updateValues.googleSheetsLink = body.googleSheetsLink ? String(body.googleSheetsLink).trim() : null;
+    }
+    if (body.googleSheetsName !== undefined) {
+      updateValues.googleSheetsName = body.googleSheetsName ? String(body.googleSheetsName).trim() : null;
+    }
+    if (body.googleSheetsPage !== undefined) {
+      updateValues.googleSheetsPage = body.googleSheetsPage ? String(body.googleSheetsPage).trim() : null;
+    }
+    if (body.serviceAccountKey !== undefined) {
+      updateValues.serviceAccountKey = preserveMaskedSecret(body.serviceAccountKey, existing.serviceAccountKey);
+    }
+
+    // 9. Google Calendar
+    if (body.googleCalendarEnabled !== undefined) {
+      updateValues.googleCalendarEnabled = Boolean(body.googleCalendarEnabled);
+    }
+    if (body.googleCalendarId !== undefined) {
+      updateValues.googleCalendarId = body.googleCalendarId ? String(body.googleCalendarId).trim() : null;
+    }
+    if (body.googleCalendarTimezone !== undefined) {
+      updateValues.googleCalendarTimezone = body.googleCalendarTimezone ? String(body.googleCalendarTimezone).trim() : "UTC";
+    }
+    if (body.googleCalendarDuration !== undefined) {
+      updateValues.googleCalendarDuration = body.googleCalendarDuration ? Number(body.googleCalendarDuration) : 30;
+    }
+    if (body.googleCalendarBookingRules !== undefined) {
+      updateValues.googleCalendarBookingRules = body.googleCalendarBookingRules ?? null;
+    }
+    if (body.googleCalendarServiceAccountKey !== undefined) {
+      updateValues.googleCalendarServiceAccountKey = preserveMaskedSecret(body.googleCalendarServiceAccountKey, existing.googleCalendarServiceAccountKey);
+    }
+
+    // 10. Sidebar Menu Pages Permissions
+    if (body.enabledClientPages !== undefined) {
+      if (Array.isArray(body.enabledClientPages)) {
+        updateValues.enabledClientPages = JSON.stringify(body.enabledClientPages);
+      } else if (body.enabledClientPages === null) {
+        updateValues.enabledClientPages = null;
+      }
+    }
+
+    if (Object.keys(updateValues).length > 0) {
+      updateValues.updatedAt = new Date();
+    }
+
+    const [updatedRow] = await db
+      .update(companiesTable)
+      .set(updateValues)
+      .where(eq(companiesTable.id, id))
+      .returning();
+
+    if (!updatedRow) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    // Log admin activity
     try {
-      const rows = await db
-        .update(companiesTable)
-        .set(updateValues)
-        .where(eq(companiesTable.id, id))
-        .returning();
-      row = rows[0];
-    } catch (dbErr: any) {
-      if (dbErr?.message?.includes("business_type") || dbErr?.code === "42703") {
-        try {
-          const { pool } = await import("@workspace/db");
-          if (pool) {
-            await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {});
-            const rows = await db
-              .update(companiesTable)
-              .set(updateValues)
-              .where(eq(companiesTable.id, id))
-              .returning();
-            row = rows[0];
-          }
-        } catch {}
-      }
-      if (!row) throw dbErr;
-    }
-    if (!row) { res.status(404).json({ error: "Company not found" }); return; }
+      const [adminUser] = await db
+        .select({ username: usersTable.username })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.session.userId!));
+      const performedBy = adminUser?.username ?? "admin";
+      const notes: string[] = [];
+      if (body.enabledClientPages !== undefined) notes.push("sidebar menu pages");
+      if (body.businessType !== undefined) notes.push(`business type (${updatedRow.businessType})`);
+      if (body.systemPrompt !== undefined || body.securityPrompt !== undefined) notes.push("system/security prompts");
+      if (body.isActive !== undefined) notes.push(`active: ${updatedRow.isActive}`);
+      if (body.monthlyTokenQuota !== undefined) notes.push(`quota: ${updatedRow.monthlyTokenQuota}`);
+      if (body.telegramEnabled !== undefined || body.whatsappEnabled !== undefined || body.messengerEnabled !== undefined || body.widgetEnabled !== undefined) notes.push("channels");
+      if (body.googleSheetsEnabled !== undefined || body.googleCalendarEnabled !== undefined) notes.push("tools");
 
-    if (updateValues.businessType !== undefined) {
-      try {
-        const [adminUser] = await db
-          .select({ username: usersTable.username })
-          .from(usersTable)
-          .where(eq(usersTable.id, req.session.userId!));
-        const performedBy = adminUser?.username ?? "admin";
-        await db.insert(companyActivityLogsTable).values({
-          companyId: id,
-          action: "business_type_updated",
-          performedBy,
-          note: `Admin set company business type to: ${updateValues.businessType === "clinic" ? "Clinic & Appointments CRM (عيادة طبية)" : "General Leads CRM (شركة عامة)"}`,
-        });
-      } catch (logErr) {
-        logger.warn({ logErr }, "Failed to log activity for business_type_updated");
-      }
+      await db.insert(companyActivityLogsTable).values({
+        companyId: id,
+        action: "company_content_updated",
+        performedBy,
+        note: `Admin updated company content: ${notes.length ? notes.join(", ") : "general settings"}`,
+      });
+    } catch (logErr) {
+      logger.warn({ logErr }, "Failed to log activity for company update");
     }
 
-    const [clientRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.clientId));
+    const [clientRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, updatedRow.clientId));
     res.json({
-      id: row.id,
-      clientId: row.clientId,
+      id: updatedRow.id,
+      clientId: updatedRow.clientId,
       clientName: clientRow?.name ?? null,
-      myId: row.myId ?? null,
-      name: row.name,
-      businessType: row.businessType ?? "general",
-      notificationEmail: row.notificationEmail ?? null,
-      resendApiKey: maskApiKey(row.resendApiKey),
-      isActive: row.isActive,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
+      myId: updatedRow.myId ?? null,
+      name: updatedRow.name,
+      notificationEmail: updatedRow.notificationEmail ?? null,
+      resendApiKey: maskApiKey(updatedRow.resendApiKey),
+      generalInfo: updatedRow.generalInfo,
+      isActive: updatedRow.isActive,
+      activationStart: toIsoOrNull(updatedRow.activationStart),
+      activationEnd: toIsoOrNull(updatedRow.activationEnd),
+      quotaStartDate: toIsoOrNull(updatedRow.quotaStartDate),
+      quotaEndDate: toIsoOrNull(updatedRow.quotaEndDate),
+      systemPrompt: updatedRow.systemPrompt,
+      securityPrompt: updatedRow.securityPrompt,
+      googleSheetsEnabled: updatedRow.googleSheetsEnabled,
+      googleSheetsLink: updatedRow.googleSheetsLink,
+      googleSheetsName: updatedRow.googleSheetsName,
+      googleSheetsPage: updatedRow.googleSheetsPage,
+      serviceAccountKey: maskApiKey(updatedRow.serviceAccountKey),
+      googleCalendarEnabled: updatedRow.googleCalendarEnabled ?? false,
+      googleCalendarId: updatedRow.googleCalendarId ?? null,
+      googleCalendarTimezone: updatedRow.googleCalendarTimezone ?? "UTC",
+      googleCalendarDuration: updatedRow.googleCalendarDuration ?? 30,
+      googleCalendarBookingRules: updatedRow.googleCalendarBookingRules ?? null,
+      googleCalendarServiceAccountKey: maskApiKey(updatedRow.googleCalendarServiceAccountKey),
+      aiProvider: updatedRow.aiProvider ?? null,
+      aiModel: updatedRow.aiModel ?? null,
+      aiExecutionMode: updatedRow.aiExecutionMode || "quota",
+      aiAgentApiKey: maskApiKey(updatedRow.aiAgentApiKey),
+      aiAgentUrl: updatedRow.aiAgentUrl,
+      monthlyTokenQuota: updatedRow.monthlyTokenQuota ?? null,
+      chatLogRetentionDays: updatedRow.chatLogRetentionDays ?? null,
+      telegramBotApiKey: maskApiKey(updatedRow.telegramBotApiKey),
+      telegramBotUsername: updatedRow.telegramBotUsername,
+      telegramEnabled: updatedRow.telegramEnabled ?? false,
+      whatsappApiToken: maskApiKey(updatedRow.whatsappApiToken),
+      whatsappPhoneNumberId: updatedRow.whatsappPhoneNumberId,
+      whatsappBusinessAccountId: updatedRow.whatsappBusinessAccountId,
+      whatsappNumber: updatedRow.whatsappNumber,
+      whatsappEnabled: updatedRow.whatsappEnabled ?? false,
+      messengerApiKey: maskApiKey(updatedRow.messengerApiKey),
+      messengerPageId: updatedRow.messengerPageId,
+      messengerEnabled: updatedRow.messengerEnabled ?? false,
+      websiteChatbotKey: updatedRow.websiteChatbotKey,
+      widgetAllowedDomains: updatedRow.widgetAllowedDomains ?? null,
+      widgetEnabled: updatedRow.widgetEnabled ?? false,
+      websiteDataUrl: updatedRow.websiteDataUrl,
+      websiteAutoSync: updatedRow.websiteAutoSync,
+      websiteLastSynced: updatedRow.websiteLastSynced?.toISOString() ?? null,
+      allowSourceWebsite: updatedRow.allowSourceWebsite === false ? false : true,
+      allowSourceFiles: updatedRow.allowSourceFiles === false ? false : true,
+      allowSourceWordpress: updatedRow.allowSourceWordpress === false ? false : true,
+      allowSourceRestApi: updatedRow.allowSourceRestApi === false ? false : true,
+      allowSourceShopify: updatedRow.allowSourceShopify === false ? false : true,
+      businessType: updatedRow.businessType || "general",
+      enabledClientPages: (updatedRow as any).enabledClientPages
+        ? (() => {
+            try {
+              return JSON.parse((updatedRow as any).enabledClientPages);
+            } catch {
+              return null;
+            }
+          })()
+        : null,
+      createdAt: updatedRow.createdAt.toISOString(),
+      updatedAt: updatedRow.updatedAt.toISOString(),
     });
   } catch (err: any) {
-    logger.error({ err }, "Update company myId error");
+    logger.error({ err }, "Update company error");
     res.status(500).json({ error: err?.message || "Internal server error" });
   }
-});
+}
+
+router.patch("/admin/companies/:id", handleUpdateCompany);
+router.put("/admin/companies/:id", handleUpdateCompany);
 
 // PUT /admin/companies/:id/business-type
 router.put("/admin/companies/:id/business-type", async (req, res) => {

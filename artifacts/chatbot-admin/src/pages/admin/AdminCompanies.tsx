@@ -16,6 +16,7 @@ import {
   MessageSquare, Globe, Send, Phone, Sheet, Activity,
   TrendingUp, Users, ShieldCheck, Timer, X, ChevronRight,
   Power, RefreshCw, Sparkles, RotateCcw, Database, FileText, Plug, Code2, ShoppingBag, Stethoscope,
+  LayoutDashboard, Bell, Package, Cpu, Coins, MessageCircle, Wrench, Calendar as CalendarIcon, FileSpreadsheet, LifeBuoy, Settings, KeyRound, SlidersHorizontal, Layers,
 } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +45,7 @@ type Company = {
   name: string;
   clientName?: string | null;
   clientId: number;
+  myId?: string | null;
   notificationEmail?: string | null;
   resendApiKey?: string | null;
   isActive: boolean;
@@ -54,15 +56,33 @@ type Company = {
   securityPrompt?: string | null;
   googleSheetsEnabled?: boolean;
   googleSheetsLink?: string | null;
+  googleSheetsName?: string | null;
+  googleSheetsPage?: string | null;
   serviceAccountKey?: string | null;
+  googleCalendarEnabled?: boolean;
+  googleCalendarId?: string | null;
+  googleCalendarTimezone?: string | null;
+  googleCalendarDuration?: number | null;
+  googleCalendarBookingRules?: string | null;
+  googleCalendarServiceAccountKey?: string | null;
+  aiProvider?: string | null;
+  aiModel?: string | null;
+  aiExecutionMode?: string | null;
   aiAgentApiKey?: string | null;
+  aiAgentUrl?: string | null;
   telegramBotApiKey?: string | null;
+  telegramBotUsername?: string | null;
   telegramEnabled?: boolean | null;
   whatsappApiToken?: string | null;
+  whatsappPhoneNumberId?: string | null;
+  whatsappBusinessAccountId?: string | null;
+  whatsappNumber?: string | null;
   whatsappEnabled?: boolean | null;
   messengerApiKey?: string | null;
+  messengerPageId?: string | null;
   messengerEnabled?: boolean | null;
   websiteChatbotKey?: string | null;
+  widgetAllowedDomains?: string | null;
   widgetEnabled?: boolean | null;
   websiteDataUrl?: string | null;
   websiteAutoSync?: boolean;
@@ -75,8 +95,29 @@ type Company = {
   allowSourceRestApi?: boolean | null;
   allowSourceShopify?: boolean | null;
   businessType?: string | null;
+  enabledClientPages?: string[] | null;
   createdAt: string;
 };
+
+export const CLIENT_PAGES_META = [
+  { id: "dashboard",       titleAr: "لوحة التحكم",                     titleEn: "Dashboard",                   icon: LayoutDashboard, category: "main" },
+  { id: "notifications",   titleAr: "الإشعارات",                       titleEn: "Notifications",               icon: Bell,            category: "main" },
+  { id: "company",         titleAr: "ملف الشركة",                     titleEn: "Company Profile",             icon: Building2,       category: "main" },
+  { id: "packages",        titleAr: "الباقات والاشتراكات",             titleEn: "Packages & Plans",            icon: Package,         category: "main" },
+  { id: "ai_model",        titleAr: "نموذج الذكاء الاصطناعي",          titleEn: "AI Model & Provider",         icon: Cpu,             category: "ai" },
+  { id: "usage",           titleAr: "الحصة الشهرية والاستهلاك",         titleEn: "Token Quota / Usage",         icon: Coins,           category: "ai" },
+  { id: "knowledge",       titleAr: "قاعدة المعرفة ومصادر البيانات",    titleEn: "Knowledge & Data Sources",    icon: Database,        category: "data" },
+  { id: "channels",        titleAr: "قنوات التواصل (تيليجرام، واتساب)", titleEn: "Channels (TG, WA, Messenger)", icon: MessageCircle,   category: "channels" },
+  { id: "tools",           titleAr: "الأدوات (تقويم وجداول Google)",   titleEn: "Tools (Calendar & Sheets)",   icon: Wrench,          category: "tools" },
+  { id: "chat_logs",       titleAr: "سجل المحادثات",                   titleEn: "Chat Logs",                   icon: MessageSquare,   category: "crm" },
+  { id: "leads",           titleAr: "العملاء المحتملين والحجوزات",     titleEn: "Leads & Bookings CRM",        icon: Users,           category: "crm" },
+  { id: "universal_chat",  titleAr: "الشات الموحد",                   titleEn: "Universal Chat",              icon: Sparkles,        category: "crm" },
+  { id: "widget_preview",  titleAr: "معاينة الشات بوت (Widget)",       titleEn: "Widget Preview",              icon: Bot,             category: "channels" },
+  { id: "support",         titleAr: "الدعم والتذاكر",                 titleEn: "Support & Tickets",           icon: LifeBuoy,        category: "support" },
+  { id: "malfunctions",    titleAr: "سجل الأعطال",                     titleEn: "Malfunctions",                icon: AlertTriangle,   category: "support" },
+  { id: "webhook_history", titleAr: "سجل الويب هوك",                  titleEn: "Webhook History",             icon: Zap,             category: "support" },
+  { id: "settings",        titleAr: "الإعدادات",                       titleEn: "Settings",                    icon: Settings,        category: "main" },
+];
 
 type Filter = "all" | "active" | "inactive" | "expiring" | "clinic" | "general";
 
@@ -453,6 +494,177 @@ export default function AdminCompanies() {
   const { data: companies, isLoading } = useListCompanies();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [manageCompanyTarget, setManageCompanyTarget] = useState<Company | null>(null);
+  const [manageActiveTab, setManageActiveTab] = useState<"pages" | "profile" | "ai" | "channels" | "tools" | "subscription">("pages");
+  const [manageForm, setManageForm] = useState<any>({});
+  const [isSavingContent, setIsSavingContent] = useState(false);
+
+  const openManageCompanyDialog = (company: Company) => {
+    setManageCompanyTarget(company);
+    setManageActiveTab("pages");
+    setManageForm({
+      enabledClientPages: Array.isArray(company.enabledClientPages)
+        ? [...company.enabledClientPages]
+        : [
+            "dashboard", "notifications", "company", "packages", "ai_model",
+            "usage", "knowledge", "channels", "tools", "chat_logs",
+            "leads", "universal_chat", "widget_preview", "support",
+            "malfunctions", "webhook_history", "settings"
+          ],
+      name: company.name || "",
+      myId: company.myId || "",
+      generalInfo: company.generalInfo || "",
+      notificationEmail: company.notificationEmail || "",
+      resendApiKey: company.resendApiKey || "",
+      businessType: company.businessType || "general",
+      systemPrompt: company.systemPrompt || "",
+      securityPrompt: company.securityPrompt || "",
+      aiProvider: company.aiProvider || "openai",
+      aiModel: company.aiModel || "gpt-4o-mini",
+      aiExecutionMode: company.aiExecutionMode || "quota",
+      aiAgentApiKey: company.aiAgentApiKey || "",
+      aiAgentUrl: company.aiAgentUrl || "",
+      telegramEnabled: company.telegramEnabled ?? false,
+      telegramBotApiKey: company.telegramBotApiKey || "",
+      telegramBotUsername: company.telegramBotUsername || "",
+      whatsappEnabled: company.whatsappEnabled ?? false,
+      whatsappApiToken: company.whatsappApiToken || "",
+      whatsappPhoneNumberId: company.whatsappPhoneNumberId || "",
+      whatsappBusinessAccountId: company.whatsappBusinessAccountId || "",
+      whatsappNumber: company.whatsappNumber || "",
+      messengerEnabled: company.messengerEnabled ?? false,
+      messengerApiKey: company.messengerApiKey || "",
+      messengerPageId: company.messengerPageId || "",
+      widgetEnabled: company.widgetEnabled ?? false,
+      websiteChatbotKey: company.websiteChatbotKey || "",
+      widgetAllowedDomains: company.widgetAllowedDomains || "",
+      googleSheetsEnabled: company.googleSheetsEnabled ?? false,
+      googleSheetsLink: company.googleSheetsLink || "",
+      googleSheetsName: company.googleSheetsName || "",
+      googleSheetsPage: company.googleSheetsPage || "",
+      serviceAccountKey: company.serviceAccountKey || "",
+      googleCalendarEnabled: company.googleCalendarEnabled ?? false,
+      googleCalendarId: company.googleCalendarId || "",
+      googleCalendarTimezone: company.googleCalendarTimezone || "UTC",
+      googleCalendarDuration: company.googleCalendarDuration || 30,
+      googleCalendarBookingRules: company.googleCalendarBookingRules || "",
+      googleCalendarServiceAccountKey: company.googleCalendarServiceAccountKey || "",
+      isActive: company.isActive ?? false,
+      monthlyTokenQuota: company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota !== null ? String(company.monthlyTokenQuota) : "",
+      activationStart: toDateInputValue(company.activationStart),
+      activationEnd: toDateInputValue(company.activationEnd),
+      chatLogRetentionDays: company.chatLogRetentionDays !== undefined && company.chatLogRetentionDays !== null ? String(company.chatLogRetentionDays) : "7",
+    });
+  };
+
+  const togglePage = (pageId: string) => {
+    setManageForm((prev: any) => {
+      const current: string[] = Array.isArray(prev.enabledClientPages) ? prev.enabledClientPages : [];
+      const exists = current.includes(pageId);
+      return {
+        ...prev,
+        enabledClientPages: exists
+          ? current.filter((id: string) => id !== pageId)
+          : [...current, pageId],
+      };
+    });
+  };
+
+  const setPresetPages = (preset: "all" | "onboarding" | "core" | "none") => {
+    setManageForm((prev: any) => {
+      let pages: string[] = [];
+      if (preset === "all") {
+        pages = CLIENT_PAGES_META.map((p) => p.id);
+      } else if (preset === "onboarding") {
+        pages = ["company", "packages", "support", "settings", "notifications"];
+      } else if (preset === "core") {
+        pages = ["dashboard", "notifications", "company", "packages", "ai_model", "usage", "channels", "tools", "chat_logs", "leads", "support", "settings"];
+      } else if (preset === "none") {
+        pages = [];
+      }
+      return { ...prev, enabledClientPages: pages };
+    });
+  };
+
+  const handleSaveCompanyHub = async () => {
+    if (!manageCompanyTarget) return;
+    setIsSavingContent(true);
+    try {
+      const payload: Record<string, any> = {
+        name: manageForm.name,
+        myId: manageForm.myId,
+        generalInfo: manageForm.generalInfo,
+        notificationEmail: manageForm.notificationEmail,
+        resendApiKey: manageForm.resendApiKey,
+        businessType: manageForm.businessType,
+        systemPrompt: manageForm.systemPrompt,
+        securityPrompt: manageForm.securityPrompt,
+        aiProvider: manageForm.aiProvider,
+        aiModel: manageForm.aiModel,
+        aiExecutionMode: manageForm.aiExecutionMode,
+        aiAgentApiKey: manageForm.aiAgentApiKey,
+        aiAgentUrl: manageForm.aiAgentUrl,
+        isActive: manageForm.isActive,
+        monthlyTokenQuota: manageForm.monthlyTokenQuota ? Number(manageForm.monthlyTokenQuota) : null,
+        activationStart: toIsoFromInput(manageForm.activationStart),
+        activationEnd: toIsoFromInput(manageForm.activationEnd),
+        chatLogRetentionDays: manageForm.chatLogRetentionDays ? Number(manageForm.chatLogRetentionDays) : null,
+        telegramEnabled: manageForm.telegramEnabled,
+        telegramBotApiKey: manageForm.telegramBotApiKey,
+        telegramBotUsername: manageForm.telegramBotUsername,
+        whatsappEnabled: manageForm.whatsappEnabled,
+        whatsappApiToken: manageForm.whatsappApiToken,
+        whatsappPhoneNumberId: manageForm.whatsappPhoneNumberId,
+        whatsappBusinessAccountId: manageForm.whatsappBusinessAccountId,
+        whatsappNumber: manageForm.whatsappNumber,
+        messengerEnabled: manageForm.messengerEnabled,
+        messengerApiKey: manageForm.messengerApiKey,
+        messengerPageId: manageForm.messengerPageId,
+        widgetEnabled: manageForm.widgetEnabled,
+        websiteChatbotKey: manageForm.websiteChatbotKey,
+        widgetAllowedDomains: manageForm.widgetAllowedDomains,
+        googleSheetsEnabled: manageForm.googleSheetsEnabled,
+        googleSheetsLink: manageForm.googleSheetsLink,
+        googleSheetsName: manageForm.googleSheetsName,
+        googleSheetsPage: manageForm.googleSheetsPage,
+        serviceAccountKey: manageForm.serviceAccountKey,
+        googleCalendarEnabled: manageForm.googleCalendarEnabled,
+        googleCalendarId: manageForm.googleCalendarId,
+        googleCalendarTimezone: manageForm.googleCalendarTimezone,
+        googleCalendarDuration: manageForm.googleCalendarDuration ? Number(manageForm.googleCalendarDuration) : 30,
+        googleCalendarBookingRules: manageForm.googleCalendarBookingRules,
+        googleCalendarServiceAccountKey: manageForm.googleCalendarServiceAccountKey,
+        enabledClientPages: manageForm.enabledClientPages,
+      };
+
+      const res = await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update company");
+      }
+
+      toast({
+        title: lang === "ar" ? "تم الحفظ بنجاح" : "Saved successfully",
+        description: lang === "ar" ? "تم تحديث إعدادات ومحتوى صفحات الشركة بنجاح" : "Company pages and content updated successfully",
+      });
+
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      setManageCompanyTarget(null);
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في الحفظ" : "Save Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingContent(false);
+    }
+  };
   const [viewCompany, setViewCompany] = useState<Company | null>(null);
   const [editPromptsTarget, setEditPromptsTarget] = useState<Company | null>(null);
   const [editPromptsValue, setEditPromptsValue] = useState({ systemPrompt: "", securityPrompt: "" });
@@ -1001,10 +1213,17 @@ export default function AdminCompanies() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuContent align="end" className="w-60">
                         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                           {company.name}
                         </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onClick={() => openManageCompanyDialog(company)}
+                          className="font-semibold text-primary focus:text-primary bg-primary/10 focus:bg-primary/15 mb-1 cursor-pointer"
+                        >
+                          <Settings2 className="w-4 h-4 mr-2 text-primary" />
+                          {lang === "ar" ? "إدارة صفحات ومحتوى الشركة" : "Manage Pages & Content"}
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => {
                           setBusinessTypeTarget(company);
                           setBusinessTypeInput((company.businessType as "general" | "clinic") || "general");
@@ -1101,6 +1320,778 @@ export default function AdminCompanies() {
       </div>
 
       {/* ══════════════════════════ DIALOGS ══════════════════════════ */}
+
+      {/* ── Manage Company Hub & Content Editor (Sidebar Pages + Page Content) ── */}
+      <Dialog open={!!manageCompanyTarget} onOpenChange={(open) => !open && setManageCompanyTarget(null)}>
+        <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden">
+          {/* Header */}
+          <DialogHeader className="p-5 pb-3 border-b border-border bg-muted/20">
+            {manageCompanyTarget && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${avatarColor(manageCompanyTarget.id)} flex items-center justify-center text-white font-bold shrink-0 shadow`}>
+                    {getInitials(manageCompanyTarget.name)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <DialogTitle className="text-lg font-bold">
+                        {manageCompanyTarget.name}
+                      </DialogTitle>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        #{manageCompanyTarget.id}
+                      </Badge>
+                      {manageCompanyTarget.isActive ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
+                          {lang === "ar" ? "مفعل" : "Active"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {lang === "ar" ? "معطل" : "Inactive"}
+                        </Badge>
+                      )}
+                    </div>
+                    <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
+                      {lang === "ar"
+                        ? "التحكم في صفحات القائمة الجانبية للعميل وإدارة المحتوى الكامل لكل صفحة"
+                        : "Control client sidebar menu pages & manage content for each page"}
+                    </DialogDescription>
+                  </div>
+                </div>
+
+                {/* Tabs Selector Bar */}
+                <div className="flex items-center gap-1 overflow-x-auto bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
+                  {[
+                    { id: "pages",        labelAr: "صفحات القائمة",     labelEn: "Sidebar Pages",  icon: Settings2 },
+                    { id: "profile",      labelAr: "ملف الشركة",        labelEn: "Profile",        icon: Building2 },
+                    { id: "ai",           labelAr: "الذكاء الاصطناعي",  labelEn: "AI & Prompts",   icon: Sparkles },
+                    { id: "channels",     labelAr: "قنوات التواصل",      labelEn: "Channels",       icon: MessageCircle },
+                    { id: "tools",        labelAr: "الأدوات والربط",    labelEn: "Tools",          icon: Wrench },
+                    { id: "subscription", labelAr: "الاشتراك والحصة",   labelEn: "Subscription",   icon: Gauge },
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = manageActiveTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setManageActiveTab(tab.id as any)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                          isActive
+                            ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{lang === "ar" ? tab.labelAr : tab.labelEn}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+
+          {/* Scrollable Body Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {manageCompanyTarget && (
+              <>
+                {/* ── TAB 1: SIDEBAR PAGES CONTROL ── */}
+                {manageActiveTab === "pages" && (
+                  <div className="space-y-5">
+                    {/* Header bar with counter & presets */}
+                    <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <SlidersHorizontal className="w-4 h-4 text-primary" />
+                          <h4 className="text-sm font-bold">
+                            {lang === "ar" ? "الصفحات المتاحة في قائمة العميل" : "Pages in Client Menu"}
+                          </h4>
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold px-2">
+                            {Array.isArray(manageForm.enabledClientPages) ? manageForm.enabledClientPages.length : 17} / {CLIENT_PAGES_META.length}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {lang === "ar"
+                            ? "حدد الصفحات التي تود ظهورها في القائمة الجانبية للعميل. الصفحات المعطلة سيتم إخفاؤها وحظر زيارتها."
+                            : "Select pages that will appear in the client's sidebar. Disabled pages will be hidden and blocked."}
+                        </p>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPresetPages("all")}
+                          className="text-xs h-7 px-2.5"
+                        >
+                          {lang === "ar" ? "تفعيل الكل" : "Enable All"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPresetPages("core")}
+                          className="text-xs h-7 px-2.5"
+                        >
+                          {lang === "ar" ? "الوضع الأساسي" : "Core"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPresetPages("onboarding")}
+                          className="text-xs h-7 px-2.5 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                        >
+                          {lang === "ar" ? "الوضع المبدئي (Onboarding)" : "Onboarding"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPresetPages("none")}
+                          className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+                        >
+                          {lang === "ar" ? "إلغاء الكل" : "None"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Pages Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {CLIENT_PAGES_META.map((page) => {
+                        const Icon = page.icon;
+                        const isEnabled = Array.isArray(manageForm.enabledClientPages)
+                          ? manageForm.enabledClientPages.includes(page.id)
+                          : true;
+
+                        return (
+                          <div
+                            key={page.id}
+                            onClick={() => togglePage(page.id)}
+                            className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                              isEnabled
+                                ? "bg-primary/5 border-primary/30 shadow-sm"
+                                : "bg-card border-border/70 opacity-60 hover:opacity-90"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                isEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                              }`}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold truncate">
+                                  {lang === "ar" ? page.titleAr : page.titleEn}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {lang === "ar" ? page.titleEn : page.titleAr}
+                                </p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={isEnabled}
+                              onCheckedChange={() => togglePage(page.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="shrink-0 scale-90"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── TAB 2: COMPANY PROFILE CONTENT ── */}
+                {manageActiveTab === "profile" && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "اسم الشركة" : "Company Name"}</Label>
+                        <Input
+                          value={manageForm.name || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, name: e.target.value })}
+                          className="mt-1"
+                          placeholder="e.g. Acme Corp"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "المعرف المخصص (My ID)" : "Custom ID (My ID)"}</Label>
+                        <Input
+                          value={manageForm.myId || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, myId: e.target.value })}
+                          className="mt-1 font-mono text-xs"
+                          placeholder="e.g. ACME-001"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold">{lang === "ar" ? "نوع النشاط التجاري لنظام CRM" : "CRM Business Type"}</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
+                        <div
+                          onClick={() => setManageForm({ ...manageForm, businessType: "general" })}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                            manageForm.businessType !== "clinic"
+                              ? "bg-blue-500/10 border-blue-500/40 shadow-sm"
+                              : "bg-card border-border opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <Building2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "شركة عامة (General Leads CRM)" : "General Leads CRM"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                              {lang === "ar" ? "تتبع العملاء المحتملين والتواصل التجاري العام." : "Standard customer leads tracking."}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div
+                          onClick={() => setManageForm({ ...manageForm, businessType: "clinic" })}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                            manageForm.businessType === "clinic"
+                              ? "bg-teal-500/10 border-teal-500/40 shadow-sm"
+                              : "bg-card border-border opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <Stethoscope className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "عيادة طبية (Clinic & Appointments CRM)" : "Clinic Appointments CRM"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                              {lang === "ar" ? "تتبع المرضى وحجوزات الكشف والعيادات التخصصية." : "Patients records, doctors & clinic bookings."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "البريد الإلكتروني للإشعارات" : "Notification Email"}</Label>
+                        <Input
+                          value={manageForm.notificationEmail || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, notificationEmail: e.target.value })}
+                          className="mt-1"
+                          placeholder="alerts@company.com"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {lang === "ar" ? "يستقبل تنبيهات نفاد الحصة، محاولات الاختراق، والأعطال." : "Receives quota, malfunction & security alerts."}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "مفتاح Resend API الخاص بالشركة" : "Resend API Key"}</Label>
+                        <Input
+                          type="password"
+                          value={manageForm.resendApiKey || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, resendApiKey: e.target.value })}
+                          className="mt-1 font-mono text-xs"
+                          placeholder="re_••••••••••••••••"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {lang === "ar" ? "اتركه فارغاً لاستخدام المفتاح العام للمنصة." : "Leave unchanged to keep existing key."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold">{lang === "ar" ? "نبذة ومعلومات النشاط التجاري (General Info)" : "General Business Info"}</Label>
+                      <Textarea
+                        value={manageForm.generalInfo || ""}
+                        onChange={(e) => setManageForm({ ...manageForm, generalInfo: e.target.value })}
+                        className="mt-1 min-h-[90px] text-xs leading-relaxed"
+                        placeholder={lang === "ar" ? "نبذة عن خدمات ومنتجات الشركة، مواعيد العمل، الأسعار، الفروع..." : "Business description, services, operating hours, prices..."}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* ── TAB 3: AI MODEL & PROMPTS CONTENT ── */}
+                {manageActiveTab === "ai" && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-xs font-semibold flex items-center justify-between">
+                        <span>{lang === "ar" ? "البرومبت التوجيهي للنظام (System Prompt)" : "System Prompt"}</span>
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          {manageForm.systemPrompt?.length || 0} {lang === "ar" ? "حرف" : "chars"}
+                        </span>
+                      </Label>
+                      <Textarea
+                        value={manageForm.systemPrompt || ""}
+                        onChange={(e) => setManageForm({ ...manageForm, systemPrompt: e.target.value })}
+                        className="mt-1 min-h-[140px] font-mono text-xs leading-relaxed"
+                        placeholder="You are a helpful AI customer service assistant for..."
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold flex items-center justify-between">
+                        <span>{lang === "ar" ? "برومبت الأمان والحماية (Security Prompt)" : "Security Prompt"}</span>
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          {manageForm.securityPrompt?.length || 0} {lang === "ar" ? "حرف" : "chars"}
+                        </span>
+                      </Label>
+                      <Textarea
+                        value={manageForm.securityPrompt || ""}
+                        onChange={(e) => setManageForm({ ...manageForm, securityPrompt: e.target.value })}
+                        className="mt-1 min-h-[90px] font-mono text-xs leading-relaxed"
+                        placeholder="Security instructions, anti-jailbreak rules..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "مزود الذكاء الاصطناعي" : "AI Provider"}</Label>
+                        <select
+                          value={manageForm.aiProvider || "openai"}
+                          onChange={(e) => setManageForm({ ...manageForm, aiProvider: e.target.value })}
+                          className="mt-1 w-full h-9 px-3 rounded-md border border-input bg-background text-xs font-medium"
+                        >
+                          <option value="openai">OpenAI</option>
+                          <option value="anthropic">Anthropic Claude</option>
+                          <option value="google">Google Gemini</option>
+                          <option value="openrouter">OpenRouter</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "اسم الموديل (Model)" : "AI Model"}</Label>
+                        <Input
+                          value={manageForm.aiModel || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, aiModel: e.target.value })}
+                          className="mt-1 text-xs"
+                          placeholder="e.g. gpt-4o-mini, claude-3-5-sonnet"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "طريقة التنفيذ" : "Execution Mode"}</Label>
+                        <select
+                          value={manageForm.aiExecutionMode || "quota"}
+                          onChange={(e) => setManageForm({ ...manageForm, aiExecutionMode: e.target.value })}
+                          className="mt-1 w-full h-9 px-3 rounded-md border border-input bg-background text-xs font-medium"
+                        >
+                          <option value="quota">{lang === "ar" ? "الحصة الشهرية (Platform Quota)" : "Platform Quota"}</option>
+                          <option value="tokens">{lang === "ar" ? "رموز API مخصصة (API Tokens)" : "Custom API Tokens"}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "مفتاح API الخاص بالشركة (Custom Key)" : "Custom Agent API Key"}</Label>
+                        <Input
+                          type="password"
+                          value={manageForm.aiAgentApiKey || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, aiAgentApiKey: e.target.value })}
+                          className="mt-1 font-mono text-xs"
+                          placeholder="sk-••••••••••••••••"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "رابط سيرفر الذكاء المخصص (Agent URL)" : "Custom Agent URL"}</Label>
+                        <Input
+                          value={manageForm.aiAgentUrl || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, aiAgentUrl: e.target.value })}
+                          className="mt-1 text-xs"
+                          placeholder="https://api.openai.com/v1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── TAB 4: CHANNELS CONTENT ── */}
+                {manageActiveTab === "channels" && (
+                  <div className="space-y-4">
+                    {/* Telegram */}
+                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Send className="w-4 h-4 text-sky-500" />
+                          <h5 className="text-xs font-bold">Telegram Bot</h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">{lang === "ar" ? "تفعيل تيليجرام" : "Enable Telegram"}</Label>
+                          <Switch
+                            checked={!!manageForm.telegramEnabled}
+                            onCheckedChange={(val) => setManageForm({ ...manageForm, telegramEnabled: val })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Bot Token (API Key)</Label>
+                          <Input
+                            type="password"
+                            value={manageForm.telegramBotApiKey || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, telegramBotApiKey: e.target.value })}
+                            className="mt-1 font-mono text-xs"
+                            placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Bot Username</Label>
+                          <Input
+                            value={manageForm.telegramBotUsername || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, telegramBotUsername: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="@my_company_bot"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp */}
+                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-emerald-500" />
+                          <h5 className="text-xs font-bold">WhatsApp Cloud API</h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">{lang === "ar" ? "تفعيل واتساب" : "Enable WhatsApp"}</Label>
+                          <Switch
+                            checked={!!manageForm.whatsappEnabled}
+                            onCheckedChange={(val) => setManageForm({ ...manageForm, whatsappEnabled: val })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">API Token</Label>
+                          <Input
+                            type="password"
+                            value={manageForm.whatsappApiToken || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, whatsappApiToken: e.target.value })}
+                            className="mt-1 font-mono text-xs"
+                            placeholder="EAAB••••••••"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Phone Number ID</Label>
+                          <Input
+                            value={manageForm.whatsappPhoneNumberId || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, whatsappPhoneNumberId: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="1029384756..."
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Business Account ID</Label>
+                          <Input
+                            value={manageForm.whatsappBusinessAccountId || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, whatsappBusinessAccountId: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="987654321..."
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">WhatsApp Number</Label>
+                          <Input
+                            value={manageForm.whatsappNumber || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, whatsappNumber: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="+1234567890"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Messenger */}
+                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-blue-500" />
+                          <h5 className="text-xs font-bold">Facebook Messenger</h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">{lang === "ar" ? "تفعيل ماسنجر" : "Enable Messenger"}</Label>
+                          <Switch
+                            checked={!!manageForm.messengerEnabled}
+                            onCheckedChange={(val) => setManageForm({ ...manageForm, messengerEnabled: val })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Page Access Token</Label>
+                          <Input
+                            type="password"
+                            value={manageForm.messengerApiKey || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, messengerApiKey: e.target.value })}
+                            className="mt-1 font-mono text-xs"
+                            placeholder="EAAK••••••••"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Page ID</Label>
+                          <Input
+                            value={manageForm.messengerPageId || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, messengerPageId: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="1234567890"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Website Widget */}
+                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-violet-500" />
+                          <h5 className="text-xs font-bold">Website Chat Widget</h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">{lang === "ar" ? "تفعيل الويدجت" : "Enable Widget"}</Label>
+                          <Switch
+                            checked={!!manageForm.widgetEnabled}
+                            onCheckedChange={(val) => setManageForm({ ...manageForm, widgetEnabled: val })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Website Chatbot Key</Label>
+                          <Input
+                            value={manageForm.websiteChatbotKey || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, websiteChatbotKey: e.target.value })}
+                            className="mt-1 font-mono text-xs"
+                            placeholder="wcb_••••••••"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Allowed Domains (comma-separated)</Label>
+                          <Input
+                            value={manageForm.widgetAllowedDomains || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, widgetAllowedDomains: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="https://example.com, https://sub.example.com"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── TAB 5: TOOLS & INTEGRATIONS CONTENT ── */}
+                {manageActiveTab === "tools" && (
+                  <div className="space-y-4">
+                    {/* Google Calendar */}
+                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4 text-blue-500" />
+                          <h5 className="text-xs font-bold">Google Calendar</h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">{lang === "ar" ? "تفعيل التقويم" : "Enable Calendar"}</Label>
+                          <Switch
+                            checked={!!manageForm.googleCalendarEnabled}
+                            onCheckedChange={(val) => setManageForm({ ...manageForm, googleCalendarEnabled: val })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Calendar ID</Label>
+                          <Input
+                            value={manageForm.googleCalendarId || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, googleCalendarId: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="primary or xxxx@group.calendar.google.com"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Timezone</Label>
+                          <Input
+                            value={manageForm.googleCalendarTimezone || "UTC"}
+                            onChange={(e) => setManageForm({ ...manageForm, googleCalendarTimezone: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="UTC, Asia/Riyadh, Africa/Cairo"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">{lang === "ar" ? "مدة الموعد (بالدقائق)" : "Slot Duration (min)"}</Label>
+                          <Input
+                            type="number"
+                            value={manageForm.googleCalendarDuration || 30}
+                            onChange={(e) => setManageForm({ ...manageForm, googleCalendarDuration: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="30"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">{lang === "ar" ? "قواعد وضوابط الحجز (Booking Rules Prompt)" : "Booking Rules Prompt"}</Label>
+                        <Textarea
+                          value={manageForm.googleCalendarBookingRules || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, googleCalendarBookingRules: e.target.value })}
+                          className="mt-1 min-h-[60px] text-xs leading-relaxed"
+                          placeholder={lang === "ar" ? "مواعيد العمل المتاحة للحجز، إجازات الأسبوع، سياسة الحجز..." : "Available working hours, weekend rules, booking constraints..."}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Google Calendar Service Account JSON</Label>
+                        <Textarea
+                          value={manageForm.googleCalendarServiceAccountKey || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, googleCalendarServiceAccountKey: e.target.value })}
+                          className="mt-1 min-h-[60px] font-mono text-xs"
+                          placeholder='{"type": "service_account", ...}'
+                        />
+                      </div>
+                    </div>
+
+                    {/* Google Sheets */}
+                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                          <h5 className="text-xs font-bold">Google Sheets</h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">{lang === "ar" ? "تفعيل جداول جوجل" : "Enable Sheets"}</Label>
+                          <Switch
+                            checked={!!manageForm.googleSheetsEnabled}
+                            onCheckedChange={(val) => setManageForm({ ...manageForm, googleSheetsEnabled: val })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        <div className="sm:col-span-2">
+                          <Label className="text-[11px] text-muted-foreground">Spreadsheet URL</Label>
+                          <Input
+                            value={manageForm.googleSheetsLink || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, googleSheetsLink: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Tab / Page Name</Label>
+                          <Input
+                            value={manageForm.googleSheetsPage || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, googleSheetsPage: e.target.value })}
+                            className="mt-1 text-xs"
+                            placeholder="Sheet1"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Google Sheets Service Account JSON</Label>
+                        <Textarea
+                          value={manageForm.serviceAccountKey || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, serviceAccountKey: e.target.value })}
+                          className="mt-1 min-h-[60px] font-mono text-xs"
+                          placeholder='{"type": "service_account", ...}'
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── TAB 6: SUBSCRIPTION & QUOTA CONTENT ── */}
+                {manageActiveTab === "subscription" && (
+                  <div className="space-y-4">
+                    <div className="bg-muted/30 border border-border p-4 rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold">{lang === "ar" ? "حالة اشتراك وتفعيل الشركة" : "Company Active Status"}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {lang === "ar" ? "عند تعطيل الشركة، لن يستجيب الشات بوت للمحادثات الخارجية." : "When disabled, chatbot will not answer incoming messages."}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={!!manageForm.isActive}
+                        onCheckedChange={(val) => setManageForm({ ...manageForm, isActive: val })}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "الحصة الشهرية من التوكنز (Monthly Quota)" : "Monthly Token Quota"}</Label>
+                        <Input
+                          type="number"
+                          value={manageForm.monthlyTokenQuota || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, monthlyTokenQuota: e.target.value })}
+                          className="mt-1 text-xs font-mono"
+                          placeholder="e.g. 500000 (leave empty for unlimited)"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {lang === "ar" ? "اترك الحقل فارغاً لجعل الحصة غير محدودة." : "Leave empty for unlimited tokens."}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "سياسة الحذف التلقائي للمحادثات (بالأيام)" : "Chat Log Retention (Days)"}</Label>
+                        <Input
+                          type="number"
+                          value={manageForm.chatLogRetentionDays || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, chatLogRetentionDays: e.target.value })}
+                          className="mt-1 text-xs font-mono"
+                          placeholder="7"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "تاريخ بدء الاشتراك" : "Start Date"}</Label>
+                        <Input
+                          type="date"
+                          value={manageForm.activationStart || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, activationStart: e.target.value })}
+                          className="mt-1 text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "تاريخ انتهاء الاشتراك" : "End Date"}</Label>
+                        <Input
+                          type="date"
+                          value={manageForm.activationEnd || ""}
+                          onChange={(e) => setManageForm({ ...manageForm, activationEnd: e.target.value })}
+                          className="mt-1 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Dialog Footer Actions */}
+          <DialogFooter className="p-4 border-t border-border bg-muted/20 flex flex-row items-center justify-between sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setManageCompanyTarget(null)}
+              disabled={isSavingContent}
+            >
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSaveCompanyHub}
+              disabled={isSavingContent}
+              className="gap-2 bg-primary text-primary-foreground font-semibold shadow-sm"
+            >
+              {isSavingContent ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              {lang === "ar" ? "حفظ التغييرات" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Delete confirmation ── */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -1668,6 +2659,18 @@ export default function AdminCompanies() {
                     Client: {viewCompany.clientName ?? "—"} · Joined {new Date(viewCompany.createdAt).toLocaleDateString()}
                   </DialogDescription>
                 </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const target = viewCompany;
+                    setViewCompany(null);
+                    openManageCompanyDialog(target);
+                  }}
+                  className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground ml-auto shrink-0 shadow-sm"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  {lang === "ar" ? "إدارة الصفحات والمحتوى" : "Manage Pages & Content"}
+                </Button>
               </div>
             )}
           </DialogHeader>

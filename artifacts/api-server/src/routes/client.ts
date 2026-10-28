@@ -143,6 +143,15 @@ router.get("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      enabledClientPages: (company as any).enabledClientPages
+        ? (() => {
+            try {
+              return JSON.parse((company as any).enabledClientPages);
+            } catch {
+              return null;
+            }
+          })()
+        : null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -657,6 +666,15 @@ router.put("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      enabledClientPages: (company as any).enabledClientPages
+        ? (() => {
+            try {
+              return JSON.parse((company as any).enabledClientPages);
+            } catch {
+              return null;
+            }
+          })()
+        : null,
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });

@@ -912,11 +912,51 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/client/settings",         label: t("nav_settings"),        icon: Settings },
   ];
 
-  const clientLinks = isNewClient ? initialClientLinks : fullClientLinks;
+  const enabledPages: string[] | null = Array.isArray((clientCompany as any)?.enabledClientPages)
+    ? (clientCompany as any).enabledClientPages
+    : null;
+
+  const getClientPageKey = (href: string): string => {
+    if (href.startsWith("/client/dashboard")) return "dashboard";
+    if (href.startsWith("/client/notifications")) return "notifications";
+    if (href.startsWith("/client/company")) return "company";
+    if (href.startsWith("/client/packages")) return "packages";
+    if (href.startsWith("/client/ai-model")) return "ai_model";
+    if (href.startsWith("/client/usage") || href.startsWith("/client/api-tokens")) return "usage";
+    if (href.startsWith("/client/knowledge")) return "knowledge";
+    if (href.startsWith("/client/channels")) return "channels";
+    if (href.startsWith("/client/tools")) return "tools";
+    if (href.startsWith("/client/chat-logs")) return "chat_logs";
+    if (href.startsWith("/client/leads")) return "leads";
+    if (href.startsWith("/client/universal-chat")) return "universal_chat";
+    if (href.startsWith("/client/widget-preview")) return "widget_preview";
+    if (href.startsWith("/client/support")) return "support";
+    if (href.startsWith("/client/malfunctions")) return "malfunctions";
+    if (href.startsWith("/client/webhook-history")) return "webhook_history";
+    if (href.startsWith("/client/settings")) return "settings";
+    return "";
+  };
+
+  const clientLinks = enabledPages && enabledPages.length > 0
+    ? fullClientLinks.filter((link) => {
+        const pageKey = getClientPageKey(link.href);
+        return enabledPages.includes(pageKey);
+      })
+    : isNewClient
+    ? initialClientLinks
+    : fullClientLinks;
 
   useEffect(() => {
     if (role === "client" && !isCompanyLoading) {
-      if (isNewClient) {
+      if (enabledPages && enabledPages.length > 0) {
+        if (location.startsWith("/client")) {
+          const currentPageKey = getClientPageKey(location);
+          if (currentPageKey && !enabledPages.includes(currentPageKey)) {
+            const firstAvailable = clientLinks[0]?.href || "/client/company";
+            setLocation(firstAvailable);
+          }
+        }
+      } else if (isNewClient) {
         const allowedInitialPaths = [
           "/client/company",
           "/client/packages",
@@ -932,7 +972,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         }
       }
     }
-  }, [role, isCompanyLoading, isNewClient, location, setLocation]);
+  }, [role, isCompanyLoading, isNewClient, enabledPages, clientLinks, location, setLocation]);
 
   const links = role === "admin" ? adminLinks : clientLinks;
   const allLinks = links.flatMap((l) => (l.children ? [l, ...l.children] : [l]));
