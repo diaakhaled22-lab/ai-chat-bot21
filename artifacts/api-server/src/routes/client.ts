@@ -37,6 +37,20 @@ function telegramWebhookSecret(token: string): string {
 }
 
 const router = Router();
+function parseEnabledPages(val: any): string[] | null {
+  if (!val) return null;
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // Only enforce client auth on /client/* paths ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â other paths pass through unguarded
 router.use("/client", requireClient);
 
@@ -143,15 +157,7 @@ router.get("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: (company as any).enabledClientPages
-        ? (() => {
-            try {
-              return JSON.parse((company as any).enabledClientPages);
-            } catch {
-              return null;
-            }
-          })()
-        : null,
+      enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -666,15 +672,7 @@ router.put("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: (company as any).enabledClientPages
-        ? (() => {
-            try {
-              return JSON.parse((company as any).enabledClientPages);
-            } catch {
-              return null;
-            }
-          })()
-        : null,
+      enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });

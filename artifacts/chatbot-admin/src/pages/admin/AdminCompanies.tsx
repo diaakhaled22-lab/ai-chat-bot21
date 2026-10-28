@@ -500,90 +500,138 @@ export default function AdminCompanies() {
   const [isSavingContent, setIsSavingContent] = useState(false);
 
   const openManageCompanyDialog = (company: Company) => {
-    setManageCompanyTarget(company);
+    const freshCompany = companies?.find((c) => c.id === company.id) || company;
+    setManageCompanyTarget(freshCompany);
     setManageActiveTab("pages");
     setManageForm({
-      enabledClientPages: Array.isArray(company.enabledClientPages)
-        ? [...company.enabledClientPages]
-        : [
-            "dashboard", "notifications", "company", "packages", "ai_model",
-            "usage", "knowledge", "channels", "tools", "chat_logs",
-            "leads", "universal_chat", "widget_preview", "support",
-            "malfunctions", "webhook_history", "settings"
-          ],
-      name: company.name || "",
-      myId: company.myId || "",
-      generalInfo: company.generalInfo || "",
-      notificationEmail: company.notificationEmail || "",
-      resendApiKey: company.resendApiKey || "",
-      businessType: company.businessType || "general",
-      systemPrompt: company.systemPrompt || "",
-      securityPrompt: company.securityPrompt || "",
-      aiProvider: company.aiProvider || "openai",
-      aiModel: company.aiModel || "gpt-4o-mini",
-      aiExecutionMode: company.aiExecutionMode || "quota",
-      aiAgentApiKey: company.aiAgentApiKey || "",
-      aiAgentUrl: company.aiAgentUrl || "",
-      telegramEnabled: company.telegramEnabled ?? false,
-      telegramBotApiKey: company.telegramBotApiKey || "",
-      telegramBotUsername: company.telegramBotUsername || "",
-      whatsappEnabled: company.whatsappEnabled ?? false,
-      whatsappApiToken: company.whatsappApiToken || "",
-      whatsappPhoneNumberId: company.whatsappPhoneNumberId || "",
-      whatsappBusinessAccountId: company.whatsappBusinessAccountId || "",
-      whatsappNumber: company.whatsappNumber || "",
-      messengerEnabled: company.messengerEnabled ?? false,
-      messengerApiKey: company.messengerApiKey || "",
-      messengerPageId: company.messengerPageId || "",
-      widgetEnabled: company.widgetEnabled ?? false,
-      websiteChatbotKey: company.websiteChatbotKey || "",
-      widgetAllowedDomains: company.widgetAllowedDomains || "",
-      googleSheetsEnabled: company.googleSheetsEnabled ?? false,
-      googleSheetsLink: company.googleSheetsLink || "",
-      googleSheetsName: company.googleSheetsName || "",
-      googleSheetsPage: company.googleSheetsPage || "",
-      serviceAccountKey: company.serviceAccountKey || "",
-      googleCalendarEnabled: company.googleCalendarEnabled ?? false,
-      googleCalendarId: company.googleCalendarId || "",
-      googleCalendarTimezone: company.googleCalendarTimezone || "UTC",
-      googleCalendarDuration: company.googleCalendarDuration || 30,
-      googleCalendarBookingRules: company.googleCalendarBookingRules || "",
-      googleCalendarServiceAccountKey: company.googleCalendarServiceAccountKey || "",
-      isActive: company.isActive ?? false,
-      monthlyTokenQuota: company.monthlyTokenQuota !== undefined && company.monthlyTokenQuota !== null ? String(company.monthlyTokenQuota) : "",
-      activationStart: toDateInputValue(company.activationStart),
-      activationEnd: toDateInputValue(company.activationEnd),
-      chatLogRetentionDays: company.chatLogRetentionDays !== undefined && company.chatLogRetentionDays !== null ? String(company.chatLogRetentionDays) : "7",
+      enabledClientPages: Array.isArray(freshCompany.enabledClientPages)
+        ? [...freshCompany.enabledClientPages]
+        : (freshCompany.isActive === false
+            ? ["company", "packages", "support", "settings", "notifications"]
+            : CLIENT_PAGES_META.map((p) => p.id)),
+      name: freshCompany.name || "",
+      myId: freshCompany.myId || "",
+      generalInfo: freshCompany.generalInfo || "",
+      notificationEmail: freshCompany.notificationEmail || "",
+      resendApiKey: freshCompany.resendApiKey || "",
+      businessType: freshCompany.businessType || "general",
+      systemPrompt: freshCompany.systemPrompt || "",
+      securityPrompt: freshCompany.securityPrompt || "",
+      aiProvider: freshCompany.aiProvider || "openai",
+      aiModel: freshCompany.aiModel || "gpt-4o-mini",
+      aiExecutionMode: freshCompany.aiExecutionMode || "quota",
+      aiAgentApiKey: freshCompany.aiAgentApiKey || "",
+      aiAgentUrl: freshCompany.aiAgentUrl || "",
+      telegramEnabled: freshCompany.telegramEnabled ?? false,
+      telegramBotApiKey: freshCompany.telegramBotApiKey || "",
+      telegramBotUsername: freshCompany.telegramBotUsername || "",
+      whatsappEnabled: freshCompany.whatsappEnabled ?? false,
+      whatsappApiToken: freshCompany.whatsappApiToken || "",
+      whatsappPhoneNumberId: freshCompany.whatsappPhoneNumberId || "",
+      whatsappBusinessAccountId: freshCompany.whatsappBusinessAccountId || "",
+      whatsappNumber: freshCompany.whatsappNumber || "",
+      messengerEnabled: freshCompany.messengerEnabled ?? false,
+      messengerApiKey: freshCompany.messengerApiKey || "",
+      messengerPageId: freshCompany.messengerPageId || "",
+      widgetEnabled: freshCompany.widgetEnabled ?? false,
+      websiteChatbotKey: freshCompany.websiteChatbotKey || "",
+      widgetAllowedDomains: freshCompany.widgetAllowedDomains || "",
+      googleSheetsEnabled: freshCompany.googleSheetsEnabled ?? false,
+      googleSheetsLink: freshCompany.googleSheetsLink || "",
+      googleSheetsName: freshCompany.googleSheetsName || "",
+      googleSheetsPage: freshCompany.googleSheetsPage || "",
+      serviceAccountKey: freshCompany.serviceAccountKey || "",
+      googleCalendarEnabled: freshCompany.googleCalendarEnabled ?? false,
+      googleCalendarId: freshCompany.googleCalendarId || "",
+      googleCalendarTimezone: freshCompany.googleCalendarTimezone || "UTC",
+      googleCalendarDuration: freshCompany.googleCalendarDuration || 30,
+      googleCalendarBookingRules: freshCompany.googleCalendarBookingRules || "",
+      googleCalendarServiceAccountKey: freshCompany.googleCalendarServiceAccountKey || "",
+      isActive: freshCompany.isActive ?? false,
+      monthlyTokenQuota: freshCompany.monthlyTokenQuota !== undefined && freshCompany.monthlyTokenQuota !== null ? String(freshCompany.monthlyTokenQuota) : "",
+      activationStart: toDateInputValue(freshCompany.activationStart),
+      activationEnd: toDateInputValue(freshCompany.activationEnd),
+      chatLogRetentionDays: freshCompany.chatLogRetentionDays !== undefined && freshCompany.chatLogRetentionDays !== null ? String(freshCompany.chatLogRetentionDays) : "7",
     });
   };
 
-  const togglePage = (pageId: string) => {
-    setManageForm((prev: any) => {
-      const current: string[] = Array.isArray(prev.enabledClientPages) ? prev.enabledClientPages : [];
-      const exists = current.includes(pageId);
-      return {
-        ...prev,
-        enabledClientPages: exists
-          ? current.filter((id: string) => id !== pageId)
-          : [...current, pageId],
-      };
+  const togglePage = async (pageId: string) => {
+    if (!manageCompanyTarget) return;
+
+    const current: string[] = Array.isArray(manageForm.enabledClientPages)
+      ? manageForm.enabledClientPages
+      : (manageCompanyTarget.isActive === false
+          ? ["company", "packages", "support", "settings", "notifications"]
+          : CLIENT_PAGES_META.map((p) => p.id));
+
+    const exists = current.includes(pageId);
+    const updatedPages = exists
+      ? current.filter((id: string) => id !== pageId)
+      : [...current, pageId];
+
+    // 1. Update form state immediately for instant UI response
+    setManageForm((prev: any) => ({
+      ...prev,
+      enabledClientPages: updatedPages,
+    }));
+
+    // 2. Update target company state so if reopened/navigated it never reverts
+    setManageCompanyTarget((prev: any) => (prev ? { ...prev, enabledClientPages: updatedPages } : prev));
+
+    // 3. Optimistically update React Query cache for list of companies
+    queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+      if (!old) return old;
+      return old.map((c) => (c.id === manageCompanyTarget.id ? { ...c, enabledClientPages: updatedPages } : c));
     });
+
+    // 4. Auto-save in background to backend
+    try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabledClientPages: updatedPages }),
+      });
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+    } catch (err: any) {
+      console.error("Auto-save page toggle error:", err);
+    }
   };
 
-  const setPresetPages = (preset: "all" | "onboarding" | "core" | "none") => {
-    setManageForm((prev: any) => {
-      let pages: string[] = [];
-      if (preset === "all") {
-        pages = CLIENT_PAGES_META.map((p) => p.id);
-      } else if (preset === "onboarding") {
-        pages = ["company", "packages", "support", "settings", "notifications"];
-      } else if (preset === "core") {
-        pages = ["dashboard", "notifications", "company", "packages", "ai_model", "usage", "channels", "tools", "chat_logs", "leads", "support", "settings"];
-      } else if (preset === "none") {
-        pages = [];
-      }
-      return { ...prev, enabledClientPages: pages };
+  const setPresetPages = async (preset: "all" | "onboarding" | "core" | "none") => {
+    if (!manageCompanyTarget) return;
+    let pages: string[] = [];
+    if (preset === "all") {
+      pages = CLIENT_PAGES_META.map((p) => p.id);
+    } else if (preset === "onboarding") {
+      pages = ["company", "packages", "support", "settings", "notifications"];
+    } else if (preset === "core") {
+      pages = ["dashboard", "notifications", "company", "packages", "ai_model", "usage", "channels", "tools", "chat_logs", "leads", "support", "settings"];
+    } else if (preset === "none") {
+      pages = [];
+    }
+
+    setManageForm((prev: any) => ({ ...prev, enabledClientPages: pages }));
+    setManageCompanyTarget((prev: any) => (prev ? { ...prev, enabledClientPages: pages } : prev));
+
+    queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+      if (!old) return old;
+      return old.map((c) => (c.id === manageCompanyTarget.id ? { ...c, enabledClientPages: pages } : c));
     });
+
+    try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabledClientPages: pages }),
+      });
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      toast({
+        title: lang === "ar" ? "تم الحفظ تلقائياً" : "Auto-saved",
+        description: lang === "ar" ? "تم تحديث صفحات القائمة الجانبية بنجاح" : "Sidebar pages updated successfully",
+      });
+    } catch (err: any) {
+      console.error("Auto-save preset error:", err);
+    }
   };
 
   const handleSaveCompanyHub = async () => {
@@ -637,10 +685,15 @@ export default function AdminCompanies() {
         enabledClientPages: manageForm.enabledClientPages,
       };
 
-      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+      const updated = await customFetch<Company>(`/api/admin/companies/${manageCompanyTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+      });
+
+      queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+        if (!old) return old;
+        return old.map((c) => (c.id === manageCompanyTarget.id ? { ...c, ...updated, enabledClientPages: payload.enabledClientPages } : c));
       });
 
       toast({

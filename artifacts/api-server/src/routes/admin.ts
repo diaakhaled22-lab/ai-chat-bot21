@@ -69,16 +69,25 @@ async function ensureBusinessTypeSchema(): Promise<void> {
   }
 }
 
+function parseEnabledPages(val: any): string[] | null {
+  if (!val) return null;
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string") {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 let enabledPagesColumnEnsured = false;
 async function ensureEnabledClientPagesSchema(): Promise<void> {
   if (enabledPagesColumnEnsured) return;
   try {
-    const { pool } = await import("@workspace/db");
-    if (pool) {
-      await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
-    } else {
-      await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
-    }
+    await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`);
     enabledPagesColumnEnsured = true;
   } catch (err) {
     logger.warn({ err }, "Could not ensure enabled_client_pages schema");
@@ -746,15 +755,7 @@ router.get("/admin/companies", async (req, res) => {
         allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
         allowSourceShopify: company.allowSourceShopify === false ? false : true,
         businessType: company.businessType || "general",
-        enabledClientPages: (company as any).enabledClientPages
-          ? (() => {
-              try {
-                return JSON.parse((company as any).enabledClientPages);
-              } catch {
-                return null;
-              }
-            })()
-          : null,
+        enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString(),
       }))
@@ -893,15 +894,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: (company as any).enabledClientPages
-        ? (() => {
-            try {
-              return JSON.parse((company as any).enabledClientPages);
-            } catch {
-              return null;
-            }
-          })()
-        : null,
+      enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -1191,15 +1184,7 @@ async function handleUpdateCompany(req: any, res: any) {
       allowSourceRestApi: updatedRow.allowSourceRestApi === false ? false : true,
       allowSourceShopify: updatedRow.allowSourceShopify === false ? false : true,
       businessType: updatedRow.businessType || "general",
-      enabledClientPages: (updatedRow as any).enabledClientPages
-        ? (() => {
-            try {
-              return JSON.parse((updatedRow as any).enabledClientPages);
-            } catch {
-              return null;
-            }
-          })()
-        : null,
+      enabledClientPages: parseEnabledPages((updatedRow as any).enabledClientPages),
       createdAt: updatedRow.createdAt.toISOString(),
       updatedAt: updatedRow.updatedAt.toISOString(),
     });
