@@ -637,16 +637,11 @@ export default function AdminCompanies() {
         enabledClientPages: manageForm.enabledClientPages,
       };
 
-      const res = await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to update company");
-      }
 
       toast({
         title: lang === "ar" ? "تم الحفظ بنجاح" : "Saved successfully",
@@ -656,9 +651,10 @@ export default function AdminCompanies() {
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
       setManageCompanyTarget(null);
     } catch (err: any) {
+      const errorMsg = err?.data?.error || err?.message || (lang === "ar" ? "فشل حفظ التعديلات" : "Failed to update company");
       toast({
         title: lang === "ar" ? "خطأ في الحفظ" : "Save Error",
-        description: err.message,
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
