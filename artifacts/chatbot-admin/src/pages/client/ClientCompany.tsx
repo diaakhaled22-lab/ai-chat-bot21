@@ -193,7 +193,7 @@ function MessengerSetupCard({ company }: { company: { isActive: boolean; messeng
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span>① User sends a message to your Facebook Page</span>
             <span>② Meta forwards it to your server automatically</span>
-            <span>③ AI reads your System Prompt + Website Data and replies</span>
+            <span>③ AI reads your Instructions + Website Data and replies</span>
             <span>④ Response is sent back to the user in Messenger</span>
           </div>
         </div>
@@ -311,7 +311,7 @@ function WhatsAppSetupCard({ company }: { company: { isActive: boolean; whatsapp
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span>① User sends a message to your WhatsApp number</span>
             <span>② Meta forwards it to your server automatically</span>
-            <span>③ AI reads your System Prompt + Website Data and replies</span>
+            <span>③ AI reads your Instructions + Website Data and replies</span>
             <span>④ Response is sent back to the user in WhatsApp</span>
           </div>
         </div>
@@ -811,7 +811,7 @@ export default function ClientCompany() {
               <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <span>① User sends a message to your Telegram bot</span>
                 <span>② Telegram forwards it to your server automatically</span>
-                <span>③ AI reads your System Prompt + Website Data and replies</span>
+                <span>③ AI reads your Instructions + Website Data and replies</span>
                 <span>④ Response is sent back to the user in Telegram</span>
               </div>
             </div>
@@ -832,10 +832,12 @@ export default function ClientCompany() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="w-5 h-5 text-primary" />
-              How It All Works
+              {lang === "ar" ? "كيف يعمل النظام بالكامل" : "How It All Works"}
             </CardTitle>
             <CardDescription>
-              Everything you configure here powers your chatbot across all channels.
+              {lang === "ar"
+                ? "كل ما تقوم بتهيئته هنا يغذي ويشغّل المساعد الذكي عبر جميع القنوات."
+                : "Everything you configure here powers your chatbot across all channels."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -847,10 +849,10 @@ export default function ClientCompany() {
                 {lang === "ar" ? "مصادر المعرفة والبيانات" : "Knowledge & Data Sources"}
               </p>
               <div className="grid grid-cols-2 min-[500px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-center text-xs">
-                {/* 1. System Prompt */}
+                {/* 1. System Instructions */}
                 <div className={`rounded-lg border p-2.5 space-y-1 transition-all ${company.systemPrompt ? "border-primary/40 bg-primary/5" : "border-border/40 bg-background"}`}>
                   <div className="text-base">📝</div>
-                  <div className="font-medium truncate">{lang === "ar" ? "التعليمات" : "System Prompt"}</div>
+                  <div className="font-medium truncate">{lang === "ar" ? "التعليمات" : "Instructions"}</div>
                   <div className={`text-[10px] ${company.systemPrompt ? "text-primary font-medium" : "text-muted-foreground"}`}>
                     {company.systemPrompt ? (lang === "ar" ? "✓ مفعّل" : "✓ Configured") : (lang === "ar" ? "غير محدد" : "Not set")}
                   </div>
@@ -1234,7 +1236,9 @@ export default function ClientCompany() {
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span className="inline-block w-2 h-2 rounded-full bg-violet-500"></span>
-                  The widget reads your System Prompt, Website Data, and AI settings — fully automatic.
+                  {lang === "ar"
+                    ? "يقرأ الويدجت التعليمات وبيانات الموقع وإعدادات الذكاء الاصطناعي — تلقائياً بالكامل."
+                    : "The widget reads your Instructions, Website Data, and AI settings — fully automatic."}
                 </p>
               </div>
             ) : (
