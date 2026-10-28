@@ -937,7 +937,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     return "";
   };
 
-  const clientLinks = enabledPages && enabledPages.length > 0
+  const clientLinks = Array.isArray(enabledPages)
     ? fullClientLinks.filter((link) => {
         const pageKey = getClientPageKey(link.href);
         return enabledPages.includes(pageKey);
@@ -948,7 +948,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   useEffect(() => {
     if (role === "client" && !isCompanyLoading) {
-      if (enabledPages && enabledPages.length > 0) {
+      if (Array.isArray(enabledPages)) {
         if (location.startsWith("/client")) {
           const currentPageKey = getClientPageKey(location);
           if (currentPageKey && !enabledPages.includes(currentPageKey)) {

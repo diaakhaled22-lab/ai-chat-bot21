@@ -99,6 +99,19 @@ router.get("/client/company", async (req, res) => {
 
     const quotaModelInfo = await getQuotaAiModelInfo();
 
+    let configPages: string[] | null = null;
+    try {
+      const [cr] = await db
+        .select({ value: adminConfigTable.value })
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, `enabled_client_pages_${company.id}`))
+        .limit(1);
+      if (cr?.value) {
+        const p = JSON.parse(cr.value);
+        if (Array.isArray(p)) configPages = p;
+      }
+    } catch {}
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -157,7 +170,7 @@ router.get("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
+      enabledClientPages: configPages ?? parseEnabledPages((company as any).enabledClientPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -626,6 +639,19 @@ router.put("/client/company", async (req, res) => {
       void syncCompanyWebsite(company);
     }
 
+    let configPages: string[] | null = null;
+    try {
+      const [cr] = await db
+        .select({ value: adminConfigTable.value })
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, `enabled_client_pages_${company.id}`))
+        .limit(1);
+      if (cr?.value) {
+        const p = JSON.parse(cr.value);
+        if (Array.isArray(p)) configPages = p;
+      }
+    } catch {}
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -672,7 +698,7 @@ router.put("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
+      enabledClientPages: configPages ?? parseEnabledPages((company as any).enabledClientPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });

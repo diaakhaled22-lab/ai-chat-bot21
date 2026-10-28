@@ -503,12 +503,26 @@ export default function AdminCompanies() {
     const freshCompany = companies?.find((c) => c.id === company.id) || company;
     setManageCompanyTarget(freshCompany);
     setManageActiveTab("pages");
+
+    let cachedPages: string[] | null = null;
+    try {
+      const stored = localStorage.getItem(`admin_company_pages_${freshCompany.id}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) cachedPages = parsed;
+      }
+    } catch {}
+
+    const resolvedPages = cachedPages !== null
+      ? cachedPages
+      : (Array.isArray(freshCompany.enabledClientPages)
+          ? [...freshCompany.enabledClientPages]
+          : (freshCompany.isActive === false
+              ? ["company", "packages", "support", "settings", "notifications"]
+              : CLIENT_PAGES_META.map((p) => p.id)));
+
     setManageForm({
-      enabledClientPages: Array.isArray(freshCompany.enabledClientPages)
-        ? [...freshCompany.enabledClientPages]
-        : (freshCompany.isActive === false
-            ? ["company", "packages", "support", "settings", "notifications"]
-            : CLIENT_PAGES_META.map((p) => p.id)),
+      enabledClientPages: resolvedPages,
       name: freshCompany.name || "",
       myId: freshCompany.myId || "",
       generalInfo: freshCompany.generalInfo || "",
@@ -555,7 +569,7 @@ export default function AdminCompanies() {
     });
   };
 
-  const togglePage = async (pageId: string) => {
+  const handlePageCheckChange = async (pageId: string, shouldBeChecked: boolean) => {
     if (!manageCompanyTarget) return;
 
     const current: string[] = Array.isArray(manageForm.enabledClientPages)
@@ -564,37 +578,55 @@ export default function AdminCompanies() {
           ? ["company", "packages", "support", "settings", "notifications"]
           : CLIENT_PAGES_META.map((p) => p.id));
 
-    const exists = current.includes(pageId);
-    const updatedPages = exists
-      ? current.filter((id: string) => id !== pageId)
-      : [...current, pageId];
+    let updatedPages: string[];
+    if (shouldBeChecked) {
+      updatedPages = current.includes(pageId) ? current : [...current, pageId];
+    } else {
+      updatedPages = current.filter((id: string) => id !== pageId);
+    }
 
-    // 1. Update form state immediately for instant UI response
+    // 1. Instant local persistence (0ms) so navigating away or re-opening never reverts
+    try {
+      localStorage.setItem(`admin_company_pages_${manageCompanyTarget.id}`, JSON.stringify(updatedPages));
+    } catch {}
+
+    // 2. Update form state immediately for instant UI response
     setManageForm((prev: any) => ({
       ...prev,
       enabledClientPages: updatedPages,
     }));
 
-    // 2. Update target company state so if reopened/navigated it never reverts
+    // 3. Update target company state so if reopened/navigated it never reverts
     setManageCompanyTarget((prev: any) => (prev ? { ...prev, enabledClientPages: updatedPages } : prev));
 
-    // 3. Optimistically update React Query cache for list of companies
+    // 4. Optimistically update React Query cache for list of companies
     queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
       if (!old) return old;
       return old.map((c) => (c.id === manageCompanyTarget.id ? { ...c, enabledClientPages: updatedPages } : c));
     });
 
-    // 4. Auto-save in background to backend
+    // 5. Dual-save to backend
     try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/pages`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabledClientPages: updatedPages }),
+      });
       await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabledClientPages: updatedPages }),
-      });
-      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      }).catch(() => {});
     } catch (err: any) {
       console.error("Auto-save page toggle error:", err);
     }
+  };
+
+  const togglePage = (pageId: string) => {
+    const isCurrentlyEnabled = Array.isArray(manageForm.enabledClientPages)
+      ? manageForm.enabledClientPages.includes(pageId)
+      : true;
+    handlePageCheckChange(pageId, !isCurrentlyEnabled);
   };
 
   const setPresetPages = async (preset: "all" | "onboarding" | "core" | "none") => {
@@ -610,6 +642,10 @@ export default function AdminCompanies() {
       pages = [];
     }
 
+    try {
+      localStorage.setItem(`admin_company_pages_${manageCompanyTarget.id}`, JSON.stringify(pages));
+    } catch {}
+
     setManageForm((prev: any) => ({ ...prev, enabledClientPages: pages }));
     setManageCompanyTarget((prev: any) => (prev ? { ...prev, enabledClientPages: pages } : prev));
 
@@ -619,11 +655,16 @@ export default function AdminCompanies() {
     });
 
     try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/pages`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabledClientPages: pages }),
+      });
       await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabledClientPages: pages }),
-      });
+      }).catch(() => {});
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
       toast({
         title: lang === "ar" ? "تم الحفظ تلقائياً" : "Auto-saved",
@@ -684,6 +725,17 @@ export default function AdminCompanies() {
         googleCalendarServiceAccountKey: manageForm.googleCalendarServiceAccountKey,
         enabledClientPages: manageForm.enabledClientPages,
       };
+
+      if (Array.isArray(manageForm.enabledClientPages)) {
+        try {
+          localStorage.setItem(`admin_company_pages_${manageCompanyTarget.id}`, JSON.stringify(manageForm.enabledClientPages));
+        } catch {}
+        await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/pages`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabledClientPages: manageForm.enabledClientPages }),
+        }).catch(() => {});
+      }
 
       const updated = await customFetch<Company>(`/api/admin/companies/${manageCompanyTarget.id}`, {
         method: "PATCH",
@@ -1518,7 +1570,7 @@ export default function AdminCompanies() {
                         return (
                           <div
                             key={page.id}
-                            onClick={() => togglePage(page.id)}
+                            onClick={() => handlePageCheckChange(page.id, !isEnabled)}
                             className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                               isEnabled
                                 ? "bg-primary/5 border-primary/30 shadow-sm"
@@ -1540,12 +1592,13 @@ export default function AdminCompanies() {
                                 </p>
                               </div>
                             </div>
-                            <Switch
-                              checked={isEnabled}
-                              onCheckedChange={() => togglePage(page.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="shrink-0 scale-90"
-                            />
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Switch
+                                checked={isEnabled}
+                                onCheckedChange={(checked) => handlePageCheckChange(page.id, checked)}
+                                className="shrink-0 scale-90"
+                              />
+                            </div>
                           </div>
                         );
                       })}

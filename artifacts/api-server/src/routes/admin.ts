@@ -87,7 +87,10 @@ let enabledPagesColumnEnsured = false;
 async function ensureEnabledClientPagesSchema(): Promise<void> {
   if (enabledPagesColumnEnsured) return;
   try {
-    await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`);
+    if (pool) {
+      await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+    }
+    await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
     enabledPagesColumnEnsured = true;
   } catch (err) {
     logger.warn({ err }, "Could not ensure enabled_client_pages schema");
@@ -696,6 +699,26 @@ router.get("/admin/companies", async (req, res) => {
       }
     }
 
+    // Fetch enabled pages from adminConfigTable as robust fallback
+    const configPagesRows = await db
+      .select({ key: adminConfigTable.key, value: adminConfigTable.value })
+      .from(adminConfigTable)
+      .where(sql`${adminConfigTable.key} LIKE 'enabled_client_pages_%'`)
+      .catch(() => []);
+
+    const configPagesMap = new Map<number, string[]>();
+    for (const r of configPagesRows) {
+      if (r.value) {
+        const compId = Number(r.key.replace("enabled_client_pages_", ""));
+        if (compId) {
+          try {
+            const parsed = JSON.parse(r.value);
+            if (Array.isArray(parsed)) configPagesMap.set(compId, parsed);
+          } catch {}
+        }
+      }
+    }
+
     res.json(
       rows.map(({ company, clientName, clientUsername, clientNotificationEmail }) => ({
         id: company.id,
@@ -755,7 +778,7 @@ router.get("/admin/companies", async (req, res) => {
         allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
         allowSourceShopify: company.allowSourceShopify === false ? false : true,
         businessType: company.businessType || "general",
-        enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
+        enabledClientPages: configPagesMap.has(company.id) ? (configPagesMap.get(company.id) ?? []) : (parseEnabledPages((company as any).enabledClientPages) ?? null),
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString(),
       }))
@@ -837,6 +860,24 @@ router.get("/admin/companies/:id", async (req, res) => {
       return;
     }
     const { company, clientName } = row;
+
+    let configPages: string[] | null = null;
+    let hasConfigPages = false;
+    try {
+      const [cr] = await db
+        .select({ value: adminConfigTable.value })
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, `enabled_client_pages_${params.data.id}`))
+        .limit(1);
+      if (cr?.value !== undefined && cr?.value !== null) {
+        const p = JSON.parse(cr.value);
+        if (Array.isArray(p)) {
+          configPages = p;
+          hasConfigPages = true;
+        }
+      }
+    } catch {}
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -894,7 +935,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: parseEnabledPages((company as any).enabledClientPages),
+      enabledClientPages: hasConfigPages ? configPages : (parseEnabledPages((company as any).enabledClientPages) ?? null),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -1076,12 +1117,31 @@ async function handleUpdateCompany(req: any, res: any) {
       updateValues.googleCalendarServiceAccountKey = preserveMaskedSecret(body.googleCalendarServiceAccountKey, existing.googleCalendarServiceAccountKey);
     }
 
-    // 10. Sidebar Menu Pages Permissions
+    // 10. Sidebar Menu Pages Permissions (Dual-save)
+    let savedPagesJson: string | null = null;
+    let savedPagesArray: string[] | null = null;
     if (body.enabledClientPages !== undefined) {
       if (Array.isArray(body.enabledClientPages)) {
-        updateValues.enabledClientPages = JSON.stringify(body.enabledClientPages);
+        savedPagesArray = body.enabledClientPages;
+        savedPagesJson = JSON.stringify(body.enabledClientPages);
+        updateValues.enabledClientPages = savedPagesJson;
       } else if (body.enabledClientPages === null) {
+        savedPagesArray = null;
+        savedPagesJson = null;
         updateValues.enabledClientPages = null;
+      }
+
+      if (savedPagesJson !== null) {
+        await db
+          .insert(adminConfigTable)
+          .values({ key: `enabled_client_pages_${id}`, value: savedPagesJson })
+          .onConflictDoUpdate({
+            target: adminConfigTable.key,
+            set: { value: savedPagesJson, updatedAt: new Date() },
+          })
+          .catch(() => {});
+      } else if (body.enabledClientPages === null) {
+        await db.delete(adminConfigTable).where(eq(adminConfigTable.key, `enabled_client_pages_${id}`)).catch(() => {});
       }
     }
 
@@ -1089,11 +1149,24 @@ async function handleUpdateCompany(req: any, res: any) {
       updateValues.updatedAt = new Date();
     }
 
-    const [updatedRow] = await db
-      .update(companiesTable)
-      .set(updateValues)
-      .where(eq(companiesTable.id, id))
-      .returning();
+    let updatedRow: any;
+    try {
+      const [row] = await db
+        .update(companiesTable)
+        .set(updateValues)
+        .where(eq(companiesTable.id, id))
+        .returning();
+      updatedRow = row;
+    } catch (updateErr: any) {
+      logger.warn({ updateErr }, "Update companiesTable with enabledClientPages failed, retrying without it");
+      delete updateValues.enabledClientPages;
+      const [fallbackRow] = await db
+        .update(companiesTable)
+        .set(updateValues)
+        .where(eq(companiesTable.id, id))
+        .returning();
+      updatedRow = fallbackRow;
+    }
 
     if (!updatedRow) {
       res.status(404).json({ error: "Company not found" });
@@ -1184,7 +1257,11 @@ async function handleUpdateCompany(req: any, res: any) {
       allowSourceRestApi: updatedRow.allowSourceRestApi === false ? false : true,
       allowSourceShopify: updatedRow.allowSourceShopify === false ? false : true,
       businessType: updatedRow.businessType || "general",
-      enabledClientPages: parseEnabledPages((updatedRow as any).enabledClientPages),
+      enabledClientPages: savedPagesArray !== null
+        ? savedPagesArray
+        : (body.enabledClientPages === null
+            ? null
+            : (parseEnabledPages((updatedRow as any)?.enabledClientPages) ?? null)),
       createdAt: updatedRow.createdAt.toISOString(),
       updatedAt: updatedRow.updatedAt.toISOString(),
     });
@@ -1196,6 +1273,73 @@ async function handleUpdateCompany(req: any, res: any) {
 
 router.patch("/admin/companies/:id", handleUpdateCompany);
 router.put("/admin/companies/:id", handleUpdateCompany);
+
+// Dedicated route to update sidebar menu pages permissions (dual persistence)
+router.put("/admin/companies/:id/pages", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+    const { enabledClientPages } = req.body || {};
+    const pages = Array.isArray(enabledClientPages) ? enabledClientPages : [];
+    const jsonStr = JSON.stringify(pages);
+
+    // 1. Save in adminConfigTable (guaranteed storage)
+    await db
+      .insert(adminConfigTable)
+      .values({ key: `enabled_client_pages_${id}`, value: jsonStr })
+      .onConflictDoUpdate({
+        target: adminConfigTable.key,
+        set: { value: jsonStr, updatedAt: new Date() },
+      })
+      .catch(() => {});
+
+    // 2. Save in companiesTable column if possible
+    try {
+      if (pool) {
+        await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+        await pool.query(`UPDATE companies SET enabled_client_pages = $1 WHERE id = $2;`, [jsonStr, id]).catch(() => {});
+      } else {
+        await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+        await db.execute(sql`UPDATE companies SET enabled_client_pages = ${jsonStr} WHERE id = ${id};`).catch(() => {});
+      }
+    } catch {}
+
+    res.json({ ok: true, enabledClientPages: pages });
+  } catch (err: any) {
+    logger.error({ err }, "Update company pages error");
+    res.status(500).json({ error: err?.message || "Internal server error" });
+  }
+});
+router.patch("/admin/companies/:id/pages", async (req, res) => {
+  const id = Number(req.params.id);
+  const { enabledClientPages } = req.body || {};
+  const pages = Array.isArray(enabledClientPages) ? enabledClientPages : [];
+  const jsonStr = JSON.stringify(pages);
+
+  await db
+    .insert(adminConfigTable)
+    .values({ key: `enabled_client_pages_${id}`, value: jsonStr })
+    .onConflictDoUpdate({
+      target: adminConfigTable.key,
+      set: { value: jsonStr, updatedAt: new Date() },
+    })
+    .catch(() => {});
+
+  try {
+    if (pool) {
+      await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+      await pool.query(`UPDATE companies SET enabled_client_pages = $1 WHERE id = $2;`, [jsonStr, id]).catch(() => {});
+    } else {
+      await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
+      await db.execute(sql`UPDATE companies SET enabled_client_pages = ${jsonStr} WHERE id = ${id};`).catch(() => {});
+    }
+  } catch {}
+
+  res.json({ ok: true, enabledClientPages: pages });
+});
 
 // PUT /admin/companies/:id/business-type
 router.put("/admin/companies/:id/business-type", async (req, res) => {
