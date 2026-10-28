@@ -98,17 +98,18 @@ interface PlanDef {
   descriptionEn: string;
   monthlyPriceUsd: number;
   tokensMonthly: number;
-  tokensFormatted: string;
+  tokensFormatted?: string;
   popular?: boolean;
-  color: string;
-  gradient: string;
+  color?: string;
+  gradient?: string;
   badgeAr?: string;
   badgeEn?: string;
   featuresAr: string[];
   featuresEn: string[];
+  isActive?: boolean;
 }
 
-const PLANS: PlanDef[] = [
+const DEFAULT_PLANS: PlanDef[] = [
   {
     id: "starter",
     nameAr: "الباقة الأساسية (Starter)",
@@ -204,11 +205,19 @@ const PLANS: PlanDef[] = [
   },
 ];
 
-const TOPUP_PACKS = [
-  { tokens: 25_000, formatted: "+25K", priceUsd: 5 },
-  { tokens: 50_000, formatted: "+50K", priceUsd: 10 },
-  { tokens: 100_000, formatted: "+100K", priceUsd: 18 },
-  { tokens: 250_000, formatted: "+250K", priceUsd: 40 },
+interface TopupItemDef {
+  id?: string;
+  tokens: number;
+  formatted: string;
+  priceUsd: number;
+  isActive?: boolean;
+}
+
+const DEFAULT_TOPUP_PACKS: TopupItemDef[] = [
+  { id: "topup-25k", tokens: 25_000, formatted: "+25K", priceUsd: 5 },
+  { id: "topup-50k", tokens: 50_000, formatted: "+50K", priceUsd: 10 },
+  { id: "topup-100k", tokens: 100_000, formatted: "+100K", priceUsd: 18 },
+  { id: "topup-250k", tokens: 250_000, formatted: "+250K", priceUsd: 40 },
 ];
 
 export default function ClientPackages() {
@@ -226,9 +235,22 @@ export default function ClientPackages() {
   const [clientNotes, setClientNotes] = useState("");
 
   // Topup request modal
-  const [topupPack, setTopupPack] = useState<(typeof TOPUP_PACKS)[0] | null>(null);
+  const [topupPack, setTopupPack] = useState<TopupItemDef | null>(null);
   const [topupDialogOpen, setTopupDialogOpen] = useState(false);
   const [topupNotes, setTopupNotes] = useState("");
+
+  // Dynamically load packages from admin configuration
+  const { data: catalogData } = useQuery<{
+    packages: PlanDef[];
+    topupPacks: TopupItemDef[];
+  }>({
+    queryKey: ["packages-catalog"],
+    queryFn: () => customFetch("/api/client/packages/catalog"),
+    staleTime: 15_000,
+  });
+
+  const plans = catalogData?.packages && catalogData.packages.length > 0 ? catalogData.packages : DEFAULT_PLANS;
+  const topupPacks = catalogData?.topupPacks && catalogData.topupPacks.length > 0 ? catalogData.topupPacks : DEFAULT_TOPUP_PACKS;
 
   const { data: company, isLoading: isCompanyLoading } = useGetClientCompany({
     query: {
@@ -299,7 +321,7 @@ export default function ClientPackages() {
       `العميل يطلب الاشتراك في الباقة: ${selectedPlan.nameAr} (${selectedPlan.nameEn})`,
       `دورة الفوترة: ${cycleText}`,
       `السعر التقديري: ${price} ${currencyCfg.symbol} / شهر`,
-      `رصيد الرموز المرفق: ${selectedPlan.tokensFormatted} Tokens`,
+      `رصيد الرموز المرفق: ${selectedPlan.tokensFormatted || selectedPlan.tokensMonthly.toLocaleString()} Tokens`,
       clientPhone ? `رقم هاتف / واتساب للتواصل: ${clientPhone}` : null,
       clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes}` : null,
       `اسم الشركة الحالي: ${(company as any)?.name ?? "لم يتم الإنشاء بعد"}`,
@@ -555,7 +577,7 @@ export default function ClientPackages() {
 
       {/* ── Main Plans Cards Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const price = calcPrice(plan.monthlyPriceUsd);
           const isPop = plan.popular;
 
@@ -622,7 +644,7 @@ export default function ClientPackages() {
                     </span>
                   </div>
                   <span className="text-xs font-black text-primary tabular-nums">
-                    {plan.tokensFormatted} Tokens
+                    {plan.tokensFormatted || Number(plan.tokensMonthly).toLocaleString()} Tokens
                   </span>
                 </div>
               </div>
@@ -707,7 +729,7 @@ export default function ClientPackages() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TOPUP_PACKS.map((pack, idx) => {
+          {topupPacks.map((pack, idx) => {
             const packPrice = Math.round(pack.priceUsd * currencyCfg.exchangeRate);
             return (
               <Card
@@ -832,7 +854,7 @@ export default function ClientPackages() {
                     {lang === "ar" ? selectedPlan.nameAr : selectedPlan.nameEn}
                   </h4>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {selectedPlan.tokensFormatted} Tokens · {billingCycle === "yearly" ? (lang === "ar" ? "سنوي" : "Yearly") : (lang === "ar" ? "شهري" : "Monthly")}
+                    {selectedPlan.tokensFormatted || Number(selectedPlan.tokensMonthly).toLocaleString()} Tokens · {billingCycle === "yearly" ? (lang === "ar" ? "سنوي" : "Yearly") : (lang === "ar" ? "شهري" : "Monthly")}
                   </p>
                 </div>
                 <div className="text-right">

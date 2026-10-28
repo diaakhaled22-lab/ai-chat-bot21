@@ -28,6 +28,7 @@ import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, saniti
 import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
+import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
 
@@ -3533,6 +3534,42 @@ router.patch("/client/leads/:id", async (req, res) => {
     } catch (err) {
       logger.error({ err }, "Delete canned responses error");
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // GET /client/packages/catalog
+  router.get(["/client/packages/catalog", "/packages/catalog"], async (req, res) => {
+    try {
+      const [row] = await db
+        .select()
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, "packages_catalog"));
+
+      if (!row || !row.value) {
+        res.json(DEFAULT_PACKAGES_CATALOG);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(row.value);
+        const activePackages = (Array.isArray(parsed.packages) ? parsed.packages : DEFAULT_PACKAGES_CATALOG.packages)
+          .filter((p: any) => p.isActive !== false)
+          .sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+        const activeTopups = (Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks)
+          .filter((tp: any) => tp.isActive !== false);
+
+        res.json({
+          packages: activePackages,
+          topupPacks: activeTopups,
+          updatedAt: row.updatedAt?.toISOString() || new Date().toISOString(),
+        });
+      } catch {
+        res.json(DEFAULT_PACKAGES_CATALOG);
+      }
+    } catch (err) {
+      logger.error({ err }, "Get client packages catalog error");
+      res.status(500).json({ error: "Failed to load packages" });
     }
   });
 

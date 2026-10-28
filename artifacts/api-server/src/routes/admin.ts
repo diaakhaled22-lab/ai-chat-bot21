@@ -24,6 +24,7 @@ import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validate
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, sendNewClientNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
+import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem, type PackagesCatalog } from "../lib/packagesCatalog";
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
@@ -4197,6 +4198,151 @@ ${malfunction.description}
   } catch (err: any) {
     logger.error({ err }, "Malfunction AI analysis error");
     res.status(500).json({ error: err.message || "Failed to analyze malfunction with AI" });
+  }
+});
+
+// ── Packages & Plans Management ──────────────────────────────────────────────
+router.get("/admin/packages", async (req, res) => {
+  try {
+    const [row] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "packages_catalog"));
+
+    if (!row || !row.value) {
+      res.json(DEFAULT_PACKAGES_CATALOG);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(row.value);
+      res.json({
+        packages: Array.isArray(parsed.packages) ? parsed.packages : DEFAULT_PACKAGES_CATALOG.packages,
+        topupPacks: Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks,
+        updatedAt: row.updatedAt?.toISOString() || new Date().toISOString(),
+      });
+    } catch {
+      res.json(DEFAULT_PACKAGES_CATALOG);
+    }
+  } catch (err: any) {
+    logger.error({ err }, "Get admin packages error");
+    res.status(500).json({ error: "Failed to load packages catalog" });
+  }
+});
+
+router.put("/admin/packages", async (req, res) => {
+  try {
+    const { packages, topupPacks } = req.body as {
+      packages?: PackageItem[];
+      topupPacks?: TopupPackItem[];
+    };
+
+    if (!Array.isArray(packages)) {
+      res.status(400).json({ error: "Packages list must be an array" });
+      return;
+    }
+
+    const cleanedPackages: PackageItem[] = packages.map((p, index) => ({
+      id: p.id ? String(p.id).trim() : `plan-${index + 1}`,
+      nameAr: String(p.nameAr || "").trim() || "باقة جديدة",
+      nameEn: String(p.nameEn || "").trim() || "New Plan",
+      descriptionAr: String(p.descriptionAr || "").trim(),
+      descriptionEn: String(p.descriptionEn || "").trim(),
+      monthlyPriceUsd: Number(p.monthlyPriceUsd) >= 0 ? Number(p.monthlyPriceUsd) : 0,
+      tokensMonthly: Number(p.tokensMonthly) >= 0 ? Number(p.tokensMonthly) : 0,
+      tokensFormatted: p.tokensFormatted || Number(p.tokensMonthly || 0).toLocaleString(),
+      popular: Boolean(p.popular),
+      color: p.color || "#2D5BE3",
+      badgeAr: p.badgeAr ? String(p.badgeAr).trim() : undefined,
+      badgeEn: p.badgeEn ? String(p.badgeEn).trim() : undefined,
+      featuresAr: Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [],
+      featuresEn: Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [],
+      isActive: p.isActive !== false,
+      sortOrder: Number(p.sortOrder) || index + 1,
+    }));
+
+    const cleanedTopups: TopupPackItem[] = Array.isArray(topupPacks)
+      ? topupPacks.map((tp, idx) => ({
+          id: tp.id ? String(tp.id).trim() : `topup-${idx + 1}`,
+          tokens: Number(tp.tokens) >= 0 ? Number(tp.tokens) : 10000,
+          formatted: tp.formatted ? String(tp.formatted).trim() : `+${Math.round((Number(tp.tokens) || 0) / 1000)}K`,
+          priceUsd: Number(tp.priceUsd) >= 0 ? Number(tp.priceUsd) : 5,
+          isActive: tp.isActive !== false,
+        }))
+      : DEFAULT_PACKAGES_CATALOG.topupPacks;
+
+    const payload: PackagesCatalog = {
+      packages: cleanedPackages,
+      topupPacks: cleanedTopups,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const [existing] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "packages_catalog"));
+
+    if (existing) {
+      await db
+        .update(adminConfigTable)
+        .set({ value: JSON.stringify(payload) })
+        .where(eq(adminConfigTable.key, "packages_catalog"));
+    } else {
+      await db.insert(adminConfigTable).values({
+        key: "packages_catalog",
+        value: JSON.stringify(payload),
+      });
+    }
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Update Packages Catalog",
+      `Admin updated ${cleanedPackages.length} subscription packages and ${cleanedTopups.length} top-up packs`,
+      req.ip || null
+    );
+
+    res.json(payload);
+  } catch (err: any) {
+    logger.error({ err }, "Update admin packages error");
+    res.status(500).json({ error: "Failed to update packages catalog" });
+  }
+});
+
+router.post("/admin/packages/reset", async (req, res) => {
+  try {
+    const payload = {
+      ...DEFAULT_PACKAGES_CATALOG,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const [existing] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "packages_catalog"));
+
+    if (existing) {
+      await db
+        .update(adminConfigTable)
+        .set({ value: JSON.stringify(payload) })
+        .where(eq(adminConfigTable.key, "packages_catalog"));
+    } else {
+      await db.insert(adminConfigTable).values({
+        key: "packages_catalog",
+        value: JSON.stringify(payload),
+      });
+    }
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Reset Packages Catalog",
+      "Admin reset subscription packages and top-up packs to system defaults",
+      req.ip || null
+    );
+
+    res.json(payload);
+  } catch (err: any) {
+    logger.error({ err }, "Reset admin packages error");
+    res.status(500).json({ error: "Failed to reset packages catalog" });
   }
 });
 

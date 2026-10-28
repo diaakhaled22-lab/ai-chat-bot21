@@ -811,6 +811,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     },
     { href: "/admin/clients",            label: "Clients",            icon: Users },
     { href: "/admin/companies",          label: "Companies",          icon: Building2 },
+    { href: "/admin/packages",           label: lang === "ar" ? "إدارة الباقات" : "Packages & Plans", icon: Package },
     { href: "/admin/ai-quota",           label: "AI / Quota",         icon: Cpu },
     { href: "/admin/chat-logs",          label: "Chat Logs",          icon: MessageSquare, badge: true },
     { href: "/admin/tickets",            label: "Customer Problems",  icon: LifeBuoy, ticketBadge: true },
