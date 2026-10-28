@@ -4202,7 +4202,7 @@ ${malfunction.description}
 });
 
 // ── Packages & Plans Management ──────────────────────────────────────────────
-router.get("/admin/packages", async (req, res) => {
+async function handleGetPackages(req: any, res: any) {
   try {
     const [row] = await db
       .select()
@@ -4228,9 +4228,9 @@ router.get("/admin/packages", async (req, res) => {
     logger.error({ err }, "Get admin packages error");
     res.status(500).json({ error: "Failed to load packages catalog" });
   }
-});
+}
 
-router.put("/admin/packages", async (req, res) => {
+async function handleUpdatePackages(req: any, res: any) {
   try {
     const { packages, topupPacks } = req.body as {
       packages?: PackageItem[];
@@ -4306,9 +4306,9 @@ router.put("/admin/packages", async (req, res) => {
     logger.error({ err }, "Update admin packages error");
     res.status(500).json({ error: "Failed to update packages catalog" });
   }
-});
+}
 
-router.post("/admin/packages/reset", async (req, res) => {
+async function handleResetPackages(req: any, res: any) {
   try {
     const payload = {
       ...DEFAULT_PACKAGES_CATALOG,
@@ -4344,7 +4344,12 @@ router.post("/admin/packages/reset", async (req, res) => {
     logger.error({ err }, "Reset admin packages error");
     res.status(500).json({ error: "Failed to reset packages catalog" });
   }
-});
+}
+
+router.get(["/admin/packages", "/packages/catalog", "/packages"], handleGetPackages);
+router.put(["/admin/packages", "/packages"], handleUpdatePackages);
+router.post(["/admin/packages", "/packages"], handleUpdatePackages);
+router.post(["/admin/packages/reset", "/packages/reset"], handleResetPackages);
 
 export default router;
 

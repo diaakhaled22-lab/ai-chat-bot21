@@ -3537,8 +3537,8 @@ router.patch("/client/leads/:id", async (req, res) => {
     }
   });
 
-  // GET /client/packages/catalog
-  router.get(["/client/packages/catalog", "/packages/catalog"], async (req, res) => {
+  // GET /client/packages/catalog, /packages/catalog, /packages
+  router.get(["/client/packages/catalog", "/packages/catalog", "/packages"], async (req, res) => {
     try {
       const [row] = await db
         .select()

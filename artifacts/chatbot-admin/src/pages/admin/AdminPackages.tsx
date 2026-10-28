@@ -129,13 +129,22 @@ export default function AdminPackages() {
   const packages = catalog?.packages ?? [];
   const topupPacks = catalog?.topupPacks ?? [];
 
-  // Update Mutation
+  // Update Mutation (Supports both PUT and POST seamlessly)
   const updateMutation = useMutation({
-    mutationFn: (newCatalog: { packages: PackageItem[]; topupPacks: TopupPackItem[] }) =>
-      customFetch("/api/admin/packages", {
-        method: "PUT",
-        body: JSON.stringify(newCatalog),
-      }),
+    mutationFn: async (newCatalog: { packages: PackageItem[]; topupPacks: TopupPackItem[] }) => {
+      try {
+        return await customFetch("/api/admin/packages", {
+          method: "PUT",
+          body: JSON.stringify(newCatalog),
+        });
+      } catch (err: any) {
+        // Fallback to POST if PUT is blocked by server/proxy
+        return await customFetch("/api/admin/packages", {
+          method: "POST",
+          body: JSON.stringify(newCatalog),
+        });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-packages"] });
       queryClient.invalidateQueries({ queryKey: ["packages-catalog"] });
