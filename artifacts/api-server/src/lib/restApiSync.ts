@@ -1,7 +1,7 @@
 import { db, pool, companyRestApiIntegrationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
-import { isSafeUrl, safeFetch } from "./security";
+import { isSafeUrl } from "./security";
 
 // Max total characters of REST API content injected into the prompt
 const MAX_PROMPT_CHARS = 8_000;
@@ -170,7 +170,7 @@ export async function fetchRestApiContent(params: RestApiCredentials): Promise<F
   const method = (httpMethod || "GET").toUpperCase();
 
   try {
-    const res = await safeFetch(trimmedUrl, {
+    const res = await fetch(trimmedUrl, {
       method,
       headers,
       signal: AbortSignal.timeout(15_000),

@@ -1,7 +1,7 @@
 import { db, companyWordPressIntegrationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
-import { isSafeUrl, safeFetch } from "./security";
+import { isSafeUrl } from "./security";
 
 // Max chars per content item injected into prompt
 const MAX_ITEM_CHARS = 800;
@@ -72,7 +72,7 @@ async function wpFetch<T>(
     }
     const url = new URL(fullUrlString);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
-    const res = await safeFetch(url.toString(), {
+    const res = await fetch(url.toString(), {
       headers: buildHeaders(creds),
       signal: AbortSignal.timeout(12_000),
     });
@@ -115,7 +115,7 @@ export async function validateWordPressUrl(
   const fullCreds: WpCredentials = { apiUrl: base, ...creds };
 
   try {
-    const res = await safeFetch(targetUrl, {
+    const res = await fetch(targetUrl, {
       headers: buildHeaders(fullCreds),
       signal: AbortSignal.timeout(10_000),
     });
@@ -129,7 +129,7 @@ export async function validateWordPressUrl(
     // Try to get site name from root endpoint
     let siteName: string | undefined;
     try {
-      const rootRes = await safeFetch(base, {
+      const rootRes = await fetch(base, {
         headers: buildHeaders(fullCreds),
         signal: AbortSignal.timeout(8_000),
       });

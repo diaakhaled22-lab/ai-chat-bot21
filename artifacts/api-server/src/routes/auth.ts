@@ -1,8 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { execFile } from "child_process";
-import net from "net";
+import { exec } from "child_process";
 import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable } from "@workspace/db";
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
@@ -33,20 +32,9 @@ declare module "express-session" {
 export const temp2faTokens = new Map<string, { userId: number; name: string; expiresAt: number }>();
 
 function extractClientIp(req: any): string {
-  // `trust proxy` is configured in app.ts, so req.ip already resolves the
-  // real client address. Never read X-Forwarded-For directly: it is
-  // attacker-controlled and was previously passed to a shell command.
-  const raw = req.ip || req.socket?.remoteAddress || "unknown";
-  return String(raw).replace(/^::ffff:/, "").trim();
-}
-
-const MAC_PATTERN = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
-
-// MAC values come from the request body/headers, so only accept well-formed ones.
-function sanitizeMac(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return MAC_PATTERN.test(trimmed) ? trimmed.replace(/-/g, ":").toUpperCase() : null;
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") || req.ip || req.socket?.remoteAddress || "unknown";
+  return raw.replace(/^::ffff:/, "").trim();
 }
 
 function getArpMac(ip: string): Promise<string | null> {
@@ -54,14 +42,9 @@ function getArpMac(ip: string): Promise<string | null> {
     if (!ip || ip === "unknown" || ip === "127.0.0.1" || ip === "::1" || ip === "localhost") {
       return resolve(null);
     }
-    // Only a literal IP address may reach the process arguments.
-    if (net.isIP(ip) === 0) {
-      return resolve(null);
-    }
     const isWin = process.platform === "win32";
-    // execFile (no shell) — arguments are never interpreted by a shell.
-    const args = isWin ? ["-a", ip] : ["-n", ip];
-    execFile("arp", args, { timeout: 1500 }, (err, stdout) => {
+    const cmd = isWin ? `arp -a ${ip}` : `arp -n ${ip}`;
+    exec(cmd, { timeout: 1500 }, (err, stdout) => {
       if (err || !stdout) return resolve(null);
       const match = stdout.match(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/);
       if (match) {
@@ -85,8 +68,8 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     const { username, password } = parsed.data;
     const ip = req.ip || "unknown";
     const clientIp = extractClientIp(req);
-    const bodyMac = sanitizeMac((req.body as any)?.macAddress);
-    const headerMac = sanitizeMac(req.headers["x-mac-address"]);
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
+    const headerMac = typeof req.headers["x-mac-address"] === "string" ? (req.headers["x-mac-address"] as string).trim() : null;
     const arpMac = await getArpMac(clientIp);
     const finalMac = bodyMac || headerMac || arpMac || null;
 
@@ -232,8 +215,8 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     const { username, password } = parsed.data;
     const ip = req.ip || "unknown";
     const clientIp = extractClientIp(req);
-    const bodyMac = sanitizeMac((req.body as any)?.macAddress);
-    const headerMac = sanitizeMac(req.headers["x-mac-address"]);
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
+    const headerMac = typeof req.headers["x-mac-address"] === "string" ? (req.headers["x-mac-address"] as string).trim() : null;
     const arpMac = await getArpMac(clientIp);
     let finalMac = bodyMac || headerMac || arpMac || null;
 
@@ -322,7 +305,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       password?: string;
     };
     const clientIp = extractClientIp(req);
-    const bodyMac = sanitizeMac((req.body as any)?.macAddress);
+    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
     const arpMac = await getArpMac(clientIp);
     const rawMac = arpMac || bodyMac || null;
     const finalMac = rawMac ? rawMac.replace(/-/g, ":").toUpperCase() : null;

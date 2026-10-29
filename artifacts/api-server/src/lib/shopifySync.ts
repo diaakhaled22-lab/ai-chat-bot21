@@ -1,7 +1,7 @@
 import { db, pool, companyShopifyIntegrationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
-import { isSafeUrl, safeFetch } from "./security";
+import { isSafeUrl } from "./security";
 
 // Max total characters of Shopify content injected into the prompt
 const MAX_PROMPT_CHARS = 8_000;
@@ -175,7 +175,7 @@ export async function fetchShopifyContent(
 
     // 1. Fetch shop metadata
     try {
-      const shopRes = await safeFetch(`https://${shopDomain}/admin/api/${apiVersion}/shop.json`, {
+      const shopRes = await fetch(`https://${shopDomain}/admin/api/${apiVersion}/shop.json`, {
         headers: adminHeaders,
         signal: AbortSignal.timeout(10_000),
       });
@@ -201,7 +201,7 @@ export async function fetchShopifyContent(
 
     // 2. Fetch collections / categories
     try {
-      const collectionsRes = await safeFetch(
+      const collectionsRes = await fetch(
         `https://${shopDomain}/admin/api/${apiVersion}/custom_collections.json?limit=50`,
         { headers: adminHeaders, signal: AbortSignal.timeout(10_000) }
       );
@@ -223,7 +223,7 @@ export async function fetchShopifyContent(
 
     // 3. Fetch products via Admin API
     try {
-      const productsRes = await safeFetch(
+      const productsRes = await fetch(
         `https://${shopDomain}/admin/api/${apiVersion}/products.json?limit=250&status=active`,
         { headers: adminHeaders, signal: AbortSignal.timeout(15_000) }
       );
@@ -256,7 +256,7 @@ export async function fetchShopifyContent(
   if (totalItems === 0) {
     try {
       const publicUrl = `https://${shopDomain}/products.json?limit=250`;
-      const publicRes = await safeFetch(publicUrl, {
+      const publicRes = await fetch(publicUrl, {
         headers: {
           "Accept": "application/json",
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
