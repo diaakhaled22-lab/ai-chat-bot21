@@ -1,4 +1,4 @@
-﻿# Bot Manager – AI Chatbot Platform
+# Bot Manager – AI Chatbot Platform
 
 An AI chatbot management platform for deploying and managing AI-powered chat widgets for client companies.
 
@@ -31,12 +31,12 @@ Push the database schema:
 pnpm --filter @workspace/db run push
 ```
 
-## Default admin credentials
+## Admin account
 
-- **Username**: `admin`
-- **Password**: `admin123`
-
-> Change this password after first login.
+On first start, if no `admin` user exists, one is created with the password from
+`DEFAULT_ADMIN_PASSWORD`. If that variable is not set (development only), a random
+password is generated and **not** displayed — set `DEFAULT_ADMIN_PASSWORD` or reset
+the password from the database. In production `DEFAULT_ADMIN_PASSWORD` is required.
 
 ## Environment variables
 
@@ -44,6 +44,9 @@ pnpm --filter @workspace/db run push
 |---|---|---|
 | `DATABASE_URL` | Yes | Auto-provisioned by Replit |
 | `SESSION_SECRET` | Yes | Set as a Replit Secret |
+| `ENCRYPTION_KEY` | Yes (production) | 64 hex chars (32 bytes). Encrypts stored API keys |
+| `ALLOWED_ORIGINS` | Yes (production) | Comma-separated frontend origins allowed to send cookies |
+| `DEFAULT_ADMIN_PASSWORD` | Yes (production) | Initial admin password |
 | `OPENAI_API_KEY` | For OpenAI AI features | Set as a Replit Secret |
 | `PORT` | Yes | Auto-set by Replit per artifact |
 

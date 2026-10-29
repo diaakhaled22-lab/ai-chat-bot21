@@ -44,20 +44,29 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (curl, server-to-server, mobile apps)
-    if (!origin) return callback(null, true);
-    // In dev mode or if no origins configured, allow all
-    if (process.env.NODE_ENV !== "production" || ALLOWED_ORIGINS.length === 0) {
-      return callback(null, true);
-    }
-    if (ALLOWED_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
+const isProduction = process.env.NODE_ENV === "production";
+if (isProduction && ALLOWED_ORIGINS.length === 0) {
+  logger.warn("SECURITY: ALLOWED_ORIGINS is not set. Cross-origin requests will be served without credentials; set ALLOWED_ORIGINS to your frontend origin(s).");
+}
+
+// Credentialed (cookie) CORS is only ever granted to explicitly allowed
+// origins. Reflecting any origin together with `credentials: true` would let
+// any website make authenticated requests as a logged-in admin/client.
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  // No Origin header (curl, server-to-server, same-origin) — nothing to reflect
+  if (!origin) return callback(null, { origin: false });
+  // Development: keep the permissive behaviour
+  if (!isProduction) return callback(null, { origin: true, credentials: true });
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return callback(null, { origin: true, credentials: true });
+  }
+  if (ALLOWED_ORIGINS.length === 0) {
+    // Public endpoints (chat widget, webhooks) may be called from customer
+    // sites, but never with cookies.
+    return callback(null, { origin: true, credentials: false });
+  }
+  callback(new Error("Not allowed by CORS"));
 }));
 
 declare global {

@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import net from "net";
+import dns from "dns/promises";
 import { logger } from "./logger";
 import { db, adminConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -82,6 +84,9 @@ const PRIVATE_IP_RANGES = [
   /^169\.254\./,                 // 169.254.0.0/16 link-local
   /^0\./,                        // 0.0.0.0/8
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // 100.64.0.0/10 CGN
+  /^192\.0\.0\./,                // 192.0.0.0/24 IETF protocol assignments
+  /^198\.1[89]\./,               // 198.18.0.0/15 benchmarking
+  /^2(2[4-9]|[3-5]\d)\./,        // 224.0.0.0/3 multicast + reserved
 ];
 
 const BLOCKED_HOSTNAMES = [
@@ -94,8 +99,37 @@ const BLOCKED_HOSTNAMES = [
 ];
 
 /**
+ * Returns true if an IP literal (v4 or v6, no brackets) is loopback, private,
+ * link-local, unique-local or otherwise not publicly routable.
+ */
+export function isPrivateIp(ip: string): boolean {
+  const addr = ip.toLowerCase().replace(/^\[|\]$/g, "");
+  const family = net.isIP(addr);
+  if (family === 4) return PRIVATE_IP_RANGES.some((p) => p.test(addr));
+  if (family === 6) {
+    if (addr === "::" || addr === "::1") return true;
+    // IPv4-mapped / compatible (::ffff:a.b.c.d or ::ffff:7f00:1)
+    const mapped = addr.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateIp(mapped[1]);
+    const mappedHex = addr.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (mappedHex) {
+      const hi = parseInt(mappedHex[1], 16);
+      const lo = parseInt(mappedHex[2], 16);
+      return isPrivateIp(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+    }
+    if (/^f[cd]/.test(addr)) return true;        // fc00::/7 unique local
+    if (/^fe[89ab]/.test(addr)) return true;     // fe80::/10 link-local
+    if (/^ff/.test(addr)) return true;           // ff00::/8 multicast
+    return false;
+  }
+  return false;
+}
+
+/**
  * Validates that a URL is safe to fetch (not internal/private).
  * Returns `true` if the URL is safe, `false` if it should be blocked.
+ * NOTE: this is a syntactic check only. To fetch user-supplied URLs use
+ * `safeFetch`, which also checks DNS results and every redirect hop.
  */
 export function isSafeUrl(urlString: string): boolean {
   try {
@@ -106,22 +140,23 @@ export function isSafeUrl(urlString: string): boolean {
       return false;
     }
 
-    const hostname = url.hostname.toLowerCase();
+    // Block embedded credentials (http://trusted.com@evil/)
+    if (url.username || url.password) {
+      return false;
+    }
+
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
 
     // Block known internal hostnames
     if (BLOCKED_HOSTNAMES.includes(hostname)) {
       return false;
     }
-
-    // Block private IP ranges
-    for (const pattern of PRIVATE_IP_RANGES) {
-      if (pattern.test(hostname)) {
-        return false;
-      }
+    if (hostname.endsWith(".localhost") || hostname.endsWith(".internal") || hostname.endsWith(".local")) {
+      return false;
     }
 
-    // Block IPv6 shorthand for loopback
-    if (hostname === "::1" || hostname === "[::1]") {
+    // Block private / loopback / link-local IPs (IPv4 and IPv6 literals)
+    if (isPrivateIp(hostname)) {
       return false;
     }
 
@@ -129,6 +164,46 @@ export function isSafeUrl(urlString: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * SSRF-safe fetch for user-supplied URLs. Validates the URL, resolves the
+ * hostname and rejects private addresses, and follows redirects manually so
+ * that every hop is re-validated (a public URL can otherwise 302 to
+ * http://169.254.169.254/ or http://localhost/).
+ */
+export async function safeFetch(
+  urlString: string,
+  init: RequestInit = {},
+  maxRedirects = 5,
+): Promise<Response> {
+  let current = urlString;
+  let currentInit: RequestInit = init;
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    if (!isSafeUrl(current)) {
+      throw new Error("URL points to an internal or disallowed address");
+    }
+    const { hostname } = new URL(current);
+    const bare = hostname.replace(/^\[|\]$/g, "");
+    if (net.isIP(bare) === 0) {
+      const records = await dns.lookup(bare, { all: true });
+      if (records.length === 0 || records.some((r) => isPrivateIp(r.address))) {
+        throw new Error("URL resolves to an internal or disallowed address");
+      }
+    }
+    const res = await fetch(current, { ...currentInit, redirect: "manual" });
+    if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
+      const next = new URL(res.headers.get("location")!, current);
+      // Never forward credentials (Authorization, API keys, cookies) to a different origin
+      if (next.origin !== new URL(current).origin) {
+        currentInit = { ...currentInit, headers: undefined };
+      }
+      current = next.toString();
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Too many redirects");
 }
 
 /**

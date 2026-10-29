@@ -1,7 +1,7 @@
 import { db, companiesTable } from "@workspace/db";
 import { eq, and, eq as drizzleEq } from "drizzle-orm";
 import { logger } from "./logger";
-import { isSafeUrl } from "./security";
+import { isSafeUrl, safeFetch } from "./security";
 
 /**
  * Fetches a URL and strips HTML tags, returning cleaned plain text (max 6000 chars).
@@ -14,7 +14,7 @@ export async function scrapeWebsite(url: string): Promise<string | null> {
       logger.warn({ url }, "scrapeWebsite blocked: URL points to internal address");
       return null;
     }
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "User-Agent": "ChatbotAutoSync/1.0" },
       signal: AbortSignal.timeout(10_000),
     });
