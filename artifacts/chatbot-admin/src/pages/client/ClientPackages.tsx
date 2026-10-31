@@ -564,13 +564,20 @@ export default function ClientPackages() {
           </div>
           <div className="my-2">
             <div className="text-2xl font-black text-foreground tabular-nums">
-              {currentTokens && currentTokens > 0
-                ? `${(currentTokens / 1_000).toFixed(0)}K Tokens`
-                : isActive
-                ? (company as any)?.aiExecutionMode === "tokens"
-                  ? lang === "ar" ? "مفتاح API خاص" : "Own API Key"
-                  : "0 Tokens"
-                : lang === "ar" ? "بانتظار الاشتراك" : "Awaiting Plan"}
+              {!isActive ? (
+                <div className="flex flex-col">
+                  <span>0 Tokens</span>
+                  <span className="text-xs font-semibold text-amber-500 mt-0.5">
+                    {lang === "ar" ? "(بانتظار تفعيل الباقة)" : "(Pending Activation)"}
+                  </span>
+                </div>
+              ) : currentTokens && currentTokens > 0 ? (
+                `${(currentTokens / 1_000).toFixed(0)}K Tokens`
+              ) : (company as any)?.aiExecutionMode === "tokens" ? (
+                lang === "ar" ? "مفتاح API خاص" : "Own API Key"
+              ) : (
+                "0 Tokens"
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {isActive
@@ -578,7 +585,7 @@ export default function ClientPackages() {
                   ? "تتجدد الحصة تلقائياً في دورة الفوترة المحددة"
                   : "Auto-renews each billing cycle"
                 : lang === "ar"
-                ? "يتم تحديد الحصة فور اعتماد واشتراك الباقة"
+                ? "يتم تحديد وتفعيل الحصة تلقائياً فور اعتماد واشتراك الباقة"
                 : "Quota is assigned upon plan activation"}
             </p>
           </div>

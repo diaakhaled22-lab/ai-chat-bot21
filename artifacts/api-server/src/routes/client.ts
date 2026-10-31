@@ -406,7 +406,7 @@ router.post("/client/company", async (req, res) => {
         resendApiKey: (data as any).resendApiKey ? (data as any).resendApiKey.trim() : null,
         generalInfo: data.generalInfo ?? null,
         isActive: false,
-        monthlyTokenQuota: 500000,
+        monthlyTokenQuota: 0,
         systemPrompt: data.systemPrompt ?? null,
         securityPrompt: DEFAULT_SECURITY_PROMPT,
         googleSheetsEnabled: data.googleSheetsEnabled ?? false,
@@ -748,10 +748,10 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
       [mode, existingCompany.id]
     );
 
-    // If switching to quota mode, ensure an active monthly token quota is assigned
+    // If switching to quota mode, keep existing quota or assign standard quota if none
     if (mode === "quota") {
       await pool.query(
-        `UPDATE companies SET monthly_token_quota = 500000 WHERE id = $1 AND (monthly_token_quota IS NULL OR monthly_token_quota = 0);`,
+        `UPDATE companies SET monthly_token_quota = 250000 WHERE id = $1 AND (monthly_token_quota IS NULL OR monthly_token_quota = 0);`,
         [existingCompany.id]
       ).catch(() => {});
     }
@@ -760,7 +760,7 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
     try {
       await db
         .update(companiesTable)
-        .set(mode === "quota" ? { aiExecutionMode: mode, monthlyTokenQuota: 500000 } : { aiExecutionMode: mode })
+        .set(mode === "quota" ? { aiExecutionMode: mode, monthlyTokenQuota: existingCompany.monthlyTokenQuota || 250000 } : { aiExecutionMode: mode })
         .where(eq(companiesTable.id, existingCompany.id));
     } catch {}
 

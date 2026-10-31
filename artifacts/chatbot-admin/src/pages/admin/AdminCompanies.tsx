@@ -195,11 +195,13 @@ function avatarColor(id: number) {
 }
 
 const QUOTA_PRESETS = [
+  { label: "50K",  value: 50_000 },
   { label: "100K", value: 100_000 },
+  { label: "250K", value: 250_000 },
   { label: "500K", value: 500_000 },
-  { label: "1M", value: 1_000_000 },
-  { label: "5M", value: 5_000_000 },
-  { label: "10M", value: 10_000_000 },
+  { label: "1M",   value: 1_000_000 },
+  { label: "5M",   value: 5_000_000 },
+  { label: "10M",  value: 10_000_000 },
 ];
 
 const RETENTION_PRESETS = [
