@@ -474,23 +474,9 @@ export default function ClientPackages() {
       return;
     }
 
-    // 2. Duplicate check: Only block if user is attempting to re-submit their CURRENT active plan with an unchanged contact number
+    // 2. Allow user to freely select/switch or update plans at any time with their contact number
     const isPlanChange = Boolean(activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id);
-    const isCurrentlyActivePlan = Boolean(activeSelectedPlanId === selectedPlan.id);
-    const prevPlanRequest = submittedPlans[selectedPlan.id];
-
-    if (isCurrentlyActivePlan && prevPlanRequest && prevPlanRequest.phone === trimmedPhone) {
-      const msg = lang === "ar"
-        ? "أنت مشترك بالفعل في هذه الباقة بنفس رقم التواصل. إذا كنت ترغب بتحديث بيانات الطلب يرجى تعديل رقم الهاتف."
-        : "This plan has already been selected with this contact number. Modify your phone number to submit an updated request.";
-      setDuplicateWarning(msg);
-      toast({
-        title: lang === "ar" ? "تم اختيار هذه الباقة بالفعل" : "Plan Already Selected",
-        description: msg,
-        variant: "destructive",
-      });
-      return;
-    }
+    setDuplicateWarning(null);
 
     // 3. Process request
     const price = calcPrice(selectedPlan.monthlyPriceUsd);
@@ -1234,19 +1220,7 @@ export default function ClientPackages() {
                 )}
               </div>
 
-              {duplicateWarning && (
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <div className="space-y-0.5">
-                    <p className="font-bold">
-                      {lang === "ar" ? "تم اختيار هذه الباقة بالفعل" : "Plan Already Selected"}
-                    </p>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      {duplicateWarning}
-                    </p>
-                  </div>
-                </div>
-              )}
+
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">

@@ -302,13 +302,20 @@ export default function ClientSupport() {
 
   // Ensure only the latest plan switch request is displayed; previous switch requests are filtered out
   const displayTickets = useMemo(() => {
+    // Sort tickets strictly by newest first
+    const sorted = [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     let seenPlan = false;
-    return tickets.filter((t) => {
+    return sorted.filter((t) => {
+      const titleLower = (t.title || "").toLowerCase();
       const isPlan =
-        t.title.includes("طلب تغيير باقة") ||
-        t.title.includes("طلب اشتراك") ||
-        t.title.includes("باقة") ||
-        t.title.toLowerCase().includes("plan");
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("professional") ||
+        titleLower.includes("enterprise");
       if (isPlan) {
         if (seenPlan) return false;
         seenPlan = true;

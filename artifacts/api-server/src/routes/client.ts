@@ -2187,51 +2187,56 @@ router.get("/client/tickets", async (req, res) => {
           .from(ticketsTable)
           .orderBy(sql`${ticketsTable.createdAt} DESC`);
 
-    // For clients: ensure only the latest plan switch ticket is kept, auto-purge older superseded requests
-    if (isClient) {
-      const planTickets = tickets.filter((t) => {
-        const titleStr = (t.title || "").toLowerCase();
-        return (
-          titleStr.includes("طلب تغيير باقة") ||
-          titleStr.includes("طلب اشتراك") ||
-          titleStr.includes("باقة") ||
-          titleStr.includes("plan")
-        );
-      });
+    // Ensure only the latest plan switch ticket is kept per client, auto-purge older superseded requests
+    const clientPlanTickets = new Map<number, typeof tickets>();
+    for (const t of tickets) {
+      const titleStr = (t.title || "").toLowerCase();
+      const isPlan =
+        titleStr.includes("طلب تغيير باقة") ||
+        titleStr.includes("طلب اشتراك") ||
+        titleStr.includes("باقة") ||
+        titleStr.includes("plan") ||
+        titleStr.includes("upgrade") ||
+        titleStr.includes("starter") ||
+        titleStr.includes("professional") ||
+        titleStr.includes("enterprise");
 
-      if (planTickets.length > 1) {
-        // planTickets[0] is the newest because of createdAt DESC; purge the older ones
-        const supersededIds = planTickets.slice(1).map((t) => t.id);
-
-        await db
-          .delete(ticketsTable)
-          .where(inArray(ticketsTable.id, supersededIds))
-          .catch(() => {});
-
-        for (const sId of supersededIds) {
-          await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, `ticket_${sId}`)).catch(() => {});
-          await db.delete(notificationsTable).where(sql`(${notificationsTable.title} LIKE '%#' || ${sId} || '%')`).catch(() => {});
+      if (isPlan) {
+        const cId = t.clientId;
+        if (!clientPlanTickets.has(cId)) {
+          clientPlanTickets.set(cId, []);
         }
-
-        const supersededSet = new Set(supersededIds);
-        const filteredTickets = tickets.filter((t) => !supersededSet.has(t.id));
-
-        return res.json(
-          filteredTickets.map((t) => ({
-            id: t.id,
-            title: t.title,
-            description: t.description,
-            status: t.status,
-            aiResponse: t.aiResponse,
-            adminNote: t.adminNote,
-            createdAt: t.createdAt.toISOString(),
-          }))
-        );
+        clientPlanTickets.get(cId)!.push(t);
       }
     }
 
+    const supersededIds: number[] = [];
+    for (const [, pTickets] of clientPlanTickets.entries()) {
+      if (pTickets.length > 1) {
+        // Tickets are ordered by createdAt DESC; index 0 is newest active switch request
+        for (let i = 1; i < pTickets.length; i++) {
+          supersededIds.push(pTickets[i].id);
+        }
+      }
+    }
+
+    if (supersededIds.length > 0) {
+      await db
+        .delete(ticketsTable)
+        .where(inArray(ticketsTable.id, supersededIds))
+        .catch(() => {});
+
+      for (const sId of supersededIds) {
+        await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, `ticket_${sId}`)).catch(() => {});
+        await db.delete(notificationsTable).where(sql`(${notificationsTable.title} LIKE '%#' || ${sId} || '%')`).catch(() => {});
+      }
+    }
+
+    const supersededSet = new Set(supersededIds);
+    const validTickets = tickets.filter((t) => !supersededSet.has(t.id));
+
     res.json(
-      tickets.map((t) => ({
+      validTickets.map((t) => ({
         id: t.id,
         title: t.title,
         description: t.description,

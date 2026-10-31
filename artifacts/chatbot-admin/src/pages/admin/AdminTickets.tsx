@@ -675,29 +675,54 @@ export default function AdminTickets() {
     onSettled: () => setDeletingId(null),
   });
 
+  // Deduplicate tickets: ensure only the single latest plan switch request per client is kept
+  const deduplicatedTickets = useMemo(() => {
+    const sorted = [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const seenPlanByClient = new Set<number>();
+    return sorted.filter((t) => {
+      const titleLower = (t.title || "").toLowerCase();
+      const isPlan =
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("professional") ||
+        titleLower.includes("enterprise");
+      if (isPlan && t.clientId) {
+        if (seenPlanByClient.has(t.clientId)) {
+          return false;
+        }
+        seenPlanByClient.add(t.clientId);
+      }
+      return true;
+    });
+  }, [tickets]);
+
   // Calculate metrics
-  const totalCount    = tickets.length;
-  const openCount     = tickets.filter((t) => t.status === "open").length;
-  const resolvedCount = tickets.filter((t) => t.status === "resolved").length;
-  const aiSolvedCount = tickets.filter((t) => Boolean(t.aiResponse)).length;
-  const manualCount   = tickets.filter((t) => Boolean(t.adminNote) && !t.aiResponse).length;
+  const totalCount    = deduplicatedTickets.length;
+  const openCount     = deduplicatedTickets.filter((t) => t.status === "open").length;
+  const resolvedCount = deduplicatedTickets.filter((t) => t.status === "resolved").length;
+  const aiSolvedCount = deduplicatedTickets.filter((t) => Boolean(t.aiResponse)).length;
+  const manualCount   = deduplicatedTickets.filter((t) => Boolean(t.adminNote) && !t.aiResponse).length;
   const aiPercent     = resolvedCount > 0 ? Math.round((aiSolvedCount / resolvedCount) * 100) : 0;
 
   // Unique clients list for dropdown filter
   const clientOptions = useMemo(() => {
     const map = new Map<number, string>();
-    for (const t of tickets) {
+    for (const t of deduplicatedTickets) {
       if (t.clientId && t.clientName) {
         map.set(t.clientId, t.clientName);
       }
     }
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [tickets]);
+  }, [deduplicatedTickets]);
 
   // Filtered and sorted tickets
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const result = tickets.filter((t) => {
+    const result = deduplicatedTickets.filter((t) => {
       // Status filter
       if (filter === "open" && t.status !== "open") return false;
       if (filter === "resolved" && t.status !== "resolved") return false;
@@ -726,7 +751,7 @@ export default function AdminTickets() {
       const timeB = new Date(b.createdAt).getTime();
       return sortOrder === "newest" ? timeB - timeA : timeA - timeB;
     });
-  }, [tickets, filter, clientFilter, sortOrder, search]);
+  }, [deduplicatedTickets, filter, clientFilter, sortOrder, search]);
 
   const FILTERS: { key: Filter; label: string; count: number }[] = [
     { key: "all",           label: lang === "ar" ? "الكل" : "All",                       count: totalCount },

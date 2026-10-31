@@ -2522,8 +2522,57 @@ router.get("/admin/tickets", async (req, res) => {
       .leftJoin(usersTable, eq(ticketsTable.clientId, usersTable.id))
       .orderBy(desc(ticketsTable.createdAt));
 
+    // For each client, if they submitted multiple plan switch/upgrade requests,
+    // automatically cancel and purge any older superseded requests so that ONLY the
+    // latest switch request is forwarded and visible to the admin.
+    const clientPlanTickets = new Map<number, typeof rows>();
+    for (const r of rows) {
+      const title = r.ticket.title || "";
+      const lower = title.toLowerCase();
+      const isPlan =
+        title.includes("طلب تغيير باقة") ||
+        title.includes("طلب اشتراك") ||
+        title.includes("باقة") ||
+        lower.includes("plan") ||
+        lower.includes("upgrade") ||
+        lower.includes("starter") ||
+        lower.includes("professional") ||
+        lower.includes("enterprise");
+
+      if (isPlan && r.ticket.clientId) {
+        const cId = r.ticket.clientId;
+        if (!clientPlanTickets.has(cId)) {
+          clientPlanTickets.set(cId, []);
+        }
+        clientPlanTickets.get(cId)!.push(r);
+      }
+    }
+
+    const supersededIds: number[] = [];
+    for (const [, pRows] of clientPlanTickets.entries()) {
+      if (pRows.length > 1) {
+        // Rows are ordered by createdAt DESC, so index 0 is the newest active switch request
+        for (let i = 1; i < pRows.length; i++) {
+          supersededIds.push(pRows[i].ticket.id);
+        }
+      }
+    }
+
+    if (supersededIds.length > 0) {
+      // Purge superseded plan tickets completely from database
+      await db.delete(ticketsTable).where(inArray(ticketsTable.id, supersededIds)).catch(() => {});
+      for (const sId of supersededIds) {
+        await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, `ticket_${sId}`)).catch(() => {});
+        await db.delete(notificationsTable).where(sql`(${notificationsTable.title} LIKE '%#' || ${sId} || '%')`).catch(() => {});
+      }
+      logger.info({ supersededIds }, "Purged superseded plan switch tickets for admin tickets view");
+    }
+
+    const supersededSet = new Set(supersededIds);
+    const validRows = rows.filter((r) => !supersededSet.has(r.ticket.id));
+
     res.json(
-      rows.map(({ ticket, clientName, clientUsername }) => ({
+      validRows.map(({ ticket, clientName, clientUsername }) => ({
         id: ticket.id,
         clientId: ticket.clientId,
         clientName: clientName ?? "Unknown",
@@ -2912,6 +2961,7 @@ router.delete(["/admin/tickets/:id", "/tickets/:id"], async (req, res) => {
     }
 
     await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, "ticket_" + id)).catch(() => {});
+    await db.delete(notificationsTable).where(sql`(${notificationsTable.title} LIKE '%#' || ${id} || '%')`).catch(() => {});
 
     res.json({ ok: true, id });
   } catch (err) {
@@ -3596,7 +3646,45 @@ router.get("/admin/notifications", async (req, res) => {
       .where(eq(notificationsTable.userId, req.session.userId!))
       .orderBy(desc(notificationsTable.createdAt))
       .limit(limit);
-    res.json(items.map((n) => ({
+
+    // Deduplicate plan switch notifications: for any client/company with multiple switch notifications,
+    // only the latest one is forwarded/kept, older ones are deleted.
+    const seenPlanKeys = new Set<string>();
+    const supersededNotifIds: number[] = [];
+    const validItems: typeof items = [];
+
+    for (const n of items) {
+      const title = n.title || "";
+      const lower = title.toLowerCase();
+      const isPlanNotif =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        title.includes("طلب تغيير / ترقية باقة") ||
+        title.includes("طلب تغيير باقة") ||
+        title.includes("طلب باقة") ||
+        lower.includes("plan");
+
+      if (isPlanNotif) {
+        // Group by companyId if present, or company/client name extracted from title
+        const key = n.companyId
+          ? `company_${n.companyId}`
+          : title.replace(/#\d+/, "").trim();
+
+        if (seenPlanKeys.has(key)) {
+          supersededNotifIds.push(n.id);
+          continue;
+        }
+        seenPlanKeys.add(key);
+      }
+      validItems.push(n);
+    }
+
+    if (supersededNotifIds.length > 0) {
+      await db.delete(notificationsTable).where(inArray(notificationsTable.id, supersededNotifIds)).catch(() => {});
+      logger.info({ supersededNotifIds }, "Purged superseded plan switch notifications for admin view");
+    }
+
+    res.json(validItems.map((n) => ({
       id: n.id,
       type: n.type,
       title: n.title,

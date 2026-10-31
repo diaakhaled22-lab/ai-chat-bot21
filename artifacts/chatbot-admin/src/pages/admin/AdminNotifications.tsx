@@ -107,16 +107,38 @@ export default function AdminNotifications() {
     },
   });
 
+  // Deduplicate plan switch notifications: keep only the latest plan request per company/client
+  const deduplicatedNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const seenPlanKeys = new Set<string>();
+    return sorted.filter((n) => {
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        n.title.includes("طلب تغيير / ترقية باقة") ||
+        n.title.includes("طلب تغيير باقة") ||
+        n.title.includes("طلب باقة") ||
+        n.title.toLowerCase().includes("plan");
+
+      if (isPlan) {
+        const key = n.companyId ? `comp_${n.companyId}` : n.title.replace(/#\d+/, "").trim();
+        if (seenPlanKeys.has(key)) return false;
+        seenPlanKeys.add(key);
+      }
+      return true;
+    });
+  }, [notifications]);
+
   // Category counts
-  const totalCount = notifications.length;
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const planCount = notifications.filter((n) => n.type === "plan_request" || n.type.includes("plan") || n.title.includes("باقة")).length;
-  const ticketCount = notifications.filter((n) => n.type === "ticket" || n.type.includes("problem")).length;
-  const clientCount = notifications.filter((n) => n.type === "new_client" || n.type.includes("client")).length;
-  const securityCount = notifications.filter((n) => n.type === "security_alert" || n.type === "malfunction").length;
+  const totalCount = deduplicatedNotifications.length;
+  const unreadCount = deduplicatedNotifications.filter((n) => !n.isRead).length;
+  const planCount = deduplicatedNotifications.filter((n) => n.type === "plan_request" || n.type.includes("plan") || n.title.includes("باقة")).length;
+  const ticketCount = deduplicatedNotifications.filter((n) => n.type === "ticket" || n.type.includes("problem")).length;
+  const clientCount = deduplicatedNotifications.filter((n) => n.type === "new_client" || n.type.includes("client")).length;
+  const securityCount = deduplicatedNotifications.filter((n) => n.type === "security_alert" || n.type === "malfunction").length;
 
   const filteredNotifications = useMemo(() => {
-    return notifications.filter((n) => {
+    return deduplicatedNotifications.filter((n) => {
       // Tab filter
       if (activeTab === "unread" && n.isRead) return false;
       if (activeTab === "plans" && n.type !== "plan_request" && !n.title.includes("باقة") && !n.type.includes("plan")) return false;
@@ -136,7 +158,7 @@ export default function AdminNotifications() {
       }
       return true;
     });
-  }, [notifications, activeTab, search]);
+  }, [deduplicatedNotifications, activeTab, search]);
 
   const getNotificationTheme = (type: string) => {
     if (type === "plan_request" || type.includes("plan") || type.includes("upgrade")) {
