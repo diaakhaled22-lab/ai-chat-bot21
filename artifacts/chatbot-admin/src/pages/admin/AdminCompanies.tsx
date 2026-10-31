@@ -495,7 +495,7 @@ export default function AdminCompanies() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [manageCompanyTarget, setManageCompanyTarget] = useState<Company | null>(null);
-  const [manageActiveTab, setManageActiveTab] = useState<"pages" | "profile" | "ai" | "channels" | "tools" | "subscription">("pages");
+  const [manageActiveTab, setManageActiveTab] = useState<"pages" | "data_sources" | "ai" | "channels" | "tools" | "subscription">("pages");
   const [manageForm, setManageForm] = useState<any>({});
   const [isSavingContent, setIsSavingContent] = useState(false);
 
@@ -523,6 +523,11 @@ export default function AdminCompanies() {
 
     setManageForm({
       enabledClientPages: resolvedPages,
+      allowSourceWebsite: freshCompany.allowSourceWebsite !== false,
+      allowSourceFiles: freshCompany.allowSourceFiles !== false,
+      allowSourceWordpress: freshCompany.allowSourceWordpress !== false,
+      allowSourceRestApi: freshCompany.allowSourceRestApi !== false,
+      allowSourceShopify: freshCompany.allowSourceShopify !== false,
       name: freshCompany.name || "",
       myId: freshCompany.myId || "",
       generalInfo: freshCompany.generalInfo || "",
@@ -619,6 +624,51 @@ export default function AdminCompanies() {
       }).catch(() => {});
     } catch (err: any) {
       console.error("Auto-save page toggle error:", err);
+    }
+  };
+
+  const handleSourceToggle = async (
+    sourceKey: "allowSourceWebsite" | "allowSourceFiles" | "allowSourceWordpress" | "allowSourceRestApi" | "allowSourceShopify",
+    enabled: boolean
+  ) => {
+    if (!manageCompanyTarget) return;
+
+    setManageForm((prev: any) => ({
+      ...prev,
+      [sourceKey]: enabled,
+    }));
+
+    setManageCompanyTarget((prev: any) => (prev ? { ...prev, [sourceKey]: enabled } : prev));
+
+    queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+      if (!old) return old;
+      return old.map((c) => (c.id === manageCompanyTarget.id ? { ...c, [sourceKey]: enabled } : c));
+    });
+
+    try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/data-source-permissions`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [sourceKey]: enabled }),
+      });
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [sourceKey]: enabled }),
+      }).catch(() => {});
+      toast({
+        title: lang === "ar" ? "تم تحديث صلاحية مصدر البيانات" : "Permission updated",
+        description: lang === "ar"
+          ? (enabled ? "تم تفعيل مصدر البيانات للشركة" : "تم تعطيل مصدر البيانات عن الشركة")
+          : (enabled ? "Data source enabled for company" : "Data source disabled for company"),
+      });
+    } catch (err: any) {
+      console.error("Auto-save source toggle error:", err);
+      toast({
+        title: lang === "ar" ? "فشل حفظ الصلاحية" : "Failed to update permission",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -765,6 +815,11 @@ export default function AdminCompanies() {
         googleCalendarBookingRules: manageForm.googleCalendarBookingRules,
         googleCalendarServiceAccountKey: manageForm.googleCalendarServiceAccountKey,
         enabledClientPages: manageForm.enabledClientPages,
+        allowSourceWebsite: manageForm.allowSourceWebsite,
+        allowSourceFiles: manageForm.allowSourceFiles,
+        allowSourceWordpress: manageForm.allowSourceWordpress,
+        allowSourceRestApi: manageForm.allowSourceRestApi,
+        allowSourceShopify: manageForm.allowSourceShopify,
       };
 
       if (Array.isArray(manageForm.enabledClientPages)) {
@@ -1504,7 +1559,7 @@ export default function AdminCompanies() {
                 <div className="flex items-center gap-1 overflow-x-auto bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
                   {[
                     { id: "pages",        labelAr: "صفحات القائمة",     labelEn: "Sidebar Pages",  icon: Settings2 },
-                    { id: "profile",      labelAr: "ملف الشركة",        labelEn: "Profile",        icon: Building2 },
+                    { id: "data_sources", labelAr: "صلاحيات مصادر البيانات", labelEn: "Data Source Permissions", icon: Database },
                     { id: "ai",           labelAr: "الذكاء الاصطناعي",  labelEn: "AI & Prompts",   icon: Sparkles },
                     { id: "channels",     labelAr: "قنوات التواصل",      labelEn: "Channels",       icon: MessageCircle },
                     { id: "tools",        labelAr: "الأدوات والربط",    labelEn: "Tools",          icon: Wrench },
@@ -1647,110 +1702,128 @@ export default function AdminCompanies() {
                   </div>
                 )}
 
-                {/* ── TAB 2: COMPANY PROFILE CONTENT ── */}
-                {manageActiveTab === "profile" && (
+                {/* ── TAB 2: DATA SOURCE PERMISSIONS CONTENT ── */}
+                {manageActiveTab === "data_sources" && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-border/40">
                       <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "اسم الشركة" : "Company Name"}</Label>
-                        <Input
-                          value={manageForm.name || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, name: e.target.value })}
-                          className="mt-1"
-                          placeholder="e.g. Acme Corp"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "المعرف المخصص (My ID)" : "Custom ID (My ID)"}</Label>
-                        <Input
-                          value={manageForm.myId || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, myId: e.target.value })}
-                          className="mt-1 font-mono text-xs"
-                          placeholder="e.g. ACME-001"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs font-semibold">{lang === "ar" ? "نوع النشاط التجاري لنظام CRM" : "CRM Business Type"}</Label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
-                        <div
-                          onClick={() => setManageForm({ ...manageForm, businessType: "general" })}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
-                            manageForm.businessType !== "clinic"
-                              ? "bg-blue-500/10 border-blue-500/40 shadow-sm"
-                              : "bg-card border-border opacity-70 hover:opacity-100"
-                          }`}
-                        >
-                          <Building2 className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-xs font-bold text-foreground">
-                              {lang === "ar" ? "شركة عامة (General Leads CRM)" : "General Leads CRM"}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                              {lang === "ar" ? "تتبع العملاء المحتملين والتواصل التجاري العام." : "Standard customer leads tracking."}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div
-                          onClick={() => setManageForm({ ...manageForm, businessType: "clinic" })}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
-                            manageForm.businessType === "clinic"
-                              ? "bg-teal-500/10 border-teal-500/40 shadow-sm"
-                              : "bg-card border-border opacity-70 hover:opacity-100"
-                          }`}
-                        >
-                          <Stethoscope className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-xs font-bold text-foreground">
-                              {lang === "ar" ? "عيادة طبية (Clinic & Appointments CRM)" : "Clinic Appointments CRM"}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                              {lang === "ar" ? "تتبع المرضى وحجوزات الكشف والعيادات التخصصية." : "Patients records, doctors & clinic bookings."}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "البريد الإلكتروني للإشعارات" : "Notification Email"}</Label>
-                        <Input
-                          value={manageForm.notificationEmail || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, notificationEmail: e.target.value })}
-                          className="mt-1"
-                          placeholder="alerts@company.com"
-                        />
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {lang === "ar" ? "يستقبل تنبيهات نفاد الحصة، محاولات الاختراق، والأعطال." : "Receives quota, malfunction & security alerts."}
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "مفتاح Resend API الخاص بالشركة" : "Resend API Key"}</Label>
-                        <Input
-                          type="password"
-                          value={manageForm.resendApiKey || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, resendApiKey: e.target.value })}
-                          className="mt-1 font-mono text-xs"
-                          placeholder="re_••••••••••••••••"
-                        />
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {lang === "ar" ? "اتركه فارغاً لاستخدام المفتاح العام للمنصة." : "Leave unchanged to keep existing key."}
+                        <h4 className="text-sm font-bold flex items-center gap-2">
+                          <Database className="w-4 h-4 text-indigo-500" />
+                          {lang === "ar" ? "صلاحيات مصادر البيانات للعميل" : "Data Source Permissions"}
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {lang === "ar"
+                            ? "تحكم في مصادر البيانات المسموح للشركة بربطها واستخدامها لتغذية وتدريب المساعد الذكي."
+                            : "Control which data sources this company is permitted to connect and train their AI on."}
                         </p>
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-xs font-semibold">{lang === "ar" ? "نبذة ومعلومات النشاط التجاري (General Info)" : "General Business Info"}</Label>
-                      <Textarea
-                        value={manageForm.generalInfo || ""}
-                        onChange={(e) => setManageForm({ ...manageForm, generalInfo: e.target.value })}
-                        className="mt-1 min-h-[90px] text-xs leading-relaxed"
-                        placeholder={lang === "ar" ? "نبذة عن خدمات ومنتجات الشركة، مواعيد العمل، الأسعار، الفروع..." : "Business description, services, operating hours, prices..."}
-                      />
+                    <div className="space-y-3">
+                      {/* Source 1: Website */}
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                            <Globe className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "الموقع الإلكتروني والروابط (Website & URLs)" : "Website & Web URLs"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "السماح بفحص روابط الموقع وسحب المقالات تلقائياً." : "Allow scraping web pages and syncing site content."}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={manageForm.allowSourceWebsite !== false}
+                          onCheckedChange={(val) => handleSourceToggle("allowSourceWebsite", val)}
+                        />
+                      </div>
+
+                      {/* Source 2: Files */}
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "المستندات والملفات (Files & Documents)" : "Documents & Files (PDF, Word, TXT)"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "السماح برفع الملفات واستخراج المعرفة منها وتدريب البوت." : "Allow uploading PDFs/docs to extract knowledge."}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={manageForm.allowSourceFiles !== false}
+                          onCheckedChange={(val) => handleSourceToggle("allowSourceFiles", val)}
+                        />
+                      </div>
+
+                      {/* Source 3: WordPress */}
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
+                            <Plug className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "إضافة ووردبريس (WordPress Plugin)" : "WordPress Integration Plugin"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "السماح بربط إضافة ووردبريس ومزامنة المقالات تلقائياً." : "Allow auto-syncing WordPress posts via plugin."}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={manageForm.allowSourceWordpress !== false}
+                          onCheckedChange={(val) => handleSourceToggle("allowSourceWordpress", val)}
+                        />
+                      </div>
+
+                      {/* Source 4: REST API */}
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                            <Code2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "واجهة برمجية مخصصة (Custom REST API)" : "Custom REST API Integration"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "السماح بربط واجهات برمجية ونقاط نهاية خارجية." : "Allow connecting custom external REST API endpoints."}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={manageForm.allowSourceRestApi !== false}
+                          onCheckedChange={(val) => handleSourceToggle("allowSourceRestApi", val)}
+                        />
+                      </div>
+
+                      {/* Source 5: Shopify */}
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                            <ShoppingBag className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "متجر شوبيفاي (Shopify Store)" : "Shopify Store Integration"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "السماح بمزامنة كتالوج المنتجات والأسعار من متجر Shopify." : "Allow syncing store products and catalog from Shopify."}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={manageForm.allowSourceShopify !== false}
+                          onCheckedChange={(val) => handleSourceToggle("allowSourceShopify", val)}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

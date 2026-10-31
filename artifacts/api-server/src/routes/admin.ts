@@ -1117,6 +1117,13 @@ async function handleUpdateCompany(req: any, res: any) {
       updateValues.googleCalendarServiceAccountKey = preserveMaskedSecret(body.googleCalendarServiceAccountKey, existing.googleCalendarServiceAccountKey);
     }
 
+    // Data Source Permissions
+    if (body.allowSourceWebsite !== undefined) updateValues.allowSourceWebsite = Boolean(body.allowSourceWebsite);
+    if (body.allowSourceFiles !== undefined) updateValues.allowSourceFiles = Boolean(body.allowSourceFiles);
+    if (body.allowSourceWordpress !== undefined) updateValues.allowSourceWordpress = Boolean(body.allowSourceWordpress);
+    if (body.allowSourceRestApi !== undefined) updateValues.allowSourceRestApi = Boolean(body.allowSourceRestApi);
+    if (body.allowSourceShopify !== undefined) updateValues.allowSourceShopify = Boolean(body.allowSourceShopify);
+
     // 10. Sidebar Menu Pages Permissions (Dual-save)
     let savedPagesJson: string | null = null;
     let savedPagesArray: string[] | null = null;
