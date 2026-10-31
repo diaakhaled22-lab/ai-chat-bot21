@@ -98,14 +98,45 @@ export default function ClientNotifications() {
     },
   });
 
+  // Deduplicate plan switch notifications: keep ONLY the latest plan switch request notification,
+  // cancel/filter out any preceding ones so only the final request is visible to the client.
+  const deduplicatedNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    let seenPlan = false;
+    return sorted.filter((n) => {
+      const titleLower = (n.title || "").toLowerCase();
+      const msgLower = (n.message || "").toLowerCase();
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("enterprise") ||
+        titleLower.includes("professional") ||
+        msgLower.includes("باقة") ||
+        msgLower.includes("plan");
+
+      if (isPlan) {
+        if (seenPlan) return false;
+        seenPlan = true;
+      }
+      return true;
+    });
+  }, [notifications]);
+
   // Category counts
-  const totalCount = notifications.length;
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const quotaAlertsCount = notifications.filter((n) => n.type.includes("quota") || n.type.includes("depleted") || n.type.includes("amber")).length;
-  const problemCount = notifications.filter((n) => n.type.includes("problem") || n.type.includes("handoff") || n.type.includes("ticket")).length;
+  const totalCount = deduplicatedNotifications.length;
+  const unreadCount = deduplicatedNotifications.filter((n) => !n.isRead).length;
+  const quotaAlertsCount = deduplicatedNotifications.filter((n) => n.type.includes("quota") || n.type.includes("depleted") || n.type.includes("amber")).length;
+  const problemCount = deduplicatedNotifications.filter((n) => n.type.includes("problem") || n.type.includes("handoff") || n.type.includes("ticket") || n.type === "plan_request").length;
 
   const filteredNotifications = useMemo(() => {
-    return notifications.filter((n) => {
+    return deduplicatedNotifications.filter((n) => {
       // Tab filter
       if (activeTab === "unread" && n.isRead) return false;
       if (activeTab === "quota" && !n.type.includes("quota") && !n.type.includes("depleted") && !n.type.includes("amber")) return false;

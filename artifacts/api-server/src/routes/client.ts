@@ -2030,11 +2030,52 @@ router.post("/client/tickets", async (req, res) => {
       if (firstCompany) company = firstCompany;
     }
 
+    const titleLower = (title || "").toLowerCase();
+    const descLower = (description || "").toLowerCase();
     const isPlanSwitch =
       title.includes("طلب تغيير باقة") ||
       title.includes("طلب اشتراك") ||
+      title.includes("طلب باقة") ||
       title.includes("باقة") ||
-      title.toLowerCase().includes("plan");
+      titleLower.includes("plan") ||
+      titleLower.includes("upgrade") ||
+      titleLower.includes("switch") ||
+      descLower.includes("باقة") ||
+      descLower.includes("plan") ||
+      descLower.includes("upgrade") ||
+      descLower.includes("معرف الباقة");
+
+    // If this is a plan switch / subscription request, automatically cancel and purge any preceding plan requests
+    // and notifications from this client so that ONLY the latest request remains active and sent to the admin.
+    if (isPlanSwitch) {
+      // 1. Purge all prior plan notifications for this client so only the latest will exist
+      const existingClientPlanNotifs = await db
+        .select({ id: notificationsTable.id, title: notificationsTable.title, message: notificationsTable.message, type: notificationsTable.type })
+        .from(notificationsTable)
+        .where(eq(notificationsTable.userId, req.session.userId!));
+
+      const oldPlanNotifIds = existingClientPlanNotifs
+        .filter((n) => {
+          const tL = (n.title || "").toLowerCase();
+          const mL = (n.message || "").toLowerCase();
+          return (
+            n.type === "plan_request" ||
+            n.type.includes("plan") ||
+            tL.includes("باقة") ||
+            tL.includes("plan") ||
+            tL.includes("اشتراك") ||
+            tL.includes("تغيير") ||
+            tL.includes("ترقية") ||
+            mL.includes("باقة") ||
+            mL.includes("plan")
+          );
+        })
+        .map((n) => n.id);
+
+      if (oldPlanNotifIds.length > 0) {
+        await db.delete(notificationsTable).where(inArray(notificationsTable.id, oldPlanNotifIds)).catch(() => {});
+      }
+    }
 
     // Also record into chatLogsTable so it appears in the Inbox (Chat Logs & Universal Chat)
     if (company) {
@@ -2067,8 +2108,7 @@ router.post("/client/tickets", async (req, res) => {
       isRead: false,
     }).catch(() => {});
 
-    // If this is a plan switch / subscription request, automatically cancel and purge any preceding plan requests
-    // from this client so that ONLY the latest request remains active and sent to the admin.
+    // Purge preceding plan switch tickets and their notifications upon new switch
     if (isPlanSwitch) {
       const allClientTickets = await db
         .select({ id: ticketsTable.id, title: ticketsTable.title, status: ticketsTable.status })
@@ -2107,7 +2147,7 @@ router.post("/client/tickets", async (req, res) => {
             .catch(() => {});
         }
 
-        // Delete admin notifications for previous superseded tickets
+        // Delete all notifications (for both client and admins) for previous superseded tickets
         for (const pId of priorIds) {
           await db
             .delete(notificationsTable)
@@ -2119,7 +2159,7 @@ router.post("/client/tickets", async (req, res) => {
 
         logger.info(
           { clientId: req.session.userId, deletedTicketIds: priorIds, newTicketId: ticket.id },
-          "Purged preceding plan switch tickets upon new switch"
+          "Purged preceding plan switch tickets and notifications upon new switch"
         );
       }
     }
@@ -2704,7 +2744,47 @@ router.get("/client/notifications", async (req, res) => {
       )
       .orderBy(desc(notificationsTable.createdAt))
       .limit(limit);
-    res.json(items.map((n) => ({
+
+    // If client performed multiple plan switches/updates, cancel and purge any older superseded switch
+    // notifications so that ONLY the final (most recent) request notification remains visible to the client.
+    let seenPlan = false;
+    const supersededNotifIds: number[] = [];
+    const validItems: typeof items = [];
+
+    for (const n of items) {
+      const titleLower = (n.title || "").toLowerCase();
+      const msgLower = (n.message || "").toLowerCase();
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("enterprise") ||
+        titleLower.includes("professional") ||
+        msgLower.includes("باقة") ||
+        msgLower.includes("plan");
+
+      if (isPlan) {
+        if (seenPlan) {
+          supersededNotifIds.push(n.id);
+          continue;
+        }
+        seenPlan = true;
+      }
+      validItems.push(n);
+    }
+
+    if (supersededNotifIds.length > 0) {
+      await db.delete(notificationsTable).where(inArray(notificationsTable.id, supersededNotifIds)).catch(() => {});
+      logger.info({ supersededNotifIds }, "Purged superseded plan switch notifications for client view");
+    }
+
+    res.json(validItems.map((n) => ({
       id: n.id,
       type: n.type,
       title: n.title,

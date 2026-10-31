@@ -109,7 +109,38 @@ function NotificationBell() {
     refetchInterval: 10_000,
   });
 
-  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
+  const displayNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const seenPlanKeys = new Set<string>();
+    return sorted.filter((n) => {
+      const titleLower = (n.title || "").toLowerCase();
+      const msgLower = (n.message || "").toLowerCase();
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        titleLower.includes("طلب تغيير / ترقية باقة") ||
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("enterprise") ||
+        titleLower.includes("professional") ||
+        msgLower.includes("باقة") ||
+        msgLower.includes("plan");
+
+      if (isPlan) {
+        const key = n.companyId ? `comp_${n.companyId}` : n.title.replace(/#\d+/, "").trim();
+        if (seenPlanKeys.has(key)) return false;
+        seenPlanKeys.add(key);
+      }
+      return true;
+    });
+  }, [notifications]);
+
+  const unreadNotifications = displayNotifications.filter((n) => !n.isRead).length;
   const totalBadge = openTicketCount + unreadNotifications;
 
   const prevTotalRef = useRef<number | null>(null);
@@ -242,7 +273,7 @@ function NotificationBell() {
                 <span>{lang === "ar" ? "مقروء" : "Read"}</span>
               </button>
             )}
-            {notifications.length > 0 && (
+            {displayNotifications.length > 0 && (
               <button
                 type="button"
                 onClick={() => clearAllMutation.mutate()}
@@ -258,7 +289,7 @@ function NotificationBell() {
 
         {/* Notification list */}
         <div className="max-h-[340px] overflow-y-auto divide-y divide-border/30">
-          {notifications.length === 0 ? (
+          {displayNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
               <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mb-2">
                 <CheckCircle2 className="w-6 h-6 text-muted-foreground/40" />
@@ -271,7 +302,7 @@ function NotificationBell() {
               </p>
             </div>
           ) : (
-            notifications.slice(0, 8).map((n) => (
+            displayNotifications.slice(0, 8).map((n) => (
               <div
                 key={n.id}
                 onClick={() => handleItemClick(n)}
@@ -350,11 +381,40 @@ function ClientNotificationBell() {
     refetchInterval: 10_000,
   });
 
-  const unread = notifications.filter((n) => !n.isRead).length;
-  const hasUnreadRed = notifications.some(
+  const displayNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    let seenPlan = false;
+    return sorted.filter((n) => {
+      const titleLower = (n.title || "").toLowerCase();
+      const msgLower = (n.message || "").toLowerCase();
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("enterprise") ||
+        titleLower.includes("professional") ||
+        msgLower.includes("باقة") ||
+        msgLower.includes("plan");
+
+      if (isPlan) {
+        if (seenPlan) return false;
+        seenPlan = true;
+      }
+      return true;
+    });
+  }, [notifications]);
+
+  const unread = displayNotifications.filter((n) => !n.isRead).length;
+  const hasUnreadRed = displayNotifications.some(
     (n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted"))
   );
-  const hasUnreadAmber = notifications.some(
+  const hasUnreadAmber = displayNotifications.some(
     (n) => !n.isRead && (n.type === "quota_warning_amber" || n.type.includes("amber"))
   );
 
@@ -502,7 +562,7 @@ function ClientNotificationBell() {
                 <span>{lang === "ar" ? "مقروء" : "Read"}</span>
               </button>
             )}
-            {notifications.length > 0 && (
+            {displayNotifications.length > 0 && (
               <button
                 type="button"
                 onClick={() => clearAllMutation.mutate()}
@@ -518,7 +578,7 @@ function ClientNotificationBell() {
 
         {/* Notification list */}
         <div className="max-h-[340px] overflow-y-auto divide-y divide-border/30">
-          {notifications.length === 0 ? (
+          {displayNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
               <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mb-2">
                 <CheckCircle2 className="w-6 h-6 text-muted-foreground/40" />
@@ -531,7 +591,7 @@ function ClientNotificationBell() {
               </p>
             </div>
           ) : (
-            notifications.slice(0, 8).map((n) => (
+            displayNotifications.slice(0, 8).map((n) => (
               <div
                 key={n.id}
                 onClick={() => handleClientItemClick(n)}
