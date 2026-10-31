@@ -307,7 +307,9 @@ export default function ClientPackages() {
     let latestPlanId: string | null = null;
 
     for (const t of clientTickets) {
-      if (!t.title || !t.title.includes("طلب اشتراك")) continue;
+      if (!t.title) continue;
+      const isSub = t.title.includes("طلب اشتراك") || t.title.includes("طلب تغيير باقة") || t.title.includes("باقة");
+      if (!isSub) continue;
 
       let planId: string | null = null;
       const matchId = t.description?.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
@@ -334,10 +336,12 @@ export default function ClientPackages() {
     }
 
     if (latestPlanId) {
-      setActiveSelectedPlanId(latestPlanId);
-      try {
-        localStorage.setItem(activePlanStorageKey, latestPlanId);
-      } catch {}
+      setActiveSelectedPlanId((prev) => prev || latestPlanId);
+      if (!localStorage.getItem(activePlanStorageKey)) {
+        try {
+          localStorage.setItem(activePlanStorageKey, latestPlanId);
+        } catch {}
+      }
     }
 
     if (Object.keys(ticketPlans).length > 0) {
@@ -414,6 +418,10 @@ export default function ClientPackages() {
 
   const handleOpenSubscribe = (plan: PlanDef) => {
     setSelectedPlan(plan);
+    setActiveSelectedPlanId(plan.id);
+    try {
+      localStorage.setItem(activePlanStorageKey, plan.id);
+    } catch {}
     setPhoneError(null);
     setDuplicateWarning(null);
 
