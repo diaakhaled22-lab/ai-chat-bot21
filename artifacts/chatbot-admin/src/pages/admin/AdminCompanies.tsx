@@ -516,14 +516,14 @@ export default function AdminCompanies() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [manageCompanyTarget, setManageCompanyTarget] = useState<Company | null>(null);
-  const [manageActiveTab, setManageActiveTab] = useState<"pages" | "data_sources" | "ai" | "channels" | "tools" | "subscription">("pages");
+  const [manageActiveTab, setManageActiveTab] = useState<"subscription" | "pages" | "data_sources" | "ai" | "channels" | "tools">("subscription");
   const [manageForm, setManageForm] = useState<any>({});
   const [isSavingContent, setIsSavingContent] = useState(false);
 
   const openManageCompanyDialog = (company: Company) => {
     const freshCompany = companies?.find((c) => c.id === company.id) || company;
     setManageCompanyTarget(freshCompany);
-    setManageActiveTab("pages");
+    setManageActiveTab("subscription");
 
     let cachedPages: string[] | null = null;
     try {
@@ -1704,12 +1704,12 @@ export default function AdminCompanies() {
                 {/* Tabs Selector Bar */}
                 <div className="flex items-center gap-1 overflow-x-auto bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
                   {[
+                    { id: "subscription", labelAr: "الاشتراك والحصة",   labelEn: "Subscription",   icon: Gauge },
                     { id: "pages",        labelAr: "صفحات القائمة",     labelEn: "Sidebar Pages",  icon: Settings2 },
                     { id: "data_sources", labelAr: "صلاحيات مصادر البيانات", labelEn: "Data Source Permissions", icon: Database },
                     { id: "ai",           labelAr: "الذكاء الاصطناعي",  labelEn: "AI & Prompts",   icon: Sparkles },
                     { id: "channels",     labelAr: "قنوات التواصل",      labelEn: "Channels",       icon: MessageCircle },
                     { id: "tools",        labelAr: "الأدوات والربط",    labelEn: "Tools",          icon: Wrench },
-                    { id: "subscription", labelAr: "الاشتراك والحصة",   labelEn: "Subscription",   icon: Gauge },
                   ].map((tab) => {
                     const Icon = tab.icon;
                     const isActive = manageActiveTab === tab.id;
