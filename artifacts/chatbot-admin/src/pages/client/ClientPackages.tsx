@@ -464,11 +464,14 @@ export default function ClientPackages() {
       return;
     }
 
-    // 2. Duplicate check: If this exact plan was already requested with this exact phone number
+    // 2. Duplicate check: Only block if user is attempting to re-submit their CURRENT active plan with an unchanged contact number
+    const isPlanChange = Boolean(activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id);
+    const isCurrentlyActivePlan = Boolean(activeSelectedPlanId === selectedPlan.id);
     const prevPlanRequest = submittedPlans[selectedPlan.id];
-    if (prevPlanRequest && prevPlanRequest.phone === trimmedPhone) {
+
+    if (isCurrentlyActivePlan && prevPlanRequest && prevPlanRequest.phone === trimmedPhone) {
       const msg = lang === "ar"
-        ? "لقد قمت باختيار هذه الباقة مسبقاً بنفس رقم التواصل. إذا كنت ترغب بتحديث بيانات الطلب يرجى تعديل رقم الهاتف."
+        ? "أنت مشترك بالفعل في هذه الباقة بنفس رقم التواصل. إذا كنت ترغب بتحديث بيانات الطلب يرجى تعديل رقم الهاتف."
         : "This plan has already been selected with this contact number. Modify your phone number to submit an updated request.";
       setDuplicateWarning(msg);
       toast({
@@ -482,7 +485,6 @@ export default function ClientPackages() {
     // 3. Process request
     const price = calcPrice(selectedPlan.monthlyPriceUsd);
     const cycleText = billingCycle === "yearly" ? (lang === "ar" ? "سنوي" : "Yearly") : (lang === "ar" ? "شهري" : "Monthly");
-    const isPlanChange = Boolean(activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id);
     const currentSelectedPlanDef = plans.find((p) => p.id === activeSelectedPlanId);
 
     const title = isPlanChange
@@ -1181,9 +1183,9 @@ export default function ClientPackages() {
                     <Phone className="w-3.5 h-3.5 text-primary" />
                     <span>{lang === "ar" ? "رقم الهاتف / واتساب للتواصل *" : "Phone / WhatsApp Contact *"}</span>
                   </label>
-                  {submittedPlans[selectedPlan.id]?.phone && (
+                  {activeSelectedPlanId === selectedPlan.id && submittedPlans[selectedPlan.id]?.phone && (
                     <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
-                      {lang === "ar" ? "مسجل مسبقاً لهذه الباقة" : "Previously recorded"}
+                      {lang === "ar" ? "مسجل مسبقاً لهذه الباقة" : "Current recorded number"}
                     </span>
                   )}
                 </div>
