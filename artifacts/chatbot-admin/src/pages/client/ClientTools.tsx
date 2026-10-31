@@ -96,39 +96,6 @@ export default function ClientTools() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: company, isLoading: loadingCompany } = useGetClientCompany();
-
-  // A tool is allowed if admin enabled it
-  const isCalAllowed = company?.googleCalendarEnabled !== undefined
-    ? Boolean(company.googleCalendarEnabled)
-    : Boolean(calConfig?.googleCalendarEnabled);
-
-  const isSheetsAllowed = company?.googleSheetsEnabled !== undefined
-    ? Boolean(company.googleSheetsEnabled)
-    : Boolean(sheetsConfig?.googleSheetsEnabled);
-
-  const hasAnyAllowedTool = isCalAllowed || isSheetsAllowed;
-
-  // Active tab: 'calendar' | 'sheets'
-  const [activeTab, setActiveTab] = useState<"calendar" | "sheets">(() => {
-    if (location.includes("sheets")) return "sheets";
-    return "calendar";
-  });
-
-  useEffect(() => {
-    if (!loadingCompany) {
-      if (!isCalAllowed && isSheetsAllowed) {
-        setActiveTab("sheets");
-      } else if (isCalAllowed && !isSheetsAllowed) {
-        setActiveTab("calendar");
-      } else if (location.includes("sheets") && isSheetsAllowed) {
-        setActiveTab("sheets");
-      } else if (location.includes("calendar") && isCalAllowed) {
-        setActiveTab("calendar");
-      }
-    }
-  }, [location, isCalAllowed, isSheetsAllowed, loadingCompany]);
-
   // ── Calendar Local State ──────────────────────────────────────────────────
   const [calendarId, setCalendarId] = useState("primary");
   const [calEnabled, setCalEnabled] = useState(false);
@@ -162,6 +129,9 @@ export default function ClientTools() {
     availableTabs?: string[];
   } | null>(null);
 
+  // ── Queries ──────────────────────────────────────────────────────────────
+  const { data: company, isLoading: loadingCompany } = useGetClientCompany();
+
   // ── Fetch Calendar Config ────────────────────────────────────────────────
   const { data: calConfig, isLoading: loadingCalConfig } = useQuery<CalendarConfig>({
     queryKey: ["client-calendar-config"],
@@ -180,19 +150,6 @@ export default function ClientTools() {
     },
   });
 
-  // ── Fetch Upcoming Calendar Events ───────────────────────────────────────
-  const {
-    data: eventsData,
-    isLoading: loadingEvents,
-    refetch: refetchEvents,
-    isFetching: fetchingEvents,
-  } = useQuery<{ ok: boolean; events: CalendarEvent[]; error?: string }>({
-    queryKey: ["client-calendar-events"],
-    queryFn: () => customFetch<{ ok: boolean; events: CalendarEvent[]; error?: string }>("/api/client/tools/calendar/events"),
-    enabled: Boolean(calConfig?.googleCalendarEnabled && (calConfig?.hasCompanyKey || calConfig?.hasCustomKey)),
-    retry: false,
-  });
-
   // ── Fetch Sheets Config ──────────────────────────────────────────────────
   const { data: sheetsConfig, isLoading: loadingSheetsConfig } = useQuery<SheetsConfig>({
     queryKey: ["client-sheets-config"],
@@ -207,6 +164,50 @@ export default function ClientTools() {
       }
       return res;
     },
+  });
+
+  // A tool is allowed if admin enabled it
+  const isCalAllowed = company?.googleCalendarEnabled !== undefined
+    ? Boolean(company.googleCalendarEnabled)
+    : Boolean(calConfig?.googleCalendarEnabled);
+
+  const isSheetsAllowed = company?.googleSheetsEnabled !== undefined
+    ? Boolean(company.googleSheetsEnabled)
+    : Boolean(sheetsConfig?.googleSheetsEnabled);
+
+  const hasAnyAllowedTool = isCalAllowed || isSheetsAllowed;
+
+  // Active tab: 'calendar' | 'sheets'
+  const [activeTab, setActiveTab] = useState<"calendar" | "sheets">(() => {
+    if (location.includes("sheets")) return "sheets";
+    return "calendar";
+  });
+
+  useEffect(() => {
+    if (!loadingCompany) {
+      if (!isCalAllowed && isSheetsAllowed) {
+        setActiveTab("sheets");
+      } else if (isCalAllowed && !isSheetsAllowed) {
+        setActiveTab("calendar");
+      } else if (location.includes("sheets") && isSheetsAllowed) {
+        setActiveTab("sheets");
+      } else if (location.includes("calendar") && isCalAllowed) {
+        setActiveTab("calendar");
+      }
+    }
+  }, [location, isCalAllowed, isSheetsAllowed, loadingCompany]);
+
+  // ── Fetch Upcoming Calendar Events ───────────────────────────────────────
+  const {
+    data: eventsData,
+    isLoading: loadingEvents,
+    refetch: refetchEvents,
+    isFetching: fetchingEvents,
+  } = useQuery<{ ok: boolean; events: CalendarEvent[]; error?: string }>({
+    queryKey: ["client-calendar-events"],
+    queryFn: () => customFetch<{ ok: boolean; events: CalendarEvent[]; error?: string }>("/api/client/tools/calendar/events"),
+    enabled: Boolean(isCalAllowed && calConfig?.googleCalendarEnabled && (calConfig?.hasCompanyKey || calConfig?.hasCustomKey)),
+    retry: false,
   });
 
   // ── Save Calendar Mutation ───────────────────────────────────────────────
