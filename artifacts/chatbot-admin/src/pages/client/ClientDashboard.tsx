@@ -304,11 +304,11 @@ export default function ClientDashboard() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="font-semibold text-foreground">
                   {lang === "ar"
-                    ? "عرض استهلاك الحصة المخصصة من المسؤول (النموذج المركزي للمنصة)"
-                    : "Admin Assigned Quota Usage (Platform Central Model)"}
+                    ? "عرض استهلاك الحصة المخصصة من المسؤول (مزود التشغيل المعتمد)"
+                    : "Admin Assigned Quota Usage (Platform Operating Provider)"}
                 </span>
-                <span className="text-[11px] font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                  {data?.quotaAiProvider ?? "openai"} / {data?.quotaAiModel ?? "gpt-4o-mini"}
+                <span className="text-[11px] font-mono text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/20 uppercase font-semibold">
+                  {data?.quotaAiProvider ?? "openai"}
                 </span>
               </div>
               <p>
@@ -509,17 +509,17 @@ export default function ClientDashboard() {
               icon={filterMode === "quota" ? Cpu : KeyRound}
               label={
                 filterMode === "quota"
-                  ? (lang === "ar" ? "نموذج الحصة المعتمد" : "Quota Assigned Model")
+                  ? (lang === "ar" ? "مزود التشغيل المعتمد" : "Operating Provider")
                   : (lang === "ar" ? "نموذج مفتاحك الخاص" : "Own Key Model")
               }
               value={
                 filterMode === "quota"
-                  ? (data?.quotaAiModel ?? "gpt-4o-mini")
+                  ? (data?.quotaAiProvider ?? "openai").toUpperCase()
                   : (data?.aiModel ?? (lang === "ar" ? "غير محدد" : "—"))
               }
               sub={
                 filterMode === "quota"
-                  ? `${data?.quotaAiProvider ?? "openai"} · ${lang === "ar" ? "حصة المنصة" : "Platform Quota"}`
+                  ? (lang === "ar" ? "مزود التشغيل المعتمد من المنصة" : "Platform Operating Provider")
                   : `${data?.aiProvider ?? (lang === "ar" ? "لم يحدد مزود" : "provider not set")} · ${lang === "ar" ? "مفتاحك الخاص" : "Own Key"}`
               }
               color={filterMode === "quota" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}

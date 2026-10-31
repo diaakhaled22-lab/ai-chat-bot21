@@ -1050,11 +1050,13 @@ export default function ClientCompany() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">
-                          {activeProvider && activeModel
+                          {isQuotaMode && activeProvider
+                            ? activeProvider.toUpperCase()
+                            : activeProvider && activeModel
                             ? `${activeProvider.toUpperCase()} · ${activeModel}`
                             : !hasOwnKey && !isQuotaMode
                             ? (lang === "ar" ? "⚠️ لم يتم إدخال مفتاح API — يرجى التهيئة أعلاه" : "⚠️ No API key — configure AI Provider above")
-                            : (lang === "ar" ? "جاري تعيين النموذج..." : "Configuring model...")}
+                            : (lang === "ar" ? "جاري تعيين المزود..." : "Configuring provider...")}
                         </p>
                       </div>
                       <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${

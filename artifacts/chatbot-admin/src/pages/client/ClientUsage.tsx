@@ -169,9 +169,8 @@ export default function ClientUsage() {
   const remainingPercent = quota !== null && quota > 0 && quotaPercent !== null ? Math.max(100 - quotaPercent, 0) : null;
   const hasQuota = !!(data?.hasQuota && quota !== null && quota > 0);
 
-  const modelLabel = data?.quotaAiModel || data?.aiModel
-    ? `${data?.quotaAiProvider || data?.aiProvider || "openai"} / ${data?.quotaAiModel || data?.aiModel}`
-    : "openai / gpt-4o-mini";
+  const providerLabel = (data?.quotaAiProvider || data?.aiProvider || "openai").toUpperCase();
+  const modelLabel = providerLabel;
 
   const tokenSplitData = [
     { name: lang === "ar" ? "المدخلات (العميل)" : "Input (Customer)", value: data?.estimatedInputTokens ?? 0 },
@@ -345,8 +344,8 @@ export default function ClientUsage() {
                     {lang === "ar" ? "الحصة الشهرية المخصصة من المسؤول" : "Admin Assigned Monthly Quota"}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {lang === "ar" ? "النموذج النشط:" : "Active Model:"}{" "}
-                    <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">{modelLabel}</span>
+                    {lang === "ar" ? "مزود التشغيل:" : "Operating Provider:"}{" "}
+                    <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">{providerLabel}</span>
                   </p>
                 </div>
               </div>
@@ -423,9 +422,9 @@ export default function ClientUsage() {
             />
             <StatCard
               icon={Cpu}
-              label={lang === "ar" ? "نموذج الحصة المعتمد" : "Quota AI Model"}
-              value={data?.quotaAiModel || data?.aiModel || "gpt-4o-mini"}
-              sub={`${data?.quotaAiProvider || data?.aiProvider || "openai"} · ${lang === "ar" ? "حصة المنصة" : "Platform Quota"}`}
+              label={lang === "ar" ? "مزود التشغيل المعتمد" : "Operating Provider"}
+              value={providerLabel}
+              sub={lang === "ar" ? "مزود التشغيل المعتمد من المنصة" : "Platform Operating Provider"}
               color="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
             />
             <StatCard
@@ -595,9 +594,9 @@ export default function ClientUsage() {
             <Info className="w-4 h-4 shrink-0 mt-0.5 opacity-60" />
             <span>
               {lang === "ar"
-                ? `يتم استهلاك الرموز من الحصة الشهرية المخصصة لشركتك من قِبل مسؤول النظام مجاناً ($0.00). يتم تشغيل الذكاء الاصطناعي عبر نموذج المنصة المعتمد (`
-                : "Tokens are consumed from your administrator-allocated monthly quota at $0.00 cost to you. Chatbot requests are processed by the central platform model ("}
-              <strong className="text-foreground">{modelLabel}</strong>).
+                ? `يتم استهلاك الرموز من الحصة الشهرية المخصصة لشركتك من قِبل مسؤول النظام مجاناً ($0.00). يتم تشغيل الذكاء الاصطناعي عبر مزود المنصة المعتمد (`
+                : "Tokens are consumed from your administrator-allocated monthly quota at $0.00 cost to you. Chatbot requests are processed by the central platform provider ("}
+              <strong className="text-foreground">{providerLabel}</strong>).
               {lang === "ar"
                 ? " في حال استنفاذ الحصة الشهرية، يمكنك التواصل مع إدارة المنصة لترقية أو زيادة الحصة الشهرية المخصصة لشركتك."
                 : " If your monthly quota is exhausted, you can contact the platform administration to upgrade or increase your allocated quota."}

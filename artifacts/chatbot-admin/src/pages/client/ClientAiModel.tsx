@@ -448,13 +448,15 @@ export default function ClientAiModel() {
             </span>
           </div>
 
-          {/* Active Model */}
+          {/* Active Model / Operating Provider */}
           <div className="rounded-lg bg-muted/30 border border-[#DCE7FF] p-3 text-xs space-y-1">
             <span className="text-muted-foreground block text-[11px] font-medium">
-              {lang === "ar" ? "النموذج الذكي الفعلي:" : "Operating Model:"}
+              {activeMode === "quota"
+                ? (lang === "ar" ? "مزود التشغيل المعتمد:" : "Operating Provider:")
+                : (lang === "ar" ? "النموذج الذكي الفعلي:" : "Operating Model:")}
             </span>
             <span className="font-mono font-semibold text-xs text-foreground block truncate">
-              {activeMode === "quota" ? quotaModel : (selectedModel || (lang === "ar" ? "النموذج الافتراضي" : "Default Model"))}
+              {activeMode === "quota" ? quotaProvider.toUpperCase() : (selectedModel || (lang === "ar" ? "النموذج الافتراضي" : "Default Model"))}
             </span>
           </div>
 
@@ -550,7 +552,9 @@ export default function ClientAiModel() {
               {!aiStatusLoading && (aiStatus?.model || quotaModel) && (
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-background/50 px-2 py-0.5 rounded border border-[#DCE7FF]">
-                    {(aiStatus?.provider || (activeMode === "quota" ? quotaProvider : selectedProvider))} / {aiStatus?.model?.includes("nemotron-nano") ? "nvidia/nemotron-3.5-lightning:free" : (aiStatus?.model || (activeMode === "quota" ? quotaModel : selectedModel))}
+                    {(aiStatus?.mode || activeMode) === "quota"
+                      ? (quotaProvider || "openai").toUpperCase()
+                      : `${aiStatus?.provider || selectedProvider} / ${aiStatus?.model?.includes("nemotron-nano") ? "nvidia/nemotron-3.5-lightning:free" : (aiStatus?.model || selectedModel)}`}
                   </span>
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded font-semibold border ${
@@ -725,8 +729,8 @@ export default function ClientAiModel() {
                     : "No token quota has been allocated by the administrator yet.")}
             </p>
             <div className="mt-2.5 pt-2 border-t border-border/40 font-mono text-[11px] flex items-center justify-between">
-              <span className="text-muted-foreground">{lang === "ar" ? "النموذج المعتمد:" : "Assigned Model:"}</span>
-              <span className="font-semibold text-foreground">{quotaProvider.toUpperCase()} · {quotaModel}</span>
+              <span className="text-muted-foreground">{lang === "ar" ? "مزود التشغيل المعتمد:" : "Operating Provider:"}</span>
+              <span className="font-semibold text-foreground">{quotaProvider.toUpperCase()}</span>
             </div>
           </div>
 
@@ -820,8 +824,8 @@ export default function ClientAiModel() {
                 </p>
                 <p className="opacity-90 leading-relaxed">
                   {lang === "ar"
-                    ? `يعمل البوت حالياً بالنموذج المخصص مجاناً (${quotaProvider.toUpperCase()} · ${quotaModel}). الإعدادات أدناه تتيح لك تجهيز مفتاح API ونموذج خاص بشركتك (BYOK) في حال أردت التبديل إلى نمط الرموز الخاصة.`
-                    : `Your bot is currently powered by the assigned model (${quotaProvider.toUpperCase()} · ${quotaModel}) for free. The settings below allow you to configure your company's own API key & model if you wish to switch to private API tokens mode.`}
+                    ? `يعمل البوت حالياً بمزود التشغيل المعتمد مجاناً (${quotaProvider.toUpperCase()}). الإعدادات أدناه تتيح لك تجهيز مفتاح API ونموذج خاص بشركتك (BYOK) في حال أردت التبديل إلى نمط الرموز الخاصة.`
+                    : `Your bot is currently powered by the operating provider (${quotaProvider.toUpperCase()}) for free. The settings below allow you to configure your company's own API key & model if you wish to switch to private API tokens mode.`}
                 </p>
               </div>
             </div>
