@@ -1788,65 +1788,7 @@ export default function AdminCompanies() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "مزود الذكاء الاصطناعي" : "AI Provider"}</Label>
-                        <select
-                          value={manageForm.aiProvider || "openai"}
-                          onChange={(e) => setManageForm({ ...manageForm, aiProvider: e.target.value })}
-                          className="mt-1 w-full h-9 px-3 rounded-md border border-input bg-background text-xs font-medium"
-                        >
-                          <option value="openai">OpenAI</option>
-                          <option value="anthropic">Anthropic Claude</option>
-                          <option value="google">Google Gemini</option>
-                          <option value="openrouter">OpenRouter</option>
-                        </select>
-                      </div>
 
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "اسم الموديل (Model)" : "AI Model"}</Label>
-                        <Input
-                          value={manageForm.aiModel || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, aiModel: e.target.value })}
-                          className="mt-1 text-xs"
-                          placeholder="e.g. gpt-4o-mini, claude-3-5-sonnet"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "طريقة التنفيذ" : "Execution Mode"}</Label>
-                        <select
-                          value={manageForm.aiExecutionMode || "quota"}
-                          onChange={(e) => setManageForm({ ...manageForm, aiExecutionMode: e.target.value })}
-                          className="mt-1 w-full h-9 px-3 rounded-md border border-input bg-background text-xs font-medium"
-                        >
-                          <option value="quota">{lang === "ar" ? "الحصة الشهرية (Platform Quota)" : "Platform Quota"}</option>
-                          <option value="tokens">{lang === "ar" ? "رموز API مخصصة (API Tokens)" : "Custom API Tokens"}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "مفتاح API الخاص بالشركة (Custom Key)" : "Custom Agent API Key"}</Label>
-                        <Input
-                          type="password"
-                          value={manageForm.aiAgentApiKey || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, aiAgentApiKey: e.target.value })}
-                          className="mt-1 font-mono text-xs"
-                          placeholder="sk-••••••••••••••••"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "رابط سيرفر الذكاء المخصص (Agent URL)" : "Custom Agent URL"}</Label>
-                        <Input
-                          value={manageForm.aiAgentUrl || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, aiAgentUrl: e.target.value })}
-                          className="mt-1 text-xs"
-                          placeholder="https://api.openai.com/v1"
-                        />
-                      </div>
-                    </div>
                   </div>
                 )}
 
