@@ -1868,12 +1868,35 @@ export default function AdminCompanies() {
                 {/* ── TAB 4: CHANNELS CONTENT ── */}
                 {manageActiveTab === "channels" && (
                   <div className="space-y-4">
-                    {/* Telegram */}
-                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Send className="w-4 h-4 text-sky-500" />
-                          <h5 className="text-xs font-bold">Telegram Bot</h5>
+                    <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                      <div>
+                        <h4 className="text-sm font-bold flex items-center gap-2">
+                          <MessageCircle className="w-4 h-4 text-primary" />
+                          {lang === "ar" ? "قنوات التواصل المسموحة للعميل" : "Allowed Communication Channels"}
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {lang === "ar"
+                            ? "تحكم في القنوات التي تظهر وتتاح للعميل في لوحته لإعدادها وربطها بروبوت الذكاء الاصطناعي."
+                            : "Control which channels appear and are available for the client to configure and connect."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* Telegram */}
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 border border-sky-500/20">
+                            <Send className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "بوت تليجرام (Telegram Bot)" : "Telegram Bot"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "تفعيل أو تعطيل قناة تليجرام في لوحة العميل." : "Enable or disable Telegram channel for the client."}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل تيليجرام" : "Enable Telegram"}</Label>
@@ -1883,35 +1906,21 @@ export default function AdminCompanies() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Bot Token (API Key)</Label>
-                          <Input
-                            type="password"
-                            value={manageForm.telegramBotApiKey || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, telegramBotApiKey: e.target.value })}
-                            className="mt-1 font-mono text-xs"
-                            placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Bot Username</Label>
-                          <Input
-                            value={manageForm.telegramBotUsername || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, telegramBotUsername: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="@my_company_bot"
-                          />
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* WhatsApp */}
-                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-emerald-500" />
-                          <h5 className="text-xs font-bold">WhatsApp Cloud API</h5>
+                      {/* WhatsApp */}
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                            <Phone className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "واتساب كلاود (WhatsApp Cloud API)" : "WhatsApp Cloud API"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "تفعيل أو تعطيل قناة واتساب للأعمال في لوحة العميل." : "Enable or disable WhatsApp channel for the client."}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل واتساب" : "Enable WhatsApp"}</Label>
@@ -1921,53 +1930,21 @@ export default function AdminCompanies() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">API Token</Label>
-                          <Input
-                            type="password"
-                            value={manageForm.whatsappApiToken || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, whatsappApiToken: e.target.value })}
-                            className="mt-1 font-mono text-xs"
-                            placeholder="EAAB••••••••"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Phone Number ID</Label>
-                          <Input
-                            value={manageForm.whatsappPhoneNumberId || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, whatsappPhoneNumberId: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="1029384756..."
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Business Account ID</Label>
-                          <Input
-                            value={manageForm.whatsappBusinessAccountId || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, whatsappBusinessAccountId: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="987654321..."
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">WhatsApp Number</Label>
-                          <Input
-                            value={manageForm.whatsappNumber || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, whatsappNumber: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="+1234567890"
-                          />
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Messenger */}
-                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-blue-500" />
-                          <h5 className="text-xs font-bold">Facebook Messenger</h5>
+                      {/* Messenger */}
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/20">
+                            <MessageSquare className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "فيسبوك ماسنجر (Facebook Messenger)" : "Facebook Messenger"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "تفعيل أو تعطيل قناة ماسنجر في لوحة العميل." : "Enable or disable Messenger channel for the client."}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل ماسنجر" : "Enable Messenger"}</Label>
@@ -1977,61 +1954,27 @@ export default function AdminCompanies() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Page Access Token</Label>
-                          <Input
-                            type="password"
-                            value={manageForm.messengerApiKey || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, messengerApiKey: e.target.value })}
-                            className="mt-1 font-mono text-xs"
-                            placeholder="EAAK••••••••"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Page ID</Label>
-                          <Input
-                            value={manageForm.messengerPageId || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, messengerPageId: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="1234567890"
-                          />
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Website Widget */}
-                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-violet-500" />
-                          <h5 className="text-xs font-bold">Website Chat Widget</h5>
+                      {/* Website Widget */}
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0 border border-violet-500/20">
+                            <Globe className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "ويدجت شات الموقع (Website Chat Widget)" : "Website Chat Widget"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar" ? "تفعيل أو تعطيل نافذة المحادثة المضمنة في موقع العميل." : "Enable or disable embedded website widget for the client."}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل الويدجت" : "Enable Widget"}</Label>
                           <Switch
                             checked={manageForm.widgetEnabled !== false}
                             onCheckedChange={(val) => handleChannelToggle("widgetEnabled", val)}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Website Chatbot Key</Label>
-                          <Input
-                            value={manageForm.websiteChatbotKey || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, websiteChatbotKey: e.target.value })}
-                            className="mt-1 font-mono text-xs"
-                            placeholder="wcb_••••••••"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Allowed Domains (comma-separated)</Label>
-                          <Input
-                            value={manageForm.widgetAllowedDomains || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, widgetAllowedDomains: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="https://example.com, https://sub.example.com"
                           />
                         </div>
                       </div>
