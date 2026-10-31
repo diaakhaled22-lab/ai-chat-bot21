@@ -62,6 +62,25 @@ export default function AdminNotifications() {
 
   const [activeTab, setActiveTab] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-notifications"] }),
+        queryClient.refetchQueries({ queryKey: ["admin-notifications"] }),
+        refetch(),
+      ]);
+      toast({
+        title: lang === "ar" ? "تم تحديث الإشعارات والعدادات بنجاح" : "Notifications & counts updated successfully",
+      });
+    } catch {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const { data: notifications = [], isLoading, isFetching, refetch } = useQuery<AppNotification[]>({
     queryKey: ["admin-notifications"],
@@ -278,11 +297,11 @@ export default function AdminNotifications() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onClick={handleRefresh}
+              disabled={isFetching || isRefreshing}
               className="bg-white/15 hover:bg-white/25 text-white border-white/25 rounded-xl backdrop-blur-md shadow-sm cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching || isRefreshing ? "animate-spin" : ""}`} />
               <span>{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
 

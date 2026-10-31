@@ -53,6 +53,25 @@ export default function ClientNotifications() {
 
   const [activeTab, setActiveTab] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["client-notifications"] }),
+        queryClient.refetchQueries({ queryKey: ["client-notifications"] }),
+        refetch(),
+      ]);
+      toast({
+        title: lang === "ar" ? "تم تحديث الإشعارات والعدادات بنجاح" : "Notifications & counts updated successfully",
+      });
+    } catch {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const { data: notifications = [], isLoading, isFetching, refetch } = useQuery<AppNotification[]>({
     queryKey: ["client-notifications"],
@@ -140,7 +159,7 @@ export default function ClientNotifications() {
       // Tab filter
       if (activeTab === "unread" && n.isRead) return false;
       if (activeTab === "quota" && !n.type.includes("quota") && !n.type.includes("depleted") && !n.type.includes("amber")) return false;
-      if (activeTab === "support" && !n.type.includes("problem") && !n.type.includes("handoff") && !n.type.includes("ticket")) return false;
+      if (activeTab === "support" && !n.type.includes("problem") && !n.type.includes("handoff") && !n.type.includes("ticket") && n.type !== "plan_request") return false;
       if (activeTab === "malfunction" && n.type !== "malfunction") return false;
 
       // Search filter
@@ -150,7 +169,7 @@ export default function ClientNotifications() {
       }
       return true;
     });
-  }, [notifications, activeTab, search]);
+  }, [deduplicatedNotifications, activeTab, search]);
 
   const getNotificationTheme = (type: string) => {
     const isRedDepleted = type === "quota_depleted_red" || type.includes("depleted");
@@ -245,11 +264,11 @@ export default function ClientNotifications() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
-              disabled={isFetching}
+              onClick={handleRefresh}
+              disabled={isFetching || isRefreshing}
               className="bg-white/15 hover:bg-white/25 text-white border-white/25 rounded-xl backdrop-blur-md shadow-sm cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching || isRefreshing ? "animate-spin" : ""}`} />
               <span>{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
 

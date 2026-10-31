@@ -768,7 +768,38 @@ function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
     refetchInterval: 10_000,
   });
 
-  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
+  const displayNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const seenPlanKeys = new Set<string>();
+    return sorted.filter((n) => {
+      const titleLower = (n.title || "").toLowerCase();
+      const msgLower = (n.message || "").toLowerCase();
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        titleLower.includes("طلب تغيير / ترقية باقة") ||
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("enterprise") ||
+        titleLower.includes("professional") ||
+        msgLower.includes("باقة") ||
+        msgLower.includes("plan");
+
+      if (isPlan) {
+        const key = n.companyId ? `comp_${n.companyId}` : n.title.replace(/#\d+/, "").trim();
+        if (seenPlanKeys.has(key)) return false;
+        seenPlanKeys.add(key);
+      }
+      return true;
+    });
+  }, [notifications]);
+
+  const unreadNotifications = displayNotifications.filter((n) => !n.isRead).length;
   const totalBadge = openTicketCount + unreadNotifications;
 
   if (totalBadge === 0) return null;
@@ -793,8 +824,37 @@ function ClientNotificationBadge({ isActive }: { isActive?: boolean }) {
     refetchInterval: 10_000,
   });
 
-  const unread = notifications.filter((n) => !n.isRead).length;
-  const hasUnreadRed = notifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
+  const displayNotifications = useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    let seenPlan = false;
+    return sorted.filter((n) => {
+      const titleLower = (n.title || "").toLowerCase();
+      const msgLower = (n.message || "").toLowerCase();
+      const isPlan =
+        n.type === "plan_request" ||
+        n.type.includes("plan") ||
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("enterprise") ||
+        titleLower.includes("professional") ||
+        msgLower.includes("باقة") ||
+        msgLower.includes("plan");
+
+      if (isPlan) {
+        if (seenPlan) return false;
+        seenPlan = true;
+      }
+      return true;
+    });
+  }, [notifications]);
+
+  const unread = displayNotifications.filter((n) => !n.isRead).length;
+  const hasUnreadRed = displayNotifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
 
   if (unread === 0) return null;
 
