@@ -68,8 +68,7 @@ export default function AdminNotifications() {
     try {
       setIsRefreshing(true);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["admin-notifications"] }),
-        queryClient.refetchQueries({ queryKey: ["admin-notifications"] }),
+        queryClient.invalidateQueries(),
         refetch(),
       ]);
       toast({

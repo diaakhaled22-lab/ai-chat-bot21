@@ -141,7 +141,7 @@ function NotificationBell() {
   }, [notifications]);
 
   const unreadNotifications = displayNotifications.filter((n) => !n.isRead).length;
-  const totalBadge = openTicketCount + unreadNotifications;
+  const totalBadge = unreadNotifications;
 
   const prevTotalRef = useRef<number | null>(null);
   const [pulse, setPulse] = useState(false);
@@ -800,19 +800,18 @@ function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
   }, [notifications]);
 
   const unreadNotifications = displayNotifications.filter((n) => !n.isRead).length;
-  const totalBadge = openTicketCount + unreadNotifications;
 
-  if (totalBadge === 0) return null;
+  if (unreadNotifications === 0) return null;
 
   return (
     <span
       className={`ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all shadow-sm ${
         isActive
           ? "bg-amber-300 text-slate-900"
-          : "bg-rose-500 text-white border border-white/20"
+          : "bg-amber-400 text-slate-950 font-bold"
       }`}
     >
-      {totalBadge > 99 ? "99+" : totalBadge}
+      {unreadNotifications > 99 ? "99+" : unreadNotifications}
     </span>
   );
 }

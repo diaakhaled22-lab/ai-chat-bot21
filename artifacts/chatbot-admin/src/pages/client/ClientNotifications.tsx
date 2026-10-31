@@ -59,8 +59,7 @@ export default function ClientNotifications() {
     try {
       setIsRefreshing(true);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["client-notifications"] }),
-        queryClient.refetchQueries({ queryKey: ["client-notifications"] }),
+        queryClient.invalidateQueries(),
         refetch(),
       ]);
       toast({

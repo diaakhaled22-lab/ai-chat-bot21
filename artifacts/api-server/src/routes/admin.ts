@@ -128,10 +128,61 @@ router.get("/admin/stats", async (req, res) => {
       .from(chatLogsTable)
       .where(sql`${chatLogsTable.createdAt} >= ${todayStart}`);
 
-    const [openTicketsRow] = await db
-      .select({ count: count() })
+    // Query all open tickets and deduplicate/purge superseded plan switch tickets per client
+    const allOpenTickets = await db
+      .select({
+        id: ticketsTable.id,
+        clientId: ticketsTable.clientId,
+        title: ticketsTable.title,
+        createdAt: ticketsTable.createdAt,
+      })
       .from(ticketsTable)
-      .where(eq(ticketsTable.status, "open"));
+      .where(eq(ticketsTable.status, "open"))
+      .orderBy(desc(ticketsTable.createdAt));
+
+    const clientPlanOpenTickets = new Map<number, typeof allOpenTickets>();
+    for (const t of allOpenTickets) {
+      const title = t.title || "";
+      const lower = title.toLowerCase();
+      const isPlan =
+        title.includes("طلب تغيير باقة") ||
+        title.includes("طلب اشتراك") ||
+        title.includes("طلب باقة") ||
+        title.includes("باقة") ||
+        lower.includes("plan") ||
+        lower.includes("upgrade") ||
+        lower.includes("starter") ||
+        lower.includes("professional") ||
+        lower.includes("enterprise");
+
+      if (isPlan && t.clientId) {
+        if (!clientPlanOpenTickets.has(t.clientId)) {
+          clientPlanOpenTickets.set(t.clientId, []);
+        }
+        clientPlanOpenTickets.get(t.clientId)!.push(t);
+      }
+    }
+
+    const supersededOpenTicketIds: number[] = [];
+    for (const [, pTickets] of clientPlanOpenTickets.entries()) {
+      if (pTickets.length > 1) {
+        for (let i = 1; i < pTickets.length; i++) {
+          supersededOpenTicketIds.push(pTickets[i].id);
+        }
+      }
+    }
+
+    if (supersededOpenTicketIds.length > 0) {
+      await db.delete(ticketsTable).where(inArray(ticketsTable.id, supersededOpenTicketIds)).catch(() => {});
+      for (const sId of supersededOpenTicketIds) {
+        await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, `ticket_${sId}`)).catch(() => {});
+        await db.delete(notificationsTable).where(sql`(${notificationsTable.title} LIKE '%#' || ${sId} || '%')`).catch(() => {});
+      }
+      logger.info({ supersededOpenTicketIds }, "Cleaned superseded open tickets in admin stats");
+    }
+
+    const supersededOpenSet = new Set(supersededOpenTicketIds);
+    const validOpenTickets = allOpenTickets.filter((t) => !supersededOpenSet.has(t.id));
 
     const totalCompanies = totalCompaniesRow?.count ?? 0;
     const activeCompanies = activeRow?.count ?? 0;
@@ -146,7 +197,7 @@ router.get("/admin/stats", async (req, res) => {
     const totalClients = clientsRow?.count ?? 0;
     const totalChatLogs = totalLogsRow?.count ?? 0;
     const todayChatLogs = todayLogsRow?.count ?? 0;
-    const openTicketCount = openTicketsRow?.count ?? 0;
+    const openTicketCount = validOpenTickets.length;
 
     res.json({ totalCompanies, activeCompanies, inactiveCompanies, quotaCompanies, totalClients, totalChatLogs, todayChatLogs, openTicketCount });
   } catch (err) {
