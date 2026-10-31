@@ -869,6 +869,10 @@ export default function AdminCompanies() {
       });
 
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/company"] });
+      queryClient.invalidateQueries({ queryKey: ["client-calendar-config"] });
+      queryClient.invalidateQueries({ queryKey: ["client-sheets-config"] });
       setManageCompanyTarget(null);
     } catch (err: any) {
       const errorMsg = err?.data?.error || err?.message || (lang === "ar" ? "فشل حفظ التعديلات" : "Failed to update company");

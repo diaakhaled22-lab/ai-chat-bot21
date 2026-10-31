@@ -884,16 +884,20 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       label: t("nav_tools") || (lang === "ar" ? "الأدوات" : "Tools"),
       icon: Wrench,
       children: [
-        {
-          href: "/client/tools/calendar",
-          label: t("nav_google_calendar") || (lang === "ar" ? "تقويم Google" : "Google Calendar"),
-          icon: CalendarIcon,
-        },
-        {
-          href: "/client/tools/sheets",
-          label: t("nav_google_sheets") || (lang === "ar" ? "جداول Google" : "Google Sheets"),
-          icon: FileSpreadsheet,
-        },
+        ...((clientCompany as any)?.googleCalendarEnabled
+          ? [{
+              href: "/client/tools/calendar",
+              label: t("nav_google_calendar") || (lang === "ar" ? "تقويم Google" : "Google Calendar"),
+              icon: CalendarIcon,
+            }]
+          : []),
+        ...((clientCompany as any)?.googleSheetsEnabled
+          ? [{
+              href: "/client/tools/sheets",
+              label: t("nav_google_sheets") || (lang === "ar" ? "جداول Google" : "Google Sheets"),
+              icon: FileSpreadsheet,
+            }]
+          : []),
       ],
     },
     { href: "/client/chat-logs",        label: t("nav_chat_logs"),       icon: MessageSquare, clientChatBadge: true },

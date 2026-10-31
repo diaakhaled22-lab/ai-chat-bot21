@@ -124,7 +124,8 @@ router.get("/client/company", async (req, res) => {
       isActive: company.isActive,
       systemPrompt: company.systemPrompt,
         securityPrompt: company.securityPrompt,
-      googleSheetsEnabled: company.googleSheetsEnabled,
+      googleSheetsEnabled: company.googleSheetsEnabled ?? false,
+      googleCalendarEnabled: (company as any).googleCalendarEnabled ?? false,
       googleSheetsLink: company.googleSheetsLink,
       googleSheetsName: company.googleSheetsName,
       googleSheetsPage: company.googleSheetsPage,
@@ -515,7 +516,11 @@ router.put("/client/company", async (req, res) => {
     }
     if (data.generalInfo !== undefined) updates.generalInfo = data.generalInfo;
     if (data.systemPrompt !== undefined) updates.systemPrompt = data.systemPrompt;
-    if (data.googleSheetsEnabled !== undefined) updates.googleSheetsEnabled = data.googleSheetsEnabled;
+    if (data.googleSheetsEnabled !== undefined) {
+      if (existingCompany.googleSheetsEnabled !== false) {
+        updates.googleSheetsEnabled = data.googleSheetsEnabled;
+      }
+    }
     if (data.googleSheetsLink !== undefined) updates.googleSheetsLink = data.googleSheetsLink;
     if (data.googleSheetsName !== undefined) updates.googleSheetsName = data.googleSheetsName;
     if (data.googleSheetsPage !== undefined) updates.googleSheetsPage = data.googleSheetsPage;
@@ -975,6 +980,11 @@ router.put("/client/tools/calendar/config", async (req, res) => {
       return;
     }
 
+    if (!(company as any).googleCalendarEnabled) {
+      res.status(403).json({ error: "Google Calendar is disabled by administrator" });
+      return;
+    }
+
     const {
       googleCalendarEnabled,
       googleCalendarId,
@@ -1039,6 +1049,11 @@ router.post("/client/tools/calendar/test", async (req, res) => {
       return;
     }
 
+    if (!(company as any).googleCalendarEnabled) {
+      res.status(403).json({ ok: false, error: "Google Calendar is disabled by administrator" });
+      return;
+    }
+
     const { calendarId: testCalId, serviceAccountKey: customKey } = req.body || {};
     let creds = customKey ? parseServiceAccountKey(customKey) : null;
     if (!creds) {
@@ -1073,6 +1088,11 @@ router.get("/client/tools/calendar/events", async (req, res) => {
       return;
     }
 
+    if (!(company as any).googleCalendarEnabled) {
+      res.json({ ok: true, events: [] });
+      return;
+    }
+
     const { credentials } = resolveGoogleCalendarCredentials(company);
     if (!credentials) {
       res.json({ ok: false, events: [], error: "No service account credentials configured" });
@@ -1095,6 +1115,11 @@ router.post("/client/tools/calendar/events", async (req, res) => {
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    if (!(company as any).googleCalendarEnabled) {
+      res.status(403).json({ ok: false, error: "Google Calendar is disabled by administrator" });
       return;
     }
 
@@ -1178,6 +1203,11 @@ router.put("/client/tools/sheets/config", async (req, res) => {
       return;
     }
 
+    if (!company.googleSheetsEnabled) {
+      res.status(403).json({ error: "Google Sheets is disabled by administrator" });
+      return;
+    }
+
     const {
       googleSheetsEnabled,
       googleSheetsLink,
@@ -1238,6 +1268,11 @@ router.post("/client/tools/sheets/test", async (req, res) => {
 
     if (!company) {
       res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    if (!company.googleSheetsEnabled) {
+      res.status(403).json({ success: false, message: "Google Sheets is disabled by administrator" });
       return;
     }
 

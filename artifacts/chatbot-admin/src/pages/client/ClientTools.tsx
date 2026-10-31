@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, useGetClientCompany } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,19 @@ export default function ClientTools() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: company, isLoading: loadingCompany } = useGetClientCompany();
+
+  // A tool is allowed if admin enabled it
+  const isCalAllowed = company?.googleCalendarEnabled !== undefined
+    ? Boolean(company.googleCalendarEnabled)
+    : Boolean(calConfig?.googleCalendarEnabled);
+
+  const isSheetsAllowed = company?.googleSheetsEnabled !== undefined
+    ? Boolean(company.googleSheetsEnabled)
+    : Boolean(sheetsConfig?.googleSheetsEnabled);
+
+  const hasAnyAllowedTool = isCalAllowed || isSheetsAllowed;
+
   // Active tab: 'calendar' | 'sheets'
   const [activeTab, setActiveTab] = useState<"calendar" | "sheets">(() => {
     if (location.includes("sheets")) return "sheets";
@@ -103,12 +116,18 @@ export default function ClientTools() {
   });
 
   useEffect(() => {
-    if (location.includes("sheets")) {
-      setActiveTab("sheets");
-    } else if (location.includes("calendar")) {
-      setActiveTab("calendar");
+    if (!loadingCompany) {
+      if (!isCalAllowed && isSheetsAllowed) {
+        setActiveTab("sheets");
+      } else if (isCalAllowed && !isSheetsAllowed) {
+        setActiveTab("calendar");
+      } else if (location.includes("sheets") && isSheetsAllowed) {
+        setActiveTab("sheets");
+      } else if (location.includes("calendar") && isCalAllowed) {
+        setActiveTab("calendar");
+      }
     }
-  }, [location]);
+  }, [location, isCalAllowed, isSheetsAllowed, loadingCompany]);
 
   // ── Calendar Local State ──────────────────────────────────────────────────
   const [calendarId, setCalendarId] = useState("primary");
@@ -411,52 +430,75 @@ export default function ClientTools() {
           </div>
 
           {/* Tab Switcher Pills inside banner */}
-          <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setActiveTab("calendar");
-                setLocation(location.startsWith("/admin") ? "/admin/tools/calendar" : "/client/tools/calendar");
-              }}
-              className={`flex items-center gap-2 text-xs font-bold h-9 rounded-xl transition-all ${
-                activeTab === "calendar"
-                  ? "bg-white text-blue-700 shadow-md"
-                  : "text-blue-100 hover:text-white hover:bg-white/15"
-              }`}
-            >
-              <CalendarIcon className="w-4 h-4" />
-              {isAr ? "تقويم Google" : "Google Calendar"}
-              {isCalConnected && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          {hasAnyAllowedTool && (
+            <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shrink-0">
+              {isCalAllowed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setActiveTab("calendar");
+                    setLocation(location.startsWith("/admin") ? "/admin/tools/calendar" : "/client/tools/calendar");
+                  }}
+                  className={`flex items-center gap-2 text-xs font-bold h-9 rounded-xl transition-all ${
+                    activeTab === "calendar"
+                      ? "bg-white text-blue-700 shadow-md"
+                      : "text-blue-100 hover:text-white hover:bg-white/15"
+                  }`}
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  {isAr ? "تقويم Google" : "Google Calendar"}
+                  {isCalConnected && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  )}
+                </Button>
               )}
-            </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setActiveTab("sheets");
-                setLocation(location.startsWith("/admin") ? "/admin/tools/sheets" : "/client/tools/sheets");
-              }}
-              className={`flex items-center gap-2 text-xs font-bold h-9 rounded-xl transition-all ${
-                activeTab === "sheets"
-                  ? "bg-white text-blue-700 shadow-md"
-                  : "text-blue-100 hover:text-white hover:bg-white/15"
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              {isAr ? "جداول Google" : "Google Sheets"}
-              {isSheetsConnected && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              {isSheetsAllowed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setActiveTab("sheets");
+                    setLocation(location.startsWith("/admin") ? "/admin/tools/sheets" : "/client/tools/sheets");
+                  }}
+                  className={`flex items-center gap-2 text-xs font-bold h-9 rounded-xl transition-all ${
+                    activeTab === "sheets"
+                      ? "bg-white text-blue-700 shadow-md"
+                      : "text-blue-100 hover:text-white hover:bg-white/15"
+                  }`}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  {isAr ? "جداول Google" : "Google Sheets"}
+                  {isSheetsConnected && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  )}
+                </Button>
               )}
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* ── Empty state when all tools are disabled by admin ── */}
+      {!loadingCompany && !hasAnyAllowedTool && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+            <Wrench className="w-6 h-6" />
+          </div>
+          <h3 className="font-bold text-base">
+            {isAr ? "الأدوات والتكاملات معطلة حالياً" : "Tools & Integrations Disabled"}
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+            {isAr
+              ? "تم تعطيل الأدوات الخارجية (تقويم Google، جداول Google) لحسابك من قبل إدارة النظام. عند قيام المسؤول بتفعيل أي أداة، ستظهر هنا مباشرة لإدارتها واستخدامها."
+              : "External tools (Google Calendar, Google Sheets) are currently disabled for your account by the administrator. Once enabled by the admin, they will appear here automatically."}
+          </p>
+        </div>
+      )}
+
       {/* ── GOOGLE CALENDAR VIEW ────────────────────────────────────────── */}
-      {activeTab === "calendar" && (
+      {isCalAllowed && activeTab === "calendar" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
           <Card className="border-border bg-card/70 backdrop-blur-sm shadow-md shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
@@ -982,7 +1024,7 @@ export default function ClientTools() {
       )}
 
       {/* ── GOOGLE SHEETS VIEW ──────────────────────────────────────────── */}
-      {activeTab === "sheets" && (
+      {isSheetsAllowed && activeTab === "sheets" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Top Status & Quick Actions Banner */}
           <Card className="border-border bg-card/70 backdrop-blur-sm shadow-md shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
