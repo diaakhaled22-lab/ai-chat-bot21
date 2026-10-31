@@ -644,6 +644,7 @@ export default function ClientChannels() {
 
           {/* ── Floating Action Button ───────────────────────── */}
           {isWidgetAllowed && (
+          <>
           <div className="rounded-xl border border-[#DCE7FF] bg-card px-4 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
@@ -805,8 +806,11 @@ export default function ClientChannels() {
               </div>
             </div>
           )}
+          </>
+          )}
 
           {/* ── Voice Notes & Audio AI (WhatsApp & Telegram) ── */}
+          {(isWhatsappAllowed || isTelegramAllowed) && (
           <div className="bg-card border border-[#DCE7FF] rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
