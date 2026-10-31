@@ -357,12 +357,31 @@ export default function ClientSupport() {
               </p>
             </div>
           </div>
-          <Button
-            onClick={() => setShowForm((v) => !v)}
-            className="bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0"
-          >
-            {showForm ? <><X className="w-4 h-4 mr-1.5" />{t("btn_cancel")}</> : <><Plus className="w-4 h-4 mr-1.5" />{t("support_new_ticket")}</>}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await Promise.all([
+                  queryClient.invalidateQueries(),
+                  queryClient.refetchQueries({ queryKey: ["client-tickets"] }),
+                ]);
+                toast({
+                  title: lang === "ar" ? "تم تحديث التذاكر والعدادات بنجاح" : "Tickets and counters refreshed",
+                });
+              }}
+              className="bg-white/15 hover:bg-white/25 text-white border-white/25 rounded-xl backdrop-blur-md shadow-sm cursor-pointer text-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+              <span>{lang === "ar" ? "تحديث" : "Refresh"}</span>
+            </Button>
+            <Button
+              onClick={() => setShowForm((v) => !v)}
+              className="bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0"
+            >
+              {showForm ? <><X className="w-4 h-4 mr-1.5" />{t("btn_cancel")}</> : <><Plus className="w-4 h-4 mr-1.5" />{t("support_new_ticket")}</>}
+            </Button>
+          </div>
         </div>
       </div>
 

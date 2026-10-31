@@ -671,28 +671,44 @@ function ClientNotificationBell() {
 }
 
 function OpenTicketsBadge() {
-  const { data: stats } = useGetAdminStats({
-    query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
+  const { data: tickets = [] } = useQuery<any[]>({
+    queryKey: ["admin-tickets"],
+    queryFn: () => customFetch("/api/admin/tickets"),
+    refetchInterval: 10_000,
   });
 
-  const prevCountRef = useRef<number | null>(null);
-  const [pulse, setPulse] = useState(false);
+  const count = useMemo(() => {
+    if (!Array.isArray(tickets)) return 0;
+    const sorted = [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const seenPlanByClient = new Set<number>();
+    return sorted.filter((t) => {
+      const titleLower = (t.title || "").toLowerCase();
+      const isPlan =
+        titleLower.includes("طلب تغيير باقة") ||
+        titleLower.includes("طلب اشتراك") ||
+        titleLower.includes("طلب باقة") ||
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("upgrade") ||
+        titleLower.includes("starter") ||
+        titleLower.includes("professional") ||
+        titleLower.includes("enterprise");
 
-  useEffect(() => {
-    const current = (stats as any)?.openTicketCount ?? null;
-    if (current !== null && prevCountRef.current !== null && current > prevCountRef.current) {
-      setPulse(true);
-      setTimeout(() => setPulse(false), 1500);
-    }
-    if (current !== null) prevCountRef.current = current;
-  }, [(stats as any)?.openTicketCount]);
+      if (isPlan && t.clientId) {
+        if (seenPlanByClient.has(t.clientId)) {
+          return false;
+        }
+        seenPlanByClient.add(t.clientId);
+      }
+      return t.status === "open";
+    }).length;
+  }, [tickets]);
 
-  const count = (stats as any)?.openTicketCount ?? 0;
   if (count === 0) return null;
 
   return (
     <span
-      className={`ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all duration-300 ${pulse ? "bg-amber-300 text-slate-900 scale-110 shadow-md" : "bg-amber-400/25 text-amber-200 border border-amber-400/30"}`}
+      className="ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all shadow-sm bg-amber-400 text-slate-950 font-bold"
       title={`${count} open problem${count !== 1 ? "s" : ""}`}
     >
       {count > 99 ? "99+" : count}

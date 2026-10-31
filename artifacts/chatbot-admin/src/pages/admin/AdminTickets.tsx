@@ -570,6 +570,24 @@ export default function AdminTickets() {
   const [updatingId,      setUpdatingId]      = useState<number | null>(null);
   const [deletingId,      setDeletingId]      = useState<number | null>(null);
   const [batchSolving,    setBatchSolving]    = useState(false);
+  const [isRefreshing,    setIsRefreshing]    = useState(false);
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await Promise.all([
+        queryClient.invalidateQueries(),
+        refetch(),
+      ]);
+      toast({
+        title: lang === "ar" ? "تم تحديث المشاكل والعدادات بنجاح" : "Customer problems and counters refreshed successfully",
+      });
+    } catch {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const { data: tickets = [], isLoading, isRefetching, refetch } = useQuery<Ticket[]>({
     queryKey: ["admin-tickets"],
@@ -800,12 +818,12 @@ export default function AdminTickets() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
-              disabled={isRefetching}
+              onClick={handleRefresh}
+              disabled={isRefetching || isRefreshing}
               className="gap-1.5 text-xs h-9 bg-white/15 hover:bg-white/25 text-white border-white/20 rounded-xl cursor-pointer"
               title={lang === "ar" ? "تحديث القائمة" : "Refresh list"}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching || isRefreshing ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
 
