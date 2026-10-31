@@ -2008,12 +2008,32 @@ export default function AdminCompanies() {
                 {/* ── TAB 5: TOOLS & INTEGRATIONS CONTENT ── */}
                 {manageActiveTab === "tools" && (
                   <div className="space-y-4">
-                    {/* Google Calendar */}
-                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon className="w-4 h-4 text-blue-500" />
-                          <h5 className="text-xs font-bold">Google Calendar</h5>
+                    <div className="p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 text-xs text-muted-foreground flex items-center gap-2.5">
+                      <Wrench className="w-4 h-4 text-blue-500 shrink-0" />
+                      <span>
+                        {lang === "ar"
+                          ? "تحكم في إتاحة وتفعيل الأدوات الخارجية للعميل. عند تعطيل أي أداة، ستختفي من لوحة تحكم العميل ولن يتمكن من استخدامها."
+                          : "Control external tool availability for this client. Disabling a tool hides it from the client portal and prevents them from enabling it."}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {/* Google Calendar */}
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/20">
+                            <CalendarIcon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "تقويم Google (Google Calendar)" : "Google Calendar"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar"
+                                ? "تفعيل أو تعطيل تكامل تقويم Google ومواعيد العمل في لوحة العميل."
+                                : "Enable or disable Google Calendar integration in client portal."}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل التقويم" : "Enable Calendar"}</Label>
@@ -2023,62 +2043,23 @@ export default function AdminCompanies() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Calendar ID</Label>
-                          <Input
-                            value={manageForm.googleCalendarId || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, googleCalendarId: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="primary or xxxx@group.calendar.google.com"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Timezone</Label>
-                          <Input
-                            value={manageForm.googleCalendarTimezone || "UTC"}
-                            onChange={(e) => setManageForm({ ...manageForm, googleCalendarTimezone: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="UTC, Asia/Riyadh, Africa/Cairo"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">{lang === "ar" ? "مدة الموعد (بالدقائق)" : "Slot Duration (min)"}</Label>
-                          <Input
-                            type="number"
-                            value={manageForm.googleCalendarDuration || 30}
-                            onChange={(e) => setManageForm({ ...manageForm, googleCalendarDuration: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="30"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">{lang === "ar" ? "قواعد وضوابط الحجز (Booking Rules Prompt)" : "Booking Rules Prompt"}</Label>
-                        <Textarea
-                          value={manageForm.googleCalendarBookingRules || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, googleCalendarBookingRules: e.target.value })}
-                          className="mt-1 min-h-[60px] text-xs leading-relaxed"
-                          placeholder={lang === "ar" ? "مواعيد العمل المتاحة للحجز، إجازات الأسبوع، سياسة الحجز..." : "Available working hours, weekend rules, booking constraints..."}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">Google Calendar Service Account JSON</Label>
-                        <Textarea
-                          value={manageForm.googleCalendarServiceAccountKey || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, googleCalendarServiceAccountKey: e.target.value })}
-                          className="mt-1 min-h-[60px] font-mono text-xs"
-                          placeholder='{"type": "service_account", ...}'
-                        />
-                      </div>
-                    </div>
 
-                    {/* Google Sheets */}
-                    <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-                          <h5 className="text-xs font-bold">Google Sheets</h5>
+                      {/* Google Sheets */}
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/10 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                            <FileSpreadsheet className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "جداول Google (Google Sheets)" : "Google Sheets"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === "ar"
+                                ? "تفعيل أو تعطيل تكامل جداول Google ومزامنة البيانات في لوحة العميل."
+                                : "Enable or disable Google Sheets integration in client portal."}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل جداول جوجل" : "Enable Sheets"}</Label>
@@ -2087,35 +2068,6 @@ export default function AdminCompanies() {
                             onCheckedChange={(val) => setManageForm({ ...manageForm, googleSheetsEnabled: val })}
                           />
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                        <div className="sm:col-span-2">
-                          <Label className="text-[11px] text-muted-foreground">Spreadsheet URL</Label>
-                          <Input
-                            value={manageForm.googleSheetsLink || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, googleSheetsLink: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="https://docs.google.com/spreadsheets/d/..."
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[11px] text-muted-foreground">Tab / Page Name</Label>
-                          <Input
-                            value={manageForm.googleSheetsPage || ""}
-                            onChange={(e) => setManageForm({ ...manageForm, googleSheetsPage: e.target.value })}
-                            className="mt-1 text-xs"
-                            placeholder="Sheet1"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-[11px] text-muted-foreground">Google Sheets Service Account JSON</Label>
-                        <Textarea
-                          value={manageForm.serviceAccountKey || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, serviceAccountKey: e.target.value })}
-                          className="mt-1 min-h-[60px] font-mono text-xs"
-                          placeholder='{"type": "service_account", ...}'
-                        />
                       </div>
                     </div>
                   </div>
