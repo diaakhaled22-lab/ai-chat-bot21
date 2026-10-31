@@ -1,3 +1,4 @@
+import { ClientOnboardingProgress } from "@/components/client/ClientOnboardingProgress";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useForm } from "react-hook-form";
@@ -611,28 +612,8 @@ export default function ClientCompany() {
         </div>
       </div>
 
-      {company && !company.isActive && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 text-sm">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-            <div className="space-y-1">
-              <p className="font-semibold text-amber-600 dark:text-amber-400">
-                {lang === "ar" ? "الحساب غير نشط حالياً — بانتظار تفعيل الباقة" : "Account is inactive — awaiting plan activation"}
-              </p>
-              <p className="text-amber-600/80 dark:text-amber-400/80 text-xs leading-relaxed max-w-2xl">
-                {lang === "ar"
-                  ? "يرجى إكمال بيانات شركتك أدناه، ثم التوجه إلى صفحة 'الباقات والاشتراكات' لاختيار الباقة المناسبة وتأكيد التفعيل مع فريق الدعم."
-                  : "Please complete your company details below, then head to 'Packages & Plans' to select a tier and request account activation."}
-              </p>
-            </div>
-          </div>
-          <Link href="/client/packages">
-            <Button size="sm" className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white rounded-xl text-xs font-bold gap-1.5 shrink-0 shadow-md">
-              <Package className="w-3.5 h-3.5" />
-              <span>{lang === "ar" ? "عرض الباقات والاشتراك" : "View Packages & Plans"}</span>
-            </Button>
-          </Link>
-        </div>
+      {(!company || !company.isActive) && (
+        <ClientOnboardingProgress currentStep="company" company={company} />
       )}
 
 

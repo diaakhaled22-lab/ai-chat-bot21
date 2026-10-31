@@ -1,3 +1,4 @@
+import { checkIsCompanyProfileComplete } from "@/components/client/ClientOnboardingProgress";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey, useGetClientCompany, getGetClientCompanyQueryKey } from "@workspace/api-client-react";
@@ -55,6 +56,7 @@ interface NavLink {
   isAction?: boolean;
   onClick?: () => void;
   children?: NavLink[];
+  isLocked?: boolean;
 }
 
 interface Ticket {
@@ -853,11 +855,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const isTokensMode = (clientCompany as any)?.aiExecutionMode === "tokens";
   const isClinic = role === "client" && (clientCompany as any)?.businessType === "clinic";
   const isNewClient = role === "client" && (!clientCompany || !(clientCompany as any)?.isActive);
+  const isProfileCompleted = checkIsCompanyProfileComplete(clientCompany);
 
   // Initial navigation for new/inactive client: Company Profile, Packages, Support & Tickets, Settings
   const initialClientLinks: NavLink[] = [
     { href: "/client/company",          label: t("nav_company") || (lang === "ar" ? "ملف الشركة" : "Company Profile"), icon: Building2 },
-    { href: "/client/packages",         label: t("nav_packages") || (lang === "ar" ? "الباقات والاشتراكات" : "Packages & Plans"), icon: Package },
+    {
+      href: "/client/packages",
+      label: t("nav_packages") || (lang === "ar" ? "الباقات والاشتراكات" : "Packages & Plans"),
+      icon: Package,
+      isLocked: isNewClient && !isProfileCompleted,
+    },
     { href: "/client/support",          label: t("nav_support") || (lang === "ar" ? "الدعم والتذاكر" : "Support & Tickets"), icon: LifeBuoy },
     { href: "/client/settings",         label: t("nav_settings") || (lang === "ar" ? "الإعدادات" : "Settings"), icon: Settings },
   ];
@@ -961,9 +969,21 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           }
         }
       } else if (isNewClient) {
+        if (!isProfileCompleted && (location === "/client/packages" || location.startsWith("/client/packages/"))) {
+          toast({
+            title: lang === "ar" ? "يرجى إكمال ملف الشركة أولاً" : "Complete Profile First",
+            description: lang === "ar"
+              ? "يجب إكمال وحفظ بيانات ملف الشركة أولاً للانتقال إلى الباقات والاشتراكات."
+              : "Please complete and save your company profile first to unlock Packages & Plans.",
+            variant: "destructive",
+          });
+          setLocation("/client/company");
+          return;
+        }
+
         const allowedInitialPaths = [
           "/client/company",
-          "/client/packages",
+          ...(isProfileCompleted ? ["/client/packages"] : []),
           "/client/support",
           "/client/settings",
           "/client/notifications",
@@ -1157,15 +1177,33 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             <Link
               key={link.href}
               href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={(e) => {
+                if (link.isLocked) {
+                  e.preventDefault();
+                  toast({
+                    title: lang === "ar" ? "الصفحة مقفلة" : "Page Locked",
+                    description: lang === "ar"
+                      ? "يرجى إكمال ملف الشركة أولاً (الاسم ووصف النشاط) لإلغاء قفل الباقات."
+                      : "Please complete your Company Profile first to unlock Packages & Plans.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setMobileMenuOpen(false);
+              }}
               className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
+                link.isLocked
+                  ? "opacity-60 text-slate-400 cursor-not-allowed hover:bg-transparent"
+                  : isActive
                   ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/25"
                   : "text-slate-100 hover:text-white hover:bg-white/12"
               }`}
             >
-              <Icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-white" : "text-sky-300 group-hover:text-white"}`} />
+              <Icon className={`w-5 h-5 shrink-0 transition-colors ${link.isLocked ? "text-slate-400" : isActive ? "text-white" : "text-sky-300 group-hover:text-white"}`} />
               <span className="flex-1 truncate">{link.label}</span>
+              {link.isLocked && (
+                <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              )}
               {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} />}
               {link.ticketBadge && role === "admin" && <OpenTicketsBadge />}
               {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} />}

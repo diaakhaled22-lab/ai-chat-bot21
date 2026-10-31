@@ -21,9 +21,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ClientOnboardingProgress, checkIsCompanyProfileComplete } from "@/components/client/ClientOnboardingProgress";
 import {
   Check,
   Package,
+  Lock,
   Sparkles,
   ShieldCheck,
   Zap,
@@ -261,6 +263,7 @@ export default function ClientPackages() {
   });
 
   const isActive = Boolean(company && (company as any)?.isActive);
+  const isProfileComplete = checkIsCompanyProfileComplete(company);
   const currentTokens = (company as any)?.monthlyTokenQuota ?? null;
 
   const { getRate, lastUpdated } = useExchangeRates();
@@ -431,6 +434,35 @@ export default function ClientPackages() {
         </div>
       </div>
 
+      {/* ── Onboarding Checkpoint Progress Bar for new/inactive clients ── */}
+      {!isActive && (
+        <ClientOnboardingProgress currentStep="packages" company={company} />
+      )}
+
+      {!isCompanyLoading && !isActive && !isProfileComplete ? (
+        <div className="rounded-3xl border border-red-500/20 bg-card p-8 sm:p-12 text-center space-y-5 shadow-lg">
+          <div className="w-16 h-16 rounded-3xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2 max-w-md mx-auto">
+            <h3 className="text-xl font-bold text-foreground">
+              {lang === "ar" ? "صفحة الباقات والاشتراكات مقفلة" : "Packages & Plans is Locked"}
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {lang === "ar"
+                ? "يجب إكمال وحفظ بيانات ملف الشركة أولاً (الاسم ووصف النشاط) لتجهيز البوت وتحديد احتياجاتك قبل التمكن من اختيار الباقة والاشتراك."
+                : "Before choosing a plan, you must complete and save your company profile details to set up your AI assistant."}
+            </p>
+          </div>
+          <Link href="/client/company">
+            <Button size="lg" className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white font-bold rounded-2xl gap-2 shadow-lg px-8">
+              <Building2 className="w-5 h-5" />
+              <span>{lang === "ar" ? "الانتقال إلى ملف الشركة لإكماله (الخطوة 1) ←" : "Go to Company Profile (Step 1) →"}</span>
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <>
       {/* ── Current Account & Subscription Status Card ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card 1: Subscription Status */}
@@ -847,6 +879,10 @@ export default function ClientPackages() {
           </div>
         </div>
       </Card>
+
+      
+        </>
+      )}
 
       {/* ── Dialog: Subscribe to Plan ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
