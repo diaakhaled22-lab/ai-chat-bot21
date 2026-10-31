@@ -1,6 +1,7 @@
 import { checkIsCompanyProfileComplete } from "@/components/client/ClientOnboardingProgress";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
+import { toast } from "@/hooks/use-toast";
 import { useGetMe, useLogout, useGetAdminStats, getGetAdminStatsQueryKey, customFetch, useListClientChatLogs, useListAllChatLogs, getListAllChatLogsQueryKey, getListClientChatLogsQueryKey, useGetClientCompany, getGetClientCompanyQueryKey } from "@workspace/api-client-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -31,7 +32,7 @@ import {
   Database,
   Cpu,
   Coins,
-  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, type LucideIcon,
+  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Lock, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
