@@ -310,6 +310,8 @@ export default function ClientPackages() {
       if (!t.title) continue;
       const isSub = t.title.includes("طلب اشتراك") || t.title.includes("طلب تغيير باقة") || t.title.includes("باقة");
       if (!isSub) continue;
+      // Skip tickets that were superseded/cancelled or resolved
+      if (t.status === "resolved") continue;
 
       let planId: string | null = null;
       const matchId = t.description?.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
@@ -522,20 +524,17 @@ export default function ClientPackages() {
             localStorage.setItem(activePlanStorageKey, selectedPlan.id);
           } catch {}
 
-          // Record accepted/submitted request for this specific plan
-          setSubmittedPlans((prev) => {
-            const updated = {
-              ...prev,
-              [selectedPlan.id]: {
-                phone: trimmedPhone,
-                submittedAt: new Date().toISOString(),
-              },
-            };
-            try {
-              localStorage.setItem(storageKey, JSON.stringify(updated));
-            } catch {}
-            return updated;
-          });
+          // Record accepted/submitted request for the latest chosen plan only
+          const updated = {
+            [selectedPlan.id]: {
+              phone: trimmedPhone,
+              submittedAt: new Date().toISOString(),
+            },
+          };
+          setSubmittedPlans(updated);
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+          } catch {}
         },
       }
     );

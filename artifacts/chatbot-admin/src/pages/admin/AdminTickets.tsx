@@ -199,12 +199,21 @@ function TicketCard({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs text-muted-foreground/80 font-bold">#{ticket.id}</span>
               <h3 className="font-semibold text-sm truncate">{ticket.title}</h3>
-              <Badge
-                variant={isOpen ? "destructive" : "secondary"}
-                className="text-[10px] shrink-0 font-medium"
-              >
-                {isOpen ? (lang === "ar" ? "قيد الانتظار" : "Open") : (lang === "ar" ? "تم الحل" : "Resolved")}
-              </Badge>
+              {ticket.adminNote?.includes("تم إلغاء هذا الطلب") || ticket.adminNote?.includes("Auto-cancelled") ? (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] shrink-0 font-semibold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
+                >
+                  {lang === "ar" ? "ملغي تلقائياً (طلب أحدث)" : "Cancelled (Superseded)"}
+                </Badge>
+              ) : (
+                <Badge
+                  variant={isOpen ? "destructive" : "secondary"}
+                  className="text-[10px] shrink-0 font-medium"
+                >
+                  {isOpen ? (lang === "ar" ? "قيد الانتظار" : "Open") : (lang === "ar" ? "تم الحل" : "Resolved")}
+                </Badge>
+              )}
               {ticket.aiResponse && (
                 <span className="inline-flex items-center gap-1 text-[10px] text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full border border-violet-500/20 font-medium">
                   <Bot className="w-3 h-3" /> {lang === "ar" ? "ذكاء اصطناعي" : "AI"}

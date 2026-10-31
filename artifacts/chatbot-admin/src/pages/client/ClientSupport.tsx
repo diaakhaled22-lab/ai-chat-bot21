@@ -18,36 +18,62 @@ interface Ticket {
   description: string;
   status: "open" | "resolved";
   aiResponse: string | null;
+  adminNote?: string | null;
   createdAt: string;
 }
 
 function TicketRow({
   ticket,
   onDelete,
+  onCancel,
 }: {
   ticket: Ticket;
   onDelete: (id: number) => void;
+  onCancel?: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { t, lang } = useLanguage();
   const isOpen = ticket.status === "open";
+  const isCancelled =
+    ticket.status === "resolved" &&
+    Boolean(
+      ticket.adminNote?.includes("تم إلغاء") ||
+      ticket.adminNote?.includes("ملغي") ||
+      ticket.adminNote?.includes("Auto-cancelled") ||
+      ticket.adminNote?.includes("Cancelled")
+    );
+  const isPlanTicket = Boolean(
+    ticket.title.includes("طلب تغيير باقة") ||
+    ticket.title.includes("طلب اشتراك") ||
+    ticket.title.includes("باقة") ||
+    ticket.title.toLowerCase().includes("plan")
+  );
 
   return (
-    <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-md ${isOpen ? "border-amber-500/40 bg-amber-500/[0.02]" : "border-[#DCE7FF]"}`}>
+    <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-md ${isOpen ? "border-amber-500/40 bg-amber-500/[0.02]" : isCancelled ? "border-slate-300 dark:border-slate-800 bg-muted/20 opacity-80" : "border-[#DCE7FF]"}`}>
       <div
         className="flex items-center justify-between gap-5 p-5 sm:p-6 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <div className={`p-3 rounded-xl shrink-0 ${isOpen ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"}`}>
-            {isOpen ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+          <div className={`p-3 rounded-xl shrink-0 ${isOpen ? "bg-amber-500/10 text-amber-500" : isCancelled ? "bg-slate-500/10 text-slate-500" : "bg-emerald-500/10 text-emerald-500"}`}>
+            {isOpen ? <AlertCircle className="w-5 h-5" /> : isCancelled ? <X className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-base sm:text-lg font-semibold truncate text-foreground">{ticket.title}</span>
-              <Badge variant={isOpen ? "destructive" : "secondary"} className="text-xs font-medium px-2.5 py-0.5 shrink-0">
-                {isOpen ? t("support_pending") : t("support_resolved")}
-              </Badge>
+              <span className={`text-base sm:text-lg font-semibold truncate ${isCancelled ? "text-muted-foreground line-through decoration-slate-400" : "text-foreground"}`}>
+                {ticket.title}
+              </span>
+              {isCancelled ? (
+                <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 shrink-0 gap-1 font-medium">
+                  <X className="w-3.5 h-3.5" />
+                  {lang === "ar" ? "ملغي تلقائياً (تم استبداله بطلب أحدث)" : "Cancelled (Superseded by Newer Plan)"}
+                </Badge>
+              ) : (
+                <Badge variant={isOpen ? "destructive" : "secondary"} className="text-xs font-medium px-2.5 py-0.5 shrink-0">
+                  {isOpen ? t("support_pending") : t("support_resolved")}
+                </Badge>
+              )}
               {ticket.aiResponse && (
                 <Badge variant="outline" className="text-xs text-violet-500 border-violet-500/30 bg-violet-500/5 px-2.5 py-0.5 shrink-0 gap-1.5 font-medium">
                   <Bot className="w-3.5 h-3.5" />{lang === "ar" ? "تم الرد بالذكاء الاصطناعي" : "AI Solved"}
@@ -64,7 +90,26 @@ function TicketRow({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0 ps-3 sm:ps-4 border-s border-[#DCE7FF]">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ps-3 sm:ps-4 border-s border-[#DCE7FF]">
+          {isOpen && isPlanTicket && onCancel && (
+            <ConfirmDeleteDialog
+              title={lang === "ar" ? "إلغاء طلب الباقة" : "Cancel Plan Request"}
+              description={lang === "ar" ? "هل أنت متأكد من إلغاء هذا الطلب؟ لن يتم إرساله أو اعتماده من قِبل الإدارة وسيتم تسجيله كطلب ملغي." : "Are you sure you want to cancel this plan request? It will not be processed by administration."}
+              confirmLabel={lang === "ar" ? "نعم، إلغاء الطلب" : "Yes, Cancel Request"}
+              onConfirm={() => onCancel(ticket.id)}
+            >
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                title={lang === "ar" ? "إلغاء طلب الباقة" : "Cancel Plan Request"}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{lang === "ar" ? "إلغاء الطلب" : "Cancel"}</span>
+              </button>
+            </ConfirmDeleteDialog>
+          )}
+
           <ConfirmDeleteDialog
             title={lang === "ar" ? "حذف تذكرة المشكلة" : "Delete Problem Ticket"}
             description={lang === "ar" ? "هل أنت متأكد من حذف هذه التذكرة والرسالة الخاصة بها نهائياً؟" : "Are you sure you want to permanently delete this problem ticket and message?"}
@@ -87,6 +132,18 @@ function TicketRow({
 
       {expanded && (
         <div className="px-6 pb-6 pt-6 space-y-6 border-t border-[#DCE7FF] bg-muted/10">
+          {ticket.adminNote && (
+            <div className="space-y-2">
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {lang === "ar" ? "ملاحظة النظام / حالة الطلب" : "System Note / Status"}
+              </p>
+              <div className="text-xs leading-relaxed bg-amber-500/10 border border-amber-500/20 text-foreground rounded-xl p-3.5 font-medium">
+                {ticket.adminNote}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t("support_your_problem")}</p>
@@ -209,6 +266,34 @@ export default function ClientSupport() {
       console.error("Delete ticket error:", err);
       toast({
         title: lang === "ar" ? "فشل حذف التذكرة" : "Failed to delete ticket",
+        description: err?.message || undefined,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/client/tickets/${id}/cancel`, {
+        method: "PATCH",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["client-chat-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      toast({
+        title: lang === "ar" ? "تم إلغاء الطلب بنجاح" : "Request cancelled successfully",
+        description:
+          lang === "ar"
+            ? "تم تسجيل إلغاء الطلب رسمياً ولن يتم اعتماده أو إرساله كطلب مفتوح للإدارة."
+            : "The plan request has been cancelled and will not remain open for admin processing.",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: lang === "ar" ? "فشل إلغاء الطلب" : "Failed to cancel request",
         description: err?.message || undefined,
         variant: "destructive",
       });
@@ -351,6 +436,7 @@ export default function ClientSupport() {
               key={t.id}
               ticket={t}
               onDelete={(id) => deleteMutation.mutate(id)}
+              onCancel={(id) => cancelMutation.mutate(id)}
             />
           ))}
         </div>

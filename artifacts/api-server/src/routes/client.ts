@@ -2067,6 +2067,67 @@ router.post("/client/tickets", async (req, res) => {
       isRead: false,
     }).catch(() => {});
 
+    // If this is a plan switch / subscription request, automatically cancel any preceding open plan requests
+    // from this client so that only the latest request remains active and sent to the admin.
+    if (isPlanSwitch) {
+      const priorPlanTickets = await db
+        .select({ id: ticketsTable.id, title: ticketsTable.title })
+        .from(ticketsTable)
+        .where(
+          and(
+            eq(ticketsTable.clientId, req.session.userId!),
+            ne(ticketsTable.id, ticket.id),
+            eq(ticketsTable.status, "open"),
+            sql`(${ticketsTable.title} ILIKE '%طلب تغيير باقة%' OR ${ticketsTable.title} ILIKE '%طلب اشتراك%' OR ${ticketsTable.title} ILIKE '%باقة%' OR ${ticketsTable.title} ILIKE '%plan%')`
+          )
+        );
+
+      if (priorPlanTickets.length > 0) {
+        const priorIds = priorPlanTickets.map((t) => t.id);
+
+        // 1. Mark preceding tickets as resolved/cancelled with auto-cancellation note
+        await db
+          .update(ticketsTable)
+          .set({
+            status: "resolved",
+            adminNote: `تم إلغاء هذا الطلب تلقائياً لاستبداله بالطلب الأحدث #${ticket.id} (${ticket.title})`,
+          })
+          .where(inArray(ticketsTable.id, priorIds));
+
+        // 2. Mark preceding mirrored chat logs as resolved and remove handoff flag
+        for (const pId of priorIds) {
+          await db
+            .update(chatLogsTable)
+            .set({
+              isHandoff: false,
+              isRead: true,
+              botResponse: `[تم إلغاء هذا الطلب تلقائياً لاستبداله بالطلب الأحدث #${ticket.id}]`,
+            })
+            .where(eq(chatLogsTable.sessionId, `ticket_${pId}`))
+            .catch(() => {});
+        }
+
+        // 3. Mark admin notifications for prior tickets as read
+        for (const pId of priorIds) {
+          await db
+            .update(notificationsTable)
+            .set({ isRead: true })
+            .where(
+              and(
+                sql`(${notificationsTable.title} LIKE '%#' || ${pId} || '%' OR ${notificationsTable.title} LIKE '%#' || ${pId} || ' %')`,
+                eq(notificationsTable.isRead, false)
+              )
+            )
+            .catch(() => {});
+        }
+
+        logger.info(
+          { clientId: req.session.userId, cancelledTicketIds: priorIds, newTicketId: ticket.id },
+          "Superseded prior open plan tickets on new switch"
+        );
+      }
+    }
+
     // Create notifications for all admins
     const admins = await db
       .select({ id: usersTable.id })
@@ -2137,12 +2198,75 @@ router.get("/client/tickets", async (req, res) => {
         description: t.description,
         status: t.status,
         aiResponse: t.aiResponse,
+        adminNote: t.adminNote,
         createdAt: t.createdAt.toISOString(),
       }))
     );
   } catch (err) {
     logger.error({ err }, "List client tickets error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /client/tickets/:id/cancel
+router.patch(["/client/tickets/:id/cancel", "/tickets/:id/cancel"], async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid ticket id" });
+      return;
+    }
+
+    const userId = req.session.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
+    const [existingTicket] = await db
+      .select()
+      .from(ticketsTable)
+      .where(eq(ticketsTable.id, id))
+      .limit(1);
+
+    if (!existingTicket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    if (req.session.role !== "admin" && existingTicket.clientId !== userId) {
+      res.status(403).json({ error: "Unauthorized to cancel this ticket" });
+      return;
+    }
+
+    await db
+      .update(ticketsTable)
+      .set({
+        status: "resolved",
+        adminNote: "تم إلغاء هذا الطلب من قِبل العميل عبر صفحة الدعم والتذاكر (Cancelled by client)",
+      })
+      .where(eq(ticketsTable.id, id));
+
+    await db
+      .update(chatLogsTable)
+      .set({
+        isHandoff: false,
+        isRead: true,
+        botResponse: "[تم إلغاء هذا الطلب من قِبل العميل عبر صفحة الدعم والتذاكر]",
+      })
+      .where(eq(chatLogsTable.sessionId, `ticket_${id}`))
+      .catch(() => {});
+
+    await db
+      .update(notificationsTable)
+      .set({ isRead: true })
+      .where(sql`(${notificationsTable.title} LIKE '%#' || ${id} || '%' AND ${notificationsTable.isRead} = false)`)
+      .catch(() => {});
+
+    res.json({ ok: true, id, message: "Ticket cancelled successfully" });
+  } catch (err: any) {
+    logger.error({ err }, "Cancel client ticket error");
+    res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });
 
