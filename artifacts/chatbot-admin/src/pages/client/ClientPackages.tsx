@@ -45,6 +45,8 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
+  AlertTriangle,
+  Phone,
 } from "lucide-react";
 
 type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
@@ -236,6 +238,9 @@ export default function ClientPackages() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [clientPhone, setClientPhone] = useState("");
   const [clientNotes, setClientNotes] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [submittedPlans, setSubmittedPlans] = useState<Record<string, { phone: string; submittedAt?: string }>>({});
 
   // Topup request modal
   const [topupPack, setTopupPack] = useState<TopupItemDef | null>(null);
@@ -272,6 +277,61 @@ export default function ClientPackages() {
     exchangeRate: getRate(selectedCurrency),
   };
 
+  const storageKey = useMemo(() => `ai_plan_requests_${(company as any)?.id || "client"}`, [(company as any)?.id]);
+
+  // Load previously submitted plan requests from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setSubmittedPlans((prev) => ({ ...JSON.parse(saved), ...prev }));
+      }
+    } catch {}
+  }, [storageKey]);
+
+  // Sync with remote tickets so requests on file persist across devices/sessions
+  const { data: clientTickets } = useQuery<any[]>({
+    queryKey: ["/api/client/tickets"],
+    queryFn: () => customFetch("/api/client/tickets"),
+  });
+
+  useEffect(() => {
+    if (!Array.isArray(clientTickets)) return;
+    const ticketPlans: Record<string, { phone: string; submittedAt?: string }> = {};
+    for (const t of clientTickets) {
+      if (!t.title || !t.title.includes("طلب اشتراك")) continue;
+
+      let planId: string | null = null;
+      const matchId = t.description?.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+      if (matchId) {
+        planId = matchId[1];
+      } else if (t.title.includes("الأساسية") || t.title.toLowerCase().includes("starter")) {
+        planId = "starter";
+      } else if (t.title.includes("الاحترافية") || t.title.toLowerCase().includes("pro")) {
+        planId = "pro";
+      } else if (t.title.includes("المؤسسات") || t.title.toLowerCase().includes("enterprise")) {
+        planId = "enterprise";
+      }
+
+      const matchPhone = t.description?.match(/رقم هاتف \/ واتساب للتواصل:\s*([^\n\r]+)/) || t.description?.match(/رقم الهاتف \/ واتساب للتواصل:\s*([^\n\r]+)/);
+      const phone = matchPhone ? matchPhone[1].trim() : "";
+
+      if (planId && phone && !ticketPlans[planId]) {
+        ticketPlans[planId] = { phone, submittedAt: t.createdAt };
+      }
+    }
+
+    if (Object.keys(ticketPlans).length > 0) {
+      setSubmittedPlans((prev) => {
+        const merged = { ...ticketPlans, ...prev };
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    }
+  }, [clientTickets, storageKey]);
+
   const calcPrice = (priceUsd: number) => {
     let finalUsd = priceUsd;
     if (billingCycle === "yearly") {
@@ -290,6 +350,7 @@ export default function ClientPackages() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/tickets"] });
       toast({
         title: lang === "ar" ? "تم إرسال الطلب بنجاح!" : "Request Submitted Successfully!",
         description:
@@ -302,8 +363,9 @@ export default function ClientPackages() {
       setSelectedPlan(null);
       setTopupPack(null);
       setClientNotes("");
-      setClientPhone("");
       setTopupNotes("");
+      setPhoneError(null);
+      setDuplicateWarning(null);
     },
     onError: (err: any) => {
       toast({
@@ -316,29 +378,111 @@ export default function ClientPackages() {
 
   const handleOpenSubscribe = (plan: PlanDef) => {
     setSelectedPlan(plan);
+    setPhoneError(null);
+    setDuplicateWarning(null);
+
+    // If this specific plan has a previously accepted/submitted request, display that phone number
+    const prevPlanRequest = submittedPlans[plan.id];
+    if (prevPlanRequest?.phone) {
+      setClientPhone(prevPlanRequest.phone);
+    } else {
+      // Pre-fill with existing phone or company whatsapp number if available
+      const fallbackPhone = clientPhone || (company as any)?.whatsappNumber || "";
+      setClientPhone(fallbackPhone);
+    }
+
     setDialogOpen(true);
+  };
+
+  const handlePhoneChange = (val: string) => {
+    setClientPhone(val);
+    if (phoneError && val.trim().length > 0) {
+      setPhoneError(null);
+    }
+    if (selectedPlan && duplicateWarning) {
+      const prevPhone = submittedPlans[selectedPlan.id]?.phone?.trim();
+      if (prevPhone && val.trim() !== prevPhone) {
+        setDuplicateWarning(null);
+      }
+    }
   };
 
   const handleConfirmSubscribe = () => {
     if (!selectedPlan) return;
+    const trimmedPhone = clientPhone.trim();
+
+    // 1. Validate: Phone number cannot be empty
+    if (!trimmedPhone) {
+      setPhoneError(
+        lang === "ar"
+          ? "يرجى إدخال رقم الهاتف أو الواتساب للتواصل"
+          : "Please enter your Phone / WhatsApp contact number"
+      );
+      toast({
+        title: lang === "ar" ? "رقم التواصل مطلوب" : "Phone Number Required",
+        description: lang === "ar"
+          ? "يرجى إدخال رقم الهاتف أو الواتساب للتواصل معك وتأكيد الطلب."
+          : "Please enter your Phone or WhatsApp number to confirm your request.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 2. Duplicate check: If this exact plan was already requested with this exact phone number
+    const prevPlanRequest = submittedPlans[selectedPlan.id];
+    if (prevPlanRequest && prevPlanRequest.phone === trimmedPhone) {
+      const msg = lang === "ar"
+        ? "لقد قمت باختيار هذه الباقة مسبقاً بنفس رقم التواصل. إذا كنت ترغب بتحديث بيانات الطلب يرجى تعديل رقم الهاتف."
+        : "This plan has already been selected with this contact number. Modify your phone number to submit an updated request.";
+      setDuplicateWarning(msg);
+      toast({
+        title: lang === "ar" ? "تم اختيار هذه الباقة بالفعل" : "Plan Already Selected",
+        description: msg,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 3. Process request
     const price = calcPrice(selectedPlan.monthlyPriceUsd);
     const cycleText = billingCycle === "yearly" ? (lang === "ar" ? "سنوي" : "Yearly") : (lang === "ar" ? "شهري" : "Monthly");
 
     const title = `[طلب اشتراك] ${selectedPlan.nameAr} - دورة ${cycleText}`;
     const description = [
       `العميل يطلب الاشتراك في الباقة: ${selectedPlan.nameAr} (${selectedPlan.nameEn})`,
+      `[معرف الباقة: ${selectedPlan.id}]`,
       `دورة الفوترة: ${cycleText}`,
       `السعر التقديري: ${price} ${currencyCfg.symbol} / شهر`,
       `رصيد الرموز المرفق: ${selectedPlan.tokensFormatted || selectedPlan.tokensMonthly.toLocaleString()} Tokens`,
-      clientPhone ? `رقم هاتف / واتساب للتواصل: ${clientPhone}` : null,
-      clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes}` : null,
+      `رقم هاتف / واتساب للتواصل: ${trimmedPhone}`,
+      clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes.trim()}` : null,
       `اسم الشركة الحالي: ${(company as any)?.name ?? "لم يتم الإنشاء بعد"}`,
       `حالة الحساب الحالية: ${isActive ? "نشط" : "غير نشط / جديد"}`,
     ]
       .filter(Boolean)
       .join("\n");
 
-    submitTicketMutation.mutate({ title, description });
+    submitTicketMutation.mutate(
+      { title, description },
+      {
+        onSuccess: () => {
+          // Record accepted/submitted request for this specific plan
+          setSubmittedPlans((prev) => {
+            const updated = {
+              ...prev,
+              [selectedPlan.id]: {
+                phone: trimmedPhone,
+                submittedAt: new Date().toISOString(),
+              },
+            };
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        },
+      }
+    );
   };
 
   const handleOpenTopup = (pack: (typeof TOPUP_PACKS)[0]) => {
@@ -926,16 +1070,68 @@ export default function ClientPackages() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  {lang === "ar" ? "رقم الهاتف / واتساب للتواصل السريع" : "Phone / WhatsApp Contact"}
-                </label>
-                <Input
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="+966 5X XXX XXXX / +20 1X XXX XXXX"
-                  className="rounded-xl text-xs"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-primary" />
+                    <span>{lang === "ar" ? "رقم الهاتف / واتساب للتواصل *" : "Phone / WhatsApp Contact *"}</span>
+                  </label>
+                  {submittedPlans[selectedPlan.id]?.phone && (
+                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                      {lang === "ar" ? "مسجل مسبقاً لهذه الباقة" : "Previously recorded"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <Input
+                    value={clientPhone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="+966 5X XXX XXXX / +20 1X XXX XXXX"
+                    className={`rounded-xl text-xs transition-all duration-200 pr-9 ${
+                      phoneError
+                        ? "border-2 border-red-500 focus-visible:ring-red-500 ring-2 ring-red-500/20 bg-red-500/5 text-foreground placeholder:text-red-400"
+                        : clientPhone.trim().length > 0
+                        ? "border-2 border-emerald-500 focus-visible:ring-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-500/5 text-foreground"
+                        : "border-input bg-background"
+                    }`}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    {phoneError ? (
+                      <AlertCircle className="w-4 h-4 text-red-500 animate-in zoom-in-50 duration-150" />
+                    ) : clientPhone.trim().length > 0 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-in zoom-in-50 duration-150" />
+                    ) : null}
+                  </div>
+                </div>
+
+                {phoneError && (
+                  <p className="text-xs text-red-500 font-semibold flex items-center gap-1.5 mt-1 animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{phoneError}</span>
+                  </p>
+                )}
+
+                {!phoneError && clientPhone.trim().length > 0 && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-1 animate-in fade-in duration-150">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{lang === "ar" ? "رقم التواصل مكتمل ومؤكد" : "Contact number provided"}</span>
+                  </p>
+                )}
               </div>
+
+              {duplicateWarning && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold">
+                      {lang === "ar" ? "تم اختيار هذه الباقة بالفعل" : "Plan Already Selected"}
+                    </p>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      {duplicateWarning}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">
