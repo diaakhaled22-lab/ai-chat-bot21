@@ -719,35 +719,6 @@ export default function ClientCompany() {
             </CardContent>
           </Card>
 
-          {/* Dedicated AI Model & Provider Card */}
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary/15 text-primary shrink-0 mt-0.5 sm:mt-0">
-                <Cpu className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-sm text-foreground">
-                    {lang === "ar" ? "نموذج ومزود الذكاء الاصطناعي" : "AI Model & Provider"}
-                  </h3>
-                  <Badge variant="outline" className="text-[11px] font-medium border-primary/30 text-primary">
-                    {lang === "ar" ? "صفحة مخصصة في القائمة" : "Dedicated Page"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {lang === "ar"
-                    ? "تم نقل إعدادات مزود ونموذج الذكاء الاصطناعي، مفاتيح API، ونمط التشغيل (حصة المنصة أو المفتاح الخاص) إلى صفحتها المخصصة."
-                    : "AI provider selection, smart model, API key credentials, and execution mode are now managed on the dedicated page."}
-                </p>
-              </div>
-            </div>
-            <Link href="/client/ai-model">
-              <Button size="sm" className="gap-2 shrink-0">
-                <Bot className="w-4 h-4" />
-                {lang === "ar" ? "فتح صفحة الموديل والمزود ←" : "Configure AI Model →"}
-              </Button>
-            </Link>
-          </div>
 
           <div className="flex justify-end pt-4 sticky bottom-6 z-10">
             <div className="bg-background/80 backdrop-blur-md p-2 rounded-full border border-border shadow-lg inline-block">
