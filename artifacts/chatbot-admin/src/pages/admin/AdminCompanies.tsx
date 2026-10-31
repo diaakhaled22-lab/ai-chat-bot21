@@ -787,6 +787,127 @@ export default function AdminCompanies() {
     }
   };
 
+  const handleApplyPlanTier = async (tier: "starter" | "pro" | "enterprise") => {
+    if (!manageCompanyTarget) return;
+
+    let quota = 50_000;
+    let widget = true;
+    let telegram = true;
+    let whatsapp = false;
+    let messenger = false;
+    let sheets = false;
+    let calendar = false;
+    let tierNameAr = "الأساسية (Starter)";
+    let tierNameEn = "Starter Plan";
+
+    if (tier === "pro") {
+      quota = 250_000;
+      whatsapp = true;
+      messenger = true;
+      sheets = true;
+      calendar = true;
+      tierNameAr = "الاحترافية (Professional)";
+      tierNameEn = "Professional Plan";
+    } else if (tier === "enterprise") {
+      quota = 1_000_000;
+      whatsapp = true;
+      messenger = true;
+      sheets = true;
+      calendar = true;
+      tierNameAr = "المؤسسات (Enterprise)";
+      tierNameEn = "Enterprise Plan";
+    }
+
+    const today = new Date();
+    const future30 = new Date();
+    future30.setDate(today.getDate() + 30);
+    const startStr = manageForm.activationStart || today.toISOString().split("T")[0];
+    const endStr = manageForm.activationEnd || future30.toISOString().split("T")[0];
+
+    const updatedForm = {
+      ...manageForm,
+      isActive: true,
+      monthlyTokenQuota: quota,
+      activationStart: startStr,
+      activationEnd: endStr,
+      widgetEnabled: widget,
+      telegramEnabled: telegram,
+      whatsappEnabled: whatsapp,
+      messengerEnabled: messenger,
+      googleSheetsEnabled: sheets,
+      googleCalendarEnabled: calendar,
+    };
+    setManageForm(updatedForm);
+
+    setManageCompanyTarget((prev: any) => (prev ? {
+      ...prev,
+      isActive: true,
+      monthlyTokenQuota: quota,
+      activationStart: startStr,
+      activationEnd: endStr,
+      widgetEnabled: widget,
+      telegramEnabled: telegram,
+      whatsappEnabled: whatsapp,
+      messengerEnabled: messenger,
+      googleSheetsEnabled: sheets,
+      googleCalendarEnabled: calendar,
+    } : prev));
+
+    queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+      if (!old) return old;
+      return old.map((c) =>
+        c.id === manageCompanyTarget.id
+          ? {
+              ...c,
+              isActive: true,
+              monthlyTokenQuota: quota,
+              activationStart: toIsoFromInput(startStr, false),
+              activationEnd: toIsoFromInput(endStr, true),
+              widgetEnabled: widget,
+              telegramEnabled: telegram,
+              whatsappEnabled: whatsapp,
+              messengerEnabled: messenger,
+              googleSheetsEnabled: sheets,
+              googleCalendarEnabled: calendar,
+            }
+          : c
+      );
+    });
+
+    try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isActive: true,
+          monthlyTokenQuota: quota,
+          activationStart: toIsoFromInput(startStr, false),
+          activationEnd: toIsoFromInput(endStr, true),
+          widgetEnabled: widget,
+          telegramEnabled: telegram,
+          whatsappEnabled: whatsapp,
+          messengerEnabled: messenger,
+          googleSheetsEnabled: sheets,
+          googleCalendarEnabled: calendar,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      toast({
+        title: lang === "ar" ? "تم اعتماد وتفعيل الباقة بنجاح!" : "Plan Tier Applied Successfully!",
+        description: lang === "ar"
+          ? `تم اعتماد باقة ${tierNameAr} للشركة بحصة ${quota.toLocaleString()} توكن وتفعيل القنوات المطابقة.`
+          : `${tierNameEn} applied with ${quota.toLocaleString()} tokens and matching features.`,
+      });
+    } catch (err: any) {
+      console.error("Apply plan error:", err);
+      toast({
+        title: lang === "ar" ? "خطأ في اعتماد الباقة" : "Failed to apply plan",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveCompanyHub = async () => {
     if (!manageCompanyTarget) return;
     setIsSavingContent(true);
@@ -2078,6 +2199,127 @@ export default function AdminCompanies() {
                 {/* ── TAB 6: SUBSCRIPTION & QUOTA CONTENT ── */}
                 {manageActiveTab === "subscription" && (
                   <div className="space-y-4">
+                    {/* ── One-Click Plan Switcher Card ── */}
+                    <div className="p-4 rounded-2xl border border-blue-500/25 bg-blue-500/5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-blue-600" />
+                          <h5 className="text-xs font-bold text-foreground">
+                            {lang === "ar" ? "اعتماد وتبديل باقة الشركة بنقرة واحدة" : "One-Click Plan Tier Switcher"}
+                          </h5>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground">
+                          {lang === "ar" ? "يتم ضبط التوكن والقنوات وتفعيل الحساب فورياً" : "Auto-sets tokens, features & activates account"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* Starter */}
+                        <div
+                          onClick={() => handleApplyPlanTier("starter")}
+                          className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                            Number(manageForm.monthlyTokenQuota) === 50_000
+                              ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
+                              : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold">
+                                {lang === "ar" ? "الأساسية (Starter)" : "Starter Plan"}
+                              </span>
+                              {Number(manageForm.monthlyTokenQuota) === 50_000 && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              )}
+                            </div>
+                            <p className={`text-[10px] mt-1 ${Number(manageForm.monthlyTokenQuota) === 50_000 ? "text-blue-100" : "text-muted-foreground"}`}>
+                              50,000 Tokens · Widget + TG
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={Number(manageForm.monthlyTokenQuota) === 50_000 ? "secondary" : "outline"}
+                            className="mt-3 w-full h-7 text-[11px] font-bold"
+                            onClick={(e) => { e.stopPropagation(); handleApplyPlanTier("starter"); }}
+                          >
+                            {Number(manageForm.monthlyTokenQuota) === 50_000
+                              ? (lang === "ar" ? "الباقة الحالية ✓" : "Current Tier ✓")
+                              : (lang === "ar" ? "اعتماد وتفعيل" : "Apply Plan")}
+                          </Button>
+                        </div>
+
+                        {/* Pro */}
+                        <div
+                          onClick={() => handleApplyPlanTier("pro")}
+                          className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                            Number(manageForm.monthlyTokenQuota) === 250_000
+                              ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
+                              : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold">
+                                {lang === "ar" ? "الاحترافية (Pro)" : "Professional Plan"}
+                              </span>
+                              {Number(manageForm.monthlyTokenQuota) === 250_000 && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              )}
+                            </div>
+                            <p className={`text-[10px] mt-1 ${Number(manageForm.monthlyTokenQuota) === 250_000 ? "text-blue-100" : "text-muted-foreground"}`}>
+                              250,000 Tokens · All Channels + Tools
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={Number(manageForm.monthlyTokenQuota) === 250_000 ? "secondary" : "outline"}
+                            className="mt-3 w-full h-7 text-[11px] font-bold"
+                            onClick={(e) => { e.stopPropagation(); handleApplyPlanTier("pro"); }}
+                          >
+                            {Number(manageForm.monthlyTokenQuota) === 250_000
+                              ? (lang === "ar" ? "الباقة الحالية ✓" : "Current Tier ✓")
+                              : (lang === "ar" ? "اعتماد وتفعيل" : "Apply Plan")}
+                          </Button>
+                        </div>
+
+                        {/* Enterprise */}
+                        <div
+                          onClick={() => handleApplyPlanTier("enterprise")}
+                          className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                            Number(manageForm.monthlyTokenQuota) === 1_000_000
+                              ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
+                              : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold">
+                                {lang === "ar" ? "المؤسسات (Enterprise)" : "Enterprise Plan"}
+                              </span>
+                              {Number(manageForm.monthlyTokenQuota) === 1_000_000 && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              )}
+                            </div>
+                            <p className={`text-[10px] mt-1 ${Number(manageForm.monthlyTokenQuota) === 1_000_000 ? "text-blue-100" : "text-muted-foreground"}`}>
+                              1,000,000 Tokens · Full VIP Access
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={Number(manageForm.monthlyTokenQuota) === 1_000_000 ? "secondary" : "outline"}
+                            className="mt-3 w-full h-7 text-[11px] font-bold"
+                            onClick={(e) => { e.stopPropagation(); handleApplyPlanTier("enterprise"); }}
+                          >
+                            {Number(manageForm.monthlyTokenQuota) === 1_000_000
+                              ? (lang === "ar" ? "الباقة الحالية ✓" : "Current Tier ✓")
+                              : (lang === "ar" ? "اعتماد وتفعيل" : "Apply Plan")}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                     <div className="bg-muted/30 border border-border p-4 rounded-xl flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold">{lang === "ar" ? "حالة اشتراك وتفعيل الشركة" : "Company Active Status"}</p>

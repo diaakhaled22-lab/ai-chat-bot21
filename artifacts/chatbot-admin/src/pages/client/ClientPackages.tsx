@@ -482,11 +482,19 @@ export default function ClientPackages() {
     // 3. Process request
     const price = calcPrice(selectedPlan.monthlyPriceUsd);
     const cycleText = billingCycle === "yearly" ? (lang === "ar" ? "سنوي" : "Yearly") : (lang === "ar" ? "شهري" : "Monthly");
+    const isPlanChange = Boolean(activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id);
+    const currentSelectedPlanDef = plans.find((p) => p.id === activeSelectedPlanId);
 
-    const title = `[طلب اشتراك] ${selectedPlan.nameAr} - دورة ${cycleText}`;
+    const title = isPlanChange
+      ? `[طلب تغيير باقة] من ${currentSelectedPlanDef ? currentSelectedPlanDef.nameAr : "الباقة السابقة"} إلى ${selectedPlan.nameAr} - دورة ${cycleText}`
+      : `[طلب اشتراك] ${selectedPlan.nameAr} - دورة ${cycleText}`;
+
     const description = [
-      `العميل يطلب الاشتراك في الباقة: ${selectedPlan.nameAr} (${selectedPlan.nameEn})`,
+      isPlanChange
+        ? `طلب تغيير/ترقية الباقة: من [${currentSelectedPlanDef?.nameAr || activeSelectedPlanId}] إلى [${selectedPlan.nameAr} (${selectedPlan.nameEn})]`
+        : `العميل يطلب الاشتراك في الباقة: ${selectedPlan.nameAr} (${selectedPlan.nameEn})`,
       `[معرف الباقة: ${selectedPlan.id}]`,
+      isPlanChange && currentSelectedPlanDef ? `[الباقة السابقة: ${currentSelectedPlanDef.id}]` : null,
       `دورة الفوترة: ${cycleText}`,
       `السعر التقديري: ${price} ${currencyCfg.symbol} / شهر`,
       `رصيد الرموز المرفق: ${selectedPlan.tokensFormatted || selectedPlan.tokensMonthly.toLocaleString()} Tokens`,
@@ -936,6 +944,13 @@ export default function ClientPackages() {
                         {lang === "ar" ? "الباقة المختارة (تعديل الطلب)" : "Selected Package (Edit Request)"}
                       </span>
                     </>
+                  ) : activeSelectedPlanId ? (
+                    <>
+                      <ArrowRight className="w-4 h-4" />
+                      <span>
+                        {lang === "ar" ? "تغيير / ترقية إلى هذه الباقة" : "Switch / Upgrade to this Plan"}
+                      </span>
+                    </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
@@ -1111,17 +1126,38 @@ export default function ClientPackages() {
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
-              <span>{lang === "ar" ? "طلب تفعيل / ترقية باقة" : "Request Plan Activation / Upgrade"}</span>
+              <span>
+                {activeSelectedPlanId && activeSelectedPlanId !== selectedPlan?.id
+                  ? (lang === "ar" ? "طلب تغيير / ترقية الباقة" : "Request Plan Upgrade / Change")
+                  : (lang === "ar" ? "طلب تفعيل / ترقية باقة" : "Request Plan Activation / Upgrade")}
+              </span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              {lang === "ar"
-                ? "سيتم إرسال هذا الطلب مباشرة إلى فريق الإدارة لتجهيز وتفعيل باقتك على الفور."
-                : "This request will be dispatched to the admin team to configure and activate your plan."}
+              {activeSelectedPlanId && activeSelectedPlanId !== selectedPlan?.id
+                ? (lang === "ar"
+                    ? "سيتم إرسال طلبك لتغيير الباقة مباشرة إلى فريق الإدارة لتحديث رصيد الرموز والمميزات فوراً."
+                    : "Your plan change request will be dispatched to update your token quota and features.")
+                : (lang === "ar"
+                    ? "سيتم إرسال هذا الطلب مباشرة إلى فريق الإدارة لتجهيز وتفعيل باقتك على الفور."
+                    : "This request will be dispatched to the admin team to configure and activate your plan.")}
             </DialogDescription>
           </DialogHeader>
 
           {selectedPlan && (
             <div className="space-y-4 py-2">
+              {activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id && (
+                <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="font-semibold text-foreground">
+                      {lang === "ar" ? "التبديل إلى باقة جديدة" : "Switching to New Plan"}
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground text-[11px] font-medium">
+                    {lang === "ar" ? `الانتقال إلى: ${selectedPlan.nameAr}` : `Target: ${selectedPlan.nameEn}`}
+                  </span>
+                </div>
+              )}
               <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between">
                 <div>
                   <h4 className="font-bold text-sm text-foreground">
