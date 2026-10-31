@@ -68,6 +68,11 @@ router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => 
       return;
     }
 
+    if (company.widgetEnabled === false) {
+      res.status(403).json({ error: "Website widget is disabled by administration" });
+      return;
+    }
+
     if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
       res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
@@ -101,6 +106,11 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     if (!company) {
       res.status(404).json({ error: "Widget not found" });
+      return;
+    }
+
+    if (company.widgetEnabled === false) {
+      res.status(403).json({ error: "Website widget is disabled by administration" });
       return;
     }
 
@@ -473,6 +483,12 @@ router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) =
       .from(companiesTable)
       .where(eq(companiesTable.websiteChatbotKey, key as string))
       .limit(1);
+
+    if (company && company.widgetEnabled === false) {
+      res.setHeader("Content-Type", "application/javascript");
+      res.send("/* Website widget is disabled by administration */");
+      return;
+    }
 
     if (!company) {
       res.status(404).json({ error: "Widget not found" });

@@ -536,18 +536,18 @@ export default function AdminCompanies() {
       aiExecutionMode: freshCompany.aiExecutionMode || "quota",
       aiAgentApiKey: freshCompany.aiAgentApiKey || "",
       aiAgentUrl: freshCompany.aiAgentUrl || "",
-      telegramEnabled: freshCompany.telegramEnabled ?? false,
+      telegramEnabled: freshCompany.telegramEnabled !== false,
       telegramBotApiKey: freshCompany.telegramBotApiKey || "",
       telegramBotUsername: freshCompany.telegramBotUsername || "",
-      whatsappEnabled: freshCompany.whatsappEnabled ?? false,
+      whatsappEnabled: freshCompany.whatsappEnabled !== false,
       whatsappApiToken: freshCompany.whatsappApiToken || "",
       whatsappPhoneNumberId: freshCompany.whatsappPhoneNumberId || "",
       whatsappBusinessAccountId: freshCompany.whatsappBusinessAccountId || "",
       whatsappNumber: freshCompany.whatsappNumber || "",
-      messengerEnabled: freshCompany.messengerEnabled ?? false,
+      messengerEnabled: freshCompany.messengerEnabled !== false,
       messengerApiKey: freshCompany.messengerApiKey || "",
       messengerPageId: freshCompany.messengerPageId || "",
-      widgetEnabled: freshCompany.widgetEnabled ?? false,
+      widgetEnabled: freshCompany.widgetEnabled !== false,
       websiteChatbotKey: freshCompany.websiteChatbotKey || "",
       widgetAllowedDomains: freshCompany.widgetAllowedDomains || "",
       googleSheetsEnabled: freshCompany.googleSheetsEnabled ?? false,
@@ -619,6 +619,47 @@ export default function AdminCompanies() {
       }).catch(() => {});
     } catch (err: any) {
       console.error("Auto-save page toggle error:", err);
+    }
+  };
+
+  const handleChannelToggle = async (channelKey: "telegramEnabled" | "whatsappEnabled" | "messengerEnabled" | "widgetEnabled", enabled: boolean) => {
+    if (!manageCompanyTarget) return;
+
+    // 1. Update form state immediately for instant UI response
+    setManageForm((prev: any) => ({
+      ...prev,
+      [channelKey]: enabled,
+    }));
+
+    // 2. Update target company state so if reopened/navigated it never reverts
+    setManageCompanyTarget((prev: any) => (prev ? { ...prev, [channelKey]: enabled } : prev));
+
+    // 3. Optimistically update React Query cache for list of companies
+    queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
+      if (!old) return old;
+      return old.map((c) => (c.id === manageCompanyTarget.id ? { ...c, [channelKey]: enabled } : c));
+    });
+
+    // 4. Save to backend immediately
+    try {
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [channelKey]: enabled }),
+      });
+      toast({
+        title: lang === "ar" ? "تم تحديث حالة القناة" : "Channel status updated",
+        description: lang === "ar"
+          ? (enabled ? "تم تفعيل القناة وستظهر للعميل في لوحته" : "تم تعطيل القناة ولن تظهر للعميل بعد الآن")
+          : (enabled ? "Channel enabled and will appear to client" : "Channel disabled and hidden from client"),
+      });
+    } catch (err: any) {
+      console.error("Auto-save channel toggle error:", err);
+      toast({
+        title: lang === "ar" ? "فشل حفظ حالة القناة" : "Failed to update channel status",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -1822,8 +1863,8 @@ export default function AdminCompanies() {
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل تيليجرام" : "Enable Telegram"}</Label>
                           <Switch
-                            checked={!!manageForm.telegramEnabled}
-                            onCheckedChange={(val) => setManageForm({ ...manageForm, telegramEnabled: val })}
+                            checked={manageForm.telegramEnabled !== false}
+                            onCheckedChange={(val) => handleChannelToggle("telegramEnabled", val)}
                           />
                         </div>
                       </div>
@@ -1860,8 +1901,8 @@ export default function AdminCompanies() {
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل واتساب" : "Enable WhatsApp"}</Label>
                           <Switch
-                            checked={!!manageForm.whatsappEnabled}
-                            onCheckedChange={(val) => setManageForm({ ...manageForm, whatsappEnabled: val })}
+                            checked={manageForm.whatsappEnabled !== false}
+                            onCheckedChange={(val) => handleChannelToggle("whatsappEnabled", val)}
                           />
                         </div>
                       </div>
@@ -1916,8 +1957,8 @@ export default function AdminCompanies() {
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل ماسنجر" : "Enable Messenger"}</Label>
                           <Switch
-                            checked={!!manageForm.messengerEnabled}
-                            onCheckedChange={(val) => setManageForm({ ...manageForm, messengerEnabled: val })}
+                            checked={manageForm.messengerEnabled !== false}
+                            onCheckedChange={(val) => handleChannelToggle("messengerEnabled", val)}
                           />
                         </div>
                       </div>
@@ -1954,8 +1995,8 @@ export default function AdminCompanies() {
                         <div className="flex items-center gap-2">
                           <Label className="text-xs">{lang === "ar" ? "تفعيل الويدجت" : "Enable Widget"}</Label>
                           <Switch
-                            checked={!!manageForm.widgetEnabled}
-                            onCheckedChange={(val) => setManageForm({ ...manageForm, widgetEnabled: val })}
+                            checked={manageForm.widgetEnabled !== false}
+                            onCheckedChange={(val) => handleChannelToggle("widgetEnabled", val)}
                           />
                         </div>
                       </div>

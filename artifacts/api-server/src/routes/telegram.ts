@@ -211,6 +211,11 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
       return;
     }
 
+    if (foundCompany.telegramEnabled === false) {
+      logger.info({ companyId: foundCompany.id }, "Telegram webhook dropped: channel is disabled by admin");
+      return;
+    }
+
     // Cryptographic Secret Token verification:
     // If Telegram sends the X-Telegram-Bot-Api-Secret-Token header, verify it matches
     // the registered secret hash or token.

@@ -153,29 +153,57 @@ export default function ClientChannels() {
     }
   }, [company, form]);
 
+  const isTelegramAllowed  = company?.telegramEnabled !== false;
+  const isWhatsappAllowed  = company?.whatsappEnabled !== false;
+  const isMessengerAllowed = company?.messengerEnabled !== false;
+  const isWidgetAllowed    = company?.widgetEnabled !== false;
+  const hasAnyAllowedChannel = isTelegramAllowed || isWhatsappAllowed || isMessengerAllowed || isWidgetAllowed;
+
+  const defaultAccordionValues = [
+    isTelegramAllowed && "telegram",
+    isWhatsappAllowed && "whatsapp",
+    isMessengerAllowed && "messenger",
+    isWidgetAllowed && "widget",
+  ].filter(Boolean) as string[];
+
   const isSaving = updateCompany.isPending;
 
   const onSubmit = (values: FormValues) => {
-    const data = {
-      name:                      company?.name ?? "",
-      telegramBotApiKey:         values.telegramBotApiKey         || null,
-      telegramEnabled:           telegramOn,
-      whatsappApiToken:          values.whatsappApiToken          || null,
-      whatsappPhoneNumberId:     values.whatsappPhoneNumberId     || null,
-      whatsappBusinessAccountId: values.whatsappBusinessAccountId || null,
-      whatsappNumber:            values.whatsappNumber            || null,
-      whatsappEnabled:           whatsappOn,
-      messengerApiKey:           values.messengerApiKey           || null,
-      messengerPageId:           values.messengerPageId           || null,
-      messengerEnabled:          messengerOn,
-      websiteChatbotKey:         values.websiteChatbotKey         || null,
-      widgetEnabled:             widgetOn,
-      fabEnabled:                values.fabEnabled                ?? false,
-      fabPositionX:              values.fabPositionX              ?? DEFAULT_FAB_POSITION.x,
-      fabPositionY:              values.fabPositionY              ?? DEFAULT_FAB_POSITION.y,
-      voiceReplyEnabled:         voiceReplyOn,
-      voiceReplyVoice:           values.voiceReplyVoice           || "alloy",
+    const data: Record<string, any> = {
+      name: company?.name ?? "",
     };
+    if (isTelegramAllowed) {
+      data.telegramBotApiKey = values.telegramBotApiKey || null;
+      data.telegramEnabled = telegramOn;
+    } else {
+      data.telegramEnabled = false;
+    }
+    if (isWhatsappAllowed) {
+      data.whatsappApiToken = values.whatsappApiToken || null;
+      data.whatsappPhoneNumberId = values.whatsappPhoneNumberId || null;
+      data.whatsappBusinessAccountId = values.whatsappBusinessAccountId || null;
+      data.whatsappNumber = values.whatsappNumber || null;
+      data.whatsappEnabled = whatsappOn;
+    } else {
+      data.whatsappEnabled = false;
+    }
+    if (isMessengerAllowed) {
+      data.messengerApiKey = values.messengerApiKey || null;
+      data.messengerPageId = values.messengerPageId || null;
+      data.messengerEnabled = messengerOn;
+    } else {
+      data.messengerEnabled = false;
+    }
+    if (isWidgetAllowed) {
+      data.websiteChatbotKey = values.websiteChatbotKey || null;
+      data.widgetEnabled = widgetOn;
+      data.fabEnabled = values.fabEnabled ?? false;
+      data.fabPositionX = values.fabPositionX ?? DEFAULT_FAB_POSITION.x;
+      data.fabPositionY = values.fabPositionY ?? DEFAULT_FAB_POSITION.y;
+      data.voiceReplyEnabled = voiceReplyOn;
+      data.voiceReplyVoice = values.voiceReplyVoice || "alloy";
+    }
+
     updateCompany.mutate({ data }, {
       onSuccess: () => {
         setTelegramOn(telegramOn);
@@ -183,10 +211,10 @@ export default function ClientChannels() {
         setMessengerOn(messengerOn);
         setWidgetOn(widgetOn);
         queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
-        toast({ title: "Channels saved successfully" });
+        toast({ title: lang === "ar" ? "تم حفظ إعدادات القنوات بنجاح" : "Channels saved successfully" });
       },
       onError: (error: any) => {
-        toast({ title: "Failed to save", description: error.message, variant: "destructive" });
+        toast({ title: lang === "ar" ? "فشل الحفظ" : "Failed to save", description: error.message, variant: "destructive" });
       },
     });
   };
@@ -309,9 +337,28 @@ export default function ClientChannels() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-          <Accordion type="multiple" defaultValue={["telegram","whatsapp","messenger"]} className="space-y-3">
+          {!hasAnyAllowedChannel && (
+            <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-4 shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center mx-auto border border-amber-500/25">
+                <MessageCircle className="w-7 h-7" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-bold text-base">
+                  {lang === "ar" ? "قنوات التواصل معطلة حالياً" : "Communication Channels Disabled"}
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                  {lang === "ar"
+                    ? "تم تعطيل قنوات التواصل لحسابك من قبل إدارة النظام. عند قيام المسؤول بتفعيل أي قناة (واتساب، تيليجرام، ماسنجر، الويدجت)، ستظهر هنا مباشرة لإعدادها وتفعيلها."
+                    : "Communication channels are currently disabled for your account by the administrator. Once enabled by the admin, channels will automatically appear here."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Accordion type="multiple" defaultValue={defaultAccordionValues} className="space-y-3">
 
             {/* ══ TELEGRAM ══════════════════════════════════════ */}
+            {isTelegramAllowed && (
             <AccordionItem value="telegram" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
@@ -369,8 +416,10 @@ export default function ClientChannels() {
                 )}
               </AccordionContent>
             </AccordionItem>
+            )}
 
             {/* ══ WHATSAPP ══════════════════════════════════════ */}
+            {isWhatsappAllowed && (
             <AccordionItem value="whatsapp" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
@@ -462,8 +511,10 @@ export default function ClientChannels() {
                 )}
               </AccordionContent>
             </AccordionItem>
+            )}
 
             {/* ══ MESSENGER ═════════════════════════════════════ */}
+            {isMessengerAllowed && (
             <AccordionItem value="messenger" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
@@ -531,8 +582,10 @@ export default function ClientChannels() {
                 )}
               </AccordionContent>
             </AccordionItem>
+            )}
 
             {/* ══ WEBSITE WIDGET ════════════════════════════════ */}
+            {isWidgetAllowed && (
             <AccordionItem value="widget" className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl px-1 overflow-hidden shadow-sm">
               <AccordionTrigger className="hover:no-underline px-2 sm:px-4 py-4 [&>svg]:ml-0">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
@@ -585,10 +638,12 @@ export default function ClientChannels() {
                 )}
               </AccordionContent>
             </AccordionItem>
+            )}
 
           </Accordion>
 
           {/* ── Floating Action Button ───────────────────────── */}
+          {isWidgetAllowed && (
           <div className="rounded-xl border border-[#DCE7FF] bg-card px-4 py-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1 flex-1">
@@ -830,8 +885,10 @@ export default function ClientChannels() {
               )}
             </div>
           </div>
+          )}
 
           {/* ── Sticky Save ──────────────────────────────────── */}
+          {hasAnyAllowedChannel && (
           <div className="flex justify-end pt-2 sticky bottom-6 z-10">
             <div className="bg-background/80 backdrop-blur-md p-2 rounded-full border border-border shadow-lg inline-block">
               <Button
@@ -848,6 +905,7 @@ export default function ClientChannels() {
               </Button>
             </div>
           </div>
+          )}
 
         </form>
       </Form>

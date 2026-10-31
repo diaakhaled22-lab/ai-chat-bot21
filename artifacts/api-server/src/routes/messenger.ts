@@ -221,6 +221,11 @@ router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verify
         continue;
       }
 
+      if (company.messengerEnabled === false) {
+        logger.info({ pageId, companyId: company.id }, "Messenger webhook dropped: channel is disabled by admin");
+        continue;
+      }
+
       if (!company.messengerApiKey) {
         logger.warn({ pageId, companyId: company.id }, "Messenger platform webhook: company has no Page Access Token");
         continue;
@@ -527,6 +532,11 @@ router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhoo
       logger.warn({ pageId }, "Messenger webhook: no company matched page ID");
       return;
     }
+    if (foundCompany.messengerEnabled === false) {
+      logger.info({ pageId, companyId: foundCompany.id }, "Messenger webhook dropped: channel is disabled by admin");
+      return;
+    }
+
     company = foundCompany;
     const currentCompany = foundCompany;
 

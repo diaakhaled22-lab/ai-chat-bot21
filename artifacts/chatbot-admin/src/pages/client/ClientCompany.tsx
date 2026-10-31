@@ -528,10 +528,15 @@ export default function ClientCompany() {
 
   const isSaving = createCompany.isPending || updateCompany.isPending;
 
-  const telegramConnected = Boolean(company?.telegramBotApiKey) && (company?.telegramEnabled ?? true);
-  const whatsappConnected = Boolean(company?.whatsappApiToken) && (company?.whatsappEnabled ?? true);
-  const messengerConnected = Boolean(company?.messengerApiKey) && (company?.messengerEnabled ?? true);
-  const widgetConnected = Boolean(company?.websiteChatbotKey) && (company?.widgetEnabled ?? true);
+    const isTelegramAllowed  = company?.telegramEnabled !== false;
+  const isWhatsappAllowed  = company?.whatsappEnabled !== false;
+  const isMessengerAllowed = company?.messengerEnabled !== false;
+  const isWidgetAllowed    = company?.widgetEnabled !== false;
+
+  const telegramConnected = isTelegramAllowed && Boolean(company?.telegramBotApiKey) && (company?.telegramEnabled ?? true);
+  const whatsappConnected = isWhatsappAllowed && Boolean(company?.whatsappApiToken) && (company?.whatsappEnabled ?? true);
+  const messengerConnected = isMessengerAllowed && Boolean(company?.messengerApiKey) && (company?.messengerEnabled ?? true);
+  const widgetConnected = isWidgetAllowed && Boolean(company?.websiteChatbotKey) && (company?.widgetEnabled ?? true);
   const hasConnectedChannel = telegramConnected || whatsappConnected || messengerConnected || widgetConnected;
 
   const shareTelegramLink = telegramConnected && company?.telegramBotUsername
@@ -754,7 +759,7 @@ export default function ClientCompany() {
         </form>
       </Form>
 
-      {company && company.telegramBotApiKey && (
+      {company && isTelegramAllowed && company.telegramBotApiKey && (
         <Card className="bg-card border-[#DCE7FF] border-sky-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
@@ -829,11 +834,11 @@ export default function ClientCompany() {
         </Card>
       )}
 
-      {company && company.messengerApiKey && (
+      {company && isMessengerAllowed && company.messengerApiKey && (
         <MessengerSetupCard company={company} />
       )}
 
-      {company && company.whatsappApiToken && company.whatsappPhoneNumberId && (
+      {company && isWhatsappAllowed && company.whatsappApiToken && company.whatsappPhoneNumberId && (
         <WhatsAppSetupCard company={company} />
       )}
 
@@ -1210,7 +1215,7 @@ export default function ClientCompany() {
             </div>
 
             {/* Embed code */}
-            {company.websiteChatbotKey ? (
+            {isWidgetAllowed && company.websiteChatbotKey ? (
               <div className="space-y-2">
                 <p className="text-sm font-semibold flex items-center gap-2">
                   <span className="text-violet-500">🌐</span> Website Widget Embed Code
@@ -1279,26 +1284,26 @@ export default function ClientCompany() {
         };
 
         const icons = [
-          { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink,  color: "sky",    isWidget: false },
-          { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",     href: whatsappLink,  color: "green",  isWidget: false },
-          { key: "messenger", channel: "messenger" as const, label: "Messenger",    href: messengerLink, color: "blue",   isWidget: false },
-          { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null,          color: "violet", isWidget: hasWebsite },
-        ];
+          isTelegramAllowed  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink,  color: "sky",    isWidget: false },
+          isWhatsappAllowed  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",     href: whatsappLink,  color: "green",  isWidget: false },
+          isMessengerAllowed && { key: "messenger", channel: "messenger" as const, label: "Messenger",    href: messengerLink, color: "blue",   isWidget: false },
+          isWidgetAllowed    && { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null,          color: "violet", isWidget: hasWebsite },
+        ].filter(Boolean) as { key: string; channel: "telegram" | "whatsapp" | "messenger" | "widget"; label: string; href: string | null; color: string; isWidget: boolean }[];
 
         // Standard snippet (static icon links)
         const standardLines: string[] = [`<div class="chatbot-links" style="display:flex;gap:12px;">`];
-        if (telegramLink) standardLines.push(`  <a href="${telegramLink}" target="_blank" rel="noopener" title="Chat on Telegram" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.telegram}</a>`);
-        if (whatsappLink) standardLines.push(`  <a href="${whatsappLink}" target="_blank" rel="noopener" title="Chat on WhatsApp" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.whatsapp}</a>`);
-        if (messengerLink) standardLines.push(`  <a href="${messengerLink}" target="_blank" rel="noopener" title="Chat on Messenger" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.messenger}</a>`);
-        if (hasWebsite) standardLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.widget}</a>`);
+        if (isTelegramAllowed && telegramLink) standardLines.push(`  <a href="${telegramLink}" target="_blank" rel="noopener" title="Chat on Telegram" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.telegram}</a>`);
+        if (isWhatsappAllowed && whatsappLink) standardLines.push(`  <a href="${whatsappLink}" target="_blank" rel="noopener" title="Chat on WhatsApp" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.whatsapp}</a>`);
+        if (isMessengerAllowed && messengerLink) standardLines.push(`  <a href="${messengerLink}" target="_blank" rel="noopener" title="Chat on Messenger" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.messenger}</a>`);
+        if (isWidgetAllowed && hasWebsite) standardLines.push(`  <a href="#" onclick="window.ChatWidget && window.ChatWidget.open('${company.websiteChatbotKey}'); return false;" title="Chat on our website" style="display:inline-flex;text-decoration:none;">${CHANNEL_SVG_SNIPPETS.widget}</a>`);
         standardLines.push(`</div>`);
 
         // FAB snippet (floating action button) — self-contained HTML + scoped CSS + vanilla JS
         const fabRows: string[] = [];
-        if (telegramLink)  fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.open('${telegramLink}','_blank','noopener noreferrer')" aria-label="Chat on Telegram">${CHANNEL_SVG_SNIPPETS.telegram}</button>\n    </div>`);
-        if (whatsappLink)  fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.open('${whatsappLink}','_blank','noopener noreferrer')" aria-label="Chat on WhatsApp">${CHANNEL_SVG_SNIPPETS.whatsapp}</button>\n    </div>`);
-        if (messengerLink) fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.open('${messengerLink}','_blank','noopener noreferrer')" aria-label="Chat on Messenger">${CHANNEL_SVG_SNIPPETS.messenger}</button>\n    </div>`);
-        if (hasWebsite)    fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.ChatWidget&&window.ChatWidget.open('${company.websiteChatbotKey}')" aria-label="Open website chat">${CHANNEL_SVG_SNIPPETS.widget}</button>\n    </div>`);
+        if (isTelegramAllowed && telegramLink)  fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.open('${telegramLink}','_blank','noopener noreferrer')" aria-label="Chat on Telegram">${CHANNEL_SVG_SNIPPETS.telegram}</button>\n    </div>`);
+        if (isWhatsappAllowed && whatsappLink)  fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.open('${whatsappLink}','_blank','noopener noreferrer')" aria-label="Chat on WhatsApp">${CHANNEL_SVG_SNIPPETS.whatsapp}</button>\n    </div>`);
+        if (isMessengerAllowed && messengerLink) fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.open('${messengerLink}','_blank','noopener noreferrer')" aria-label="Chat on Messenger">${CHANNEL_SVG_SNIPPETS.messenger}</button>\n    </div>`);
+        if (isWidgetAllowed && hasWebsite)    fabRows.push(`    <div class="cfab-row" role="listitem">\n      <button class="cfab-item" type="button" onclick="window.ChatWidget&&window.ChatWidget.open('${company.websiteChatbotKey}')" aria-label="Open website chat">${CHANNEL_SVG_SNIPPETS.widget}</button>\n    </div>`);
 
         const fabSnippet = `<!-- Chatbot FAB Widget -->
 <style>
@@ -1438,10 +1443,10 @@ ${fabRows.join('\n')}
 
               {(!telegramLink || !whatsappLink || !messengerLink || !hasWebsite) && (
                 <p className="text-xs text-muted-foreground">
-                  {!telegramLink && "Set a Telegram Bot Token above (username is fetched automatically). "}
-                  {!whatsappLink && "Set a WhatsApp Number above. "}
-                  {!messengerLink && "Set a Messenger Page Access Token above (page ID is fetched automatically). "}
-                  {!hasWebsite && "Set a Website Widget Key above."}
+                  {isTelegramAllowed && !telegramLink && "Set a Telegram Bot Token above (username is fetched automatically). "}
+                  {isWhatsappAllowed && !whatsappLink && "Set a WhatsApp Number above. "}
+                  {isMessengerAllowed && !messengerLink && "Set a Messenger Page Access Token above (page ID is fetched automatically). "}
+                  {isWidgetAllowed && !hasWebsite && "Set a Website Widget Key above."}
                 </p>
               )}
 
@@ -1490,10 +1495,10 @@ ${fabRows.join('\n')}
       const hasWebsite    = shareWebsite;
 
       const channels = [
-        telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink  },
-        whatsappLink  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",     href: whatsappLink  },
-        messengerLink && { key: "messenger", channel: "messenger" as const, label: "Messenger",    href: messengerLink },
-        hasWebsite    && { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null          },
+        isTelegramAllowed  && telegramLink  && { key: "telegram",  channel: "telegram"  as const, label: "Telegram",     href: telegramLink  },
+        isWhatsappAllowed  && whatsappLink  && { key: "whatsapp",  channel: "whatsapp"  as const, label: "WhatsApp",     href: whatsappLink  },
+        isMessengerAllowed && messengerLink && { key: "messenger", channel: "messenger" as const, label: "Messenger",    href: messengerLink },
+        isWidgetAllowed    && hasWebsite    && { key: "website",   channel: "widget"    as const, label: "Website Chat", href: null          },
       ].filter(Boolean) as { key: string; channel: "telegram" | "whatsapp" | "messenger" | "widget"; label: string; href: string | null }[];
 
       return (

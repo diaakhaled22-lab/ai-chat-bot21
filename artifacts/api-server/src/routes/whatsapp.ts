@@ -245,6 +245,11 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
           continue;
         }
 
+        if (company.whatsappEnabled === false) {
+          logger.info({ phoneNumberId, companyId: company.id }, "WhatsApp webhook dropped: channel is disabled by admin");
+          continue;
+        }
+
         if (!company.whatsappApiToken) {
           logger.warn({ phoneNumberId, companyId: company.id }, "WhatsApp platform webhook: company has no API token");
           continue;
@@ -601,6 +606,11 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
 
     if (!foundCompany) {
       logger.warn({ phoneNumberId }, "WhatsApp webhook: no company matched phone number ID");
+      return;
+    }
+
+    if (foundCompany.whatsappEnabled === false) {
+      logger.info({ phoneNumberId, companyId: foundCompany.id }, "WhatsApp webhook dropped: channel is disabled by admin");
       return;
     }
     company = foundCompany;
