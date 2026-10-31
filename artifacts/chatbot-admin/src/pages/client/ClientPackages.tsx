@@ -418,10 +418,6 @@ export default function ClientPackages() {
 
   const handleOpenSubscribe = (plan: PlanDef) => {
     setSelectedPlan(plan);
-    setActiveSelectedPlanId(plan.id);
-    try {
-      localStorage.setItem(activePlanStorageKey, plan.id);
-    } catch {}
     setPhoneError(null);
     setDuplicateWarning(null);
 

@@ -25,6 +25,8 @@ import {
   Laptop,
   Mail,
   Network,
+  PackageCheck,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +110,8 @@ export default function AdminNotifications() {
   // Category counts
   const totalCount = notifications.length;
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const planCount = notifications.filter((n) => n.type === "plan_request" || n.type.includes("plan") || n.title.includes("باقة")).length;
+  const ticketCount = notifications.filter((n) => n.type === "ticket" || n.type.includes("problem")).length;
   const clientCount = notifications.filter((n) => n.type === "new_client" || n.type.includes("client")).length;
   const securityCount = notifications.filter((n) => n.type === "security_alert" || n.type === "malfunction").length;
 
@@ -115,6 +119,8 @@ export default function AdminNotifications() {
     return notifications.filter((n) => {
       // Tab filter
       if (activeTab === "unread" && n.isRead) return false;
+      if (activeTab === "plans" && n.type !== "plan_request" && !n.title.includes("باقة") && !n.type.includes("plan")) return false;
+      if (activeTab === "tickets" && n.type !== "ticket" && !n.type.includes("problem")) return false;
       if (activeTab === "new_client" && n.type !== "new_client" && !n.type.includes("client")) return false;
       if (activeTab === "security" && n.type !== "security_alert") return false;
       if (activeTab === "malfunction" && n.type !== "malfunction") return false;
@@ -133,6 +139,16 @@ export default function AdminNotifications() {
   }, [notifications, activeTab, search]);
 
   const getNotificationTheme = (type: string) => {
+    if (type === "plan_request" || type.includes("plan") || type.includes("upgrade")) {
+      return {
+        icon: PackageCheck,
+        badgeText: lang === "ar" ? "طلب باقة / ترقية" : "Plan Request",
+        badgeColor: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        iconBg: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50",
+        actionLabel: lang === "ar" ? "تفعيل الباقة والاشتراك" : "Activate & Manage Plan",
+        actionHref: "/admin/companies",
+      };
+    }
     if (type === "new_client" || type.includes("client")) {
       return {
         icon: UserCheck,
@@ -311,6 +327,8 @@ export default function AdminNotifications() {
             {[
               { id: "all", label: lang === "ar" ? "الكل" : "All", count: totalCount },
               { id: "unread", label: lang === "ar" ? "غير مقروءة" : "Unread", count: unreadCount },
+              { id: "plans", label: lang === "ar" ? "طلبات الباقات" : "Plan Requests", count: planCount },
+              { id: "tickets", label: lang === "ar" ? "تذاكر المشاكل" : "Support Tickets", count: ticketCount },
               { id: "new_client", label: lang === "ar" ? "العملاء الجدد" : "New Clients", count: clientCount },
               { id: "security", label: lang === "ar" ? "الأمان" : "Security" },
               { id: "malfunction", label: lang === "ar" ? "الأعطال" : "Malfunctions" },

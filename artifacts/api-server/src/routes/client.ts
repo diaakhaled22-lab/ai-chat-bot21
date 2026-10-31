@@ -2017,10 +2017,24 @@ router.post("/client/tickets", async (req, res) => {
       .where(eq(usersTable.id, req.session.userId!));
 
     const [company] = await db
-      .select({ id: companiesTable.id })
+      .select({ id: companiesTable.id, name: companiesTable.name })
       .from(companiesTable)
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
+
+    if (!company) {
+      const [firstCompany] = await db
+        .select({ id: companiesTable.id, name: companiesTable.name })
+        .from(companiesTable)
+        .limit(1);
+      if (firstCompany) company = firstCompany;
+    }
+
+    const isPlanSwitch =
+      title.includes("طلب تغيير باقة") ||
+      title.includes("طلب اشتراك") ||
+      title.includes("باقة") ||
+      title.toLowerCase().includes("plan");
 
     // Also record into chatLogsTable so it appears in the Inbox (Chat Logs & Universal Chat)
     if (company) {
@@ -2028,21 +2042,27 @@ router.post("/client/tickets", async (req, res) => {
         companyId: company.id,
         channel: "website" as any,
         sessionId: `ticket_${ticket.id}`,
-        customerMessage: `[تذكرة مشكلة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`,
+        customerMessage: isPlanSwitch
+          ? `[⚡ طلب باقة / ترقية جديدة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`
+          : `[تذكرة مشكلة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`,
         botResponse: null,
         isRead: false,
         isHandoff: true,
-        intent: "support",
-        sentiment: "negative",
+        intent: isPlanSwitch ? "upgrade" : "support",
+        sentiment: isPlanSwitch ? "positive" : "negative",
       }).catch((e) => logger.warn({ err: e }, "Failed to mirror ticket into chat logs"));
     }
 
     // Instant notification for the client confirming receipt
     await db.insert(notificationsTable).values({
       userId: req.session.userId!,
-      type: "ticket",
-      title: `📨 [تم استلام مشكلتك #${ticket.id}] ${ticket.title}`,
-      message: `تم إرسال تذكرة المشكلة بنجاح إلى فريق الدعم الفني وصندوق الوارد (Inbox).`,
+      type: isPlanSwitch ? "plan_request" : "ticket",
+      title: isPlanSwitch
+        ? `📦 [تم استلام طلب باقتك #${ticket.id}] ${ticket.title}`
+        : `📨 [تم استلام مشكلتك #${ticket.id}] ${ticket.title}`,
+      message: isPlanSwitch
+        ? `تم استلام طلب باقتك بنجاح. سيتم التواصل معك لتأكيد التفعيل وتحديث الكوتا.`
+        : `تم إرسال تذكرة المشكلة بنجاح إلى فريق الدعم الفني وصندوق الوارد (Inbox).`,
       companyId: company?.id ?? null,
       isRead: false,
     }).catch(() => {});
@@ -2057,10 +2077,15 @@ router.post("/client/tickets", async (req, res) => {
       await db.insert(notificationsTable).values(
         admins.map(admin => ({
           userId: admin.id,
-          type: "ticket",
-          title: `⚠️ [مشكلة جديدة #${ticket.id}] ${ticket.title}`,
-          message: `أرسل العميل ${user?.name ?? "عميل"} بلاغاً عن مشكلة: "${ticket.description.slice(0, 100)}...". انقر للمراجعة في صندوق الوارد.`,
+          type: isPlanSwitch ? "plan_request" : "ticket",
+          title: isPlanSwitch
+            ? `⚡ [طلب تغيير / ترقية باقة #${ticket.id}] ${company?.name || user?.name || "العميل"}`
+            : `🔔 [مشكلة جديدة #${ticket.id}] ${ticket.title}`,
+          message: isPlanSwitch
+            ? `طلب العميل "${company?.name || user?.name || "العميل"}" الترقية/الاشتراك: ${ticket.title}.\n${ticket.description.slice(0, 160)}`
+            : `أرسل العميل ${user?.name ?? "عميل"} بلاغاً عن مشكلة: "${ticket.description.slice(0, 100)}...". انقر للمراجعة في صندوق الوارد.`,
           companyId: company?.id ?? null,
+          isRead: false,
         }))
       );
     }
