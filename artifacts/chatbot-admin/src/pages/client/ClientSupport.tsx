@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import {
@@ -300,8 +300,25 @@ export default function ClientSupport() {
     },
   });
 
-  const openCount = tickets.filter((t) => t.status === "open").length;
-  const resolvedCount = tickets.filter((t) => t.status === "resolved").length;
+  // Ensure only the latest plan switch request is displayed; previous switch requests are filtered out
+  const displayTickets = useMemo(() => {
+    let seenPlan = false;
+    return tickets.filter((t) => {
+      const isPlan =
+        t.title.includes("طلب تغيير باقة") ||
+        t.title.includes("طلب اشتراك") ||
+        t.title.includes("باقة") ||
+        t.title.toLowerCase().includes("plan");
+      if (isPlan) {
+        if (seenPlan) return false;
+        seenPlan = true;
+      }
+      return true;
+    });
+  }, [tickets]);
+
+  const openCount = displayTickets.filter((t) => t.status === "open").length;
+  const resolvedCount = displayTickets.filter((t) => t.status === "resolved").length;
 
   return (
     <div className="space-y-6 w-full">
@@ -386,7 +403,7 @@ export default function ClientSupport() {
       )}
 
       {/* Stats row (Transparent White Frosted Glass with Royal Blue Left Border) */}
-      {tickets.length > 0 && (
+      {displayTickets.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
             <div>
@@ -409,7 +426,7 @@ export default function ClientSupport() {
           <div className="bg-white/75 dark:bg-white/[0.07] backdrop-blur-md border border-white/60 dark:border-white/15 rounded-2xl p-5 flex items-center justify-between sm:col-span-2 lg:col-span-1 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
             <div>
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{lang === "ar" ? "إجمالي التذاكر" : "Total Tickets"}</p>
-              <p className="text-3xl font-black text-foreground mt-1 tabular-nums">{tickets.length}</p>
+              <p className="text-3xl font-black text-foreground mt-1 tabular-nums">{displayTickets.length}</p>
             </div>
             <div className="p-3 bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 rounded-2xl shadow-inner">
               <LifeBuoy className="w-6 h-6" />
@@ -424,14 +441,14 @@ export default function ClientSupport() {
           <Loader2 className="w-5 h-5 animate-spin" />
           <span>{t("loading")}</span>
         </div>
-      ) : tickets.length === 0 ? (
+      ) : displayTickets.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 gap-3 text-muted-foreground bg-card border border-border rounded-xl w-full">
           <CheckCircle2 className="w-12 h-12 opacity-20 text-emerald-500" />
           <p className="text-sm font-medium">{t("support_no_tickets")}</p>
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5 w-full">
-          {tickets.map((t) => (
+          {displayTickets.map((t) => (
             <TicketRow
               key={t.id}
               ticket={t}

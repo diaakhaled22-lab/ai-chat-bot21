@@ -2067,63 +2067,59 @@ router.post("/client/tickets", async (req, res) => {
       isRead: false,
     }).catch(() => {});
 
-    // If this is a plan switch / subscription request, automatically cancel any preceding open plan requests
-    // from this client so that only the latest request remains active and sent to the admin.
+    // If this is a plan switch / subscription request, automatically cancel and purge any preceding plan requests
+    // from this client so that ONLY the latest request remains active and sent to the admin.
     if (isPlanSwitch) {
-      const priorPlanTickets = await db
-        .select({ id: ticketsTable.id, title: ticketsTable.title })
+      const allClientTickets = await db
+        .select({ id: ticketsTable.id, title: ticketsTable.title, status: ticketsTable.status })
         .from(ticketsTable)
         .where(
           and(
             eq(ticketsTable.clientId, req.session.userId!),
-            ne(ticketsTable.id, ticket.id),
-            eq(ticketsTable.status, "open"),
-            sql`(${ticketsTable.title} ILIKE '%طلب تغيير باقة%' OR ${ticketsTable.title} ILIKE '%طلب اشتراك%' OR ${ticketsTable.title} ILIKE '%باقة%' OR ${ticketsTable.title} ILIKE '%plan%')`
+            ne(ticketsTable.id, ticket.id)
           )
         );
+
+      const priorPlanTickets = allClientTickets.filter((t) => {
+        const titleStr = (t.title || "").toLowerCase();
+        return (
+          titleStr.includes("طلب تغيير باقة") ||
+          titleStr.includes("طلب اشتراك") ||
+          titleStr.includes("باقة") ||
+          titleStr.includes("plan") ||
+          titleStr.includes("upgrade")
+        );
+      });
 
       if (priorPlanTickets.length > 0) {
         const priorIds = priorPlanTickets.map((t) => t.id);
 
-        // 1. Mark preceding tickets as resolved/cancelled with auto-cancellation note
+        // Delete superseded previous plan tickets completely from database
         await db
-          .update(ticketsTable)
-          .set({
-            status: "resolved",
-            adminNote: `تم إلغاء هذا الطلب تلقائياً لاستبداله بالطلب الأحدث #${ticket.id} (${ticket.title})`,
-          })
+          .delete(ticketsTable)
           .where(inArray(ticketsTable.id, priorIds));
 
-        // 2. Mark preceding mirrored chat logs as resolved and remove handoff flag
+        // Delete previous mirrored chat logs
         for (const pId of priorIds) {
           await db
-            .update(chatLogsTable)
-            .set({
-              isHandoff: false,
-              isRead: true,
-              botResponse: `[تم إلغاء هذا الطلب تلقائياً لاستبداله بالطلب الأحدث #${ticket.id}]`,
-            })
+            .delete(chatLogsTable)
             .where(eq(chatLogsTable.sessionId, `ticket_${pId}`))
             .catch(() => {});
         }
 
-        // 3. Mark admin notifications for prior tickets as read
+        // Delete admin notifications for previous superseded tickets
         for (const pId of priorIds) {
           await db
-            .update(notificationsTable)
-            .set({ isRead: true })
+            .delete(notificationsTable)
             .where(
-              and(
-                sql`(${notificationsTable.title} LIKE '%#' || ${pId} || '%' OR ${notificationsTable.title} LIKE '%#' || ${pId} || ' %')`,
-                eq(notificationsTable.isRead, false)
-              )
+              sql`(${notificationsTable.title} LIKE '%#' || ${pId} || '%' OR ${notificationsTable.title} LIKE '%#' || ${pId} || ' %')`
             )
             .catch(() => {});
         }
 
         logger.info(
-          { clientId: req.session.userId, cancelledTicketIds: priorIds, newTicketId: ticket.id },
-          "Superseded prior open plan tickets on new switch"
+          { clientId: req.session.userId, deletedTicketIds: priorIds, newTicketId: ticket.id },
+          "Purged preceding plan switch tickets upon new switch"
         );
       }
     }
@@ -2190,6 +2186,49 @@ router.get("/client/tickets", async (req, res) => {
           .select()
           .from(ticketsTable)
           .orderBy(sql`${ticketsTable.createdAt} DESC`);
+
+    // For clients: ensure only the latest plan switch ticket is kept, auto-purge older superseded requests
+    if (isClient) {
+      const planTickets = tickets.filter((t) => {
+        const titleStr = (t.title || "").toLowerCase();
+        return (
+          titleStr.includes("طلب تغيير باقة") ||
+          titleStr.includes("طلب اشتراك") ||
+          titleStr.includes("باقة") ||
+          titleStr.includes("plan")
+        );
+      });
+
+      if (planTickets.length > 1) {
+        // planTickets[0] is the newest because of createdAt DESC; purge the older ones
+        const supersededIds = planTickets.slice(1).map((t) => t.id);
+
+        await db
+          .delete(ticketsTable)
+          .where(inArray(ticketsTable.id, supersededIds))
+          .catch(() => {});
+
+        for (const sId of supersededIds) {
+          await db.delete(chatLogsTable).where(eq(chatLogsTable.sessionId, `ticket_${sId}`)).catch(() => {});
+          await db.delete(notificationsTable).where(sql`(${notificationsTable.title} LIKE '%#' || ${sId} || '%')`).catch(() => {});
+        }
+
+        const supersededSet = new Set(supersededIds);
+        const filteredTickets = tickets.filter((t) => !supersededSet.has(t.id));
+
+        return res.json(
+          filteredTickets.map((t) => ({
+            id: t.id,
+            title: t.title,
+            description: t.description,
+            status: t.status,
+            aiResponse: t.aiResponse,
+            adminNote: t.adminNote,
+            createdAt: t.createdAt.toISOString(),
+          }))
+        );
+      }
+    }
 
     res.json(
       tickets.map((t) => ({

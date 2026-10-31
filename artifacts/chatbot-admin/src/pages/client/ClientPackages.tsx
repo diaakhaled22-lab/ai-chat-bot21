@@ -391,8 +391,12 @@ export default function ClientPackages() {
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["/api/client/tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["client-chat-logs"] });
       toast({
         title: lang === "ar" ? "تم إرسال الطلب بنجاح!" : "Request Submitted Successfully!",
         description:
