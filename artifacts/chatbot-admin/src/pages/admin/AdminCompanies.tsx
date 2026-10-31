@@ -128,14 +128,33 @@ function formatQuota(n: number) {
   return String(n);
 }
 
-function toDateInputValue(iso?: string | null) {
-  if (!iso) return "";
-  return iso.slice(0, 10);
+function toDateInputValue(iso?: string | null): string {
+  if (!iso || typeof iso !== "string") return "";
+  const trimmed = iso.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  const d = new Date(iso);
+  if (!isNaN(d.getTime())) {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  return "";
 }
 
-function toIsoFromInput(dateStr: string) {
-  if (!dateStr) return null;
-  return new Date(dateStr + "T00:00:00").toISOString();
+function toIsoFromInput(dateStr?: string | null, isEnd = false): string | null {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const [, y, m, d] = match;
+    return isEnd ? `${y}-${m}-${d}T23:59:59.999Z` : `${y}-${m}-${d}T00:00:00.000Z`;
+  }
+  if (trimmed.includes("T")) return trimmed;
+  return null;
 }
 
 function getInitials(name: string) {
@@ -786,8 +805,8 @@ export default function AdminCompanies() {
         aiAgentUrl: manageForm.aiAgentUrl,
         isActive: manageForm.isActive,
         monthlyTokenQuota: manageForm.monthlyTokenQuota ? Number(manageForm.monthlyTokenQuota) : null,
-        activationStart: toIsoFromInput(manageForm.activationStart),
-        activationEnd: toIsoFromInput(manageForm.activationEnd),
+        activationStart: toIsoFromInput(manageForm.activationStart, false),
+        activationEnd: toIsoFromInput(manageForm.activationEnd, true),
         chatLogRetentionDays: manageForm.chatLogRetentionDays ? Number(manageForm.chatLogRetentionDays) : null,
         telegramEnabled: manageForm.telegramEnabled,
         telegramBotApiKey: manageForm.telegramBotApiKey,
@@ -1103,8 +1122,8 @@ export default function AdminCompanies() {
         id: activationTarget.id,
         data: {
           isActive: activationForm.isActive,
-          activationStart: toIsoFromInput(activationForm.start),
-          activationEnd: toIsoFromInput(activationForm.end),
+          activationStart: toIsoFromInput(activationForm.start, false),
+          activationEnd: toIsoFromInput(activationForm.end, true),
         },
       },
       {
