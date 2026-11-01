@@ -163,7 +163,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Email notifications & alerts",
       "Ticket support (response within 24h)",
     ],
-    retentionDays: 7,
+    retentionDays: 3,
   },
   {
     id: "pro",
@@ -1476,8 +1476,9 @@ export default function ClientPackages() {
                 </p>
 
                 {/* Preset Chips */}
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 pt-1">
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-1">
                   {[
+                    { labelAr: "3 أيام",   labelEn: "3d",   days: 3 },
                     { labelAr: "7 أيام",   labelEn: "7d",   days: 7 },
                     { labelAr: "14 يوماً", labelEn: "14d",  days: 14 },
                     { labelAr: "30 يوماً", labelEn: "30d",  days: 30 },

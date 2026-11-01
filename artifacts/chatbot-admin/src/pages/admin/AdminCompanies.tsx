@@ -524,7 +524,7 @@ const FALLBACK_PLANS: PackageItem[] = [
     channels: ["widget", "telegram"],
     tools: [],
     dataSources: ["website", "files"],
-    retentionDays: 30,
+    retentionDays: 3,
     featuresAr: [],
     featuresEn: [],
   },

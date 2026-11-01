@@ -81,7 +81,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "malfunctions",
         "settings",
       ],
-      retentionDays: 7,
+      retentionDays: 3,
       channels: ["widget", "telegram"],
       tools: ["leads_crm"],
       dataSources: ["website", "files"],
