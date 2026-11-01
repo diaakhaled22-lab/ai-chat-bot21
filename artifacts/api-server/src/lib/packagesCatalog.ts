@@ -194,7 +194,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "webhook_history",
         "settings",
       ],
-      retentionDays: 90,
+      retentionDays: 30,
       channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
       tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
       dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],

@@ -206,15 +206,10 @@ const QUOTA_PRESETS = [
 ];
 
 const RETENTION_PRESETS = [
-  { label: "1 Day", value: 1 },
   { label: "3 Days", value: 3 },
   { label: "7 Days", value: 7 },
   { label: "14 Days", value: 14 },
   { label: "30 Days", value: 30 },
-  { label: "60 Days", value: 60 },
-  { label: "90 Days", value: 90 },
-  { label: "180 Days", value: 180 },
-  { label: "365 Days", value: 365 },
 ];
 
 const ACTION_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -540,7 +535,7 @@ const FALLBACK_PLANS: PackageItem[] = [
     channels: ["widget", "telegram", "whatsapp", "messenger"],
     tools: ["calendar", "sheets", "leads_crm", "handoff"],
     dataSources: ["website", "files", "wordpress"],
-    retentionDays: 90,
+    retentionDays: 14,
     featuresAr: [],
     featuresEn: [],
   },
@@ -556,7 +551,7 @@ const FALLBACK_PLANS: PackageItem[] = [
     channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
     tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
     dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],
-    retentionDays: 365,
+    retentionDays: 30,
     featuresAr: [],
     featuresEn: [],
   },
@@ -2447,17 +2442,12 @@ export default function AdminCompanies() {
                       </div>
 
                       {/* Presets starting with 3 Days */}
-                      <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 pt-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                         {[
                           { labelAr: "3 أيام",   labelEn: "3 Days",   days: 3 },
                           { labelAr: "7 أيام",   labelEn: "7 Days",   days: 7 },
                           { labelAr: "14 يوماً", labelEn: "14 Days",  days: 14 },
                           { labelAr: "30 يوماً", labelEn: "30 Days",  days: 30 },
-                          { labelAr: "60 يوماً", labelEn: "60 Days",  days: 60 },
-                          { labelAr: "90 يوماً", labelEn: "90 Days",  days: 90 },
-                          { labelAr: "180 يوماً", labelEn: "180 Days", days: 180 },
-                          { labelAr: "365 يوماً", labelEn: "365 Days", days: 365 },
-                          { labelAr: "دائم (0)", labelEn: "Permanent", days: 0 },
                         ].map((preset) => {
                           const isSelected = Number(manageForm.chatLogRetentionDays ?? 0) === preset.days;
                           return (

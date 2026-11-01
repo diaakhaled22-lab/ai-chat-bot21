@@ -1443,17 +1443,12 @@ export default function AdminPackages() {
                 </div>
 
                 {/* Retention Presets */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
                     { labelAr: "3 أيام",   labelEn: "3 Days",   days: 3 },
                     { labelAr: "7 أيام",   labelEn: "7 Days",   days: 7 },
                     { labelAr: "14 يوماً", labelEn: "14 Days",  days: 14 },
                     { labelAr: "30 يوماً", labelEn: "30 Days",  days: 30 },
-                    { labelAr: "60 يوماً", labelEn: "60 Days",  days: 60 },
-                    { labelAr: "90 يوماً", labelEn: "90 Days",  days: 90 },
-                    { labelAr: "180 يوماً", labelEn: "180 Days", days: 180 },
-                    { labelAr: "365 يوماً", labelEn: "365 Days", days: 365 },
-                    { labelAr: "دائم (0)", labelEn: "Permanent", days: 0 },
                   ].map((preset) => {
                     const isSelected = (editingPlan.retentionDays ?? 0) === preset.days;
                     return (

@@ -236,7 +236,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Dedicated account manager & performance review",
       "99.9% uptime Service Level Agreement (SLA)",
     ],
-    retentionDays: 90,
+    retentionDays: 30,
   },
 ];
 
@@ -1476,16 +1476,12 @@ export default function ClientPackages() {
                 </p>
 
                 {/* Preset Chips */}
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
                   {[
                     { labelAr: "3 أيام",   labelEn: "3d",   days: 3 },
                     { labelAr: "7 أيام",   labelEn: "7d",   days: 7 },
                     { labelAr: "14 يوماً", labelEn: "14d",  days: 14 },
                     { labelAr: "30 يوماً", labelEn: "30d",  days: 30 },
-                    { labelAr: "60 يوماً", labelEn: "60d",  days: 60 },
-                    { labelAr: "90 يوماً", labelEn: "90d",  days: 90 },
-                    { labelAr: "180 يوماً", labelEn: "180d", days: 180 },
-                    { labelAr: "دائم (0)", labelEn: "Forever", days: 0 },
                   ].map((preset) => {
                     const isSelected = (selectedRetention ?? 0) === preset.days;
                     return (
