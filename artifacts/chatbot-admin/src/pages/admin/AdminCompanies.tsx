@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import type { PackageItem } from "./AdminPackages";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Company = {
@@ -509,6 +510,58 @@ function StatCard({
   );
 }
 
+// ── Fallback Plans ─────────────────────────────────────────────────────────────
+const FALLBACK_PLANS: PackageItem[] = [
+  {
+    id: "starter",
+    nameAr: "الباقة الأساسية (Starter)",
+    nameEn: "Starter Plan",
+    descriptionAr: "مثالية للمشاريع الناشئة والشركات الصغيرة لبدء أتمتة الردود وخدمة العملاء.",
+    descriptionEn: "Perfect for startups and small businesses.",
+    monthlyPriceUsd: 29,
+    tokensMonthly: 50_000,
+    tokensFormatted: "50,000",
+    channels: ["widget", "telegram"],
+    tools: [],
+    dataSources: ["website", "files"],
+    retentionDays: 30,
+    featuresAr: [],
+    featuresEn: [],
+  },
+  {
+    id: "pro",
+    nameAr: "الباقة الاحترافية (Pro)",
+    nameEn: "Professional Plan",
+    descriptionAr: "الخيار الأفضل للشركات النامية والمتوسطة مع وصول لجميع القنوات وتطبيقات Google.",
+    descriptionEn: "Best choice for growing businesses.",
+    monthlyPriceUsd: 79,
+    tokensMonthly: 250_000,
+    tokensFormatted: "250,000",
+    channels: ["widget", "telegram", "whatsapp", "messenger"],
+    tools: ["calendar", "sheets", "leads_crm", "handoff"],
+    dataSources: ["website", "files", "wordpress"],
+    retentionDays: 90,
+    featuresAr: [],
+    featuresEn: [],
+  },
+  {
+    id: "enterprise",
+    nameAr: "باقة المؤسسات (Enterprise)",
+    nameEn: "Enterprise Plan",
+    descriptionAr: "حلول شاملة غير محدودة للمؤسسات والشركات الكبرى مع دعم VIP مخصص.",
+    descriptionEn: "Comprehensive solution for large enterprises.",
+    monthlyPriceUsd: 199,
+    tokensMonthly: 1_000_000,
+    tokensFormatted: "1,000,000",
+    channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
+    tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
+    dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],
+    retentionDays: 365,
+    featuresAr: [],
+    featuresEn: [],
+  },
+];
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AdminCompanies() {
   const { t, lang } = useLanguage();
@@ -519,6 +572,19 @@ export default function AdminCompanies() {
   const [manageActiveTab, setManageActiveTab] = useState<"subscription" | "pages" | "data_sources" | "ai" | "channels" | "tools">("subscription");
   const [manageForm, setManageForm] = useState<any>({});
   const [isSavingContent, setIsSavingContent] = useState(false);
+
+  const { data: packagesCatalog, isLoading: isCatalogLoading } = useQuery<{ packages: PackageItem[]; topupPacks: any[] }>({
+    queryKey: ["admin-packages"],
+    queryFn: () => customFetch("/api/admin/packages"),
+    staleTime: 30_000,
+  });
+
+  const availablePlans: PackageItem[] = useMemo(() => {
+    if (packagesCatalog?.packages && packagesCatalog.packages.length > 0) {
+      return packagesCatalog.packages.filter((p) => p.isActive !== false);
+    }
+    return FALLBACK_PLANS;
+  }, [packagesCatalog]);
 
   const openManageCompanyDialog = (company: Company) => {
     const freshCompany = companies?.find((c) => c.id === company.id) || company;
@@ -787,36 +853,35 @@ export default function AdminCompanies() {
     }
   };
 
-  const handleApplyPlanTier = async (tier: "starter" | "pro" | "enterprise") => {
+  const handleApplyPlanTier = async (plan: PackageItem) => {
     if (!manageCompanyTarget) return;
 
-    let quota = 50_000;
-    let widget = true;
-    let telegram = true;
-    let whatsapp = false;
-    let messenger = false;
-    let sheets = false;
-    let calendar = false;
-    let tierNameAr = "الأساسية (Starter)";
-    let tierNameEn = "Starter Plan";
+    const quota = Number(plan.tokensMonthly) || 50_000;
+    const widget = plan.channels ? plan.channels.includes("widget") : true;
+    const telegram = plan.channels ? plan.channels.includes("telegram") : false;
+    const whatsapp = plan.channels ? plan.channels.includes("whatsapp") : false;
+    const messenger = plan.channels ? plan.channels.includes("messenger") : false;
 
-    if (tier === "pro") {
-      quota = 250_000;
-      whatsapp = true;
-      messenger = true;
-      sheets = true;
-      calendar = true;
-      tierNameAr = "الاحترافية (Professional)";
-      tierNameEn = "Professional Plan";
-    } else if (tier === "enterprise") {
-      quota = 1_000_000;
-      whatsapp = true;
-      messenger = true;
-      sheets = true;
-      calendar = true;
-      tierNameAr = "المؤسسات (Enterprise)";
-      tierNameEn = "Enterprise Plan";
-    }
+    const sheets = plan.tools ? plan.tools.includes("sheets") : false;
+    const calendar = plan.tools ? plan.tools.includes("calendar") : false;
+    const voice = plan.tools ? plan.tools.includes("voice") : false;
+    const webSync = plan.tools ? plan.tools.includes("web_sync") : false;
+
+    const allowWebsite = plan.dataSources ? plan.dataSources.includes("website") : true;
+    const allowFiles = plan.dataSources ? plan.dataSources.includes("files") : true;
+    const allowWordpress = plan.dataSources ? plan.dataSources.includes("wordpress") : false;
+    const allowRestApi = plan.dataSources ? plan.dataSources.includes("rest_api") : false;
+    const allowShopify = plan.dataSources ? plan.dataSources.includes("shopify") : false;
+
+    const retention = (plan.retentionDays !== undefined && plan.retentionDays !== null)
+      ? plan.retentionDays
+      : (manageForm.chatLogRetentionDays ?? 30);
+
+    const pages = (Array.isArray(plan.allowedPages) && plan.allowedPages.length > 0)
+      ? plan.allowedPages
+      : (Array.isArray(manageForm.enabledClientPages) && manageForm.enabledClientPages.length > 0
+          ? manageForm.enabledClientPages
+          : CLIENT_PAGES_META.map((p) => p.id));
 
     const today = new Date();
     const future30 = new Date();
@@ -828,6 +893,7 @@ export default function AdminCompanies() {
       ...manageForm,
       isActive: true,
       monthlyTokenQuota: quota,
+      chatLogRetentionDays: retention,
       activationStart: startStr,
       activationEnd: endStr,
       widgetEnabled: widget,
@@ -836,21 +902,20 @@ export default function AdminCompanies() {
       messengerEnabled: messenger,
       googleSheetsEnabled: sheets,
       googleCalendarEnabled: calendar,
+      voiceReplyEnabled: voice,
+      websiteAutoSync: webSync,
+      allowSourceWebsite: allowWebsite,
+      allowSourceFiles: allowFiles,
+      allowSourceWordpress: allowWordpress,
+      allowSourceRestApi: allowRestApi,
+      allowSourceShopify: allowShopify,
+      enabledClientPages: pages,
     };
     setManageForm(updatedForm);
 
     setManageCompanyTarget((prev: any) => (prev ? {
       ...prev,
-      isActive: true,
-      monthlyTokenQuota: quota,
-      activationStart: startStr,
-      activationEnd: endStr,
-      widgetEnabled: widget,
-      telegramEnabled: telegram,
-      whatsappEnabled: whatsapp,
-      messengerEnabled: messenger,
-      googleSheetsEnabled: sheets,
-      googleCalendarEnabled: calendar,
+      ...updatedForm,
     } : prev));
 
     queryClient.setQueryData(getListCompaniesQueryKey(), (old: Company[] | undefined) => {
@@ -859,16 +924,9 @@ export default function AdminCompanies() {
         c.id === manageCompanyTarget.id
           ? {
               ...c,
-              isActive: true,
-              monthlyTokenQuota: quota,
+              ...updatedForm,
               activationStart: toIsoFromInput(startStr, false),
               activationEnd: toIsoFromInput(endStr, true),
-              widgetEnabled: widget,
-              telegramEnabled: telegram,
-              whatsappEnabled: whatsapp,
-              messengerEnabled: messenger,
-              googleSheetsEnabled: sheets,
-              googleCalendarEnabled: calendar,
             }
           : c
       );
@@ -881,6 +939,7 @@ export default function AdminCompanies() {
         body: JSON.stringify({
           isActive: true,
           monthlyTokenQuota: quota,
+          chatLogRetentionDays: retention,
           activationStart: toIsoFromInput(startStr, false),
           activationEnd: toIsoFromInput(endStr, true),
           widgetEnabled: widget,
@@ -889,14 +948,34 @@ export default function AdminCompanies() {
           messengerEnabled: messenger,
           googleSheetsEnabled: sheets,
           googleCalendarEnabled: calendar,
+          voiceReplyEnabled: voice,
+          websiteAutoSync: webSync,
+          allowSourceWebsite: allowWebsite,
+          allowSourceFiles: allowFiles,
+          allowSourceWordpress: allowWordpress,
+          allowSourceRestApi: allowRestApi,
+          allowSourceShopify: allowShopify,
+          enabledClientPages: pages,
         }),
       });
+
+      if (Array.isArray(plan.allowedPages) && plan.allowedPages.length > 0) {
+        await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/pages`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabledClientPages: plan.allowedPages }),
+        }).catch(() => {});
+        try {
+          localStorage.setItem(`admin_company_pages_${manageCompanyTarget.id}`, JSON.stringify(plan.allowedPages));
+        } catch {}
+      }
+
       queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
       toast({
         title: lang === "ar" ? "تم اعتماد وتفعيل الباقة بنجاح!" : "Plan Tier Applied Successfully!",
         description: lang === "ar"
-          ? `تم اعتماد باقة ${tierNameAr} للشركة بحصة ${quota.toLocaleString()} توكن وتفعيل القنوات المطابقة.`
-          : `${tierNameEn} applied with ${quota.toLocaleString()} tokens and matching features.`,
+          ? `تم اعتماد باقة ${plan.nameAr || plan.nameEn} للشركة بحصة ${quota.toLocaleString()} توكن ومزامنة القنوات والأدوات والمصادر بنجاح.`
+          : `${plan.nameEn || plan.nameAr} applied with ${quota.toLocaleString()} tokens and synced features.`,
       });
     } catch (err: any) {
       console.error("Apply plan error:", err);
@@ -2201,124 +2280,105 @@ export default function AdminCompanies() {
                   <div className="space-y-4">
                     {/* ── One-Click Plan Switcher Card ── */}
                     <div className="p-4 rounded-2xl border border-blue-500/25 bg-blue-500/5 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-blue-600" />
                           <h5 className="text-xs font-bold text-foreground">
-                            {lang === "ar" ? "اعتماد وتبديل باقة الشركة بنقرة واحدة" : "One-Click Plan Tier Switcher"}
+                            {lang === "ar" ? "اعتماد وتبديل باقة الشركة بنقرة واحدة (مزامنة مباشرة)" : "One-Click Plan Tier Switcher (Sync)"}
                           </h5>
                         </div>
                         <span className="text-[11px] text-muted-foreground">
-                          {lang === "ar" ? "يتم ضبط التوكن والقنوات وتفعيل الحساب فورياً" : "Auto-sets tokens, features & activates account"}
+                          {lang === "ar" ? "مربوطة بقسم باقات الاشتراك وتضبط التوكن والقنوات والأدوات والمصادر فورياً" : "Synced with Subscription Plans to auto-configure tokens & features"}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {/* Starter */}
-                        <div
-                          onClick={() => handleApplyPlanTier("starter")}
-                          className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                            Number(manageForm.monthlyTokenQuota) === 50_000
-                              ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
-                              : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold">
-                                {lang === "ar" ? "الأساسية (Starter)" : "Starter Plan"}
-                              </span>
-                              {Number(manageForm.monthlyTokenQuota) === 50_000 && (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                              )}
-                            </div>
-                            <p className={`text-[10px] mt-1 ${Number(manageForm.monthlyTokenQuota) === 50_000 ? "text-blue-100" : "text-muted-foreground"}`}>
-                              50,000 Tokens · Widget + TG
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={Number(manageForm.monthlyTokenQuota) === 50_000 ? "secondary" : "outline"}
-                            className="mt-3 w-full h-7 text-[11px] font-bold"
-                            onClick={(e) => { e.stopPropagation(); handleApplyPlanTier("starter"); }}
-                          >
-                            {Number(manageForm.monthlyTokenQuota) === 50_000
-                              ? (lang === "ar" ? "الباقة الحالية ✓" : "Current Tier ✓")
-                              : (lang === "ar" ? "اعتماد وتفعيل" : "Apply Plan")}
-                          </Button>
+                      {isCatalogLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-28 rounded-xl bg-muted/40 animate-pulse border border-border/50" />
+                          ))}
                         </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {availablePlans.map((plan) => {
+                            const isCurrent = Number(manageForm.monthlyTokenQuota) === plan.tokensMonthly;
+                            const channelsCount = plan.channels ? plan.channels.length : 0;
+                            const toolsCount = plan.tools ? plan.tools.length : 0;
+                            const sourcesCount = plan.dataSources ? plan.dataSources.length : 0;
 
-                        {/* Pro */}
-                        <div
-                          onClick={() => handleApplyPlanTier("pro")}
-                          className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                            Number(manageForm.monthlyTokenQuota) === 250_000
-                              ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
-                              : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold">
-                                {lang === "ar" ? "الاحترافية (Pro)" : "Professional Plan"}
-                              </span>
-                              {Number(manageForm.monthlyTokenQuota) === 250_000 && (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                              )}
-                            </div>
-                            <p className={`text-[10px] mt-1 ${Number(manageForm.monthlyTokenQuota) === 250_000 ? "text-blue-100" : "text-muted-foreground"}`}>
-                              250,000 Tokens · All Channels + Tools
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={Number(manageForm.monthlyTokenQuota) === 250_000 ? "secondary" : "outline"}
-                            className="mt-3 w-full h-7 text-[11px] font-bold"
-                            onClick={(e) => { e.stopPropagation(); handleApplyPlanTier("pro"); }}
-                          >
-                            {Number(manageForm.monthlyTokenQuota) === 250_000
-                              ? (lang === "ar" ? "الباقة الحالية ✓" : "Current Tier ✓")
-                              : (lang === "ar" ? "اعتماد وتفعيل" : "Apply Plan")}
-                          </Button>
-                        </div>
+                            return (
+                              <div
+                                key={plan.id}
+                                onClick={() => handleApplyPlanTier(plan)}
+                                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                                  isCurrent
+                                    ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
+                                    : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-start justify-between gap-1">
+                                    <span className="text-xs font-bold truncate">
+                                      {lang === "ar" ? plan.nameAr : plan.nameEn}
+                                    </span>
+                                    {isCurrent && (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-baseline gap-1.5 mt-1">
+                                    <span className={`text-[11px] font-bold ${isCurrent ? "text-blue-100" : "text-primary"}`}>
+                                      {plan.tokensFormatted || plan.tokensMonthly?.toLocaleString()} Tokens
+                                    </span>
+                                    {plan.monthlyPriceUsd !== undefined && (
+                                      <span className={`text-[10px] ${isCurrent ? "text-blue-200" : "text-muted-foreground"}`}>
+                                        · ${plan.monthlyPriceUsd}/mo
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className={`text-[10px] mt-1 line-clamp-2 leading-relaxed ${isCurrent ? "text-blue-100/80" : "text-muted-foreground"}`}>
+                                    {lang === "ar" ? plan.descriptionAr : plan.descriptionEn}
+                                  </p>
 
-                        {/* Enterprise */}
-                        <div
-                          onClick={() => handleApplyPlanTier("enterprise")}
-                          className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                            Number(manageForm.monthlyTokenQuota) === 1_000_000
-                              ? "bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40"
-                              : "bg-card border-border hover:border-blue-500/50 hover:bg-muted/30"
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold">
-                                {lang === "ar" ? "المؤسسات (Enterprise)" : "Enterprise Plan"}
-                              </span>
-                              {Number(manageForm.monthlyTokenQuota) === 1_000_000 && (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                              )}
-                            </div>
-                            <p className={`text-[10px] mt-1 ${Number(manageForm.monthlyTokenQuota) === 1_000_000 ? "text-blue-100" : "text-muted-foreground"}`}>
-                              1,000,000 Tokens · Full VIP Access
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={Number(manageForm.monthlyTokenQuota) === 1_000_000 ? "secondary" : "outline"}
-                            className="mt-3 w-full h-7 text-[11px] font-bold"
-                            onClick={(e) => { e.stopPropagation(); handleApplyPlanTier("enterprise"); }}
-                          >
-                            {Number(manageForm.monthlyTokenQuota) === 1_000_000
-                              ? (lang === "ar" ? "الباقة الحالية ✓" : "Current Tier ✓")
-                              : (lang === "ar" ? "اعتماد وتفعيل" : "Apply Plan")}
-                          </Button>
+                                  <div className="flex flex-wrap gap-1 mt-2.5">
+                                    {channelsCount > 0 && (
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${isCurrent ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
+                                        {channelsCount} {lang === "ar" ? "قنوات" : "channels"}
+                                      </span>
+                                    )}
+                                    {toolsCount > 0 && (
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${isCurrent ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
+                                        {toolsCount} {lang === "ar" ? "أدوات" : "tools"}
+                                      </span>
+                                    )}
+                                    {sourcesCount > 0 && (
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${isCurrent ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
+                                        {sourcesCount} {lang === "ar" ? "مصادر" : "sources"}
+                                      </span>
+                                    )}
+                                    {plan.retentionDays !== undefined && plan.retentionDays !== null && (
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${isCurrent ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
+                                        {plan.retentionDays} {lang === "ar" ? "يوم احتفاظ" : "d retention"}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={isCurrent ? "secondary" : "outline"}
+                                  className="mt-3 w-full h-7 text-[11px] font-bold"
+                                  onClick={(e) => { e.stopPropagation(); handleApplyPlanTier(plan); }}
+                                >
+                                  {isCurrent
+                                    ? (lang === "ar" ? "الباقة المطبقة حالياً ✓" : "Current Applied Tier ✓")
+                                    : (lang === "ar" ? "اعتماد وتطبيق الباقة" : "Apply Plan Tier")}
+                                </Button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
+                      )}
                     </div>
                     <div className="bg-muted/30 border border-border p-4 rounded-xl flex items-center justify-between">
                       <div>
