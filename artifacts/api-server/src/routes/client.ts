@@ -2464,8 +2464,35 @@ router.get("/client/chat-log-retention", async (req, res) => {
 });
 
 // PUT /client/chat-log-retention ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â restricted to admin only
+// PUT /client/chat-log-retention — allow client to configure their auto-delete retention policy
 router.put("/client/chat-log-retention", async (req, res) => {
-  res.status(403).json({ error: "Data retention policy can only be configured by a platform administrator." });
+  try {
+    const { retentionDays } = req.body as { retentionDays?: number | null };
+    const [company] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const days = retentionDays === null || retentionDays === undefined || retentionDays === 0 || Number(retentionDays) <= 0
+      ? null
+      : Math.min(Math.max(Number(retentionDays), 1), 365);
+
+    await db
+      .update(companiesTable)
+      .set({ chatLogRetentionDays: days })
+      .where(eq(companiesTable.id, company.id));
+
+    res.json({ ok: true, retentionDays: days });
+  } catch (err) {
+    logger.error({ err }, "Update client retention policy error");
+    res.status(500).json({ error: "Failed to update retention policy" });
+  }
 });
 
 // PUT /client/settings

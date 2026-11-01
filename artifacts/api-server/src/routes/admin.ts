@@ -4792,6 +4792,7 @@ async function handleUpdatePackages(req: any, res: any) {
       featuresAr: Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [],
       featuresEn: Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [],
       allowedPages: Array.isArray((p as any).allowedPages) ? (p as any).allowedPages : undefined,
+      retentionDays: (p as any).retentionDays !== undefined ? ((p as any).retentionDays === null || (p as any).retentionDays === 0 ? 0 : Number((p as any).retentionDays)) : undefined,
       isActive: p.isActive !== false,
       sortOrder: Number(p.sortOrder) || index + 1,
     }));

@@ -14,6 +14,7 @@ export interface PackageItem {
   featuresAr: string[];
   featuresEn: string[];
   allowedPages?: string[];
+  retentionDays?: number | null;
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -77,6 +78,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "malfunctions",
         "settings",
       ],
+      retentionDays: 7,
       isActive: true,
       sortOrder: 1,
     },
@@ -129,6 +131,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "malfunctions",
         "settings",
       ],
+      retentionDays: 30,
       isActive: true,
       sortOrder: 2,
     },
@@ -182,6 +185,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "webhook_history",
         "settings",
       ],
+      retentionDays: 90,
       isActive: true,
       sortOrder: 3,
     },

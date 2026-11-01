@@ -65,6 +65,7 @@ export interface PackageItem {
   featuresAr: string[];
   featuresEn: string[];
   allowedPages?: string[];
+  retentionDays?: number | null;
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -216,6 +217,7 @@ export default function AdminPackages() {
       featuresAr: ["100,000 رمز شهرياً (AI Tokens)", "ويدجت الموقع وبوت تليجرام"],
       featuresEn: ["100,000 monthly AI Tokens", "Website Widget & Telegram Bot"],
       allowedPages: CLIENT_PAGES_META.map((p) => p.id),
+      retentionDays: 30,
       isActive: true,
       sortOrder: packages.length + 1,
     });
@@ -233,6 +235,7 @@ export default function AdminPackages() {
       allowedPages: Array.isArray(plan.allowedPages)
         ? [...plan.allowedPages]
         : CLIENT_PAGES_META.map((p) => p.id),
+      retentionDays: plan.retentionDays !== undefined ? plan.retentionDays : 30,
     });
     setNewFeatureAr("");
     setNewFeatureEn("");
@@ -612,6 +615,19 @@ export default function AdminPackages() {
                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5">
                           {Array.isArray(plan.allowedPages) ? plan.allowedPages.length : CLIENT_PAGES_META.length} / {CLIENT_PAGES_META.length}
                         </Badge>
+                      </div>
+
+                      {/* Retention Policy Badge */}
+                      <div className="mt-1.5 pt-1.5 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+                          <span>{lang === "ar" ? "الحذف التلقائي:" : "Auto-Delete Retention:"}</span>
+                        </span>
+                        <span className="font-bold text-foreground text-[10px] bg-muted/60 px-2 py-0.5 rounded border border-border/40">
+                          {plan.retentionDays && plan.retentionDays > 0
+                            ? `${plan.retentionDays} ${lang === "ar" ? "أيام" : "Days"}`
+                            : (lang === "ar" ? "دائم (بدون حذف)" : "Permanent")}
+                        </span>
                       </div>
                     </div>
 
@@ -1149,6 +1165,76 @@ export default function AdminPackages() {
                           className="shrink-0 scale-75"
                         />
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 8: Auto-Delete Retention Policy */}
+              <div className="space-y-3 pt-3 border-t border-border/40">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-muted/40 p-3.5 rounded-2xl border border-border/50">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="w-4 h-4 text-amber-500" />
+                      <label className="text-xs font-bold text-foreground">
+                        {lang === "ar" ? "سياسة الحذف التلقائي للاحتفاظ بالسجلات (Auto-Delete Retention)" : "Auto-Delete Retention Policy"}
+                      </label>
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[11px] font-bold px-2 py-0.5">
+                        {editingPlan.retentionDays && editingPlan.retentionDays > 0
+                          ? `${editingPlan.retentionDays} ${lang === "ar" ? "أيام" : "Days"}`
+                          : (lang === "ar" ? "دائم (بدون حذف)" : "Permanent")}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {lang === "ar"
+                        ? "حدد المدة الزمنية لحذف سجلات الدردشة والعملاء تلقائياً لحسابات المشتركين في هذه الباقة، أو اختر 'دائم' للاحتفاظ بها للأبد."
+                        : "Configure the auto-delete retention period for chat logs & leads on this subscription plan, or select Permanent to keep them forever."}
+                    </p>
+                  </div>
+
+                  {/* Input for days */}
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className="text-xs text-muted-foreground font-semibold">{lang === "ar" ? "المدة (أيام):" : "Days:"}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={365}
+                      value={editingPlan.retentionDays ?? 0}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setEditingPlan({ ...editingPlan, retentionDays: isNaN(val) || val <= 0 ? 0 : val });
+                      }}
+                      className="w-20 h-7 text-xs font-bold tabular-nums rounded-lg bg-background"
+                    />
+                  </div>
+                </div>
+
+                {/* Retention Presets */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-1.5">
+                  {[
+                    { labelAr: "7 أيام",   labelEn: "7 Days",   days: 7 },
+                    { labelAr: "14 يوماً", labelEn: "14 Days",  days: 14 },
+                    { labelAr: "30 يوماً", labelEn: "30 Days",  days: 30 },
+                    { labelAr: "60 يوماً", labelEn: "60 Days",  days: 60 },
+                    { labelAr: "90 يوماً", labelEn: "90 Days",  days: 90 },
+                    { labelAr: "180 يوماً", labelEn: "180 Days", days: 180 },
+                    { labelAr: "365 يوماً", labelEn: "365 Days", days: 365 },
+                    { labelAr: "دائم (0)", labelEn: "Permanent", days: 0 },
+                  ].map((preset) => {
+                    const isSelected = (editingPlan.retentionDays ?? 0) === preset.days;
+                    return (
+                      <button
+                        key={preset.days}
+                        type="button"
+                        onClick={() => setEditingPlan({ ...editingPlan, retentionDays: preset.days })}
+                        className={`px-2 py-1.5 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                          isSelected
+                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                            : "bg-background/80 border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {lang === "ar" ? preset.labelAr : preset.labelEn}
+                      </button>
                     );
                   })}
                 </div>

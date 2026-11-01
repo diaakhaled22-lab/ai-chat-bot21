@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useGetClientCompany,
   getGetClientCompanyQueryKey,
+  useGetClientChatLogRetention,
   customFetch,
 } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
@@ -47,6 +48,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Phone,
+  RotateCcw,
 } from "lucide-react";
 
 type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
@@ -111,6 +113,8 @@ interface PlanDef {
   badgeEn?: string;
   featuresAr: string[];
   featuresEn: string[];
+  allowedPages?: string[];
+  retentionDays?: number | null;
   isActive?: boolean;
 }
 
@@ -142,6 +146,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Email notifications & alerts",
       "Ticket support (response within 24h)",
     ],
+    retentionDays: 7,
   },
   {
     id: "pro",
@@ -175,6 +180,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Universal Chat Inbox with Human Handoff",
       "Priority technical support & instant alerts",
     ],
+    retentionDays: 30,
   },
   {
     id: "enterprise",
@@ -207,6 +213,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Dedicated account manager & performance review",
       "99.9% uptime Service Level Agreement (SLA)",
     ],
+    retentionDays: 90,
   },
 ];
 
@@ -238,10 +245,14 @@ export default function ClientPackages() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [clientPhone, setClientPhone] = useState("");
   const [clientNotes, setClientNotes] = useState("");
+  const [selectedRetention, setSelectedRetention] = useState<number | null>(30);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submittedPlans, setSubmittedPlans] = useState<Record<string, { phone: string; submittedAt?: string }>>({});
   const [activeSelectedPlanId, setActiveSelectedPlanId] = useState<string | null>(null);
+
+  // Client Chat Log Retention Query
+  const { data: retentionData } = useGetClientChatLogRetention();
 
   // Topup request modal
   const [topupPack, setTopupPack] = useState<TopupItemDef | null>(null);
@@ -427,6 +438,13 @@ export default function ClientPackages() {
     setPhoneError(null);
     setDuplicateWarning(null);
 
+    // Set default retention from plan or current company retention
+    setSelectedRetention(
+      plan.retentionDays !== undefined
+        ? plan.retentionDays
+        : (retentionData?.retentionDays ?? 30)
+    );
+
     // If this specific plan has a previously accepted/submitted request, display that phone number
     const prevPlanRequest = submittedPlans[plan.id];
     if (prevPlanRequest?.phone) {
@@ -496,6 +514,7 @@ export default function ClientPackages() {
       `دورة الفوترة: ${cycleText}`,
       `السعر التقديري: ${price} ${currencyCfg.symbol} / شهر`,
       `رصيد الرموز المرفق: ${selectedPlan.tokensFormatted || selectedPlan.tokensMonthly.toLocaleString()} Tokens`,
+      `سياسة الحذف التلقائي للاحتفاظ بالسجلات: ${selectedRetention && selectedRetention > 0 ? `${selectedRetention} يوم` : (lang === "ar" ? "دائم (بدون حذف تلقائي)" : "Permanent (Never delete)")}`,
       `رقم هاتف / واتساب للتواصل: ${trimmedPhone}`,
       clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes.trim()}` : null,
       `اسم الشركة الحالي: ${(company as any)?.name ?? "لم يتم الإنشاء بعد"}`,
@@ -508,6 +527,15 @@ export default function ClientPackages() {
       { title, description },
       {
         onSuccess: () => {
+          // Immediately apply chosen auto-delete retention policy to company
+          customFetch("/api/client/chat-log-retention", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ retentionDays: selectedRetention }),
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/client/chat-log-retention"] });
+          }).catch(() => {});
+
           // Set active selected plan with prominent blue border
           setActiveSelectedPlanId(selectedPlan.id);
           try {
@@ -907,6 +935,19 @@ export default function ClientPackages() {
                     {plan.tokensFormatted || Number(plan.tokensMonthly).toLocaleString()} Tokens
                   </span>
                 </div>
+
+                {/* Auto-Delete Retention Highlight */}
+                <div className="mt-2 p-2 rounded-xl border border-border/50 bg-muted/30 flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>{lang === "ar" ? "الاحتفاظ بالسجلات:" : "Data Retention:"}</span>
+                  </div>
+                  <span className="font-bold text-foreground">
+                    {plan.retentionDays && plan.retentionDays > 0
+                      ? `${plan.retentionDays} ${lang === "ar" ? "أيام" : "Days"}`
+                      : (lang === "ar" ? "دائم (لا يحذف)" : "Permanent")}
+                  </span>
+                </div>
               </div>
 
               {/* Features List */}
@@ -1220,7 +1261,54 @@ export default function ClientPackages() {
                 )}
               </div>
 
+              {/* Auto-Delete Retention Policy Selection */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{lang === "ar" ? "سياسة الحذف التلقائي للاحتفاظ بالسجلات" : "Auto-Delete Retention Policy"}</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/25">
+                    {selectedRetention && selectedRetention > 0
+                      ? `${selectedRetention} ${lang === "ar" ? "أيام" : "Days"}`
+                      : (lang === "ar" ? "دائم (بدون حذف)" : "Permanent")}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {lang === "ar"
+                    ? "حدد مدة بقاء سجلات المحادثات وحجوزات العملاء في لوحة تحكمك قبل أرشفة وحذف السجلات القديمة تلقائياً."
+                    : "Choose how long chat logs and CRM bookings are kept in your dashboard before being automatically purged."}
+                </p>
 
+                {/* Preset Chips */}
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 pt-1">
+                  {[
+                    { labelAr: "7 أيام",   labelEn: "7d",   days: 7 },
+                    { labelAr: "14 يوماً", labelEn: "14d",  days: 14 },
+                    { labelAr: "30 يوماً", labelEn: "30d",  days: 30 },
+                    { labelAr: "60 يوماً", labelEn: "60d",  days: 60 },
+                    { labelAr: "90 يوماً", labelEn: "90d",  days: 90 },
+                    { labelAr: "180 يوماً", labelEn: "180d", days: 180 },
+                    { labelAr: "دائم (0)", labelEn: "Forever", days: 0 },
+                  ].map((preset) => {
+                    const isSelected = (selectedRetention ?? 0) === preset.days;
+                    return (
+                      <button
+                        key={preset.days}
+                        type="button"
+                        onClick={() => setSelectedRetention(preset.days)}
+                        className={`px-1.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all text-center cursor-pointer ${
+                          isSelected
+                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                            : "bg-background border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {lang === "ar" ? preset.labelAr : preset.labelEn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">
