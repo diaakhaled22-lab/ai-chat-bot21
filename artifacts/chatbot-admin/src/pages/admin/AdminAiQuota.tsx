@@ -856,6 +856,13 @@ export default function AdminAiQuota() {
       quotaEndDate,
       aiModel,
       aiProvider,
+      topupTokens,
+      price,
+      currency,
+      notes,
+      sendInvoice,
+      overrideEmail,
+      overridePhone,
     }: {
       companyId: number;
       quota: number | null;
@@ -863,6 +870,13 @@ export default function AdminAiQuota() {
       quotaEndDate?: string | null;
       aiModel?: string | null;
       aiProvider?: string | null;
+      topupTokens?: number | null;
+      price?: number | null;
+      currency?: string | null;
+      notes?: string | null;
+      sendInvoice?: boolean;
+      overrideEmail?: string;
+      overridePhone?: string;
     }) =>
       customFetch(`/api/admin/companies/${companyId}/quota`, {
         method: "PUT",
@@ -873,6 +887,13 @@ export default function AdminAiQuota() {
           quotaEndDate,
           aiModel,
           aiProvider,
+          topupTokens,
+          price,
+          currency,
+          notes,
+          sendInvoice,
+          overrideEmail,
+          overridePhone,
         }),
       }),
     onSuccess: (data: any, variables) => {
@@ -893,8 +914,13 @@ export default function AdminAiQuota() {
       });
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
       toast({
-        title: lang === "ar" ? "تم تحديث الحصة بنجاح" : "Quota updated successfully",
+        title:
+          variables.topupTokens && variables.topupTokens > 0
+            ? (lang === "ar" ? "تم شحن الرصيد وإرسال الفاتورة للعميل وتسجيلها في صفحة الفواتير 🧾" : "Tokens topped up, invoice dispatched, and recorded in Bills 🧾")
+            : (lang === "ar" ? "تم تحديث الحصة بنجاح" : "Quota updated successfully"),
       });
       setQuotaTarget(null);
       setIsAssignNewOpen(false);
@@ -1210,14 +1236,20 @@ export default function AdminAiQuota() {
     const safeEnd = newEndDateStr ? new Date(`${newEndDateStr}T23:59:59.999Z`).toISOString() : null;
 
     try {
-      await setQuotaMutation.mutateAsync({
+      const res: any = await setQuotaMutation.mutateAsync({
         companyId: quotaTarget.id,
         quota: newQuota,
         quotaStartDate: safeStart,
         quotaEndDate: safeEnd,
+        topupTokens,
+        price: Number(topupPrice) || 0,
+        currency: selectedCurrency,
+        notes: topupNotes.trim() || undefined,
+        sendInvoice: true,
+        overrideEmail: quotaTarget.notificationEmail || "",
       });
 
-      const invoiceNum = `INV-TOPUP-${quotaTarget.id}-${Date.now().toString().slice(-6)}`;
+      const invoiceNum = res?.invoice?.invoiceNumber || `INV-TOPUP-${quotaTarget.id}-${Date.now().toString().slice(-6)}`;
       const invoiceData: TopupInvoiceData = {
         invoiceNumber: invoiceNum,
         companyId: quotaTarget.id,

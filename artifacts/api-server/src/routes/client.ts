@@ -2043,19 +2043,34 @@ router.post("/client/tickets", async (req, res) => {
       .returning();
 
     const [user] = await db
-      .select({ name: usersTable.name })
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        notificationEmail: usersTable.notificationEmail,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId!));
 
     let [company] = await db
-      .select({ id: companiesTable.id, name: companiesTable.name })
+      .select({
+        id: companiesTable.id,
+        name: companiesTable.name,
+        notificationEmail: companiesTable.notificationEmail,
+        whatsappNumber: companiesTable.whatsappNumber,
+      })
       .from(companiesTable)
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
 
     if (!company) {
       const [firstCompany] = await db
-        .select({ id: companiesTable.id, name: companiesTable.name })
+        .select({
+          id: companiesTable.id,
+          name: companiesTable.name,
+          notificationEmail: companiesTable.notificationEmail,
+          whatsappNumber: companiesTable.whatsappNumber,
+        })
         .from(companiesTable)
         .limit(1);
       if (firstCompany) company = firstCompany;
@@ -2218,13 +2233,13 @@ router.post("/client/tickets", async (req, res) => {
       );
     }
 
-    if (isPlanSwitch || titleLower.includes("شحن") || descLower.includes("شحن")) {
+    if (isPlanSwitch || titleLower.includes("شحن") || descLower.includes("شحن") || titleLower.includes("topup")) {
       sendPlanRequestAdminNotification({
         id: ticket.id,
         title: ticket.title,
         description: ticket.description,
         clientName: user?.name ?? "Unknown",
-        clientEmail: user?.email ?? undefined,
+        clientEmail: user?.notificationEmail || user?.email || company?.notificationEmail || undefined,
         companyName: company?.name ?? undefined,
       }).catch(err => {
         logger.error({ err }, "Failed to send plan request notification email");

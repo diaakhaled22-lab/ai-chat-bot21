@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { db, ticketsTable, companiesTable, usersTable, notificationsTable, chatLogsTable, type Ticket, type Company, type User } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem } from "./packagesCatalog";
 import { getExchangeRates } from "./currencyRates";
 import { sendInvoiceToClient, type InvoiceData } from "./invoice";
@@ -53,6 +53,21 @@ export function parseTicketPlanDetails(ticket: Ticket) {
     phone = phoneMatch[1].trim();
   }
 
+  // Extract client email from ticket if provided
+  let clientEmail = "";
+  const emailMatch = desc.match(/(?:البريد الإلكتروني|بريد|email)[:\s]+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i) ||
+    desc.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  if (emailMatch && emailMatch[1]) {
+    clientEmail = emailMatch[1].trim();
+  }
+
+  // Extract company name from ticket if present
+  let parsedCompanyName = "";
+  const compMatch = desc.match(/(?:اسم الشركة|الشركة|company|organization)[:\s]+([^\n\r]+)/i);
+  if (compMatch && compMatch[1]) {
+    parsedCompanyName = compMatch[1].trim();
+  }
+
   // Extract billing cycle
   const isYearly = descLower.includes("سنوي") || titleLower.includes("سنوي") || descLower.includes("yearly");
   const billingCycle: "monthly" | "yearly" = isYearly ? "yearly" : "monthly";
@@ -69,28 +84,48 @@ export function parseTicketPlanDetails(ticket: Ticket) {
   if (isTopup) {
     // Find tokens
     let tokens = 50_000;
-    const tokenMatch = desc.match(/(\d+[\d,]*)\s*tokens?/i) || title.match(/(\d+[\d,]*)\s*رموز/i);
+    const tokenMatch =
+      desc.match(/(\d+[\d,]*)\s*tokens?/i) ||
+      title.match(/(\d+[\d,]*)\s*رموز/i) ||
+      desc.match(/(\d+[\d,]*)\s*رموز/i);
+    const kMatch = titleLower.match(/(\d+)\s*k\b/) || descLower.match(/(\d+)\s*k\b/);
+    const mMatch = titleLower.match(/(\d+)\s*m\b/) || descLower.match(/(\d+)\s*m\b/);
+
     if (tokenMatch && tokenMatch[1]) {
       tokens = parseInt(tokenMatch[1].replace(/,/g, ""), 10);
-    } else if (title.includes("25k") || desc.includes("25k")) {
+    } else if (kMatch && kMatch[1]) {
+      tokens = parseInt(kMatch[1], 10) * 1000;
+    } else if (mMatch && mMatch[1]) {
+      tokens = parseInt(mMatch[1], 10) * 1_000_000;
+    } else if (titleLower.includes("25k") || descLower.includes("25k")) {
       tokens = 25_000;
-    } else if (title.includes("50k") || desc.includes("50k")) {
+    } else if (titleLower.includes("50k") || descLower.includes("50k")) {
       tokens = 50_000;
-    } else if (title.includes("100k") || desc.includes("100k")) {
+    } else if (titleLower.includes("100k") || descLower.includes("100k")) {
       tokens = 100_000;
-    } else if (title.includes("250k") || desc.includes("250k")) {
+    } else if (titleLower.includes("250k") || descLower.includes("250k")) {
       tokens = 250_000;
+    } else if (titleLower.includes("500k") || descLower.includes("500k")) {
+      tokens = 500_000;
+    } else if (titleLower.includes("1m") || descLower.includes("1m")) {
+      tokens = 1_000_000;
     }
 
     const matchedPack =
-      DEFAULT_PACKAGES_CATALOG.topupPacks.find((p) => p.tokens === tokens) ||
-      DEFAULT_PACKAGES_CATALOG.topupPacks[1];
+      DEFAULT_PACKAGES_CATALOG.topupPacks.find((p) => p.tokens === tokens) || {
+        id: `custom-${tokens}`,
+        tokens,
+        priceUsd: Math.max(5, Math.round((tokens / 25000) * 5)),
+        formatted: `${tokens >= 1_000_000 ? tokens / 1_000_000 + "M" : tokens / 1000 + "K"}+`,
+      };
 
     return {
       isTopup: true,
       topupPack: matchedPack,
       tokens,
       phone,
+      clientEmail,
+      parsedCompanyName,
       billingCycle: "monthly" as const,
       retentionDays: null,
       plan: null,
@@ -141,6 +176,8 @@ export function parseTicketPlanDetails(ticket: Ticket) {
     topupPack: null,
     tokens: plan.tokensMonthly,
     phone,
+    clientEmail,
+    parsedCompanyName,
     billingCycle,
     retentionDays: retentionDays !== undefined ? retentionDays : plan.retentionDays,
     channels,
@@ -178,7 +215,10 @@ export async function processApprovedPlanRequest(
     throw new Error(`Ticket #${ticketId} not found`);
   }
 
-  // 2. Fetch Client and Company
+  // 2. Parse details from ticket
+  const parsed = parseTicketPlanDetails(ticket);
+
+  // 3. Fetch Client and Company
   const [client] = await db
     .select()
     .from(usersTable)
@@ -195,21 +235,45 @@ export async function processApprovedPlanRequest(
     .where(eq(companiesTable.clientId, client.id))
     .limit(1);
 
+  // If no company found by clientId, try matching parsed company name from ticket description
+  if (!company && parsed.parsedCompanyName) {
+    const [compByName] = await db
+      .select()
+      .from(companiesTable)
+      .where(ilike(companiesTable.name, `%${parsed.parsedCompanyName}%`))
+      .limit(1);
+    if (compByName) company = compByName;
+  }
+
   // If no company exists yet, create a default one for this client
   if (!company) {
     const [newComp] = await db
       .insert(companiesTable)
       .values({
         clientId: client.id,
-        name: client.name ? `${client.name}'s Bot` : "شركة جديدة",
+        name: parsed.parsedCompanyName || (client.name ? `${client.name}'s Bot` : "شركة جديدة"),
         isActive: true,
       })
       .returning();
     company = newComp;
   }
 
-  // 3. Parse details
-  const parsed = parseTicketPlanDetails(ticket);
+  const effectiveClientEmail =
+    parsed.clientEmail ||
+    client.notificationEmail ||
+    client.email ||
+    company.notificationEmail ||
+    "";
+
+  if (parsed.clientEmail) {
+    if (!client.email && !client.notificationEmail) {
+      await db.update(usersTable).set({ notificationEmail: parsed.clientEmail }).where(eq(usersTable.id, client.id)).catch(() => {});
+    }
+    if (!company.notificationEmail) {
+      await db.update(companiesTable).set({ notificationEmail: parsed.clientEmail }).where(eq(companiesTable.id, company.id)).catch(() => {});
+    }
+  }
+
   const ratesData = await getExchangeRates();
   const exchangeRate = ratesData.rates.EGP || 50.0;
   const currencySymbol = "EGP";
@@ -244,7 +308,7 @@ export async function processApprovedPlanRequest(
       ticketId: ticket.id,
       issueDate,
       clientName: client.name || "العميل",
-      clientEmail: client.email || client.notificationEmail || company.notificationEmail || "",
+      clientEmail: effectiveClientEmail,
       clientPhone: parsed.phone || company.whatsappNumber || "",
       companyName: company.name,
       itemType: "topup",
@@ -326,7 +390,7 @@ export async function processApprovedPlanRequest(
       ticketId: ticket.id,
       issueDate,
       clientName: client.name || "العميل",
-      clientEmail: client.email || client.notificationEmail || company.notificationEmail || "",
+      clientEmail: effectiveClientEmail,
       clientPhone: parsed.phone || company.whatsappNumber || "",
       companyName: company.name,
       itemType: "plan",

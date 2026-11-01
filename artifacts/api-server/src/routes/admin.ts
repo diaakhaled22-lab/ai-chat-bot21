@@ -30,7 +30,7 @@ import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { processApprovedPlanRequest, parseTicketPlanDetails } from "../lib/planApproval";
-import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber } from "../lib/invoice";
+import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, type InvoiceData } from "../lib/invoice";
 import { sendWhatsAppMessage } from "./whatsapp";
 
 const router = Router();
@@ -1604,7 +1604,22 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
   await ensureQuotaColumns();
   try {
     const id = Number(req.params.id);
-    const { monthlyTokenQuota, quotaStartDate, quotaEndDate, startDate, endDate, aiModel, aiProvider } = req.body as {
+    const {
+      monthlyTokenQuota,
+      quotaStartDate,
+      quotaEndDate,
+      startDate,
+      endDate,
+      aiModel,
+      aiProvider,
+      topupTokens,
+      price,
+      currency,
+      notes,
+      sendInvoice,
+      overrideEmail,
+      overridePhone,
+    } = req.body as {
       monthlyTokenQuota: number | null;
       quotaStartDate?: string | null;
       quotaEndDate?: string | null;
@@ -1612,6 +1627,13 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       endDate?: string | null;
       aiModel?: string | null;
       aiProvider?: string | null;
+      topupTokens?: number | null;
+      price?: number | null;
+      currency?: string | null;
+      notes?: string | null;
+      sendInvoice?: boolean;
+      overrideEmail?: string;
+      overridePhone?: string;
     };
     const quota = monthlyTokenQuota == null ? null : Number(monthlyTokenQuota);
     if (quota !== null && (isNaN(quota) || quota < 0)) {
@@ -1683,6 +1705,111 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       res.status(404).json({ error: "Company not found" });
       return;
     }
+    // ── Handle Top-up Auto Invoice & Email Dispatch ──
+    let topupInvoiceResult: any = null;
+    let dispatchResult: any = null;
+
+    if (topupTokens && Number(topupTokens) > 0) {
+      try {
+        const numTokens = Number(topupTokens);
+        const [clientUser] = await db
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.id, updated.clientId))
+          .limit(1);
+
+        const ratesData = await getExchangeRates();
+        const activeRate = ratesData.rates[currency || "EGP"] || ratesData.rates.EGP || 50.0;
+        const priceVal = Number(price) || Math.max(5, Math.round((numTokens / 25000) * 5));
+        const priceUsd = currency === "USD" ? priceVal : Math.round(priceVal / activeRate) || 10;
+        const priceLocal = currency === "USD" ? Math.round(priceUsd * activeRate) : priceVal;
+
+        const now = new Date();
+        const invoiceNumber = `INV-TOPUP-${id}-${Date.now().toString().slice(-6)}`;
+        const issueDate = now.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+
+        const targetEmail =
+          overrideEmail?.trim() ||
+          clientUser?.notificationEmail ||
+          clientUser?.email ||
+          updated.notificationEmail ||
+          "";
+
+        const targetPhone = overridePhone?.trim() || updated.whatsappNumber || "";
+
+        const invoice: InvoiceData = {
+          invoiceNumber,
+          ticketId: 0,
+          issueDate,
+          clientName: clientUser?.name || updated.name,
+          clientEmail: targetEmail,
+          clientPhone: targetPhone,
+          companyName: updated.name,
+          itemType: "topup",
+          itemNameAr: `حزمة شحن رصيد إضافي (+${numTokens >= 1_000_000 ? numTokens / 1_000_000 + "M" : numTokens / 1000 + "K"} رمز)`,
+          itemNameEn: `Top-up Tokens (+${numTokens >= 1_000_000 ? numTokens / 1_000_000 + "M" : numTokens / 1000 + "K"})`,
+          billingCycleAr: "دفعة واحدة",
+          billingCycleEn: "One-Time",
+          tokenQuota: numTokens,
+          priceUsd,
+          priceLocal,
+          currencySymbol: currency || "EGP",
+          status: "activated",
+        };
+
+        // Automatically resolve any open top-up ticket for this company / client
+        const openTickets = await db
+          .select()
+          .from(ticketsTable)
+          .where(and(eq(ticketsTable.clientId, updated.clientId), eq(ticketsTable.status, "open")));
+
+        for (const ot of openTickets) {
+          const otLower = (ot.title || "").toLowerCase();
+          const otDescLower = (ot.description || "").toLowerCase();
+          if (
+            otLower.includes("شحن") ||
+            otLower.includes("topup") ||
+            otLower.includes("حزمة") ||
+            otDescLower.includes("طلب شحن")
+          ) {
+            invoice.ticketId = ot.id;
+            await db
+              .update(ticketsTable)
+              .set({
+                status: "resolved",
+                adminNote: `تم شحن الرصيد (${numTokens.toLocaleString()} رمز) وإصدار الفاتورة رقم #${invoiceNumber} بنجاح.`,
+                aiResponse: `تم اعتماد وشحن الرصيد الإضافي لحسابكم بنجاح! رقم الفاتورة #${invoiceNumber}.`,
+                updatedAt: now,
+              })
+              .where(eq(ticketsTable.id, ot.id))
+              .catch(() => {});
+          }
+        }
+
+        // Dispatch Invoice to client via Email (SMTP + Resend) and WhatsApp
+        dispatchResult = await sendInvoiceToClient(invoice, clientUser || null, updated);
+
+        // Record in companyActivityLogsTable for persistent Bills & Invoices history
+        await db
+          .insert(companyActivityLogsTable)
+          .values({
+            companyId: updated.id,
+            action: "topup_invoice",
+            performedBy: (req.session as any)?.userName || "Admin",
+            note: JSON.stringify(invoice),
+          })
+          .catch(() => {});
+
+        topupInvoiceResult = invoice;
+        logger.info(
+          { companyId: id, invoiceNumber, dispatchResult },
+          "Top-up invoice generated, recorded, and dispatched"
+        );
+      } catch (topupErr) {
+        logger.error({ topupErr, companyId: id }, "Failed to process top-up invoice generation/dispatch");
+      }
+    }
+
     res.json({
       ok: true,
       monthlyTokenQuota: updated.monthlyTokenQuota ?? null,
@@ -1692,6 +1819,8 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
       activationEnd: toIsoOrNull(updated.activationEnd),
       aiProvider: updated.aiProvider ?? null,
       aiModel: updated.aiModel ?? null,
+      invoice: topupInvoiceResult,
+      dispatchResult,
     });
   } catch (err: any) {
     logger.error({ err, message: err?.message, stack: err?.stack }, "Set company quota error");
@@ -2708,6 +2837,30 @@ router.put("/admin/tickets/:id/resolve", async (req, res) => {
       return;
     }
     await syncTicketSolutionToChatAndNotify(id, status);
+
+    // If ticket is a plan switch or top-up request, automatically run processApprovedPlanRequest
+    const titleLower = (ticket.title || "").toLowerCase();
+    const descLower = (ticket.description || "").toLowerCase();
+    const isPlanOrTopup =
+      titleLower.includes("باقة") ||
+      titleLower.includes("plan") ||
+      titleLower.includes("شحن") ||
+      titleLower.includes("topup") ||
+      titleLower.includes("حزمة") ||
+      descLower.includes("معرف الباقة") ||
+      descLower.includes("طلب شحن");
+
+    if (isPlanOrTopup && status === "resolved") {
+      try {
+        await processApprovedPlanRequest(id, {
+          approvedBy: (req.session as any)?.userName || "Admin (Resolve)",
+          channel: "admin_ui",
+        });
+      } catch (procErr) {
+        logger.warn({ procErr, ticketId: id }, "Plan approval auto-process on resolve encountered error (non-fatal)");
+      }
+    }
+
     res.json({ ok: true, status: ticket.status });
   } catch (err) {
     logger.error({ err }, "Resolve ticket error");
@@ -2734,6 +2887,30 @@ router.put("/admin/tickets/:id/admin-note", async (req, res) => {
       return;
     }
     await syncTicketSolutionToChatAndNotify(id, "resolved", adminNote.trim());
+
+    // If ticket is a plan switch or top-up request, automatically run processApprovedPlanRequest
+    const titleLower = (ticket.title || "").toLowerCase();
+    const descLower = (ticket.description || "").toLowerCase();
+    const isPlanOrTopup =
+      titleLower.includes("باقة") ||
+      titleLower.includes("plan") ||
+      titleLower.includes("شحن") ||
+      titleLower.includes("topup") ||
+      titleLower.includes("حزمة") ||
+      descLower.includes("معرف الباقة") ||
+      descLower.includes("طلب شحن");
+
+    if (isPlanOrTopup) {
+      try {
+        await processApprovedPlanRequest(id, {
+          approvedBy: (req.session as any)?.userName || "Admin (Manual Note)",
+          channel: "admin_ui",
+        });
+      } catch (procErr) {
+        logger.warn({ procErr, ticketId: id }, "Plan approval auto-process on admin note encountered error (non-fatal)");
+      }
+    }
+
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Admin note error");
@@ -2797,8 +2974,20 @@ router.get("/admin/invoices", async (req, res) => {
 
       const parsed = parseTicketPlanDetails(t);
       const isTopup = parsed.isTopup;
-      const matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
+      let matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
+      if (!matchedCompanyItem && parsed.parsedCompanyName) {
+        matchedCompanyItem = Array.from(companyMap.values()).find((c) =>
+          c.company.name.toLowerCase().includes(parsed.parsedCompanyName.toLowerCase())
+        );
+      }
       const company = matchedCompanyItem?.company;
+
+      const clientEmail =
+        parsed.clientEmail ||
+        client?.notificationEmail ||
+        client?.email ||
+        company?.notificationEmail ||
+        "";
 
       const invoiceNumber = `INV-${new Date(t.createdAt).getFullYear()}${String(new Date(t.createdAt).getMonth() + 1).padStart(2, "0")}-${t.id}`;
       const priceUsd = isTopup
@@ -2814,7 +3003,7 @@ router.get("/admin/invoices", async (req, res) => {
         companyName: company?.name || client?.name || "شركة غير محددة",
         clientId: client?.id ?? t.clientId,
         clientName: client?.name || "العميل",
-        clientEmail: client?.email || company?.notificationEmail || "",
+        clientEmail,
         clientPhone: parsed.phone || company?.whatsappNumber || "",
         itemType: isTopup ? "topup" : "plan",
         titleAr: isTopup ? (parsed.topupPack ? `شحن ${parsed.topupPack.formatted} رموز` : t.title) : (parsed.plan?.nameAr || t.title),
@@ -2832,6 +3021,66 @@ router.get("/admin/invoices", async (req, res) => {
         issueDate: t.createdAt.toISOString(),
         notes: t.adminNote || t.aiResponse || undefined,
       });
+    }
+
+    // 2b. Fetch top-up invoices logged from AdminAiQuota / manual quota updates
+    try {
+      const topupLogs = await db
+        .select({
+          log: companyActivityLogsTable,
+          company: companiesTable,
+          client: usersTable,
+        })
+        .from(companyActivityLogsTable)
+        .innerJoin(companiesTable, eq(companyActivityLogsTable.companyId, companiesTable.id))
+        .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id))
+        .where(eq(companyActivityLogsTable.action, "topup_invoice"))
+        .orderBy(desc(companyActivityLogsTable.createdAt));
+
+      for (const tl of topupLogs) {
+        try {
+          const inv = JSON.parse(tl.log.note || "{}");
+          if (inv.invoiceNumber) {
+            const existing = invoiceList.find(
+              (i) => i.invoiceNumber === inv.invoiceNumber || (inv.ticketId && i.ticketId === inv.ticketId)
+            );
+            if (existing) {
+              existing.status = "paid";
+              continue;
+            }
+            invoiceList.push({
+              id: `topup-log-${tl.log.id}`,
+              invoiceNumber: inv.invoiceNumber,
+              ticketId: inv.ticketId || null,
+              companyId: tl.company.id,
+              companyName: tl.company.name,
+              clientId: tl.client?.id ?? tl.company.clientId,
+              clientName: inv.clientName || tl.client?.name || tl.company.name,
+              clientEmail:
+                inv.clientEmail ||
+                tl.client?.notificationEmail ||
+                tl.client?.email ||
+                tl.company.notificationEmail ||
+                "",
+              clientPhone: inv.clientPhone || tl.company.whatsappNumber || "",
+              itemType: "topup",
+              titleAr: inv.itemNameAr || "حزمة شحن رصيد إضافي",
+              titleEn: inv.itemNameEn || "Top-up Tokens Pack",
+              billingCycleAr: inv.billingCycleAr || "دفعة واحدة",
+              billingCycleEn: inv.billingCycleEn || "One-Time",
+              tokenQuota: inv.tokenQuota || 0,
+              priceUsd: inv.priceUsd || 10,
+              priceLocal: inv.priceLocal || Math.round((inv.priceUsd || 10) * exchangeRate),
+              currencySymbol: inv.currencySymbol || currencySymbol,
+              status: "paid",
+              issueDate: tl.log.createdAt.toISOString(),
+              notes: `تم الشحن والاعتماد بواسطة ${tl.log.performedBy}`,
+            });
+          }
+        } catch {}
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to fetch topup activity logs for invoices");
     }
 
     // 3. Add monthly Quota Usage Bills for all companies with token quota
@@ -3059,11 +3308,56 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
             status: "sent",
           }).catch(() => {});
         } catch (err: any) {
-          logger.error({ err, targetEmail }, "Failed to send invoice copy email");
+          logger.warn({ err, targetEmail }, "Failed to send invoice copy email via SMTP, attempting Resend fallback");
           emailError = err?.message || "Email send failure";
         }
       } else {
         emailError = "SMTP settings are not configured in Admin Email Settings";
+      }
+
+      // If SMTP did not send, try Resend API
+      if (!emailSent) {
+        try {
+          const { apiKey: resendKey, fromEmail } = await getResendConfig();
+          if (resendKey) {
+            const finalHtml = htmlContent || `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`;
+            const resendRes = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+                to: [targetEmail],
+                subject: `🧾 نسخة من فاتورة #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
+                html: finalHtml,
+              }),
+            });
+
+            if (resendRes.ok) {
+              emailSent = true;
+              emailError = null;
+              logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend");
+              await db
+                .insert(emailLogsTable)
+                .values({
+                  companyId: 1,
+                  recipientEmail: targetEmail,
+                  subject: `نسخة من فاتورة #${invoiceNumber}`,
+                  eventType: "invoice_copy",
+                  status: "sent",
+                })
+                .catch(() => {});
+            } else {
+              const errBody = await resendRes.text();
+              emailError = `Resend error: ${errBody}`;
+              logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed");
+            }
+          }
+        } catch (resendErr: any) {
+          emailError = (emailError ? emailError + " | " : "") + (resendErr?.message ?? "Resend error");
+        }
       }
     }
 
