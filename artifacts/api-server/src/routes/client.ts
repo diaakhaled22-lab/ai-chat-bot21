@@ -2016,7 +2016,7 @@ router.post("/client/tickets", async (req, res) => {
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId!));
 
-    const [company] = await db
+    let [company] = await db
       .select({ id: companiesTable.id, name: companiesTable.name })
       .from(companiesTable)
       .where(eq(companiesTable.clientId, req.session.userId!))
