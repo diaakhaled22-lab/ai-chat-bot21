@@ -50,6 +50,7 @@ import {
   Phone,
   RotateCcw,
 } from "lucide-react";
+import { COMMUNICATION_CHANNELS } from "@/pages/admin/AdminPackages";
 
 type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
 
@@ -115,6 +116,7 @@ interface PlanDef {
   featuresEn: string[];
   allowedPages?: string[];
   retentionDays?: number | null;
+  channels?: string[];
   isActive?: boolean;
 }
 
@@ -130,6 +132,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     tokensFormatted: "50,000",
     color: "#3b82f6",
     gradient: "from-blue-600/20 to-cyan-600/10",
+    channels: ["widget", "telegram"],
     featuresAr: [
       "50,000 رمز شهرياً (AI Tokens)",
       "قناتين: ويدجت الموقع الإلكتروني + بوت تليجرام",
@@ -162,6 +165,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     gradient: "from-[#2D5BE3]/30 via-indigo-600/20 to-purple-600/10",
     badgeAr: "الأكثر طلباً",
     badgeEn: "Most Popular",
+    channels: ["widget", "telegram", "whatsapp", "messenger"],
     featuresAr: [
       "250,000 رمز شهرياً (AI Tokens)",
       "جميع القنوات: موقع + تليجرام + واتساب + ماسنجر",
@@ -195,6 +199,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     gradient: "from-purple-600/25 to-pink-600/10",
     badgeAr: "أعلى أداء",
     badgeEn: "Top Performance",
+    channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
     featuresAr: [
       "1,000,000 رمز شهرياً (AI Tokens)",
       "جميع ميزات الباقة الاحترافية بالكامل",
@@ -246,6 +251,7 @@ export default function ClientPackages() {
   const [clientPhone, setClientPhone] = useState("");
   const [clientNotes, setClientNotes] = useState("");
   const [selectedRetention, setSelectedRetention] = useState<number | null>(30);
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["widget", "telegram", "whatsapp", "messenger"]);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submittedPlans, setSubmittedPlans] = useState<Record<string, { phone: string; submittedAt?: string }>>({});
@@ -445,6 +451,19 @@ export default function ClientPackages() {
         : (retentionData?.retentionDays ?? 30)
     );
 
+    // Pre-fill channels based on plan definition or existing company setup
+    if (Array.isArray(plan.channels) && plan.channels.length > 0) {
+      setSelectedChannels([...plan.channels]);
+    } else {
+      const activeChans: string[] = [];
+      if ((company as any)?.widgetEnabled !== false) activeChans.push("widget");
+      if ((company as any)?.telegramEnabled) activeChans.push("telegram");
+      if ((company as any)?.whatsappEnabled) activeChans.push("whatsapp");
+      if ((company as any)?.messengerEnabled) activeChans.push("messenger");
+      if ((company as any)?.customWebhookEnabled) activeChans.push("webhook");
+      setSelectedChannels(activeChans.length > 0 ? activeChans : ["widget", "telegram"]);
+    }
+
     // If this specific plan has a previously accepted/submitted request, display that phone number
     const prevPlanRequest = submittedPlans[plan.id];
     if (prevPlanRequest?.phone) {
@@ -515,6 +534,13 @@ export default function ClientPackages() {
       `السعر التقديري: ${price} ${currencyCfg.symbol} / شهر`,
       `رصيد الرموز المرفق: ${selectedPlan.tokensFormatted || selectedPlan.tokensMonthly.toLocaleString()} Tokens`,
       `سياسة الحذف التلقائي للاحتفاظ بالسجلات: ${selectedRetention && selectedRetention > 0 ? `${selectedRetention} يوم` : (lang === "ar" ? "دائم (بدون حذف تلقائي)" : "Permanent (Never delete)")}`,
+      `قنوات التواصل المطلوب تفعيلها: ${
+        selectedChannels.length > 0
+          ? selectedChannels
+              .map((cId) => COMMUNICATION_CHANNELS.find((ch) => ch.id === cId)?.titleAr || cId)
+              .join("، ")
+          : (lang === "ar" ? "لم يتم تحديد قنوات" : "None selected")
+      }`,
       `رقم هاتف / واتساب للتواصل: ${trimmedPhone}`,
       clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes.trim()}` : null,
       `اسم الشركة الحالي: ${(company as any)?.name ?? "لم يتم الإنشاء بعد"}`,
@@ -534,6 +560,20 @@ export default function ClientPackages() {
             body: JSON.stringify({ retentionDays: selectedRetention }),
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: ["/api/client/chat-log-retention"] });
+          }).catch(() => {});
+
+          // Immediately update company channels to reflect selected communication channels
+          customFetch("/api/client/company", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              widgetEnabled: selectedChannels.includes("widget"),
+              telegramEnabled: selectedChannels.includes("telegram"),
+              whatsappEnabled: selectedChannels.includes("whatsapp"),
+              messengerEnabled: selectedChannels.includes("messenger"),
+            }),
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
           }).catch(() => {});
 
           // Set active selected plan with prominent blue border
@@ -948,6 +988,35 @@ export default function ClientPackages() {
                       : (lang === "ar" ? "دائم (لا يحذف)" : "Permanent")}
                   </span>
                 </div>
+
+                {/* Included Communication Channels Highlight */}
+                <div className="mt-2 p-2.5 rounded-xl border border-border/50 bg-muted/30 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Bot className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="font-semibold">{lang === "ar" ? "قنوات التواصل المتاحة:" : "Channels Included:"}</span>
+                    </div>
+                    <span className="font-bold text-foreground">
+                      {(plan.channels && plan.channels.length > 0 ? plan.channels.length : 2)} {lang === "ar" ? "قنوات" : "Channels"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {COMMUNICATION_CHANNELS.map((ch) => {
+                      const isIncluded = (plan.channels || ["widget", "telegram"]).includes(ch.id);
+                      if (!isIncluded) return null;
+                      const IconComp = ch.icon;
+                      return (
+                        <span
+                          key={ch.id}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${ch.color}`}
+                        >
+                          <IconComp className="w-3 h-3 shrink-0" />
+                          <span>{lang === "ar" ? ch.titleAr.split(" (")[0] : ch.titleEn}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Features List */}
@@ -1304,6 +1373,102 @@ export default function ClientPackages() {
                         }`}
                       >
                         {lang === "ar" ? preset.labelAr : preset.labelEn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Communication Channels Selector */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-primary/5 border border-primary/15">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Bot className="w-3.5 h-3.5 text-primary" />
+                    <span>{lang === "ar" ? "قنوات التواصل المطلوب تفعيلها" : "Communication Channels to Activate"}</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                    {selectedChannels.length} {lang === "ar" ? "قنوات محددة" : "Selected"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {lang === "ar"
+                    ? "حدد قنوات التواصل التي ترغب في تشغيلها مع باقتك. سيتم تطبيق إعدادات القنوات المختارة تلقائياً."
+                    : "Choose which channels should be activated for your bot with this plan. Selected channels are set up automatically."}
+                </p>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allowed = selectedPlan.channels && selectedPlan.channels.length > 0
+                        ? selectedPlan.channels
+                        : ["widget", "telegram", "whatsapp", "messenger", "webhook"];
+                      setSelectedChannels(allowed);
+                    }}
+                    className="h-6 px-2 text-[10px] rounded-lg text-primary hover:bg-primary/10"
+                  >
+                    {lang === "ar" ? "تحديد المتاح بالكامل" : "Select All Allowed"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedChannels(["widget"])}
+                    className="h-6 px-2 text-[10px] rounded-lg text-muted-foreground hover:bg-muted"
+                  >
+                    {lang === "ar" ? "ويدجت الموقع فقط" : "Widget Only"}
+                  </Button>
+                </div>
+
+                {/* Channels Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {COMMUNICATION_CHANNELS.map((ch) => {
+                    const isPlanAllowed = !selectedPlan.channels || selectedPlan.channels.includes(ch.id);
+                    const isChecked = selectedChannels.includes(ch.id);
+                    const IconComp = ch.icon;
+                    return (
+                      <button
+                        key={ch.id}
+                        type="button"
+                        disabled={!isPlanAllowed}
+                        onClick={() => {
+                          if (isChecked) {
+                            setSelectedChannels((prev) => prev.filter((id) => id !== ch.id));
+                          } else {
+                            setSelectedChannels((prev) => [...prev, ch.id]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-right transition-all flex items-start justify-between gap-2 cursor-pointer ${
+                          !isPlanAllowed
+                            ? "opacity-40 bg-muted/40 border-dashed border-border cursor-not-allowed"
+                            : isChecked
+                            ? "bg-card border-primary/50 shadow-sm ring-1 ring-primary/20"
+                            : "bg-background/60 border-border/70 hover:bg-muted/40"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 ${ch.color}`}>
+                            <IconComp className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-foreground truncate">
+                              {lang === "ar" ? ch.titleAr : ch.titleEn}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                              {!isPlanAllowed
+                                ? (lang === "ar" ? "غير مضمنة في هذه الباقة" : "Not included in plan")
+                                : (lang === "ar" ? ch.descAr : ch.descEn)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-1 transition-colors ${
+                          isChecked ? "bg-primary border-primary text-primary-foreground" : "border-border bg-background"
+                        }`}>
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
                       </button>
                     );
                   })}

@@ -46,8 +46,21 @@ import {
   Zap,
   RefreshCw,
   SlidersHorizontal,
+  Globe,
+  Phone,
+  MessageCircle,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import { CLIENT_PAGES_META } from "./AdminCompanies";
+
+export const COMMUNICATION_CHANNELS = [
+  { id: "widget", key: "widgetEnabled", titleAr: "ويدجت الموقع (Website Widget)", titleEn: "Website Widget", descAr: "نافذة محادثة ذكية تطفو على موقعك الإلكتروني لخدمة الزوار.", descEn: "Interactive floating web chat widget for visitor engagement.", icon: Globe, color: "text-violet-500 bg-violet-500/10 border-violet-500/20" },
+  { id: "telegram", key: "telegramEnabled", titleAr: "بوت تليجرام (Telegram Bot)", titleEn: "Telegram Bot", descAr: "بوت ذكي سريع للرد الفوري على رسائل المشتركين على Telegram.", descEn: "Intelligent chatbot responding directly to Telegram messages.", icon: Send, color: "text-sky-500 bg-sky-500/10 border-sky-500/20" },
+  { id: "whatsapp", key: "whatsappEnabled", titleAr: "واتساب للأعمال (WhatsApp API)", titleEn: "WhatsApp Cloud API", descAr: "ربط رسمي عبر WhatsApp Cloud API لأتمتة خدمة العملاء والحجوزات.", descEn: "Official WhatsApp Cloud API for bookings & customer support.", icon: Phone, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
+  { id: "messenger", key: "messengerEnabled", titleAr: "فيسبوك ماسنجر (Messenger)", titleEn: "Facebook Messenger", descAr: "الرد التلقائي على رسائل صفحات فيسبوك والماسنجر باحترافية.", descEn: "Automated AI handling of Facebook Page direct messages.", icon: MessageSquare, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+  { id: "webhook", key: "customWebhookEnabled", titleAr: "الويب هوك و REST API", titleEn: "Custom Webhooks & API", descAr: "ربط الشات بوت بأنظمتك وتطبيقاتك عبر Webhook و REST API.", descEn: "Integrate AI bot with your custom apps via webhook & API.", icon: Zap, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
+];
 
 export interface PackageItem {
   id: string;
@@ -66,6 +79,7 @@ export interface PackageItem {
   featuresEn: string[];
   allowedPages?: string[];
   retentionDays?: number | null;
+  channels?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -218,6 +232,7 @@ export default function AdminPackages() {
       featuresEn: ["100,000 monthly AI Tokens", "Website Widget & Telegram Bot"],
       allowedPages: CLIENT_PAGES_META.map((p) => p.id),
       retentionDays: 30,
+      channels: ["widget", "telegram", "whatsapp", "messenger"],
       isActive: true,
       sortOrder: packages.length + 1,
     });
@@ -236,6 +251,9 @@ export default function AdminPackages() {
         ? [...plan.allowedPages]
         : CLIENT_PAGES_META.map((p) => p.id),
       retentionDays: plan.retentionDays !== undefined ? plan.retentionDays : 30,
+      channels: Array.isArray(plan.channels)
+        ? [...plan.channels]
+        : ["widget", "telegram", "whatsapp", "messenger"],
     });
     setNewFeatureAr("");
     setNewFeatureEn("");
@@ -628,6 +646,32 @@ export default function AdminPackages() {
                             ? `${plan.retentionDays} ${lang === "ar" ? "أيام" : "Days"}`
                             : (lang === "ar" ? "دائم (بدون حذف)" : "Permanent")}
                         </span>
+                      </div>
+
+                      {/* Channels Badges */}
+                      <div className="mt-1.5 pt-1.5 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                          <MessageCircle className="w-3.5 h-3.5 text-primary" />
+                          <span>{lang === "ar" ? "قنوات التواصل:" : "Channels:"}</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {COMMUNICATION_CHANNELS.map((ch) => {
+                            const Icon = ch.icon;
+                            const isIncluded = Array.isArray(plan.channels)
+                              ? plan.channels.includes(ch.id)
+                              : ch.id !== "webhook";
+                            if (!isIncluded) return null;
+                            return (
+                              <div
+                                key={ch.id}
+                                className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${ch.color}`}
+                                title={lang === "ar" ? ch.titleAr : ch.titleEn}
+                              >
+                                <Icon className="w-3 h-3" />
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
@@ -1235,6 +1279,124 @@ export default function AdminPackages() {
                       >
                         {lang === "ar" ? preset.labelAr : preset.labelEn}
                       </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 9: Communication Channels */}
+              <div className="space-y-3 pt-3 border-t border-border/40">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-muted/40 p-3.5 rounded-2xl border border-border/50">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-primary" />
+                      <label className="text-xs font-bold text-foreground">
+                        {lang === "ar" ? "قنوات التواصل المسموحة في هذه الباقة" : "Allowed Communication Channels"}
+                      </label>
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[11px] font-bold px-2 py-0.5">
+                        {(editingPlan.channels ?? COMMUNICATION_CHANNELS.map((c) => c.id)).length} / {COMMUNICATION_CHANNELS.length}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {lang === "ar"
+                        ? "حدد قنوات التواصل (واتساب، تليجرام، ويدجت الموقع، ماسنجر) التي يستطيع العميل ربطها وتشغيلها في هذه الباقة."
+                        : "Select communication channels (WhatsApp, Telegram, Website Widget, Messenger) clients on this plan can use."}
+                    </p>
+                  </div>
+
+                  {/* Presets */}
+                  <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          channels: COMMUNICATION_CHANNELS.map((c) => c.id),
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "تفعيل الكل" : "Enable All"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          channels: ["widget", "telegram", "whatsapp", "messenger"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "الأساسية" : "Standard"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          channels: ["widget"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2 text-destructive hover:text-destructive rounded-lg cursor-pointer"
+                    >
+                      {lang === "ar" ? "ويدجت فقط" : "Widget Only"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Channels Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {COMMUNICATION_CHANNELS.map((ch) => {
+                    const Icon = ch.icon;
+                    const channelsList = editingPlan.channels ?? COMMUNICATION_CHANNELS.map((c) => c.id);
+                    const isEnabled = channelsList.includes(ch.id);
+
+                    const toggleChannel = () => {
+                      const updated = isEnabled
+                        ? channelsList.filter((id) => id !== ch.id)
+                        : [...channelsList, ch.id];
+                      setEditingPlan({ ...editingPlan, channels: updated });
+                    };
+
+                    return (
+                      <div
+                        key={ch.id}
+                        onClick={toggleChannel}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                          isEnabled
+                            ? "bg-primary/5 border-primary/40 shadow-sm"
+                            : "bg-muted/20 border-border/60 opacity-60 hover:opacity-90"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${ch.color}`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block truncate">
+                              {lang === "ar" ? ch.titleAr : ch.titleEn}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block truncate">
+                              {lang === "ar" ? ch.descAr : ch.descEn}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={toggleChannel}
+                          className="shrink-0 scale-75"
+                        />
+                      </div>
                     );
                   })}
                 </div>

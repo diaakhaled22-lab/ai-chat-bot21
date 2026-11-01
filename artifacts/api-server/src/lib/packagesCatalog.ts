@@ -15,6 +15,7 @@ export interface PackageItem {
   featuresEn: string[];
   allowedPages?: string[];
   retentionDays?: number | null;
+  channels?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -79,6 +80,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "settings",
       ],
       retentionDays: 7,
+      channels: ["widget", "telegram"],
       isActive: true,
       sortOrder: 1,
     },
@@ -132,6 +134,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "settings",
       ],
       retentionDays: 30,
+      channels: ["widget", "telegram", "whatsapp", "messenger"],
       isActive: true,
       sortOrder: 2,
     },
@@ -186,6 +189,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
         "settings",
       ],
       retentionDays: 90,
+      channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
       isActive: true,
       sortOrder: 3,
     },
