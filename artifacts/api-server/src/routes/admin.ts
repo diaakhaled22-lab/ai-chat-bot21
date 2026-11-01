@@ -4794,6 +4794,7 @@ async function handleUpdatePackages(req: any, res: any) {
       allowedPages: Array.isArray((p as any).allowedPages) ? (p as any).allowedPages : undefined,
       retentionDays: (p as any).retentionDays !== undefined ? ((p as any).retentionDays === null || (p as any).retentionDays === 0 ? 0 : Number((p as any).retentionDays)) : undefined,
       channels: Array.isArray((p as any).channels) ? (p as any).channels : undefined,
+      tools: Array.isArray((p as any).tools) ? (p as any).tools : undefined,
       isActive: p.isActive !== false,
       sortOrder: Number(p.sortOrder) || index + 1,
     }));

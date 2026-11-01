@@ -16,6 +16,7 @@ export interface PackageItem {
   allowedPages?: string[];
   retentionDays?: number | null;
   channels?: string[];
+  tools?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -81,6 +82,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
       ],
       retentionDays: 7,
       channels: ["widget", "telegram"],
+      tools: ["leads_crm"],
       isActive: true,
       sortOrder: 1,
     },
@@ -135,6 +137,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
       ],
       retentionDays: 30,
       channels: ["widget", "telegram", "whatsapp", "messenger"],
+      tools: ["calendar", "sheets", "leads_crm", "handoff", "web_sync"],
       isActive: true,
       sortOrder: 2,
     },
@@ -190,9 +193,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
       ],
       retentionDays: 90,
       channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
-      isActive: true,
-      sortOrder: 3,
-    },
+      tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
   ],
   topupPacks: [
     { id: "topup-25k", tokens: 25_000, formatted: "+25K", priceUsd: 5, isActive: true },

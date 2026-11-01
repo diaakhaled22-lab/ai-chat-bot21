@@ -49,8 +49,13 @@ import {
   AlertTriangle,
   Phone,
   RotateCcw,
+  Wrench,
+  Calendar as CalendarIcon,
+  FileSpreadsheet,
+  Users,
+  Volume2,
 } from "lucide-react";
-import { COMMUNICATION_CHANNELS } from "@/pages/admin/AdminPackages";
+import { COMMUNICATION_CHANNELS, SYSTEM_TOOLS } from "@/pages/admin/AdminPackages";
 
 type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
 
@@ -117,6 +122,7 @@ interface PlanDef {
   allowedPages?: string[];
   retentionDays?: number | null;
   channels?: string[];
+  tools?: string[];
   isActive?: boolean;
 }
 
@@ -133,6 +139,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     color: "#3b82f6",
     gradient: "from-blue-600/20 to-cyan-600/10",
     channels: ["widget", "telegram"],
+    tools: ["leads_crm"],
     featuresAr: [
       "50,000 رمز شهرياً (AI Tokens)",
       "قناتين: ويدجت الموقع الإلكتروني + بوت تليجرام",
@@ -166,6 +173,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     badgeAr: "الأكثر طلباً",
     badgeEn: "Most Popular",
     channels: ["widget", "telegram", "whatsapp", "messenger"],
+    tools: ["calendar", "sheets", "leads_crm", "handoff", "web_sync"],
     featuresAr: [
       "250,000 رمز شهرياً (AI Tokens)",
       "جميع القنوات: موقع + تليجرام + واتساب + ماسنجر",
@@ -200,6 +208,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     badgeAr: "أعلى أداء",
     badgeEn: "Top Performance",
     channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
+    tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
     featuresAr: [
       "1,000,000 رمز شهرياً (AI Tokens)",
       "جميع ميزات الباقة الاحترافية بالكامل",
@@ -252,6 +261,7 @@ export default function ClientPackages() {
   const [clientNotes, setClientNotes] = useState("");
   const [selectedRetention, setSelectedRetention] = useState<number | null>(30);
   const [selectedChannels, setSelectedChannels] = useState<string[]>(["widget", "telegram", "whatsapp", "messenger"]);
+  const [selectedTools, setSelectedTools] = useState<string[]>(["calendar", "sheets", "leads_crm", "handoff"]);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submittedPlans, setSubmittedPlans] = useState<Record<string, { phone: string; submittedAt?: string }>>({});
@@ -464,6 +474,18 @@ export default function ClientPackages() {
       setSelectedChannels(activeChans.length > 0 ? activeChans : ["widget", "telegram"]);
     }
 
+    // Pre-fill tools based on plan definition or existing company setup
+    if (Array.isArray(plan.tools) && plan.tools.length > 0) {
+      setSelectedTools([...plan.tools]);
+    } else {
+      const activeTools: string[] = ["leads_crm", "handoff"];
+      if ((company as any)?.googleCalendarEnabled) activeTools.push("calendar");
+      if ((company as any)?.googleSheetsEnabled) activeTools.push("sheets");
+      if ((company as any)?.voiceReplyEnabled) activeTools.push("voice");
+      if ((company as any)?.websiteAutoSync) activeTools.push("web_sync");
+      setSelectedTools(activeTools);
+    }
+
     // If this specific plan has a previously accepted/submitted request, display that phone number
     const prevPlanRequest = submittedPlans[plan.id];
     if (prevPlanRequest?.phone) {
@@ -541,6 +563,13 @@ export default function ClientPackages() {
               .join("، ")
           : (lang === "ar" ? "لم يتم تحديد قنوات" : "None selected")
       }`,
+      `الأدوات والتكاملات المطلوب تفعيلها: ${
+        selectedTools.length > 0
+          ? selectedTools
+              .map((tId) => SYSTEM_TOOLS.find((tl) => tl.id === tId)?.titleAr || tId)
+              .join("، ")
+          : (lang === "ar" ? "لم يتم تحديد أدوات" : "None selected")
+      }`,
       `رقم هاتف / واتساب للتواصل: ${trimmedPhone}`,
       clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes.trim()}` : null,
       `اسم الشركة الحالي: ${(company as any)?.name ?? "لم يتم الإنشاء بعد"}`,
@@ -562,7 +591,7 @@ export default function ClientPackages() {
             queryClient.invalidateQueries({ queryKey: ["/api/client/chat-log-retention"] });
           }).catch(() => {});
 
-          // Immediately update company channels to reflect selected communication channels
+          // Immediately update company channels and tools
           customFetch("/api/client/company", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -571,6 +600,10 @@ export default function ClientPackages() {
               telegramEnabled: selectedChannels.includes("telegram"),
               whatsappEnabled: selectedChannels.includes("whatsapp"),
               messengerEnabled: selectedChannels.includes("messenger"),
+              googleCalendarEnabled: selectedTools.includes("calendar"),
+              googleSheetsEnabled: selectedTools.includes("sheets"),
+              voiceReplyEnabled: selectedTools.includes("voice"),
+              websiteAutoSync: selectedTools.includes("web_sync"),
             }),
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
@@ -1012,6 +1045,35 @@ export default function ClientPackages() {
                         >
                           <IconComp className="w-3 h-3 shrink-0" />
                           <span>{lang === "ar" ? ch.titleAr.split(" (")[0] : ch.titleEn}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Included Tools Highlight */}
+                <div className="mt-2 p-2.5 rounded-xl border border-border/50 bg-muted/30 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Wrench className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span className="font-semibold">{lang === "ar" ? "الأدوات والتكاملات:" : "Tools Included:"}</span>
+                    </div>
+                    <span className="font-bold text-foreground">
+                      {(plan.tools && plan.tools.length > 0 ? plan.tools.length : 1)} {lang === "ar" ? "أدوات" : "Tools"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {SYSTEM_TOOLS.map((tl) => {
+                      const isIncluded = (plan.tools || ["leads_crm"]).includes(tl.id);
+                      if (!isIncluded) return null;
+                      const IconComp = tl.icon;
+                      return (
+                        <span
+                          key={tl.id}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${tl.color}`}
+                        >
+                          <IconComp className="w-3 h-3 shrink-0" />
+                          <span>{lang === "ar" ? tl.titleAr.split(" (")[0] : tl.titleEn}</span>
                         </span>
                       );
                     })}
@@ -1466,6 +1528,119 @@ export default function ClientPackages() {
                         </div>
                         <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-1 transition-colors ${
                           isChecked ? "bg-primary border-primary text-primary-foreground" : "border-border bg-background"
+                        }`}>
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* AI Tools & Integrations Selector */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-blue-500/5 border border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Wrench className="w-3.5 h-3.5 text-blue-500" />
+                    <span>{lang === "ar" ? "أدوات وتكاملات الذكاء الاصطناعي المطلوبة" : "AI Tools & Integrations to Activate"}</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/25">
+                    {selectedTools.length} {lang === "ar" ? "أدوات محددة" : "Selected"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {lang === "ar"
+                    ? "اختر الأدوات الإضافية التي ترغب في تشغيلها مع حسابك (مثل مزامنة تقويم Google للحجوزات وجداول Google للبيانات)."
+                    : "Select external tools and integrations you want activated (e.g. Google Calendar for booking and Google Sheets for data)."}
+                </p>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allowed = selectedPlan.tools && selectedPlan.tools.length > 0
+                        ? selectedPlan.tools
+                        : SYSTEM_TOOLS.map((t) => t.id);
+                      setSelectedTools(allowed);
+                    }}
+                    className="h-6 px-2 text-[10px] rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+                  >
+                    {lang === "ar" ? "تحديد كل المتاح" : "Select All Allowed"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allowed = selectedPlan.tools || [];
+                      const basic = ["calendar", "sheets"].filter((t) => !selectedPlan.tools || allowed.includes(t));
+                      setSelectedTools(basic);
+                    }}
+                    className="h-6 px-2 text-[10px] rounded-lg text-muted-foreground hover:bg-muted"
+                  >
+                    {lang === "ar" ? "تقويم وجداول فقط" : "Calendar & Sheets"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allowed = selectedPlan.tools || [];
+                      const basic = ["leads_crm"].filter((t) => !selectedPlan.tools || allowed.includes(t));
+                      setSelectedTools(basic);
+                    }}
+                    className="h-6 px-2 text-[10px] rounded-lg text-muted-foreground hover:bg-muted"
+                  >
+                    {lang === "ar" ? "CRM فقط" : "CRM Only"}
+                  </Button>
+                </div>
+
+                {/* Tools Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {SYSTEM_TOOLS.map((tl) => {
+                    const isPlanAllowed = !selectedPlan.tools || selectedPlan.tools.includes(tl.id);
+                    const isChecked = selectedTools.includes(tl.id);
+                    const IconComp = tl.icon;
+                    return (
+                      <button
+                        key={tl.id}
+                        type="button"
+                        disabled={!isPlanAllowed}
+                        onClick={() => {
+                          if (isChecked) {
+                            setSelectedTools((prev) => prev.filter((id) => id !== tl.id));
+                          } else {
+                            setSelectedTools((prev) => [...prev, tl.id]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-right transition-all flex items-start justify-between gap-2 cursor-pointer ${
+                          !isPlanAllowed
+                            ? "opacity-40 bg-muted/40 border-dashed border-border cursor-not-allowed"
+                            : isChecked
+                            ? "bg-card border-blue-500/50 shadow-sm ring-1 ring-blue-500/20"
+                            : "bg-background/60 border-border/70 hover:bg-muted/40"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 ${tl.color}`}>
+                            <IconComp className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-foreground truncate">
+                              {lang === "ar" ? tl.titleAr : tl.titleEn}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                              {!isPlanAllowed
+                                ? (lang === "ar" ? "غير مضمنة في هذه الباقة" : "Not included in plan")
+                                : (lang === "ar" ? tl.descAr : tl.descEn)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-1 transition-colors ${
+                          isChecked ? "bg-blue-600 border-blue-600 text-white" : "border-border bg-background"
                         }`}>
                           {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>

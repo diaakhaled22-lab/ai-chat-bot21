@@ -51,6 +51,12 @@ import {
   MessageCircle,
   Send,
   MessageSquare,
+  Calendar as CalendarIcon,
+  FileSpreadsheet,
+  Users,
+  LifeBuoy,
+  Volume2,
+  Wrench,
 } from "lucide-react";
 import { CLIENT_PAGES_META } from "./AdminCompanies";
 
@@ -60,6 +66,69 @@ export const COMMUNICATION_CHANNELS = [
   { id: "whatsapp", key: "whatsappEnabled", titleAr: "واتساب للأعمال (WhatsApp API)", titleEn: "WhatsApp Cloud API", descAr: "ربط رسمي عبر WhatsApp Cloud API لأتمتة خدمة العملاء والحجوزات.", descEn: "Official WhatsApp Cloud API for bookings & customer support.", icon: Phone, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
   { id: "messenger", key: "messengerEnabled", titleAr: "فيسبوك ماسنجر (Messenger)", titleEn: "Facebook Messenger", descAr: "الرد التلقائي على رسائل صفحات فيسبوك والماسنجر باحترافية.", descEn: "Automated AI handling of Facebook Page direct messages.", icon: MessageSquare, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
   { id: "webhook", key: "customWebhookEnabled", titleAr: "الويب هوك و REST API", titleEn: "Custom Webhooks & API", descAr: "ربط الشات بوت بأنظمتك وتطبيقاتك عبر Webhook و REST API.", descEn: "Integrate AI bot with your custom apps via webhook & API.", icon: Zap, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
+];
+
+export const SYSTEM_TOOLS = [
+  {
+    id: "calendar",
+    key: "googleCalendarEnabled",
+    titleAr: "تقويم Google (Google Calendar)",
+    titleEn: "Google Calendar",
+    descAr: "حجز المواعيد وفحص التوافر ومزامنة الفعاليات مع تقويم Google مباشرة.",
+    descEn: "Real-time appointment bookings and calendar availability sync via AI.",
+    icon: CalendarIcon,
+    color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+  },
+  {
+    id: "sheets",
+    key: "googleSheetsEnabled",
+    titleAr: "جداول Google (Google Sheets)",
+    titleEn: "Google Sheets",
+    descAr: "تسجيل وتصدير بيانات العملاء، الحجوزات، والطلبات تلقائياً إلى جداول Google.",
+    descEn: "Automatically log customer inquiries, bookings, and leads to Google Sheets.",
+    icon: FileSpreadsheet,
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+  },
+  {
+    id: "leads_crm",
+    key: "leadsCrm",
+    titleAr: "إدارة العملاء والحجوزات (Leads CRM)",
+    titleEn: "Leads & Bookings CRM",
+    descAr: "التقاط بيانات العملاء المحتملين وتصنيفهم وجدولة المواعيد مع لوحة متابعة مدمجة.",
+    descEn: "Intelligent lead capturing, customer tracking, and appointment management.",
+    icon: Users,
+    color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20",
+  },
+  {
+    id: "handoff",
+    key: "humanHandoff",
+    titleAr: "التحويل لموظف بشري (Human Handoff)",
+    titleEn: "Human Handoff & Live Inbox",
+    descAr: "تحويل المحادثات لموظف دعم بشري فوراً والتنبيه عبر صندوق الوارد الموحد.",
+    descEn: "Smooth transfer of difficult conversations to human support agents.",
+    icon: LifeBuoy,
+    color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
+  },
+  {
+    id: "voice",
+    key: "voiceReplyEnabled",
+    titleAr: "الردود الصوتية (AI Voice Replies)",
+    titleEn: "AI Voice Replies",
+    descAr: "تحويل ردود الشات بوت إلى رسائل صوتية طبيعية ومسموعة باستخدام الذكاء الاصطناعي.",
+    descEn: "Natural AI text-to-speech voice message replies on supported channels.",
+    icon: Volume2,
+    color: "text-purple-500 bg-purple-500/10 border-purple-500/20",
+  },
+  {
+    id: "web_sync",
+    key: "websiteAutoSync",
+    titleAr: "مزامنة المواقع التلقائية (Web Scraper)",
+    titleEn: "Auto Web Scraper & Sync",
+    descAr: "مسح الموقع الإلكتروني دورياً وتحديث قاعدة المعارف الذكية تلقائياً.",
+    descEn: "Periodic crawler to automatically update the AI knowledge base from site.",
+    icon: RefreshCw,
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+  },
 ];
 
 export interface PackageItem {
@@ -80,6 +149,7 @@ export interface PackageItem {
   allowedPages?: string[];
   retentionDays?: number | null;
   channels?: string[];
+  tools?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -233,6 +303,7 @@ export default function AdminPackages() {
       allowedPages: CLIENT_PAGES_META.map((p) => p.id),
       retentionDays: 30,
       channels: ["widget", "telegram", "whatsapp", "messenger"],
+      tools: SYSTEM_TOOLS.map((t) => t.id),
       isActive: true,
       sortOrder: packages.length + 1,
     });
@@ -254,6 +325,9 @@ export default function AdminPackages() {
       channels: Array.isArray(plan.channels)
         ? [...plan.channels]
         : ["widget", "telegram", "whatsapp", "messenger"],
+      tools: Array.isArray(plan.tools)
+        ? [...plan.tools]
+        : SYSTEM_TOOLS.map((t) => t.id),
     });
     setNewFeatureAr("");
     setNewFeatureEn("");
@@ -666,6 +740,32 @@ export default function AdminPackages() {
                                 key={ch.id}
                                 className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${ch.color}`}
                                 title={lang === "ar" ? ch.titleAr : ch.titleEn}
+                              >
+                                <Icon className="w-3 h-3" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Tools Badges */}
+                      <div className="mt-1.5 pt-1.5 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                          <Wrench className="w-3.5 h-3.5 text-blue-500" />
+                          <span>{lang === "ar" ? "الأدوات والتكاملات:" : "Tools:"}</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {SYSTEM_TOOLS.map((tl) => {
+                            const Icon = tl.icon;
+                            const isIncluded = Array.isArray(plan.tools)
+                              ? plan.tools.includes(tl.id)
+                              : tl.id !== "voice";
+                            if (!isIncluded) return null;
+                            return (
+                              <div
+                                key={tl.id}
+                                className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${tl.color}`}
+                                title={lang === "ar" ? tl.titleAr : tl.titleEn}
                               >
                                 <Icon className="w-3 h-3" />
                               </div>
@@ -1394,6 +1494,124 @@ export default function AdminPackages() {
                         <Switch
                           checked={isEnabled}
                           onCheckedChange={toggleChannel}
+                          className="shrink-0 scale-75"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 10: Allowed AI Tools & Integrations */}
+              <div className="space-y-3 pt-3 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Wrench className="w-3.5 h-3.5 text-blue-500" />
+                        {lang === "ar" ? "أدوات وتكاملات الذكاء الاصطناعي المسموحة في هذه الباقة" : "Allowed AI Tools & Integrations"}
+                      </label>
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[11px] font-bold px-2 py-0.5">
+                        {(editingPlan.tools ?? SYSTEM_TOOLS.map((t) => t.id)).length} / {SYSTEM_TOOLS.length}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {lang === "ar"
+                        ? "حدد الأدوات والوظائف الخارجية (مثل تقويم وجداول Google، والتحويل البشري، والردود الصوتية) التي يحق للعميل تفعيلها واستخدامها مع هذه الباقة."
+                        : "Select external tools and integrations (e.g., Google Calendar, Sheets, CRM, Voice Replies) permitted for this plan tier."}
+                    </p>
+                  </div>
+
+                  {/* Preset Tools Buttons */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          tools: SYSTEM_TOOLS.map((t) => t.id),
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "تفعيل جميع الأدوات" : "Enable All"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          tools: ["calendar", "sheets", "leads_crm", "handoff"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "القياسية" : "Standard"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          tools: ["leads_crm"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                    >
+                      {lang === "ar" ? "CRM فقط" : "CRM Only"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tools Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {SYSTEM_TOOLS.map((tl) => {
+                    const Icon = tl.icon;
+                    const toolsList = editingPlan.tools ?? SYSTEM_TOOLS.map((t) => t.id);
+                    const isEnabled = toolsList.includes(tl.id);
+
+                    const toggleTool = () => {
+                      const updated = isEnabled
+                        ? toolsList.filter((id) => id !== tl.id)
+                        : [...toolsList, tl.id];
+                      setEditingPlan({ ...editingPlan, tools: updated });
+                    };
+
+                    return (
+                      <div
+                        key={tl.id}
+                        onClick={toggleTool}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                          isEnabled
+                            ? "bg-blue-500/5 border-blue-500/40 shadow-sm"
+                            : "bg-muted/20 border-border/60 opacity-60 hover:opacity-90"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${tl.color}`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block truncate">
+                              {lang === "ar" ? tl.titleAr : tl.titleEn}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block truncate">
+                              {lang === "ar" ? tl.descAr : tl.descEn}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={toggleTool}
                           className="shrink-0 scale-75"
                         />
                       </div>

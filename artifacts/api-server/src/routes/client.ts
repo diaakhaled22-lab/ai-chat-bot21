@@ -542,9 +542,10 @@ router.put("/client/company", async (req, res) => {
     if (data.generalInfo !== undefined) updates.generalInfo = data.generalInfo;
     if (data.systemPrompt !== undefined) updates.systemPrompt = data.systemPrompt;
     if (data.googleSheetsEnabled !== undefined) {
-      if (existingCompany.googleSheetsEnabled !== false) {
-        updates.googleSheetsEnabled = data.googleSheetsEnabled;
-      }
+      updates.googleSheetsEnabled = Boolean(data.googleSheetsEnabled);
+    }
+    if ((data as any).googleCalendarEnabled !== undefined) {
+      updates.googleCalendarEnabled = Boolean((data as any).googleCalendarEnabled);
     }
     if (data.googleSheetsLink !== undefined) updates.googleSheetsLink = data.googleSheetsLink;
     if (data.googleSheetsName !== undefined) updates.googleSheetsName = data.googleSheetsName;
