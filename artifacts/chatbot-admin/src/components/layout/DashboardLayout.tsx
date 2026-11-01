@@ -32,7 +32,7 @@ import {
   Database,
   Cpu,
   Coins,
-  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Lock, type LucideIcon,
+  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Receipt, Lock, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -950,6 +950,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/clients",            label: "Clients",            icon: Users },
     { href: "/admin/companies",          label: "Companies",          icon: Building2 },
     { href: "/admin/packages",           label: lang === "ar" ? "إدارة الباقات" : "Packages & Plans", icon: Package },
+    { href: "/admin/bills",              label: lang === "ar" ? "الفواتير" : "Bills & Invoices", icon: Receipt },
     { href: "/admin/ai-quota",           label: "AI / Quota",         icon: Cpu },
     { href: "/admin/chat-logs",          label: "Chat Logs",          icon: MessageSquare, badge: true },
     { href: "/admin/tickets",            label: "Customer Problems",  icon: LifeBuoy, ticketBadge: true },

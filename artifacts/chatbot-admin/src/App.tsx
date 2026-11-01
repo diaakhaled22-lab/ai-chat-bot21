@@ -28,6 +28,7 @@ import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
 import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
 import AdminAiQuota from "@/pages/admin/AdminAiQuota";
 import AdminPackages from "@/pages/admin/AdminPackages";
+import AdminBills from "@/pages/admin/AdminBills";
 import AdminNotifications from "@/pages/admin/AdminNotifications";
 
 import ClientCompany from "./pages/client/ClientCompany";
@@ -132,6 +133,9 @@ function Router() {
       </Route>
       <Route path="/admin/packages">
         {() => <ProtectedRoute component={AdminPackages} allowedRole="admin" />}
+      </Route>
+      <Route path="/admin/bills">
+        {() => <ProtectedRoute component={AdminBills} allowedRole="admin" />}
       </Route>
       <Route path="/admin/chat-logs">
         {() => <ProtectedRoute component={AdminChatLogs} allowedRole="admin" />}

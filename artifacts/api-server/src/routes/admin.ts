@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable } from "@workspace/db";
+import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable, emailLogsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
 import OpenAI from "openai";
 import {
@@ -29,7 +29,9 @@ import { getExchangeRates, saveExchangeRates, type CurrencyRatesData } from "../
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
-import { processApprovedPlanRequest } from "../lib/planApproval";
+import { processApprovedPlanRequest, parseTicketPlanDetails } from "../lib/planApproval";
+import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber } from "../lib/invoice";
+import { sendWhatsAppMessage } from "./whatsapp";
 
 const router = Router();
 // Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
@@ -2738,6 +2740,394 @@ router.put("/admin/tickets/:id/admin-note", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+// ── INVOICES & BILLS MANAGEMENT ──────────────────────────────────────────
+
+// GET /admin/invoices - Unified Bills & Invoices across subscriptions, top-ups, and quota usage
+router.get("/admin/invoices", async (req, res) => {
+  try {
+    const ratesData = await getExchangeRates();
+    const exchangeRate = ratesData.rates.EGP || 50.0;
+    const currencySymbol = "EGP";
+
+    // 1. Fetch all companies with client user info
+    const companies = await db
+      .select({
+        company: companiesTable,
+        client: usersTable,
+      })
+      .from(companiesTable)
+      .leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id));
+
+    const companyMap = new Map<number, { company: typeof companiesTable.$inferSelect; client: typeof usersTable.$inferSelect | null }>();
+    for (const c of companies) {
+      companyMap.set(c.company.id, c);
+    }
+
+    // 2. Fetch all plan / topup tickets
+    const allTickets = await db
+      .select({
+        ticket: ticketsTable,
+        client: usersTable,
+      })
+      .from(ticketsTable)
+      .leftJoin(usersTable, eq(ticketsTable.clientId, usersTable.id))
+      .orderBy(desc(ticketsTable.createdAt));
+
+    const invoiceList: any[] = [];
+
+    // Filter and process plan tickets
+    for (const item of allTickets) {
+      const t = item.ticket;
+      const client = item.client;
+      const titleLower = (t.title || "").toLowerCase();
+      const descLower = (t.description || "").toLowerCase();
+
+      const isPlan =
+        titleLower.includes("باقة") ||
+        titleLower.includes("plan") ||
+        titleLower.includes("شحن") ||
+        titleLower.includes("topup") ||
+        titleLower.includes("اشتراك") ||
+        descLower.includes("معرف الباقة") ||
+        descLower.includes("طلب شحن");
+
+      if (!isPlan) continue;
+
+      const parsed = parseTicketPlanDetails(t);
+      const isTopup = parsed.isTopup;
+      const matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
+      const company = matchedCompanyItem?.company;
+
+      const invoiceNumber = `INV-${new Date(t.createdAt).getFullYear()}${String(new Date(t.createdAt).getMonth() + 1).padStart(2, "0")}-${t.id}`;
+      const priceUsd = isTopup
+        ? (parsed.topupPack?.priceUsd || 10)
+        : Math.round(parsed.billingCycle === "yearly" ? (parsed.plan?.monthlyPriceUsd || 79) * 12 * 0.8 : (parsed.plan?.monthlyPriceUsd || 79));
+      const priceLocal = Math.round(priceUsd * exchangeRate);
+
+      invoiceList.push({
+        id: `ticket-${t.id}`,
+        invoiceNumber,
+        ticketId: t.id,
+        companyId: company?.id ?? null,
+        companyName: company?.name || client?.name || "شركة غير محددة",
+        clientId: client?.id ?? t.clientId,
+        clientName: client?.name || "العميل",
+        clientEmail: client?.email || company?.notificationEmail || "",
+        clientPhone: parsed.phone || company?.whatsappNumber || "",
+        itemType: isTopup ? "topup" : "plan",
+        titleAr: isTopup ? (parsed.topupPack ? `شحن ${parsed.topupPack.formatted} رموز` : t.title) : (parsed.plan?.nameAr || t.title),
+        titleEn: isTopup ? (parsed.topupPack ? `Top-up ${parsed.topupPack.formatted}` : "Top-up Pack") : (parsed.plan?.nameEn || "Subscription Plan"),
+        billingCycleAr: isTopup ? "دفعة واحدة" : (parsed.billingCycle === "yearly" ? "سنوي" : "شهري"),
+        billingCycleEn: isTopup ? "One-Time" : (parsed.billingCycle === "yearly" ? "Yearly" : "Monthly"),
+        tokenQuota: parsed.tokens,
+        priceUsd,
+        priceLocal,
+        currencySymbol,
+        retentionDays: parsed.retentionDays,
+        channels: parsed.channels || [],
+        tools: parsed.tools || [],
+        status: t.status === "resolved" ? "paid" : "pending",
+        issueDate: t.createdAt.toISOString(),
+        notes: t.adminNote || t.aiResponse || undefined,
+      });
+    }
+
+    // 3. Add monthly Quota Usage Bills for all companies with token quota
+    for (const c of companies) {
+      const comp = c.company;
+      const client = c.client;
+      if (!comp.monthlyTokenQuota && !comp.isActive) continue;
+
+      const invoiceNumber = `INV-Q-${comp.id}-${new Date().toISOString().slice(0, 7).replace("-", "")}`;
+      const quota = comp.monthlyTokenQuota || 50000;
+      let estPriceUsd = 29;
+      if (quota >= 1000000) estPriceUsd = 199;
+      else if (quota >= 250000) estPriceUsd = 79;
+      const estPriceLocal = Math.round(estPriceUsd * exchangeRate);
+
+      invoiceList.push({
+        id: `quota-${comp.id}`,
+        invoiceNumber,
+        ticketId: null,
+        companyId: comp.id,
+        companyName: comp.name,
+        clientId: client?.id ?? comp.clientId,
+        clientName: client?.name || comp.name,
+        clientEmail: client?.email || comp.notificationEmail || "",
+        clientPhone: comp.whatsappNumber || "",
+        itemType: "quota_usage",
+        titleAr: `كشف استهلاك حصة الرموز الشهرية (${(comp.monthlyTokenQuota || 0).toLocaleString()} رمز)`,
+        titleEn: `Monthly Token Quota Usage Bill (${(comp.monthlyTokenQuota || 0).toLocaleString()} Tokens)`,
+        billingCycleAr: "شهري",
+        billingCycleEn: "Monthly",
+        tokenQuota: comp.monthlyTokenQuota || 0,
+        priceUsd: estPriceUsd,
+        priceLocal: estPriceLocal,
+        currencySymbol,
+        periodStart: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : undefined,
+        periodEnd: comp.quotaEndDate ? comp.quotaEndDate.toISOString() : undefined,
+        retentionDays: comp.chatLogRetentionDays,
+        status: comp.isActive ? "activated" : "pending",
+        issueDate: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : comp.createdAt.toISOString(),
+      });
+    }
+
+    // Sort by issueDate descending
+    invoiceList.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+
+    res.json({
+      ok: true,
+      invoices: invoiceList,
+      totalCount: invoiceList.length,
+      rates: ratesData.rates,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Get admin invoices error");
+    res.status(500).json({ error: err?.message || "Failed to fetch invoices" });
+  }
+});
+
+// POST /admin/invoices/send-copy - Admin sends a copy of ANY invoice to ANY email and/or WhatsApp
+router.post("/admin/invoices/send-copy", async (req, res) => {
+  try {
+    const {
+      invoiceNumber,
+      itemType,
+      title,
+      recipientEmail,
+      recipientPhone,
+      sendViaEmail,
+      sendViaWhatsApp,
+      customNotes,
+      priceUsd,
+      priceLocal,
+      currencySymbol,
+      clientName,
+      companyName,
+      tokenQuota,
+      retentionDays,
+      channels,
+      billingCycle,
+      imageDataUrl,
+      htmlContent,
+    } = req.body as {
+      invoiceNumber: string;
+      itemType?: string;
+      title?: string;
+      recipientEmail?: string;
+      recipientPhone?: string;
+      sendViaEmail?: boolean;
+      sendViaWhatsApp?: boolean;
+      customNotes?: string;
+      priceUsd?: number;
+      priceLocal?: number;
+      currencySymbol?: string;
+      clientName?: string;
+      companyName?: string;
+      tokenQuota?: number;
+      retentionDays?: number | null;
+      channels?: string[];
+      billingCycle?: string;
+      imageDataUrl?: string;
+      htmlContent?: string;
+    };
+
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+
+    let emailSent = false;
+    let whatsappSent = false;
+    let whatsappUrl = "";
+    let emailError: string | null = null;
+
+    const sym = currencySymbol || "EGP";
+    const pUsd = Number(priceUsd || 0);
+    const pLocal = Number(priceLocal || 0);
+
+    // 1. Send via Email if requested
+    if (sendViaEmail && recipientEmail && recipientEmail.trim()) {
+      const targetEmail = recipientEmail.trim();
+      const cfg = await getEmailConfig();
+
+      if (isSmtpConfigured(cfg)) {
+        try {
+          const transporter = buildTransporter(cfg);
+
+          const finalHtml = htmlContent || `
+            <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
+              <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
+                <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
+                  BOT MANAGER • INVOICE COPY / نسخة رسمية من الفاتورة
+                </div>
+                <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">فاتورة #${escapeHtml(invoiceNumber)}</h2>
+                <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
+              </div>
+
+              <div style="padding:28px 24px;">
+                ${
+                  customNotes
+                    ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
+                        <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">ملاحظة من الإدارة:</strong>
+                        ${escapeHtml(customNotes)}
+                      </div>`
+                    : ""
+                }
+
+                <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
+                  <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
+                    <tr>
+                      <td style="color:#64748b;width:35%;">رقم الفاتورة:</td>
+                      <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#64748b;">العميل / الشركة:</td>
+                      <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "العميل")} - ${escapeHtml(companyName || "")}</td>
+                    </tr>
+                    <tr>
+                      <td style="color:#64748b;">البند / الباقة:</td>
+                      <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "اشتراك ذكاء اصطناعي")}</td>
+                    </tr>
+                    ${
+                      tokenQuota
+                        ? `<tr>
+                            <td style="color:#64748b;">رصيد الرموز:</td>
+                            <td style="font-weight:700;color:#0f172a;">${tokenQuota.toLocaleString()} Tokens</td>
+                          </tr>`
+                        : ""
+                    }
+                    <tr>
+                      <td style="color:#64748b;">المبلغ الإجمالي:</td>
+                      <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
+                        ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="color:#64748b;">الحالة:</td>
+                      <td style="font-weight:700;color:#16a34a;">✅ معتمدة ومسددة</td>
+                    </tr>
+                  </table>
+                </div>
+
+                ${
+                  imageDataUrl
+                    ? `<div style="text-align:center;margin:24px 0;">
+                        <p style="font-size:12px;color:#64748b;margin-bottom:8px;">صورة بطاقة الفاتورة المعتمدة:</p>
+                        <img src="cid:invoice-copy-image" alt="Invoice Card" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,0.06);" />
+                      </div>`
+                    : ""
+                }
+
+                <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
+                  تم إرسال هذه النسخة الرسمية من لوحة تحكم الإدارة.<br/>
+                  شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي.
+                </p>
+              </div>
+            </div>
+          `;
+
+          const mailOptions: any = {
+            from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
+            to: targetEmail,
+            subject: `🧾 نسخة من فاتورة #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
+            html: finalHtml,
+          };
+
+          if (imageDataUrl && imageDataUrl.includes(",")) {
+            const base64Data = imageDataUrl.split(",")[1];
+            mailOptions.attachments = [
+              {
+                filename: `invoice-${invoiceNumber}.png`,
+                content: Buffer.from(base64Data, "base64"),
+                cid: "invoice-copy-image",
+              },
+            ];
+          }
+
+          await transporter.sendMail(mailOptions);
+          emailSent = true;
+
+          // Log in email_logs
+          await db.insert(emailLogsTable).values({
+            companyId: 1,
+            recipientEmail: targetEmail,
+            subject: `نسخة من فاتورة #${invoiceNumber}`,
+            eventType: "invoice_copy",
+            status: "sent",
+          }).catch(() => {});
+        } catch (err: any) {
+          logger.error({ err, targetEmail }, "Failed to send invoice copy email");
+          emailError = err?.message || "Email send failure";
+        }
+      } else {
+        emailError = "SMTP settings are not configured in Admin Email Settings";
+      }
+    }
+
+    // 2. Prepare WhatsApp message & direct link
+    const cleanPhone = normalizePhoneNumber(recipientPhone || "");
+    const waText = [
+      `🧾 *نسخة من فاتورة رسمية - Bot Manager*`,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `🔹 *رقم الفاتورة:* #${invoiceNumber}`,
+      clientName ? `👤 *العميل:* ${clientName}` : null,
+      companyName ? `🏢 *الشركة:* ${companyName}` : null,
+      `📦 *البند / الباقة:* ${title || "اشتراك ذكاء اصطناعي"}`,
+      tokenQuota ? `• *رصيد الرموز:* ${tokenQuota.toLocaleString()} Tokens` : null,
+      `💰 *المبلغ:* ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${sym})` : ""}`,
+      `⚡ *الحالة:* ✅ *معتمدة ومسددة*`,
+      customNotes ? `\n📝 *ملاحظة من الإدارة:*\n${customNotes}` : null,
+      `━━━━━━━━━━━━━━━━━━━━━━`,
+      `شكراً لتعاملكم معنا! لأي استفسار نحن دائماً في خدمتكم.`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    if (cleanPhone) {
+      whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waText)}`;
+
+      if (sendViaWhatsApp) {
+        try {
+          const adminRows = await db.select().from(adminConfigTable);
+          const adminMap = new Map(adminRows.map((r) => [r.key, r.value ?? ""]));
+          const sysPhoneId = adminMap.get("whatsapp_phone_number_id");
+          const sysApiToken = adminMap.get("whatsapp_api_token");
+
+          if (sysPhoneId && sysApiToken) {
+            await sendWhatsAppMessage(sysPhoneId, sysApiToken, cleanPhone, waText);
+            whatsappSent = true;
+          }
+        } catch (err: any) {
+          logger.warn({ err, cleanPhone }, "Failed to dispatch WhatsApp message via Cloud API");
+        }
+      }
+    }
+
+    // 3. Log Admin Activity
+    await logAdminActivity(
+      req.session.userId!,
+      "Send Invoice Copy",
+      `Admin sent a copy of invoice #${invoiceNumber} to ${recipientEmail || cleanPhone || "client"}`,
+      req.ip || null
+    );
+
+    res.json({
+      ok: true,
+      message: "Invoice copy processed successfully",
+      emailSent,
+      whatsappSent,
+      whatsappUrl,
+      emailError,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Send invoice copy error");
+    res.status(500).json({ error: err?.message || "Internal server error" });
+  }
+});
+
 
 // POST /admin/plan-requests/:ticketId/approve - admin manually approves plan request from UI
 router.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
