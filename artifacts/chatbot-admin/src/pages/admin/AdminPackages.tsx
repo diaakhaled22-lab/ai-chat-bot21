@@ -1010,7 +1010,7 @@ export default function AdminPackages() {
 
       {/* ── Dialog: Add / Edit Plan ── */}
       <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6">
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-3xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
@@ -1032,7 +1032,7 @@ export default function AdminPackages() {
           </DialogHeader>
 
           {editingPlan && (
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 py-2 w-full overflow-x-hidden">
               {/* Row 1: Names */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -1289,7 +1289,7 @@ export default function AdminPackages() {
                   </div>
 
                   {/* Presets */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto flex-wrap">
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
                     <Button
                       type="button"
                       variant="outline"
@@ -1349,7 +1349,7 @@ export default function AdminPackages() {
                 </div>
 
                 {/* Grid of Pages */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1 pr-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto overflow-x-hidden p-1 pr-1.5">
                   {CLIENT_PAGES_META.map((page) => {
                     const Icon = page.icon;
                     const allowedList = editingPlan.allowedPages ?? CLIENT_PAGES_META.map((p) => p.id);
@@ -1490,7 +1490,7 @@ export default function AdminPackages() {
                   </div>
 
                   {/* Presets */}
-                  <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto flex-wrap">
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
                     <Button
                       type="button"
                       variant="outline"
@@ -1537,7 +1537,7 @@ export default function AdminPackages() {
                 </div>
 
                 {/* Channels Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {COMMUNICATION_CHANNELS.map((ch) => {
                     const Icon = ch.icon;
                     const channelsList = editingPlan.channels ?? COMMUNICATION_CHANNELS.map((c) => c.id);
@@ -1608,7 +1608,7 @@ export default function AdminPackages() {
                   </div>
 
                   {/* Preset Tools Buttons */}
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <Button
                       type="button"
                       size="sm"
@@ -1655,7 +1655,7 @@ export default function AdminPackages() {
                 </div>
 
                 {/* Tools Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {SYSTEM_TOOLS.map((tl) => {
                     const Icon = tl.icon;
                     const toolsList = editingPlan.tools ?? SYSTEM_TOOLS.map((t) => t.id);
@@ -1726,7 +1726,7 @@ export default function AdminPackages() {
                   </div>
 
                   {/* Preset Data Source Buttons */}
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <Button
                       type="button"
                       size="sm"
@@ -1773,7 +1773,7 @@ export default function AdminPackages() {
                 </div>
 
                 {/* Data Sources Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {DATA_SOURCE_PERMISSIONS.map((ds) => {
                     const Icon = ds.icon;
                     const sourcesList = editingPlan.dataSources ?? DATA_SOURCE_PERMISSIONS.map((d) => d.id);
@@ -1825,7 +1825,7 @@ export default function AdminPackages() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/40">
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/40 w-full overflow-x-hidden">
             <Button
               variant="outline"
               onClick={() => setIsPlanModalOpen(false)}
@@ -1936,7 +1936,7 @@ export default function AdminPackages() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/40">
+          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/40 w-full overflow-x-hidden">
             <Button
               variant="outline"
               onClick={() => setIsTopupModalOpen(false)}
