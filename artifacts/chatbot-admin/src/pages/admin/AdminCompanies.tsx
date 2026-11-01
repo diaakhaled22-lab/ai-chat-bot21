@@ -657,7 +657,9 @@ export default function AdminCompanies() {
       monthlyTokenQuota: freshCompany.monthlyTokenQuota !== undefined && freshCompany.monthlyTokenQuota !== null ? String(freshCompany.monthlyTokenQuota) : "",
       activationStart: toDateInputValue(freshCompany.activationStart),
       activationEnd: toDateInputValue(freshCompany.activationEnd),
-      chatLogRetentionDays: freshCompany.chatLogRetentionDays !== undefined && freshCompany.chatLogRetentionDays !== null ? String(freshCompany.chatLogRetentionDays) : "7",
+      chatLogRetentionDays: freshCompany.chatLogRetentionDays !== undefined && freshCompany.chatLogRetentionDays !== null
+        ? String(freshCompany.chatLogRetentionDays)
+        : String(packagesCatalog?.packages?.find((p) => p.tokensMonthly === freshCompany.monthlyTokenQuota)?.retentionDays ?? 3),
     });
   };
 
@@ -875,7 +877,7 @@ export default function AdminCompanies() {
 
     const retention = (plan.retentionDays !== undefined && plan.retentionDays !== null)
       ? plan.retentionDays
-      : (manageForm.chatLogRetentionDays ?? 30);
+      : 3;
 
     const pages = (Array.isArray(plan.allowedPages) && plan.allowedPages.length > 0)
       ? plan.allowedPages
@@ -959,6 +961,13 @@ export default function AdminCompanies() {
         }),
       });
 
+      // Dual-save retention for dedicated retention endpoint guarantee
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/retention`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retentionDays: retention }),
+      }).catch(() => {});
+
       if (Array.isArray(plan.allowedPages) && plan.allowedPages.length > 0) {
         await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/pages`, {
           method: "PUT",
@@ -974,8 +983,8 @@ export default function AdminCompanies() {
       toast({
         title: lang === "ar" ? "تم اعتماد وتفعيل الباقة بنجاح!" : "Plan Tier Applied Successfully!",
         description: lang === "ar"
-          ? `تم اعتماد باقة ${plan.nameAr || plan.nameEn} للشركة بحصة ${quota.toLocaleString()} توكن ومزامنة القنوات والأدوات والمصادر بنجاح.`
-          : `${plan.nameEn || plan.nameAr} applied with ${quota.toLocaleString()} tokens and synced features.`,
+          ? `تم اعتماد باقة ${plan.nameAr || plan.nameEn} للشركة بحصة ${quota.toLocaleString()} توكن مع مزامنة سياسة الحذف التلقائي (${retention > 0 ? `${retention} أيام` : "دائم"}) والقنوات والمصادر بنجاح.`
+          : `${plan.nameEn || plan.nameAr} applied with ${quota.toLocaleString()} tokens, ${retention > 0 ? `${retention}d` : "permanent"} retention, and synced features.`,
       });
     } catch (err: any) {
       console.error("Apply plan error:", err);
@@ -1009,7 +1018,9 @@ export default function AdminCompanies() {
         monthlyTokenQuota: manageForm.monthlyTokenQuota ? Number(manageForm.monthlyTokenQuota) : null,
         activationStart: toIsoFromInput(manageForm.activationStart, false),
         activationEnd: toIsoFromInput(manageForm.activationEnd, true),
-        chatLogRetentionDays: manageForm.chatLogRetentionDays ? Number(manageForm.chatLogRetentionDays) : null,
+        chatLogRetentionDays: manageForm.chatLogRetentionDays !== undefined && manageForm.chatLogRetentionDays !== null && manageForm.chatLogRetentionDays !== ""
+          ? Number(manageForm.chatLogRetentionDays)
+          : null,
         telegramEnabled: manageForm.telegramEnabled,
         telegramBotApiKey: manageForm.telegramBotApiKey,
         telegramBotUsername: manageForm.telegramBotUsername,
@@ -1051,6 +1062,14 @@ export default function AdminCompanies() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabledClientPages: manageForm.enabledClientPages }),
+        }).catch(() => {});
+      }
+
+      if (manageForm.chatLogRetentionDays !== undefined && manageForm.chatLogRetentionDays !== null && manageForm.chatLogRetentionDays !== "") {
+        await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/retention`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ retentionDays: Number(manageForm.chatLogRetentionDays) }),
         }).catch(() => {});
       }
 
@@ -1619,7 +1638,9 @@ export default function AdminCompanies() {
                     >
                       <Clock className="w-3 h-3 text-amber-500 shrink-0" />
                       <span className="font-medium truncate">
-                        {company.chatLogRetentionDays ? `${company.chatLogRetentionDays}d` : "Default (7d)"}
+                        {company.chatLogRetentionDays !== undefined && company.chatLogRetentionDays !== null
+                          ? (company.chatLogRetentionDays > 0 ? `${company.chatLogRetentionDays}d` : "Permanent")
+                          : "Default (3d)"}
                       </span>
                     </button>
                   </div>
@@ -2356,8 +2377,11 @@ export default function AdminCompanies() {
                                       </span>
                                     )}
                                     {plan.retentionDays !== undefined && plan.retentionDays !== null && (
-                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${isCurrent ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"}`}>
-                                        {plan.retentionDays} {lang === "ar" ? "يوم احتفاظ" : "d retention"}
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-1 ${isCurrent ? "bg-white/20 text-white" : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"}`}>
+                                        <Clock className="w-2.5 h-2.5" />
+                                        {plan.retentionDays > 0
+                                          ? `${plan.retentionDays} ${lang === "ar" ? (plan.retentionDays === 3 ? "أيام" : "يوم") : "d"}`
+                                          : (lang === "ar" ? "دائم" : "Perm")}
                                       </span>
                                     )}
                                   </div>
@@ -2380,6 +2404,113 @@ export default function AdminCompanies() {
                         </div>
                       )}
                     </div>
+
+                    {/* ── Auto-Delete Retention Policy (Synchronized with Subscription Plans) ── */}
+                    <div className="p-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-amber-500" />
+                            <h5 className="text-xs font-bold text-foreground">
+                              {lang === "ar" ? "سياسة الحذف التلقائي للاحتفاظ بالسجلات (Auto-Delete Retention Policy)" : "Auto-Delete Retention Policy"}
+                            </h5>
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[11px] font-bold px-2 py-0.5">
+                              {Number(manageForm.chatLogRetentionDays) > 0
+                                ? `${manageForm.chatLogRetentionDays} ${lang === "ar" ? (Number(manageForm.chatLogRetentionDays) === 3 ? "أيام" : "يوم") : "Days"}`
+                                : (lang === "ar" ? "دائم (بدون حذف)" : "Permanent (No delete)")}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {lang === "ar"
+                              ? "متزامنة ومربوطة بكتالوج باقات الاشتراك — يتم تطبيقها تلقائياً عند اعتماد أي باقة من الأعلى، أو يمكنك تخصيصها يدوياً."
+                              : "Synchronized with Subscription Plans — automatically applied when switching plans above, or customizable manually."}
+                          </p>
+                        </div>
+
+                        {/* Input for days */}
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <span className="text-xs text-muted-foreground font-semibold">
+                            {lang === "ar" ? "المدة (أيام):" : "Days:"}
+                          </span>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={365}
+                            value={manageForm.chatLogRetentionDays ?? 0}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value);
+                              setManageForm({ ...manageForm, chatLogRetentionDays: isNaN(val) || val < 0 ? 0 : val });
+                            }}
+                            className="w-20 h-7 text-xs font-bold tabular-nums rounded-lg bg-background"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Presets starting with 3 Days */}
+                      <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 pt-1">
+                        {[
+                          { labelAr: "3 أيام",   labelEn: "3 Days",   days: 3 },
+                          { labelAr: "7 أيام",   labelEn: "7 Days",   days: 7 },
+                          { labelAr: "14 يوماً", labelEn: "14 Days",  days: 14 },
+                          { labelAr: "30 يوماً", labelEn: "30 Days",  days: 30 },
+                          { labelAr: "60 يوماً", labelEn: "60 Days",  days: 60 },
+                          { labelAr: "90 يوماً", labelEn: "90 Days",  days: 90 },
+                          { labelAr: "180 يوماً", labelEn: "180 Days", days: 180 },
+                          { labelAr: "365 يوماً", labelEn: "365 Days", days: 365 },
+                          { labelAr: "دائم (0)", labelEn: "Permanent", days: 0 },
+                        ].map((preset) => {
+                          const isSelected = Number(manageForm.chatLogRetentionDays ?? 0) === preset.days;
+                          return (
+                            <button
+                              key={preset.days}
+                              type="button"
+                              onClick={() => setManageForm({ ...manageForm, chatLogRetentionDays: preset.days })}
+                              className={`px-2 py-1.5 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                                isSelected
+                                  ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                                  : "bg-background/80 border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {lang === "ar" ? preset.labelAr : preset.labelEn}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Sync plan indicator */}
+                      {(() => {
+                        const matchedPlan = availablePlans.find(
+                          (p) => Number(manageForm.monthlyTokenQuota) === p.tokensMonthly
+                        );
+                        if (!matchedPlan) return null;
+                        const planRetention = matchedPlan.retentionDays ?? 3;
+                        const isSynced = Number(manageForm.chatLogRetentionDays) === planRetention;
+                        return (
+                          <div className="flex items-center justify-between text-[11px] pt-1 text-muted-foreground border-t border-amber-500/15">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className={`w-3.5 h-3.5 ${isSynced ? "text-emerald-500" : "text-amber-500"}`} />
+                              <span>
+                                {lang === "ar"
+                                  ? `الباقة المعتمدة (${matchedPlan.nameAr}): تحدد ${planRetention > 0 ? `${planRetention} أيام` : "احتفاظ دائم"}`
+                                  : `Active Tier (${matchedPlan.nameEn}): sets ${planRetention > 0 ? `${planRetention}d` : "permanent"}`}
+                              </span>
+                            </span>
+                            {!isSynced && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 text-[10px] text-amber-600 hover:text-amber-700 p-0 font-bold"
+                                onClick={() => setManageForm({ ...manageForm, chatLogRetentionDays: planRetention })}
+                              >
+                                {lang === "ar" ? "إعادة المزامنة مع الباقة" : "Re-sync with plan"}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
                     <div className="bg-muted/30 border border-border p-4 rounded-xl flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold">{lang === "ar" ? "حالة اشتراك وتفعيل الشركة" : "Company Active Status"}</p>
@@ -2393,31 +2524,18 @@ export default function AdminCompanies() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "الحصة الشهرية من التوكنز (Monthly Quota)" : "Monthly Token Quota"}</Label>
-                        <Input
-                          type="number"
-                          value={manageForm.monthlyTokenQuota || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, monthlyTokenQuota: e.target.value })}
-                          className="mt-1 text-xs font-mono"
-                          placeholder="e.g. 500000 (leave empty for unlimited)"
-                        />
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {lang === "ar" ? "اترك الحقل فارغاً لجعل الحصة غير محدودة." : "Leave empty for unlimited tokens."}
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "سياسة الحذف التلقائي للمحادثات (بالأيام)" : "Chat Log Retention (Days)"}</Label>
-                        <Input
-                          type="number"
-                          value={manageForm.chatLogRetentionDays || ""}
-                          onChange={(e) => setManageForm({ ...manageForm, chatLogRetentionDays: e.target.value })}
-                          className="mt-1 text-xs font-mono"
-                          placeholder="7"
-                        />
-                      </div>
+                    <div>
+                      <Label className="text-xs font-semibold">{lang === "ar" ? "الحصة الشهرية من التوكنز (Monthly Quota)" : "Monthly Token Quota"}</Label>
+                      <Input
+                        type="number"
+                        value={manageForm.monthlyTokenQuota || ""}
+                        onChange={(e) => setManageForm({ ...manageForm, monthlyTokenQuota: e.target.value })}
+                        className="mt-1 text-xs font-mono"
+                        placeholder="e.g. 500000 (leave empty for unlimited)"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {lang === "ar" ? "اترك الحقل فارغاً لجعل الحصة غير محدودة." : "Leave empty for unlimited tokens."}
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2641,6 +2759,32 @@ export default function AdminCompanies() {
                 <RotateCcw className="w-3 h-3 mr-1" /> {t("admin_companies_retention_reset")}
               </Button>
             </div>
+
+            {availablePlans.length > 0 && (
+              <div className="space-y-1.5 pt-2 border-t border-border/50">
+                <Label className="text-[11px] text-muted-foreground flex items-center gap-1 font-semibold">
+                  <Package className="w-3.5 h-3.5 text-blue-500" />
+                  {lang === "ar" ? "مدد باقات الاشتراك الرسمية:" : "Subscription Plans Policy:"}
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {availablePlans.map((plan) => {
+                    const days = plan.retentionDays !== undefined && plan.retentionDays !== null ? plan.retentionDays : 3;
+                    return (
+                      <Button
+                        key={plan.id}
+                        type="button"
+                        size="sm"
+                        variant={retentionInput === String(days) ? "default" : "outline"}
+                        onClick={() => setRetentionInput(String(days))}
+                        className="text-[11px] h-7 px-2"
+                      >
+                        {lang === "ar" ? plan.nameAr : plan.nameEn} ({days > 0 ? `${days}d` : "Perm"})
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {retentionTarget && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2.5 rounded-lg">
