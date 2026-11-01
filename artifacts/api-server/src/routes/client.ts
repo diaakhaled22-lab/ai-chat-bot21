@@ -23,7 +23,7 @@ import { requireClient } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
-import { sendNewTicketNotification, sendMalfunctionNotification } from "../lib/email";
+import { sendNewTicketNotification, sendPlanRequestAdminNotification, sendMalfunctionNotification } from "../lib/email";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, buildOpenRouterChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
 import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
@@ -2218,14 +2218,27 @@ router.post("/client/tickets", async (req, res) => {
       );
     }
 
-    sendNewTicketNotification({
-      id: ticket.id,
-      title: ticket.title,
-      description: ticket.description,
-      clientName: user?.name ?? "Unknown",
-    }).catch(err => {
-      logger.error({ err }, "Failed to send new ticket notification email");
-    });
+    if (isPlanSwitch || titleLower.includes("شحن") || descLower.includes("شحن")) {
+      sendPlanRequestAdminNotification({
+        id: ticket.id,
+        title: ticket.title,
+        description: ticket.description,
+        clientName: user?.name ?? "Unknown",
+        clientEmail: user?.email ?? undefined,
+        companyName: company?.name ?? undefined,
+      }).catch(err => {
+        logger.error({ err }, "Failed to send plan request notification email");
+      });
+    } else {
+      sendNewTicketNotification({
+        id: ticket.id,
+        title: ticket.title,
+        description: ticket.description,
+        clientName: user?.name ?? "Unknown",
+      }).catch(err => {
+        logger.error({ err }, "Failed to send new ticket notification email");
+      });
+    }
 
     res.status(201).json({
       id: ticket.id,

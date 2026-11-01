@@ -3,6 +3,7 @@ import { db, adminConfigTable, notificationsTable, usersTable } from "@workspace
 import { logger } from "./logger";
 import { escapeHtml } from "./security";
 import { eq } from "drizzle-orm";
+import { createApprovalToken } from "./planApproval";
 
 const EMAIL_KEYS = [
   "notif_recipient_email",
@@ -102,6 +103,131 @@ export async function sendNewTicketNotification(ticket: {
     logger.info({ ticketId: ticket.id }, "Ticket notification email sent");
   } catch (err) {
     logger.warn({ err }, "Failed to send ticket email (non-fatal)");
+  }
+}
+
+/**
+ * Send an actionable notification email to the admin for a new plan subscription or top-up request.
+ * The admin can reply "OK" to instantly approve, auto-activate, and dispatch the invoice to the client,
+ * or click the embedded 1-Click Instant Approval button.
+ */
+export async function sendPlanRequestAdminNotification(input: {
+  id: number;
+  title: string;
+  description: string;
+  clientName: string;
+  clientEmail?: string;
+  companyName?: string;
+}) {
+  try {
+    const cfg = await getEmailConfig();
+    if (!isEmailConfigured(cfg)) {
+      logger.warn({ ticketId: input.id }, "Admin email not configured, skipping plan request email notification");
+      return;
+    }
+
+    const token = createApprovalToken(input.id);
+    const appUrl =
+      process.env.APP_URL ||
+      (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "http://localhost:5000");
+    const approveUrl = `${appUrl}/api/admin/plan-requests/approve?ticketId=${input.id}&token=${token}`;
+
+    const transporter = buildTransporter(cfg);
+
+    const subject = `[طلب باقة جديد #${input.id}] ${input.title} (رد بـ OK للموافقة والتفعيل الفوري)`;
+
+    const html = `
+      <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:620px;margin:0 auto;background:#f8fafc;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg, #0e1838 0%, #1e3a8a 100%);padding:28px 24px;color:#ffffff;text-align:center;">
+          <span style="display:inline-block;padding:4px 12px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
+            طلب اشتراك / ترقية جديد • ACTION REQUIRED
+          </span>
+          <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">طلب باقة جديد بحاجة للموافقة #${input.id}</h2>
+          <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">تنبيه للإدارة من منصة Bot Manager</p>
+        </div>
+
+        <!-- Content Body -->
+        <div style="padding:24px;">
+          <!-- Action Callout Box (Prominent for "OK" reply) -->
+          <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;">
+            <h3 style="margin:0 0 10px;color:#1d4ed8;font-size:17px;font-weight:800;">⚡ طريقة الموافقة والتفعيل الفوري:</h3>
+            <p style="margin:0 0 14px;color:#1e3a8a;font-size:14px;line-height:1.6;">
+              يمكنك ببساطة <strong>الرد على هذا البريد الإلكتروني بكلمة "OK"</strong> أو <strong>"موافق"</strong>.<br/>
+              فور وصول ردك، سيقوم النظام تلقائياً بتفعيل الباقة / شحن الرصيد لحساب العميل وإرسال الفاتورة الرسمية له عبر الواتساب والبريد!
+            </p>
+            <div style="margin:16px 0 8px;">
+              <a href="${approveUrl}" style="display:inline-block;padding:12px 28px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;border-radius:8px;box-shadow:0 4px 12px rgba(37,99,235,0.25);">
+                ✅ الموافقة والتفعيل بنقرة واحدة (One-Click Approve)
+              </a>
+            </div>
+            <span style="display:block;margin-top:6px;font-size:11px;color:#64748b;">رابط آمن ومشفر برقم التذكرة #${input.id}</span>
+          </div>
+
+          <!-- Request Details Table -->
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#ffffff;font-size:14px;">
+            <tr>
+              <td style="padding:12px 16px;background:#f8fafc;width:30%;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">
+                العميل / Client:
+              </td>
+              <td style="padding:12px 16px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">
+                ${escapeHtml(input.clientName)} ${input.clientEmail ? `<span style="font-size:12px;color:#64748b;">(${escapeHtml(input.clientEmail)})</span>` : ""}
+              </td>
+            </tr>
+            ${
+              input.companyName
+                ? `<tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">
+                      الشركة / Company:
+                    </td>
+                    <td style="padding:12px 16px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">
+                      ${escapeHtml(input.companyName)}
+                    </td>
+                  </tr>`
+                : ""
+            }
+            <tr>
+              <td style="padding:12px 16px;background:#f8fafc;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">
+                الطلب / Request:
+              </td>
+              <td style="padding:12px 16px;font-weight:700;color:#2563eb;border-bottom:1px solid #e2e8f0;">
+                ${escapeHtml(input.title)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;background:#f8fafc;font-weight:700;color:#475569;vertical-align:top;">
+                تفاصيل الطلب:
+              </td>
+              <td style="padding:12px 16px;color:#334155;white-space:pre-wrap;line-height:1.6;font-size:13px;background:#ffffff;">
+                ${escapeHtml(input.description)}
+              </td>
+            </tr>
+          </table>
+
+          <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
+            تلقيت هذا البريد لأن عنوانك مسجل في إعدادات إشعارات الإدارة (Email Notifications).<br/>
+            يمكنك الرد بـ <strong>OK</strong> عبر تطبيق بريدك على الهاتف أو الحاسوب لمعالجة الطلب فوراً.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"Bot Manager Notifications" <${cfg.smtpUser}>`,
+      to: cfg.recipientEmail,
+      replyTo: cfg.recipientEmail,
+      subject,
+      headers: {
+        "X-Ticket-ID": String(input.id),
+        "In-Reply-To": `<ticket-${input.id}@botmanager>`,
+        "References": `<ticket-${input.id}@botmanager>`,
+      },
+      html,
+    });
+
+    logger.info({ ticketId: input.id, recipient: cfg.recipientEmail }, "Plan request admin notification email sent");
+  } catch (err) {
+    logger.warn({ err, ticketId: input.id }, "Failed to send plan request notification email (non-fatal)");
   }
 }
 

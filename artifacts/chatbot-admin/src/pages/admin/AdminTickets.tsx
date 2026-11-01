@@ -115,6 +115,8 @@ function TicketCard({
 }) {
   const { lang } = useLanguage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [approvingPlan, setApprovingPlan] = useState(false);
   const [expanded,    setExpanded]    = useState(false);
   const [manualMode,  setManualMode]  = useState(false);
   const [manualNote,  setManualNote]  = useState("");
@@ -133,6 +135,52 @@ function TicketCard({
       description: lang === "ar" ? "تم نسخ النص إلى الحافظة." : "Copied to clipboard.",
     });
     setTimeout(() => setCopiedType(null), 2000);
+  }
+
+  const isPlanRequest = useMemo(() => {
+    const tL = (ticket.title || "").toLowerCase();
+    const dL = (ticket.description || "").toLowerCase();
+    return (
+      tL.includes("باقة") ||
+      tL.includes("plan") ||
+      tL.includes("شحن") ||
+      tL.includes("topup") ||
+      tL.includes("اشتراك") ||
+      dL.includes("معرف الباقة") ||
+      dL.includes("طلب شحن") ||
+      dL.includes("طلب اشتراك") ||
+      dL.includes("طلب تغيير باقة")
+    );
+  }, [ticket.title, ticket.description]);
+
+  async function handleApprovePlan(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      setApprovingPlan(true);
+      const res: any = await customFetch(`/api/admin/plan-requests/${ticket.id}/approve`, {
+        method: "POST",
+      });
+      toast({
+        title: lang === "ar" ? "✅ تم الاعتماد وتفعيل الباقة بنجاح!" : "Plan Approved & Activated!",
+        description:
+          lang === "ar"
+            ? `تم تفعيل الباقة وتحديث الكوتا، وتم إصدار وإرسال الفاتورة رقم #${res?.result?.invoice?.invoiceNumber || ticket.id} للعميل عبر الواتساب والإيميل.`
+            : "Plan activated, quota updated, and invoice dispatched via WhatsApp and Email.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-logs"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في الاعتماد" : "Approval Failed",
+        description: err?.message || (lang === "ar" ? "تعذر اعتماد الطلب" : "Failed to approve request"),
+        variant: "destructive",
+      });
+    } finally {
+      setApprovingPlan(false);
+    }
   }
 
   function handleAiSolve(e: React.MouseEvent) {
@@ -255,6 +303,19 @@ function TicketCard({
 
         {/* ── Action buttons ── */}
         <div className="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+          {isOpen && isPlanRequest && (
+            <Button
+              size="sm"
+              onClick={handleApprovePlan}
+              disabled={approvingPlan || aiSolving || adminSolving}
+              title={lang === "ar" ? "اعتماد الباقة وتفعيلها وإرسال الفاتورة للعميل" : "Approve & activate plan, send invoice"}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs h-8 px-3 shadow-sm font-semibold"
+            >
+              {approvingPlan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>{lang === "ar" ? "اعتماد وتفعيل الباقة 🧾" : "Approve & Activate 🧾"}</span>
+            </Button>
+          )}
+
           {isOpen && (
             <>
               {/* AI Solve Button */}

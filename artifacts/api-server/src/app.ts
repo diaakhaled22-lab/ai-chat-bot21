@@ -134,7 +134,10 @@ app.use(sessionAnomalyDetector);     // Smart session anomaly detection
 app.use((req, _res, next) => {
   const urlPath = req.url.split("?")[0];
   if (
-    urlPath.startsWith("/webhook/") ||
+    urlPath.startsWith("/webhook") ||
+    urlPath.startsWith("/webhooks") ||
+    urlPath.startsWith("/email/inbound") ||
+    urlPath.startsWith("/plan-requests/approve") ||
     urlPath === "/webhook" ||
     urlPath.startsWith("/whatsapp/webhook") ||
     urlPath.startsWith("/messenger/webhook") ||

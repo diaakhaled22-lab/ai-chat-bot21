@@ -29,6 +29,7 @@ import { getExchangeRates, saveExchangeRates, type CurrencyRatesData } from "../
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
+import { processApprovedPlanRequest } from "../lib/planApproval";
 
 const router = Router();
 // Only enforce admin auth on /admin/* paths — other paths pass through this router unguarded
@@ -2735,6 +2736,36 @@ router.put("/admin/tickets/:id/admin-note", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Admin note error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/plan-requests/:ticketId/approve - admin manually approves plan request from UI
+router.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
+  try {
+    const ticketId = Number(req.params.ticketId);
+    if (!ticketId) {
+      res.status(400).json({ error: "Invalid ticket ID" });
+      return;
+    }
+    const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
+    const adminName = adminUser[0]?.name || "Admin";
+
+    const result = await processApprovedPlanRequest(ticketId, {
+      approvedBy: adminName,
+      channel: "admin_ui",
+    });
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Approve Plan Request",
+      `Admin approved plan request #${ticketId} and dispatched invoice #${result.invoice.invoiceNumber}`,
+      req.ip || null
+    );
+
+    res.json({ ok: true, result });
+  } catch (err: any) {
+    logger.error({ err }, "Admin manual approve plan request error");
+    res.status(500).json({ error: err?.message || "Failed to process plan request" });
   }
 });
 
