@@ -602,6 +602,11 @@ router.put("/client/company", async (req, res) => {
     if ((data as any).voiceReplyEnabled !== undefined) updates.voiceReplyEnabled = (data as any).voiceReplyEnabled;
     if ((data as any).voiceReplyVoice !== undefined) updates.voiceReplyVoice = (data as any).voiceReplyVoice;
     if ((req.body as any)?.businessType !== undefined) updates.businessType = (req.body as any).businessType;
+    if ((data as any).allowSourceWebsite !== undefined) updates.allowSourceWebsite = Boolean((data as any).allowSourceWebsite);
+    if ((data as any).allowSourceFiles !== undefined) updates.allowSourceFiles = Boolean((data as any).allowSourceFiles);
+    if ((data as any).allowSourceWordpress !== undefined) updates.allowSourceWordpress = Boolean((data as any).allowSourceWordpress);
+    if ((data as any).allowSourceRestApi !== undefined) updates.allowSourceRestApi = Boolean((data as any).allowSourceRestApi);
+    if ((data as any).allowSourceShopify !== undefined) updates.allowSourceShopify = Boolean((data as any).allowSourceShopify);
 
     let company: typeof companiesTable.$inferSelect | undefined;
     try {

@@ -57,6 +57,11 @@ import {
   LifeBuoy,
   Volume2,
   Wrench,
+  FileText,
+  Plug,
+  Code2,
+  ShoppingBag,
+  Database,
 } from "lucide-react";
 import { CLIENT_PAGES_META } from "./AdminCompanies";
 
@@ -131,6 +136,59 @@ export const SYSTEM_TOOLS = [
   },
 ];
 
+export const DATA_SOURCE_PERMISSIONS = [
+  {
+    id: "website",
+    key: "allowSourceWebsite",
+    titleAr: "الموقع والروابط (Website)",
+    titleEn: "Website & Web URLs",
+    descAr: "السماح بفحص روابط الموقع وسحب المقالات تلقائياً لتغذية المعرفة.",
+    descEn: "Allow scraping web pages and syncing site content.",
+    icon: Globe,
+    color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+  },
+  {
+    id: "files",
+    key: "allowSourceFiles",
+    titleAr: "المستندات والملفات (Files)",
+    titleEn: "Documents & Files",
+    descAr: "السماح برفع المستندات واستخراج المعرفة منها وتدريب البوت.",
+    descEn: "Allow uploading PDFs/docs to extract knowledge.",
+    icon: FileText,
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+  },
+  {
+    id: "wordpress",
+    key: "allowSourceWordpress",
+    titleAr: "إضافة ووردبريس (WordPress)",
+    titleEn: "WordPress Plugin",
+    descAr: "السماح بربط إضافة ووردبريس ومزامنة المقالات تلقائياً.",
+    descEn: "Allow auto-syncing WordPress posts via plugin.",
+    icon: Plug,
+    color: "text-sky-500 bg-sky-500/10 border-sky-500/20",
+  },
+  {
+    id: "rest_api",
+    key: "allowSourceRestApi",
+    titleAr: "واجهة REST API المخصصة",
+    titleEn: "Custom REST API",
+    descAr: "السماح بربط واجهات برمجية ونقاط نهاية خارجية مخصصة.",
+    descEn: "Allow connecting custom external REST API endpoints.",
+    icon: Code2,
+    color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20",
+  },
+  {
+    id: "shopify",
+    key: "allowSourceShopify",
+    titleAr: "متجر شوبيفاي (Shopify)",
+    titleEn: "Shopify Store",
+    descAr: "ربط كتالوج منتجات متجر Shopify ومزامنة الأسعار والمخزون.",
+    descEn: "Connect Shopify products catalog and sync inventory/pricing.",
+    icon: ShoppingBag,
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+  },
+];
+
 export interface PackageItem {
   id: string;
   nameAr: string;
@@ -150,6 +208,7 @@ export interface PackageItem {
   retentionDays?: number | null;
   channels?: string[];
   tools?: string[];
+  dataSources?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -304,6 +363,7 @@ export default function AdminPackages() {
       retentionDays: 30,
       channels: ["widget", "telegram", "whatsapp", "messenger"],
       tools: SYSTEM_TOOLS.map((t) => t.id),
+      dataSources: DATA_SOURCE_PERMISSIONS.map((d) => d.id),
       isActive: true,
       sortOrder: packages.length + 1,
     });
@@ -328,6 +388,9 @@ export default function AdminPackages() {
       tools: Array.isArray(plan.tools)
         ? [...plan.tools]
         : SYSTEM_TOOLS.map((t) => t.id),
+      dataSources: Array.isArray(plan.dataSources)
+        ? [...plan.dataSources]
+        : DATA_SOURCE_PERMISSIONS.map((d) => d.id),
     });
     setNewFeatureAr("");
     setNewFeatureEn("");
@@ -766,6 +829,32 @@ export default function AdminPackages() {
                                 key={tl.id}
                                 className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${tl.color}`}
                                 title={lang === "ar" ? tl.titleAr : tl.titleEn}
+                              >
+                                <Icon className="w-3 h-3" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Data Sources Badges */}
+                      <div className="mt-1.5 pt-1.5 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                          <Database className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>{lang === "ar" ? "مصادر البيانات:" : "Data Sources:"}</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {DATA_SOURCE_PERMISSIONS.map((ds) => {
+                            const Icon = ds.icon;
+                            const isIncluded = Array.isArray(plan.dataSources)
+                              ? plan.dataSources.includes(ds.id)
+                              : ds.id === "website" || ds.id === "files";
+                            if (!isIncluded) return null;
+                            return (
+                              <div
+                                key={ds.id}
+                                className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${ds.color}`}
+                                title={lang === "ar" ? ds.titleAr : ds.titleEn}
                               >
                                 <Icon className="w-3 h-3" />
                               </div>
@@ -1612,6 +1701,124 @@ export default function AdminPackages() {
                         <Switch
                           checked={isEnabled}
                           onCheckedChange={toggleTool}
+                          className="shrink-0 scale-75"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 11: Allowed Data Source Permissions */}
+              <div className="space-y-3 pt-3 border-t border-border/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Database className="w-3.5 h-3.5 text-indigo-500" />
+                        {lang === "ar" ? "صلاحيات مصادر البيانات المسموحة في هذه الباقة" : "Allowed Data Source Permissions"}
+                      </label>
+                      <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[11px] font-bold px-2 py-0.5">
+                        {(editingPlan.dataSources ?? DATA_SOURCE_PERMISSIONS.map((d) => d.id)).length} / {DATA_SOURCE_PERMISSIONS.length}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {lang === "ar"
+                        ? "تحكم في مصادر البيانات المسموح للعميل بربطها (الموقع، المستندات، ووردبريس، REST API، وشوبيفاي) لتدريب الشات بوت."
+                        : "Control which data sources the client is allowed to connect (Website, Documents, WordPress, REST API, Shopify) to train the AI."}
+                    </p>
+                  </div>
+
+                  {/* Preset Data Source Buttons */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          dataSources: DATA_SOURCE_PERMISSIONS.map((d) => d.id),
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "تفعيل جميع المصادر" : "Enable All"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          dataSources: ["website", "files", "wordpress"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "المصادر الشائعة" : "Common"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          dataSources: ["website", "files"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                    >
+                      {lang === "ar" ? "موقع وملفات فقط" : "Site & Files"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Data Sources Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {DATA_SOURCE_PERMISSIONS.map((ds) => {
+                    const Icon = ds.icon;
+                    const sourcesList = editingPlan.dataSources ?? DATA_SOURCE_PERMISSIONS.map((d) => d.id);
+                    const isEnabled = sourcesList.includes(ds.id);
+
+                    const toggleSource = () => {
+                      const updated = isEnabled
+                        ? sourcesList.filter((id) => id !== ds.id)
+                        : [...sourcesList, ds.id];
+                      setEditingPlan({ ...editingPlan, dataSources: updated });
+                    };
+
+                    return (
+                      <div
+                        key={ds.id}
+                        onClick={toggleSource}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                          isEnabled
+                            ? "bg-indigo-500/5 border-indigo-500/40 shadow-sm"
+                            : "bg-muted/20 border-border/60 opacity-60 hover:opacity-90"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${ds.color}`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block truncate">
+                              {lang === "ar" ? ds.titleAr : ds.titleEn}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block truncate">
+                              {lang === "ar" ? ds.descAr : ds.descEn}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={toggleSource}
                           className="shrink-0 scale-75"
                         />
                       </div>

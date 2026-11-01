@@ -54,8 +54,13 @@ import {
   FileSpreadsheet,
   Users,
   Volume2,
+  FileText,
+  Plug,
+  Code2,
+  ShoppingBag,
+  Database,
 } from "lucide-react";
-import { COMMUNICATION_CHANNELS, SYSTEM_TOOLS } from "@/pages/admin/AdminPackages";
+import { COMMUNICATION_CHANNELS, SYSTEM_TOOLS, DATA_SOURCE_PERMISSIONS } from "@/pages/admin/AdminPackages";
 
 type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
 
@@ -123,6 +128,7 @@ interface PlanDef {
   retentionDays?: number | null;
   channels?: string[];
   tools?: string[];
+  dataSources?: string[];
   isActive?: boolean;
 }
 
@@ -140,6 +146,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     gradient: "from-blue-600/20 to-cyan-600/10",
     channels: ["widget", "telegram"],
     tools: ["leads_crm"],
+    dataSources: ["website", "files"],
     featuresAr: [
       "50,000 رمز شهرياً (AI Tokens)",
       "قناتين: ويدجت الموقع الإلكتروني + بوت تليجرام",
@@ -174,6 +181,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     badgeEn: "Most Popular",
     channels: ["widget", "telegram", "whatsapp", "messenger"],
     tools: ["calendar", "sheets", "leads_crm", "handoff", "web_sync"],
+    dataSources: ["website", "files", "wordpress"],
     featuresAr: [
       "250,000 رمز شهرياً (AI Tokens)",
       "جميع القنوات: موقع + تليجرام + واتساب + ماسنجر",
@@ -209,6 +217,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     badgeEn: "Top Performance",
     channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
     tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
+    dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],
     featuresAr: [
       "1,000,000 رمز شهرياً (AI Tokens)",
       "جميع ميزات الباقة الاحترافية بالكامل",
@@ -262,6 +271,7 @@ export default function ClientPackages() {
   const [selectedRetention, setSelectedRetention] = useState<number | null>(30);
   const [selectedChannels, setSelectedChannels] = useState<string[]>(["widget", "telegram", "whatsapp", "messenger"]);
   const [selectedTools, setSelectedTools] = useState<string[]>(["calendar", "sheets", "leads_crm", "handoff"]);
+  const [selectedDataSources, setSelectedDataSources] = useState<string[]>(["website", "files", "wordpress"]);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [submittedPlans, setSubmittedPlans] = useState<Record<string, { phone: string; submittedAt?: string }>>({});
@@ -486,6 +496,19 @@ export default function ClientPackages() {
       setSelectedTools(activeTools);
     }
 
+    // Pre-fill data sources based on plan definition or existing company setup
+    if (Array.isArray(plan.dataSources) && plan.dataSources.length > 0) {
+      setSelectedDataSources([...plan.dataSources]);
+    } else {
+      const activeSources: string[] = [];
+      if ((company as any)?.allowSourceWebsite !== false) activeSources.push("website");
+      if ((company as any)?.allowSourceFiles !== false) activeSources.push("files");
+      if ((company as any)?.allowSourceWordpress !== false) activeSources.push("wordpress");
+      if ((company as any)?.allowSourceRestApi !== false) activeSources.push("rest_api");
+      if ((company as any)?.allowSourceShopify !== false) activeSources.push("shopify");
+      setSelectedDataSources(activeSources.length > 0 ? activeSources : ["website", "files"]);
+    }
+
     // If this specific plan has a previously accepted/submitted request, display that phone number
     const prevPlanRequest = submittedPlans[plan.id];
     if (prevPlanRequest?.phone) {
@@ -570,6 +593,13 @@ export default function ClientPackages() {
               .join("، ")
           : (lang === "ar" ? "لم يتم تحديد أدوات" : "None selected")
       }`,
+      `صلاحيات مصادر البيانات المطلوب تفعيلها: ${
+        selectedDataSources.length > 0
+          ? selectedDataSources
+              .map((dsId) => DATA_SOURCE_PERMISSIONS.find((ds) => ds.id === dsId)?.titleAr || dsId)
+              .join("، ")
+          : (lang === "ar" ? "لم يتم تحديد مصادر بيانات" : "None selected")
+      }`,
       `رقم هاتف / واتساب للتواصل: ${trimmedPhone}`,
       clientNotes ? `ملاحظات أو متطلبات خاصة:\n${clientNotes.trim()}` : null,
       `اسم الشركة الحالي: ${(company as any)?.name ?? "لم يتم الإنشاء بعد"}`,
@@ -604,6 +634,11 @@ export default function ClientPackages() {
               googleSheetsEnabled: selectedTools.includes("sheets"),
               voiceReplyEnabled: selectedTools.includes("voice"),
               websiteAutoSync: selectedTools.includes("web_sync"),
+              allowSourceWebsite: selectedDataSources.includes("website"),
+              allowSourceFiles: selectedDataSources.includes("files"),
+              allowSourceWordpress: selectedDataSources.includes("wordpress"),
+              allowSourceRestApi: selectedDataSources.includes("rest_api"),
+              allowSourceShopify: selectedDataSources.includes("shopify"),
             }),
           }).then(() => {
             queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
@@ -1074,6 +1109,35 @@ export default function ClientPackages() {
                         >
                           <IconComp className="w-3 h-3 shrink-0" />
                           <span>{lang === "ar" ? tl.titleAr.split(" (")[0] : tl.titleEn}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Included Data Sources Highlight */}
+                <div className="mt-2 p-2.5 rounded-xl border border-border/50 bg-muted/30 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span className="font-semibold">{lang === "ar" ? "مصادر البيانات:" : "Data Sources:"}</span>
+                    </div>
+                    <span className="font-bold text-foreground">
+                      {(plan.dataSources && plan.dataSources.length > 0 ? plan.dataSources.length : 2)} {lang === "ar" ? "مصادر" : "Sources"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {DATA_SOURCE_PERMISSIONS.map((ds) => {
+                      const isIncluded = (plan.dataSources || ["website", "files"]).includes(ds.id);
+                      if (!isIncluded) return null;
+                      const IconComp = ds.icon;
+                      return (
+                        <span
+                          key={ds.id}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${ds.color}`}
+                        >
+                          <IconComp className="w-3 h-3 shrink-0" />
+                          <span>{lang === "ar" ? ds.titleAr.split(" (")[0] : ds.titleEn}</span>
                         </span>
                       );
                     })}
@@ -1641,6 +1705,106 @@ export default function ClientPackages() {
                         </div>
                         <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-1 transition-colors ${
                           isChecked ? "bg-blue-600 border-blue-600 text-white" : "border-border bg-background"
+                        }`}>
+                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Data Sources to Permit & Activate Selector */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Database className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>{lang === "ar" ? "صلاحيات مصادر البيانات المطلوب تفعيلها" : "Data Sources to Permit & Activate"}</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/25">
+                    {selectedDataSources.length} {lang === "ar" ? "مصادر محددة" : "Selected"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {lang === "ar"
+                    ? "حدد مصادر البيانات المسموح بربطها لحسابك (الموقع، المستندات، ووردبريس، REST API، شوبيفاي) لتغذية الشات بوت."
+                    : "Choose which data sources you want enabled to feed and train your AI assistant."}
+                </p>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allowed = selectedPlan.dataSources && selectedPlan.dataSources.length > 0
+                        ? selectedPlan.dataSources
+                        : DATA_SOURCE_PERMISSIONS.map((d) => d.id);
+                      setSelectedDataSources(allowed);
+                    }}
+                    className="h-6 px-2 text-[10px] rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10"
+                  >
+                    {lang === "ar" ? "تحديد كل المتاح" : "Select All Allowed"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allowed = selectedPlan.dataSources || [];
+                      const basic = ["website", "files"].filter((s) => !selectedPlan.dataSources || allowed.includes(s));
+                      setSelectedDataSources(basic);
+                    }}
+                    className="h-6 px-2 text-[10px] rounded-lg text-muted-foreground hover:bg-muted"
+                  >
+                    {lang === "ar" ? "موقع وملفات فقط" : "Site & Files"}
+                  </Button>
+                </div>
+
+                {/* Data Sources Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {DATA_SOURCE_PERMISSIONS.map((ds) => {
+                    const isPlanAllowed = !selectedPlan.dataSources || selectedPlan.dataSources.includes(ds.id);
+                    const isChecked = selectedDataSources.includes(ds.id);
+                    const IconComp = ds.icon;
+                    return (
+                      <button
+                        key={ds.id}
+                        type="button"
+                        disabled={!isPlanAllowed}
+                        onClick={() => {
+                          if (isChecked) {
+                            setSelectedDataSources((prev) => prev.filter((id) => id !== ds.id));
+                          } else {
+                            setSelectedDataSources((prev) => [...prev, ds.id]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-right transition-all flex items-start justify-between gap-2 cursor-pointer ${
+                          !isPlanAllowed
+                            ? "opacity-40 bg-muted/40 border-dashed border-border cursor-not-allowed"
+                            : isChecked
+                            ? "bg-card border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/20"
+                            : "bg-background/60 border-border/70 hover:bg-muted/40"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 ${ds.color}`}>
+                            <IconComp className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-foreground truncate">
+                              {lang === "ar" ? ds.titleAr : ds.titleEn}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                              {!isPlanAllowed
+                                ? (lang === "ar" ? "غير مضمنة في هذه الباقة" : "Not included in plan")
+                                : (lang === "ar" ? ds.descAr : ds.descEn)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-1 transition-colors ${
+                          isChecked ? "bg-indigo-600 border-indigo-600 text-white" : "border-border bg-background"
                         }`}>
                           {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>

@@ -17,6 +17,7 @@ export interface PackageItem {
   retentionDays?: number | null;
   channels?: string[];
   tools?: string[];
+  dataSources?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -83,6 +84,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
       retentionDays: 7,
       channels: ["widget", "telegram"],
       tools: ["leads_crm"],
+      dataSources: ["website", "files"],
       isActive: true,
       sortOrder: 1,
     },
@@ -138,6 +140,7 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
       retentionDays: 30,
       channels: ["widget", "telegram", "whatsapp", "messenger"],
       tools: ["calendar", "sheets", "leads_crm", "handoff", "web_sync"],
+      dataSources: ["website", "files", "wordpress"],
       isActive: true,
       sortOrder: 2,
     },
@@ -194,6 +197,10 @@ export const DEFAULT_PACKAGES_CATALOG: PackagesCatalog = {
       retentionDays: 90,
       channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
       tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
+      dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],
+      isActive: true,
+      sortOrder: 3,
+    },
   ],
   topupPacks: [
     { id: "topup-25k", tokens: 25_000, formatted: "+25K", priceUsd: 5, isActive: true },
