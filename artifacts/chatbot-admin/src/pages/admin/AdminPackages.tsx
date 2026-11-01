@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -44,7 +45,9 @@ import {
   Search,
   Zap,
   RefreshCw,
+  SlidersHorizontal,
 } from "lucide-react";
+import { CLIENT_PAGES_META } from "./AdminCompanies";
 
 export interface PackageItem {
   id: string;
@@ -61,6 +64,7 @@ export interface PackageItem {
   badgeEn?: string;
   featuresAr: string[];
   featuresEn: string[];
+  allowedPages?: string[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -211,6 +215,7 @@ export default function AdminPackages() {
       badgeEn: "",
       featuresAr: ["100,000 رمز شهرياً (AI Tokens)", "ويدجت الموقع وبوت تليجرام"],
       featuresEn: ["100,000 monthly AI Tokens", "Website Widget & Telegram Bot"],
+      allowedPages: CLIENT_PAGES_META.map((p) => p.id),
       isActive: true,
       sortOrder: packages.length + 1,
     });
@@ -221,7 +226,14 @@ export default function AdminPackages() {
 
   const handleOpenEditPlan = (plan: PackageItem) => {
     setIsNewPlan(false);
-    setEditingPlan({ ...plan, featuresAr: [...plan.featuresAr], featuresEn: [...plan.featuresEn] });
+    setEditingPlan({
+      ...plan,
+      featuresAr: [...plan.featuresAr],
+      featuresEn: [...plan.featuresEn],
+      allowedPages: Array.isArray(plan.allowedPages)
+        ? [...plan.allowedPages]
+        : CLIENT_PAGES_META.map((p) => p.id),
+    });
     setNewFeatureAr("");
     setNewFeatureEn("");
     setIsPlanModalOpen(true);
@@ -589,6 +601,17 @@ export default function AdminPackages() {
                             </li>
                           )}
                         </ul>
+                      </div>
+
+                      {/* Allowed Pages Badge */}
+                      <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                          <span>{lang === "ar" ? "الصفحات المتاحة:" : "Allowed Pages:"}</span>
+                        </span>
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5">
+                          {Array.isArray(plan.allowedPages) ? plan.allowedPages.length : CLIENT_PAGES_META.length} / {CLIENT_PAGES_META.length}
+                        </Badge>
                       </div>
                     </div>
 
@@ -993,6 +1016,141 @@ export default function AdminPackages() {
                     <Plus className="w-3.5 h-3.5" />
                     <span>{lang === "ar" ? "إضافة" : "Add"}</span>
                   </Button>
+                </div>
+              </div>
+
+              {/* Row 7: Allowed Client Pages */}
+              <div className="space-y-3 pt-3 border-t border-border/40">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-muted/40 p-3.5 rounded-2xl border border-border/50">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-primary" />
+                      <label className="text-xs font-bold text-foreground">
+                        {lang === "ar" ? "الصفحات المتاحة للعميل في هذه الباقة" : "Allowed Client Pages for this Plan"}
+                      </label>
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[11px] font-bold px-2 py-0.5">
+                        {(editingPlan.allowedPages ?? CLIENT_PAGES_META.map((p) => p.id)).length} / {CLIENT_PAGES_META.length}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {lang === "ar"
+                        ? "حدد الصفحات التي يستطيع العميل المشترك في هذه الباقة الوصول إليها في قائمته الجانبية. الصفحات غير المحددة سيتم حجبها تلقائياً."
+                        : "Select the sidebar pages that clients on this subscription plan will be able to access. Unchecked pages will be hidden."}
+                    </p>
+                  </div>
+
+                  {/* Presets */}
+                  <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          allowedPages: CLIENT_PAGES_META.map((p) => p.id),
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "تفعيل الكل" : "Enable All"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          allowedPages: [
+                            "dashboard",
+                            "notifications",
+                            "company",
+                            "packages",
+                            "ai_model",
+                            "usage",
+                            "knowledge",
+                            "channels",
+                            "widget_preview",
+                            "support",
+                            "malfunctions",
+                            "settings",
+                          ],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2.5 rounded-lg font-medium cursor-pointer"
+                    >
+                      {lang === "ar" ? "الوضع الأساسي" : "Core"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setEditingPlan({
+                          ...editingPlan,
+                          allowedPages: ["dashboard", "packages", "support"],
+                        })
+                      }
+                      className="text-[11px] h-7 px-2 text-destructive hover:text-destructive rounded-lg cursor-pointer"
+                    >
+                      {lang === "ar" ? "الحد الأدنى" : "Minimal"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Grid of Pages */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-1 pr-1.5">
+                  {CLIENT_PAGES_META.map((page) => {
+                    const Icon = page.icon;
+                    const allowedList = editingPlan.allowedPages ?? CLIENT_PAGES_META.map((p) => p.id);
+                    const isAllowed = allowedList.includes(page.id);
+
+                    const togglePage = () => {
+                      const updated = isAllowed
+                        ? allowedList.filter((id) => id !== page.id)
+                        : [...allowedList, page.id];
+                      setEditingPlan({ ...editingPlan, allowedPages: updated });
+                    };
+
+                    return (
+                      <div
+                        key={page.id}
+                        onClick={togglePage}
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ${
+                          isAllowed
+                            ? "bg-primary/5 border-primary/40 shadow-sm"
+                            : "bg-muted/20 border-border/60 opacity-60 hover:opacity-90"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                              isAllowed
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-semibold block truncate">
+                              {lang === "ar" ? page.titleAr : page.titleEn}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block truncate font-mono">
+                              {page.id}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Switch
+                          checked={isAllowed}
+                          onCheckedChange={togglePage}
+                          className="shrink-0 scale-75"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

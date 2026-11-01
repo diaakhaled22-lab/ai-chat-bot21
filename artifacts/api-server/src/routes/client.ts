@@ -51,6 +51,31 @@ function parseEnabledPages(val: any): string[] | null {
   return null;
 }
 
+async function resolveEffectiveClientPages(company: typeof companiesTable.$inferSelect, explicitConfigPages: string[] | null): Promise<string[] | null> {
+  const custom = explicitConfigPages ?? parseEnabledPages((company as any).enabledClientPages);
+  if (custom && custom.length > 0) return custom;
+  try {
+    const [catRow] = await db
+      .select({ value: adminConfigTable.value })
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "packages_catalog"))
+      .limit(1);
+    const parsedCatalog = catRow?.value ? JSON.parse(catRow.value) : DEFAULT_PACKAGES_CATALOG;
+    const pkgs: any[] = Array.isArray(parsedCatalog?.packages) ? parsedCatalog.packages : DEFAULT_PACKAGES_CATALOG.packages;
+    const quota = company.monthlyTokenQuota;
+    let matchedPlan = pkgs.find((p) => p.tokensMonthly === quota);
+    if (!matchedPlan && quota) {
+      if (quota <= 100_000) matchedPlan = pkgs.find((p) => p.id === "starter");
+      else if (quota <= 500_000) matchedPlan = pkgs.find((p) => p.id === "pro");
+      else matchedPlan = pkgs.find((p) => p.id === "enterprise");
+    }
+    if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
+      return matchedPlan.allowedPages;
+    }
+  } catch {}
+  return custom;
+}
+
 // Only enforce client auth on /client/* paths ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â other paths pass through unguarded
 router.use("/client", requireClient);
 
@@ -171,7 +196,7 @@ router.get("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: configPages ?? parseEnabledPages((company as any).enabledClientPages),
+      enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });
@@ -703,7 +728,7 @@ router.put("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
-      enabledClientPages: configPages ?? parseEnabledPages((company as any).enabledClientPages),
+      enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
     });

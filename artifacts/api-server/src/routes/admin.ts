@@ -4791,6 +4791,7 @@ async function handleUpdatePackages(req: any, res: any) {
       badgeEn: p.badgeEn ? String(p.badgeEn).trim() : undefined,
       featuresAr: Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [],
       featuresEn: Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [],
+      allowedPages: Array.isArray((p as any).allowedPages) ? (p as any).allowedPages : undefined,
       isActive: p.isActive !== false,
       sortOrder: Number(p.sortOrder) || index + 1,
     }));
