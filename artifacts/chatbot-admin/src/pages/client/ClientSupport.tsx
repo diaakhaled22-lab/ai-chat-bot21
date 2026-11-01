@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import {
   AlertCircle, CheckCircle2, SendHorizonal, Bot, ChevronDown, ChevronUp,
-  Loader2, Plus, X, LifeBuoy, Clock, Trash2,
+  Loader2, Plus, X, LifeBuoy, Clock, Trash2, RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
