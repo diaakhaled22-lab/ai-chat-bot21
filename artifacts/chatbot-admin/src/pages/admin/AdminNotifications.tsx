@@ -100,7 +100,20 @@ export default function AdminNotifications() {
 
   const markSingleReadMutation = useMutation({
     mutationFn: (id: number) => customFetch(`/api/admin/notifications/${id}/read`, { method: "PATCH" }),
-    onSuccess: () => {
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["admin-notifications"] });
+      const previousNotifs = queryClient.getQueryData<AppNotification[]>(["admin-notifications"]);
+      queryClient.setQueryData<AppNotification[]>(["admin-notifications"], (old = []) =>
+        old.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+      return { previousNotifs };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousNotifs) {
+        queryClient.setQueryData(["admin-notifications"], context.previousNotifs);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
     },
   });
@@ -461,9 +474,15 @@ export default function AdminNotifications() {
             return (
               <div
                 key={notif.id}
-                className={`relative rounded-2xl p-4 sm:p-5 bg-card border transition-all shadow-sm hover:shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                onClick={() => {
+                  if (!notif.isRead) {
+                    markSingleReadMutation.mutate(notif.id);
+                  }
+                }}
+                title={!notif.isRead ? (lang === "ar" ? "اضغط لتحديد الإشعار كمقروء" : "Click to mark as read") : undefined}
+                className={`relative rounded-2xl p-4 sm:p-5 bg-card border transition-all shadow-sm hover:shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 select-text ${
                   !notif.isRead
-                    ? "border-blue-500/40 bg-blue-500/[0.02] dark:bg-blue-950/10 shadow-blue-500/5 ring-1 ring-blue-500/20"
+                    ? "border-blue-500/40 bg-blue-500/[0.02] dark:bg-blue-950/10 shadow-blue-500/5 ring-1 ring-blue-500/20 cursor-pointer hover:bg-blue-500/[0.05]"
                     : "border-border hover:border-border/80"
                 }`}
               >
@@ -504,12 +523,21 @@ export default function AdminNotifications() {
                 </div>
 
                 {/* Right side: Actions */}
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <div 
+                  className="flex items-center gap-2 self-end sm:self-center shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {theme.actionHref && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setLocation(theme.actionHref!)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!notif.isRead) {
+                          markSingleReadMutation.mutate(notif.id);
+                        }
+                        setLocation(theme.actionHref!);
+                      }}
                       className="text-xs rounded-xl h-8 px-3 gap-1.5 hover:bg-muted font-medium cursor-pointer"
                     >
                       <span>{theme.actionLabel}</span>
@@ -521,7 +549,10 @@ export default function AdminNotifications() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => markSingleReadMutation.mutate(notif.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markSingleReadMutation.mutate(notif.id);
+                      }}
                       title={lang === "ar" ? "تحديد كمقروء" : "Mark as read"}
                       className="text-xs rounded-xl h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
                     >
@@ -533,6 +564,7 @@ export default function AdminNotifications() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={(e) => e.stopPropagation()}
                       title={lang === "ar" ? "حذف الإشعار" : "Delete notification"}
                       className="text-xs rounded-xl h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                     >
