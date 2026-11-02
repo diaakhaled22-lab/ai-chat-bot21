@@ -112,6 +112,8 @@ function NotificationBell() {
   const displayNotifications = useMemo(() => {
     const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const seenPlanKeys = new Set<string>();
+    const seenNotifMap = new Map<string, number>();
+
     return sorted.filter((n) => {
       const titleLower = (n.title || "").toLowerCase();
       const msgLower = (n.message || "").toLowerCase();
@@ -136,6 +138,16 @@ function NotificationBell() {
         if (seenPlanKeys.has(key)) return false;
         seenPlanKeys.add(key);
       }
+
+      // Check for identical notification within 10 minutes
+      const notifKey = `${n.type}:::${n.title}`;
+      const notifTime = new Date(n.createdAt).getTime();
+      const lastSeenTime = seenNotifMap.get(notifKey);
+      if (lastSeenTime !== undefined && Math.abs(lastSeenTime - notifTime) < 10 * 60 * 1000) {
+        return false;
+      }
+      seenNotifMap.set(notifKey, notifTime);
+
       return true;
     });
   }, [notifications]);
@@ -787,6 +799,8 @@ function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
   const displayNotifications = useMemo(() => {
     const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const seenPlanKeys = new Set<string>();
+    const seenNotifMap = new Map<string, number>();
+
     return sorted.filter((n) => {
       const titleLower = (n.title || "").toLowerCase();
       const msgLower = (n.message || "").toLowerCase();
@@ -811,6 +825,16 @@ function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
         if (seenPlanKeys.has(key)) return false;
         seenPlanKeys.add(key);
       }
+
+      // Check for identical notification within 10 minutes
+      const notifKey = `${n.type}:::${n.title}`;
+      const notifTime = new Date(n.createdAt).getTime();
+      const lastSeenTime = seenNotifMap.get(notifKey);
+      if (lastSeenTime !== undefined && Math.abs(lastSeenTime - notifTime) < 10 * 60 * 1000) {
+        return false;
+      }
+      seenNotifMap.set(notifKey, notifTime);
+
       return true;
     });
   }, [notifications]);

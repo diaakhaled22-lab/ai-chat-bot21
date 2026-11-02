@@ -118,9 +118,12 @@ export default function ClientNotifications() {
 
   // Deduplicate plan switch notifications: keep ONLY the latest plan switch request notification,
   // cancel/filter out any preceding ones so only the final request is visible to the client.
+  // Also filter out any duplicates created within a short window.
   const deduplicatedNotifications = useMemo(() => {
     const sorted = [...notifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     let seenPlan = false;
+    const seenNotifMap = new Map<string, number>();
+
     return sorted.filter((n) => {
       const titleLower = (n.title || "").toLowerCase();
       const msgLower = (n.message || "").toLowerCase();
@@ -143,6 +146,16 @@ export default function ClientNotifications() {
         if (seenPlan) return false;
         seenPlan = true;
       }
+
+      // Check for identical notification within 10 minutes
+      const notifKey = `${n.type}:::${n.title}`;
+      const notifTime = new Date(n.createdAt).getTime();
+      const lastSeenTime = seenNotifMap.get(notifKey);
+      if (lastSeenTime !== undefined && Math.abs(lastSeenTime - notifTime) < 10 * 60 * 1000) {
+        return false;
+      }
+      seenNotifMap.set(notifKey, notifTime);
+
       return true;
     });
   }, [notifications]);

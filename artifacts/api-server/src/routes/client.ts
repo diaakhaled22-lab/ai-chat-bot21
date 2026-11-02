@@ -2787,8 +2787,12 @@ router.get("/client/notifications", async (req, res) => {
 
     // If client performed multiple plan switches/updates, cancel and purge any older superseded switch
     // notifications so that ONLY the final (most recent) request notification remains visible to the client.
+    // Also deduplicate identical notifications (same type and title within a 10-minute window) so
+    // duplicate notifications are cleanly purged from the database and client view.
     let seenPlan = false;
     const supersededNotifIds: number[] = [];
+    const duplicateNotifIds: number[] = [];
+    const seenNotifMap = new Map<string, number>();
     const validItems: typeof items = [];
 
     for (const n of items) {
@@ -2816,12 +2820,24 @@ router.get("/client/notifications", async (req, res) => {
         }
         seenPlan = true;
       }
+
+      // Check for identical duplicate notification (same type and title within 10 minutes)
+      const notifKey = `${n.type}:::${n.title}`;
+      const notifTime = new Date(n.createdAt).getTime();
+      const lastSeenTime = seenNotifMap.get(notifKey);
+      if (lastSeenTime !== undefined && Math.abs(lastSeenTime - notifTime) < 10 * 60 * 1000) {
+        duplicateNotifIds.push(n.id);
+        continue;
+      }
+      seenNotifMap.set(notifKey, notifTime);
+
       validItems.push(n);
     }
 
-    if (supersededNotifIds.length > 0) {
-      await db.delete(notificationsTable).where(inArray(notificationsTable.id, supersededNotifIds)).catch(() => {});
-      logger.info({ supersededNotifIds }, "Purged superseded plan switch notifications for client view");
+    const idsToPurge = [...supersededNotifIds, ...duplicateNotifIds];
+    if (idsToPurge.length > 0) {
+      await db.delete(notificationsTable).where(inArray(notificationsTable.id, idsToPurge)).catch(() => {});
+      logger.info({ supersededNotifIds, duplicateNotifIds }, "Purged superseded and duplicate notifications for client view");
     }
 
     res.json(validItems.map((n) => ({

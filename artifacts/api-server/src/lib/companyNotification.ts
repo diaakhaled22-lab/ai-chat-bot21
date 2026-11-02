@@ -1,5 +1,5 @@
 import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, usersTable, pool } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
 /**
@@ -284,14 +284,31 @@ export async function sendCompanyNotification(
         try {
           const inAppTitle = options.inAppTitle || `[${options.eventType}] ${company.name}`;
           const inAppMessage = options.inAppMessage || subject;
-          await db.insert(notificationsTable).values({
-            userId: company.clientId,
-            type: (options as any)?.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
-            title: inAppTitle,
-            message: inAppMessage,
-            companyId: company.id,
-            isRead: false,
-          });
+          const notifType = (options as any)?.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+
+          // Deduplication guard: prevent duplicate in-app notifications if identical notification was sent within 5 minutes
+          const [existingDup] = await db
+            .select({ id: notificationsTable.id })
+            .from(notificationsTable)
+            .where(
+              and(
+                eq(notificationsTable.userId, company.clientId),
+                eq(notificationsTable.title, inAppTitle),
+                sql`${notificationsTable.createdAt} >= NOW() - INTERVAL '5 minutes'`
+              )
+            )
+            .limit(1);
+
+          if (!existingDup) {
+            await db.insert(notificationsTable).values({
+              userId: company.clientId,
+              type: notifType,
+              title: inAppTitle,
+              message: inAppMessage,
+              companyId: company.id,
+              isRead: false,
+            });
+          }
         } catch (notifErr) {
           logger.warn({ notifErr }, "Failed to create synced in-app notification in notificationsTable");
         }
@@ -847,23 +864,7 @@ export async function notifyQuotaAmberLowBalance(
   const inAppTitle = "🟡 تحذير: رصيد حصة الرموز أقل من 20%";
   const inAppMessage = `رصيدك المتبقي من حصة الذكاء الاصطناعي أصبح أقل من 20% (متبقي ${quota.remainingTokens.toLocaleString()} رمز من أصل ${quota.monthlyQuota.toLocaleString()}). يرجى طلب زيادة أو شحن الرصيد لضمان استمرار الردود التلقائية.`;
 
-  // 1. Guaranteed in-app notification insertion:
-  if (company.clientId) {
-    try {
-      await db.insert(notificationsTable).values({
-        userId: company.clientId,
-        type: "quota_warning_amber",
-        title: inAppTitle,
-        message: inAppMessage,
-        companyId: company.id,
-        isRead: false,
-      });
-    } catch (e) {
-      logger.warn({ err: e }, "Failed to directly insert quota_warning_amber notification");
-    }
-  }
-
-  // 2. Email notification via Resend:
+  // Email and in-app notification via Resend & synchronized in-app bell:
   const html = buildNotificationHtml({
     companyName: company.name,
     eventType,
@@ -907,23 +908,7 @@ export async function notifyQuotaRedDepleted(
   const inAppTitle = "🔴 تنبيه عاجل: تم استنفاد حصة الرموز بالكامل (0 متبقي)";
   const inAppMessage = `لقد استنفدت كامل حصة الذكاء الاصطناعي الشهرية (${quota.monthlyQuota.toLocaleString()} رمز). توقفت الردود التلقائية للمساعد مؤقتاً حتى تجديد الحصة أو شحن رصيد إضافي.`;
 
-  // 1. Guaranteed in-app notification insertion:
-  if (company.clientId) {
-    try {
-      await db.insert(notificationsTable).values({
-        userId: company.clientId,
-        type: "quota_depleted_red",
-        title: inAppTitle,
-        message: inAppMessage,
-        companyId: company.id,
-        isRead: false,
-      });
-    } catch (e) {
-      logger.warn({ err: e }, "Failed to directly insert quota_depleted_red notification");
-    }
-  }
-
-  // 2. Email notification via Resend:
+  // Email and in-app notification via Resend & synchronized in-app bell:
   const html = buildNotificationHtml({
     companyName: company.name,
     eventType,
