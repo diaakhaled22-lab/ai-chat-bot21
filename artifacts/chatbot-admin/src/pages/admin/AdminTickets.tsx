@@ -125,6 +125,7 @@ function TicketCard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [approvingPlan, setApprovingPlan] = useState(false);
+  const [showApproveOptions, setShowApproveOptions] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [selectedPaidStatus, setSelectedPaidStatus] = useState<boolean>(true);
   const [expanded,    setExpanded]    = useState(false);
@@ -166,6 +167,7 @@ function TicketCard({
   function handleApprovePlan(e: React.MouseEvent) {
     e.stopPropagation();
     setSelectedPaidStatus(true);
+    setShowApproveOptions(true);
     setShowApproveDialog(true);
   }
 
@@ -177,6 +179,7 @@ function TicketCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPaid }),
       });
+      setShowApproveOptions(false);
       setShowApproveDialog(false);
       toast({
         title:
@@ -330,16 +333,61 @@ function TicketCard({
         {/* ── Action buttons ── */}
         <div className="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
           {isOpen && isPlanRequest && (
-            <Button
-              size="sm"
-              onClick={handleApprovePlan}
-              disabled={approvingPlan || aiSolving || adminSolving}
-              title={lang === "ar" ? "اعتماد الباقة وتفعيلها وإرسال الفاتورة للعميل" : "Approve & activate plan, send invoice"}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs h-8 px-3 shadow-sm font-semibold"
-            >
-              {approvingPlan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              <span>{lang === "ar" ? "اعتماد وتفعيل الباقة 🧾" : "Approve & Activate 🧾"}</span>
-            </Button>
+            showApproveOptions ? (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 p-1 bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500 rounded-xl shadow-md animate-in fade-in zoom-in-95"
+              >
+                <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 px-1.5 flex items-center gap-1">
+                  <span>🧾</span>
+                  <span>{lang === "ar" ? "حالة السداد:" : "Payment:"}</span>
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => executeApprovePlan(true)}
+                  disabled={approvingPlan}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 px-3 text-xs font-bold gap-1 shadow-xs cursor-pointer"
+                  title={lang === "ar" ? "اعتماد وتفعيل كـ مسددة (Paid)" : "Approve as Paid"}
+                >
+                  {approvingPlan ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 stroke-[3]" />}
+                  <span>{lang === "ar" ? "مسددة (Paid)" : "Paid"}</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => executeApprovePlan(false)}
+                  disabled={approvingPlan}
+                  className="bg-amber-600 hover:bg-amber-700 text-white h-7 px-3 text-xs font-bold gap-1 shadow-xs cursor-pointer"
+                  title={lang === "ar" ? "اعتماد وتفعيل كـ غير مسددة (Unpaid)" : "Approve as Unpaid"}
+                >
+                  {approvingPlan ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                  <span>{lang === "ar" ? "غير مسددة (Unpaid)" : "Unpaid"}</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowApproveOptions(false);
+                    setShowApproveDialog(false);
+                  }}
+                  disabled={approvingPlan}
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg cursor-pointer"
+                  title={lang === "ar" ? "إلغاء" : "Cancel"}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleApprovePlan}
+                disabled={approvingPlan || aiSolving || adminSolving}
+                title={lang === "ar" ? "اعتماد الباقة وتفعيلها وإرسال الفاتورة للعميل" : "Approve & activate plan, send invoice"}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs h-8 px-3 shadow-sm font-semibold cursor-pointer"
+              >
+                {approvingPlan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                <span>{lang === "ar" ? "اعتماد وتفعيل الباقة 🧾" : "Approve & Activate 🧾"}</span>
+              </Button>
+            )
           )}
 
           {isOpen && (
@@ -415,6 +463,85 @@ function TicketCard({
           </button>
         </div>
       </div>
+
+      {/* ── Prominent In-Card Approval & Payment Selection Banner ── */}
+      {showApproveOptions && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mx-4 mb-3 p-4 bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-amber-500/10 border-2 border-emerald-500 rounded-xl space-y-3 shadow-md animate-in slide-in-from-top-2 duration-200"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🧾</span>
+              <div>
+                <h4 className="font-bold text-sm text-foreground">
+                  {lang === "ar"
+                    ? "اعتماد وتفعيل الباقة — يرجى تحديد حالة سداد الفاتورة:"
+                    : "Approve & Activate Plan — Select invoice payment status:"}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "ar"
+                    ? `طلب #${ticket.id} للعميل: ${ticket.clientName} (@${ticket.clientUsername}) • سيتم تحديث عمود Paid في صفحة الفواتير تلقائياً.`
+                    : `Ticket #${ticket.id} for: ${ticket.clientName} • Will update the Paid column in Bills & Invoices.`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowApproveOptions(false);
+                setShowApproveDialog(false);
+              }}
+              className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted/60 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => executeApprovePlan(true)}
+              disabled={approvingPlan}
+              className="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 text-left rtl:text-right transition-all flex items-start gap-3 cursor-pointer group shadow-xs"
+            >
+              <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-bold text-xs text-emerald-700 dark:text-emerald-300 block">
+                  {lang === "ar" ? "✅ مسددة (Paid) — تم استلام الدفعة" : "✅ Mark as Paid (Payment Received)"}
+                </span>
+                <span className="text-[11px] text-muted-foreground block mt-0.5 leading-snug">
+                  {lang === "ar"
+                    ? "تفعيل الباقة واعتماد الفاتورة كـ [مسددة Paid] في صفحة الفواتير."
+                    : "Activate plan and mark invoice as Paid in Bills & Invoices."}
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => executeApprovePlan(false)}
+              disabled={approvingPlan}
+              className="p-3 rounded-xl border-2 border-amber-500 bg-amber-500/10 hover:bg-amber-500/20 text-left rtl:text-right transition-all flex items-start gap-3 cursor-pointer group shadow-xs"
+            >
+              <div className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                <Clock className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-bold text-xs text-amber-700 dark:text-amber-300 block">
+                  {lang === "ar" ? "⏳ غير مسددة (Unpaid) — بانتظار الدفع / آجل" : "⏳ Mark as Unpaid (Awaiting Payment)"}
+                </span>
+                <span className="text-[11px] text-muted-foreground block mt-0.5 leading-snug">
+                  {lang === "ar"
+                    ? "تفعيل الباقة واعتماد الفاتورة كـ [غير مسددة Unpaid] في صفحة الفواتير."
+                    : "Activate plan and mark invoice as Unpaid in Bills & Invoices."}
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Expanded body ── */}
       {expanded && (
