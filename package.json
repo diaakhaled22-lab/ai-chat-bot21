@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "dev": "pnpm --filter @workspace/chatbot-admin run dev",
+    "dev": "pnpm run dev:all",
     "dev:api": "pnpm --filter @workspace/api-server run dev",
     "dev:web": "pnpm --filter @workspace/chatbot-admin run dev",
     "dev:all": "pnpm -r --parallel --filter \"@workspace/api-server\" --filter \"@workspace/chatbot-admin\" run dev",
