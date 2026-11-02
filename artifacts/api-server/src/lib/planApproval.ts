@@ -1,7 +1,7 @@
 import crypto from "crypto";
-import { db, ticketsTable, companiesTable, usersTable, notificationsTable, chatLogsTable, companyActivityLogsTable, type Ticket, type Company, type User } from "@workspace/db";
+import { db, ticketsTable, companiesTable, usersTable, notificationsTable, chatLogsTable, companyActivityLogsTable, adminConfigTable, type Ticket, type Company, type User } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
-import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem } from "./packagesCatalog";
+import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem, type PackagesCatalog } from "./packagesCatalog";
 import { getExchangeRates } from "./currencyRates";
 import { sendInvoiceToClient, type InvoiceData } from "./invoice";
 import { logger } from "./logger";
@@ -32,9 +32,35 @@ export function verifyApprovalToken(ticketId: number, token: string): boolean {
 }
 
 /**
- * Helper to parse plan / topup request details from ticket title and description.
+ * Load the active packages & topup catalog dynamically from the database.
+ * Falls back to DEFAULT_PACKAGES_CATALOG if not configured yet.
  */
-export function parseTicketPlanDetails(ticket: Ticket) {
+export async function getActivePackagesCatalog(): Promise<PackagesCatalog> {
+  try {
+    const [row] = await db
+      .select()
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "packages_catalog"));
+
+    if (row && row.value) {
+      const parsed = JSON.parse(row.value);
+      return {
+        packages: Array.isArray(parsed.packages) ? parsed.packages : DEFAULT_PACKAGES_CATALOG.packages,
+        topupPacks: Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks,
+        updatedAt: row.updatedAt?.toISOString() || new Date().toISOString(),
+      };
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not load dynamic packages catalog from DB, falling back to defaults");
+  }
+  return DEFAULT_PACKAGES_CATALOG;
+}
+
+/**
+ * Helper to parse plan / topup request details from ticket title and description.
+ * Accepts an optional dynamic catalog from the database.
+ */
+export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog = DEFAULT_PACKAGES_CATALOG) {
   const title = ticket.title || "";
   const desc = ticket.description || "";
   const titleLower = title.toLowerCase();
@@ -81,6 +107,22 @@ export function parseTicketPlanDetails(ticket: Ticket) {
     retentionDays = null;
   }
 
+  // Extract explicit price from ticket description if client ordered with a specific price
+  let explicitPrice: number | null = null;
+  const priceMatch = desc.match(/(?:السعر التقديري|السعر|price)[:\s]+(?:[\$€£]|USD\s*)?(\d+(?:\.\d+)?)/i);
+  if (priceMatch && priceMatch[1]) {
+    const p = parseFloat(priceMatch[1]);
+    if (p > 0) explicitPrice = p;
+  }
+
+  const activeTopupPacks = Array.isArray(catalog?.topupPacks) && catalog.topupPacks.length > 0
+    ? catalog.topupPacks
+    : DEFAULT_PACKAGES_CATALOG.topupPacks;
+
+  const activePackages = Array.isArray(catalog?.packages) && catalog.packages.length > 0
+    ? catalog.packages
+    : DEFAULT_PACKAGES_CATALOG.packages;
+
   if (isTopup) {
     // Find tokens
     let tokens = 50_000;
@@ -112,16 +154,22 @@ export function parseTicketPlanDetails(ticket: Ticket) {
     }
 
     const matchedPack =
-      DEFAULT_PACKAGES_CATALOG.topupPacks.find((p) => p.tokens === tokens) || {
+      activeTopupPacks.find((p) => p.tokens === tokens) || {
         id: `custom-${tokens}`,
         tokens,
-        priceUsd: Math.max(5, Math.round((tokens / 25000) * 5)),
+        priceUsd: explicitPrice || Math.max(5, Math.round((tokens / 25000) * 5)),
         formatted: `${tokens >= 1_000_000 ? tokens / 1_000_000 + "M" : tokens / 1000 + "K"}+`,
       };
 
+    // If explicit price was recorded in the ticket when requested, honor it
+    const finalPack: TopupPackItem = {
+      ...matchedPack,
+      priceUsd: explicitPrice !== null ? explicitPrice : matchedPack.priceUsd,
+    };
+
     return {
       isTopup: true,
-      topupPack: matchedPack,
+      topupPack: finalPack,
       tokens,
       phone,
       clientEmail,
@@ -138,7 +186,7 @@ export function parseTicketPlanDetails(ticket: Ticket) {
   if (planIdMatch && planIdMatch[1]) {
     planId = planIdMatch[1].trim().toLowerCase();
   } else {
-    for (const p of DEFAULT_PACKAGES_CATALOG.packages) {
+    for (const p of activePackages) {
       if (
         descLower.includes(p.id) ||
         titleLower.includes(p.id) ||
@@ -151,9 +199,15 @@ export function parseTicketPlanDetails(ticket: Ticket) {
     }
   }
 
-  const plan =
-    DEFAULT_PACKAGES_CATALOG.packages.find((p) => p.id === planId) ||
+  const basePlan =
+    activePackages.find((p) => p.id === planId) ||
+    activePackages[1] ||
     DEFAULT_PACKAGES_CATALOG.packages[1]; // default to Pro
+
+  const plan: PackageItem = {
+    ...basePlan,
+    monthlyPriceUsd: explicitPrice !== null ? explicitPrice : basePlan.monthlyPriceUsd,
+  };
 
   // Extract channels
   const channels = plan.channels || ["widget", "telegram"];
@@ -216,8 +270,9 @@ export async function processApprovedPlanRequest(
     throw new Error(`Ticket #${ticketId} not found`);
   }
 
-  // 2. Parse details from ticket
-  const parsed = parseTicketPlanDetails(ticket);
+  // 2. Parse details from ticket using dynamic catalog from DB
+  const catalog = await getActivePackagesCatalog();
+  const parsed = parseTicketPlanDetails(ticket, catalog);
 
   // 3. Fetch Client and Company
   const [client] = await db

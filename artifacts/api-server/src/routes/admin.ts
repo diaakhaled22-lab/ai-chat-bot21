@@ -29,7 +29,7 @@ import { getExchangeRates, saveExchangeRates, type CurrencyRatesData } from "../
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
-import { processApprovedPlanRequest, parseTicketPlanDetails } from "../lib/planApproval";
+import { processApprovedPlanRequest, parseTicketPlanDetails, getActivePackagesCatalog } from "../lib/planApproval";
 import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, type InvoiceData } from "../lib/invoice";
 import { sendWhatsAppMessage } from "./whatsapp";
 
@@ -2995,6 +2995,7 @@ router.get("/admin/invoices", async (req, res) => {
       .orderBy(desc(ticketsTable.createdAt));
 
     const invoiceList: any[] = [];
+    const packagesCatalog = await getActivePackagesCatalog();
 
     // Filter and process plan tickets
     for (const item of allTickets) {
@@ -3014,7 +3015,7 @@ router.get("/admin/invoices", async (req, res) => {
 
       if (!isPlan) continue;
 
-      const parsed = parseTicketPlanDetails(t);
+      const parsed = parseTicketPlanDetails(t, packagesCatalog);
       const isTopup = parsed.isTopup;
       let matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
       if (!matchedCompanyItem && parsed.parsedCompanyName) {

@@ -63039,7 +63039,23 @@ function verifyApprovalToken(ticketId, token) {
     return token === expected;
   }
 }
-function parseTicketPlanDetails(ticket) {
+async function getActivePackagesCatalog() {
+  try {
+    const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "packages_catalog"));
+    if (row && row.value) {
+      const parsed = JSON.parse(row.value);
+      return {
+        packages: Array.isArray(parsed.packages) ? parsed.packages : DEFAULT_PACKAGES_CATALOG.packages,
+        topupPacks: Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks,
+        updatedAt: row.updatedAt?.toISOString() || (/* @__PURE__ */ new Date()).toISOString()
+      };
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not load dynamic packages catalog from DB, falling back to defaults");
+  }
+  return DEFAULT_PACKAGES_CATALOG;
+}
+function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
   const title = ticket.title || "";
   const desc2 = ticket.description || "";
   const titleLower = title.toLowerCase();
@@ -63069,6 +63085,14 @@ function parseTicketPlanDetails(ticket) {
   } else if (desc2.includes("\u062F\u0627\u0626\u0645") || desc2.includes("permanent")) {
     retentionDays = null;
   }
+  let explicitPrice = null;
+  const priceMatch = desc2.match(/(?:السعر التقديري|السعر|price)[:\s]+(?:[\$€£]|USD\s*)?(\d+(?:\.\d+)?)/i);
+  if (priceMatch && priceMatch[1]) {
+    const p = parseFloat(priceMatch[1]);
+    if (p > 0) explicitPrice = p;
+  }
+  const activeTopupPacks = Array.isArray(catalog2?.topupPacks) && catalog2.topupPacks.length > 0 ? catalog2.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks;
+  const activePackages = Array.isArray(catalog2?.packages) && catalog2.packages.length > 0 ? catalog2.packages : DEFAULT_PACKAGES_CATALOG.packages;
   if (isTopup) {
     let tokens = 5e4;
     const tokenMatch = desc2.match(/(\d+[\d,]*)\s*tokens?/i) || title.match(/(\d+[\d,]*)\s*رموز/i) || desc2.match(/(\d+[\d,]*)\s*رموز/i);
@@ -63093,15 +63117,19 @@ function parseTicketPlanDetails(ticket) {
     } else if (titleLower.includes("1m") || descLower.includes("1m")) {
       tokens = 1e6;
     }
-    const matchedPack = DEFAULT_PACKAGES_CATALOG.topupPacks.find((p) => p.tokens === tokens) || {
+    const matchedPack = activeTopupPacks.find((p) => p.tokens === tokens) || {
       id: `custom-${tokens}`,
       tokens,
-      priceUsd: Math.max(5, Math.round(tokens / 25e3 * 5)),
+      priceUsd: explicitPrice || Math.max(5, Math.round(tokens / 25e3 * 5)),
       formatted: `${tokens >= 1e6 ? tokens / 1e6 + "M" : tokens / 1e3 + "K"}+`
+    };
+    const finalPack = {
+      ...matchedPack,
+      priceUsd: explicitPrice !== null ? explicitPrice : matchedPack.priceUsd
     };
     return {
       isTopup: true,
-      topupPack: matchedPack,
+      topupPack: finalPack,
       tokens,
       phone,
       clientEmail,
@@ -63116,14 +63144,18 @@ function parseTicketPlanDetails(ticket) {
   if (planIdMatch && planIdMatch[1]) {
     planId = planIdMatch[1].trim().toLowerCase();
   } else {
-    for (const p of DEFAULT_PACKAGES_CATALOG.packages) {
+    for (const p of activePackages) {
       if (descLower.includes(p.id) || titleLower.includes(p.id) || desc2.includes(p.nameAr) || title.includes(p.nameAr)) {
         planId = p.id;
         break;
       }
     }
   }
-  const plan = DEFAULT_PACKAGES_CATALOG.packages.find((p) => p.id === planId) || DEFAULT_PACKAGES_CATALOG.packages[1];
+  const basePlan = activePackages.find((p) => p.id === planId) || activePackages[1] || DEFAULT_PACKAGES_CATALOG.packages[1];
+  const plan = {
+    ...basePlan,
+    monthlyPriceUsd: explicitPrice !== null ? explicitPrice : basePlan.monthlyPriceUsd
+  };
   const channels = plan.channels || ["widget", "telegram"];
   if (desc2.includes("\u0648\u0627\u062A\u0633\u0627\u0628") && !channels.includes("whatsapp")) channels.push("whatsapp");
   if (desc2.includes("\u0645\u0627\u0633\u0646\u062C\u0631") && !channels.includes("messenger")) channels.push("messenger");
@@ -63154,7 +63186,8 @@ async function processApprovedPlanRequest(ticketId, options) {
   if (!ticket) {
     throw new Error(`Ticket #${ticketId} not found`);
   }
-  const parsed = parseTicketPlanDetails(ticket);
+  const catalog2 = await getActivePackagesCatalog();
+  const parsed = parseTicketPlanDetails(ticket, catalog2);
   const [client] = await db.select().from(usersTable).where(eq(usersTable.id, ticket.clientId)).limit(1);
   if (!client) {
     throw new Error(`Client user #${ticket.clientId} not found`);
@@ -95499,6 +95532,7 @@ router4.get("/admin/invoices", async (req, res) => {
       client: usersTable
     }).from(ticketsTable).leftJoin(usersTable, eq(ticketsTable.clientId, usersTable.id)).orderBy(desc(ticketsTable.createdAt));
     const invoiceList = [];
+    const packagesCatalog = await getActivePackagesCatalog();
     for (const item of allTickets) {
       const t = item.ticket;
       const client = item.client;
@@ -95506,7 +95540,7 @@ router4.get("/admin/invoices", async (req, res) => {
       const descLower = (t.description || "").toLowerCase();
       const isPlan = titleLower.includes("\u0628\u0627\u0642\u0629") || titleLower.includes("plan") || titleLower.includes("\u0634\u062D\u0646") || titleLower.includes("topup") || titleLower.includes("\u0627\u0634\u062A\u0631\u0627\u0643") || descLower.includes("\u0645\u0639\u0631\u0641 \u0627\u0644\u0628\u0627\u0642\u0629") || descLower.includes("\u0637\u0644\u0628 \u0634\u062D\u0646");
       if (!isPlan) continue;
-      const parsed = parseTicketPlanDetails(t);
+      const parsed = parseTicketPlanDetails(t, packagesCatalog);
       const isTopup = parsed.isTopup;
       let matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
       if (!matchedCompanyItem && parsed.parsedCompanyName) {
