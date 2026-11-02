@@ -49,6 +49,10 @@ import {
   Send,
   Eye,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  List,
 } from "lucide-react";
 
 export interface InvoiceItem {
@@ -81,6 +85,22 @@ export interface InvoiceItem {
   notes?: string;
 }
 
+export interface CompanyInvoiceGroup {
+  companyKey: string;
+  companyId?: number | null;
+  companyName: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  invoices: InvoiceItem[];
+  totalInvoices: number;
+  totalTokens: number;
+  totalUsd: number;
+  paidCount: number;
+  pendingCount: number;
+  latestDate: string;
+}
+
 interface InvoicesApiResponse {
   ok: boolean;
   invoices: InvoiceItem[];
@@ -103,9 +123,12 @@ export default function AdminBills() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "plan" | "topup" | "quota_usage">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "activated" | "pending">("all");
   const [selectedCurrency, setSelectedCurrency] = useState("EGP");
+  const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
+  const [collapsedCompanies, setCollapsedCompanies] = useState<Record<string, boolean>>({});
 
   // Send Copy Modal state
   const [sendCopyModalOpen, setSendCopyModalOpen] = useState(false);
@@ -140,9 +163,31 @@ export default function AdminBills() {
     return Math.round(usd * activeRate);
   };
 
+  // Unique companies list for the company filter dropdown
+  const companiesList = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; count: number }>();
+    invoices.forEach((inv) => {
+      const key = inv.companyId ? `comp-${inv.companyId}` : `name-${inv.companyName?.trim() || 'unknown'}`;
+      const name = inv.companyName || (lang === "ar" ? "شركة غير محددة" : "Unspecified Company");
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(key, { key, name, count: 1 });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [invoices, lang]);
+
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
+      // Company filter
+      if (selectedCompanyFilter !== "all") {
+        const invCompKey = inv.companyId ? `comp-${inv.companyId}` : `name-${inv.companyName?.trim() || 'unknown'}`;
+        if (invCompKey !== selectedCompanyFilter) return false;
+      }
+
       // Type filter
       if (typeFilter !== "all" && inv.itemType !== typeFilter) return false;
 
@@ -155,16 +200,91 @@ export default function AdminBills() {
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const numMatch = inv.invoiceNumber.toLowerCase().includes(q);
-        const compMatch = inv.companyName.toLowerCase().includes(q);
-        const clientMatch = inv.clientName.toLowerCase().includes(q);
-        const titleMatch = (inv.titleAr + " " + inv.titleEn).toLowerCase().includes(q);
-        if (!numMatch && !compMatch && !clientMatch && !titleMatch) return false;
+        const numMatch = inv.invoiceNumber?.toLowerCase().includes(q);
+        const compMatch = inv.companyName?.toLowerCase().includes(q);
+        const clientMatch = inv.clientName?.toLowerCase().includes(q);
+        const emailMatch = inv.clientEmail?.toLowerCase().includes(q);
+        const phoneMatch = inv.clientPhone?.toLowerCase().includes(q);
+        const titleMatch = ((inv.titleAr || "") + " " + (inv.titleEn || "")).toLowerCase().includes(q);
+        if (!numMatch && !compMatch && !clientMatch && !emailMatch && !phoneMatch && !titleMatch) return false;
       }
 
       return true;
     });
-  }, [invoices, typeFilter, statusFilter, searchQuery]);
+  }, [invoices, selectedCompanyFilter, typeFilter, statusFilter, searchQuery]);
+
+  // Grouped by company structure
+  const groupedCompanies = useMemo(() => {
+    const map = new Map<string, CompanyInvoiceGroup>();
+
+    filteredInvoices.forEach((inv) => {
+      const key = inv.companyId ? `comp-${inv.companyId}` : `name-${inv.companyName?.trim() || 'unknown'}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          companyKey: key,
+          companyId: inv.companyId,
+          companyName: inv.companyName || (lang === "ar" ? "شركة غير محددة" : "Unspecified Company"),
+          clientName: inv.clientName || "",
+          clientEmail: inv.clientEmail || "",
+          clientPhone: inv.clientPhone || "",
+          invoices: [],
+          totalInvoices: 0,
+          totalTokens: 0,
+          totalUsd: 0,
+          paidCount: 0,
+          pendingCount: 0,
+          latestDate: inv.issueDate,
+        });
+      }
+
+      const group = map.get(key)!;
+      group.invoices.push(inv);
+      group.totalInvoices += 1;
+      group.totalTokens += inv.tokenQuota || 0;
+      group.totalUsd += inv.priceUsd || 0;
+      if (inv.status === "paid" || inv.status === "activated") {
+        group.paidCount += 1;
+      } else {
+        group.pendingCount += 1;
+      }
+      if (new Date(inv.issueDate) > new Date(group.latestDate)) {
+        group.latestDate = inv.issueDate;
+      }
+      if (!group.clientPhone && inv.clientPhone) group.clientPhone = inv.clientPhone;
+      if (!group.clientEmail && inv.clientEmail) group.clientEmail = inv.clientEmail;
+      if (!group.clientName && inv.clientName) group.clientName = inv.clientName;
+    });
+
+    // Sort each group's invoices by date (newest first)
+    map.forEach((group) => {
+      group.invoices.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+    });
+
+    // Return groups sorted by latest invoice date (newest first)
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
+    );
+  }, [filteredInvoices, lang]);
+
+  // Collapse / Expand handlers
+  const toggleCompanyCollapse = (key: string) => {
+    setCollapsedCompanies((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const expandAll = () => {
+    setCollapsedCompanies({});
+  };
+
+  const collapseAll = () => {
+    const allCollapsed: Record<string, boolean> = {};
+    groupedCompanies.forEach((g) => {
+      allCollapsed[g.companyKey] = true;
+    });
+    setCollapsedCompanies(allCollapsed);
+  };
 
   // Statistics
   const stats = useMemo(() => {
@@ -174,8 +294,11 @@ export default function AdminBills() {
     const quotaCount = invoices.filter((i) => i.itemType === "quota_usage").length;
     const totalUsd = invoices.reduce((acc, i) => acc + (i.priceUsd || 0), 0);
     const totalLocal = convertPrice(totalUsd);
+    const uniqueCompanies = new Set(
+      invoices.map((i) => (i.companyId ? `comp-${i.companyId}` : `name-${i.companyName}`))
+    ).size;
 
-    return { totalCount, planCount, topupCount, quotaCount, totalUsd, totalLocal };
+    return { totalCount, planCount, topupCount, quotaCount, totalUsd, totalLocal, uniqueCompanies };
   }, [invoices, activeRate]);
 
   // Handle open Send Copy Modal
@@ -467,15 +590,15 @@ export default function AdminBills() {
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 sm:p-5 flex items-center gap-3.5 [direction:ltr]">
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-violet-500" />
+              <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-violet-500" />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0" dir={lang === "ar" ? "rtl" : "ltr"}>
               <p className="text-xs text-muted-foreground font-medium text-center truncate max-w-full">
-                {lang === "ar" ? "فواتير الباقات" : "Plan Invoices"}
+                {lang === "ar" ? "الشركات المسجلة" : "Companies"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.planCount}</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.uniqueCompanies}</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
-                {lang === "ar" ? "اشتراكات وترقيات" : "Subscriptions & upgrades"}
+                {lang === "ar" ? "شركات مسجلة بالفواتير" : "Companies with invoices"}
               </p>
             </div>
           </CardContent>
@@ -488,13 +611,13 @@ export default function AdminBills() {
             </div>
             <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0" dir={lang === "ar" ? "rtl" : "ltr"}>
               <p className="text-xs text-muted-foreground font-medium text-center truncate max-w-full">
-                {lang === "ar" ? "شحن رصيد / حصص" : "Top-up & Quotas"}
+                {lang === "ar" ? "الباقات والشحن" : "Plans & Top-ups"}
               </p>
               <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">
-                {stats.topupCount + stats.quotaCount}
+                {stats.planCount + stats.topupCount}
               </h3>
               <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
-                {lang === "ar" ? "شحن رمزي واستهلاك" : "Extra tokens & quotas"}
+                {lang === "ar" ? `${stats.planCount} باقة • ${stats.topupCount} شحن` : `${stats.planCount} plans • ${stats.topupCount} topups`}
               </p>
             </div>
           </CardContent>
@@ -502,25 +625,76 @@ export default function AdminBills() {
       </div>
 
       {/* ── Search & Filter Controls ── */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card/60 backdrop-blur-sm border border-border/60 rounded-2xl p-4 shadow-sm">
-        <div className="flex-1 relative">
-          <Search className="w-4 h-4 text-muted-foreground absolute right-3.5 rtl:right-3.5 ltr:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <Input
-            placeholder={
-              lang === "ar"
-                ? "بحث برقم الفاتورة، اسم الشركة، اسم العميل..."
-                : "Search by invoice #, company, client..."
-            }
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="rtl:pr-10 ltr:pl-10 h-10 bg-background text-sm rounded-xl border-border/60"
-          />
+      <div className="flex flex-col gap-3 bg-card/60 backdrop-blur-sm border border-border/60 rounded-2xl p-4 shadow-sm">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 text-muted-foreground absolute right-3.5 rtl:right-3.5 ltr:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Input
+              placeholder={
+                lang === "ar"
+                  ? "بحث برقم الفاتورة، اسم الشركة، اسم العميل، الهاتف، البريد..."
+                  : "Search by invoice #, company, client, phone, email..."
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="rtl:pr-10 ltr:pl-10 h-10 bg-background text-sm rounded-xl border-border/60"
+            />
+          </div>
+
+          {/* View Mode Toggle: Grouped by Company vs Flat Table */}
+          <div className="flex items-center rounded-xl bg-background border border-border/60 p-1 shrink-0 self-start md:self-auto">
+            <Button
+              type="button"
+              variant={viewMode === "grouped" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grouped")}
+              className={`h-8 px-3 text-xs gap-1.5 rounded-lg font-semibold transition-all ${
+                viewMode === "grouped"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "مجمعة حسب الشركات" : "Grouped by Company"}</span>
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "flat" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("flat")}
+              className={`h-8 px-3 text-xs gap-1.5 rounded-lg font-semibold transition-all ${
+                viewMode === "flat"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "جدول موحد" : "Flat Table"}</span>
+            </Button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Second Row: Specific Filters */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40">
+          {/* Company Filter */}
+          <Select value={selectedCompanyFilter} onValueChange={setSelectedCompanyFilter}>
+            <SelectTrigger className="w-[180px] h-9 text-xs bg-background rounded-xl border-border/60">
+              <Building2 className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder={lang === "ar" ? "الشركة" : "Company"} />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">{lang === "ar" ? "جميع الشركات" : "All Companies"}</SelectItem>
+              {companiesList.map((c) => (
+                <SelectItem key={c.key} value={c.key} className="text-xs">
+                  {c.name} ({c.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Type Filter */}
           <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
-            <SelectTrigger className="w-[140px] h-10 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-[140px] h-9 text-xs bg-background rounded-xl border-border/60">
               <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder={lang === "ar" ? "نوع الفاتورة" : "Type"} />
             </SelectTrigger>
@@ -534,7 +708,7 @@ export default function AdminBills() {
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-[130px] h-10 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-[130px] h-9 text-xs bg-background rounded-xl border-border/60">
               <SelectValue placeholder={lang === "ar" ? "الحالة" : "Status"} />
             </SelectTrigger>
             <SelectContent>
@@ -546,7 +720,7 @@ export default function AdminBills() {
 
           {/* Currency Switcher */}
           <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-            <SelectTrigger className="w-[120px] h-10 text-xs bg-background rounded-xl border-border/60 font-semibold text-emerald-600 dark:text-emerald-400">
+            <SelectTrigger className="w-[120px] h-9 text-xs bg-background rounded-xl border-border/60 font-semibold text-emerald-600 dark:text-emerald-400">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -557,187 +731,543 @@ export default function AdminBills() {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Reset Filters */}
+          {(selectedCompanyFilter !== "all" || typeFilter !== "all" || statusFilter !== "all" || searchQuery.trim()) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedCompanyFilter("all");
+                setTypeFilter("all");
+                setStatusFilter("all");
+                setSearchQuery("");
+              }}
+              className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {lang === "ar" ? "إعادة ضبط الفلاتر" : "Reset Filters"}
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* ── Invoices List Table ── */}
-      <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden rounded-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-semibold">
-                <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
-                <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "الشركة / العميل" : "Company / Client"}</th>
-                <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "البند / الباقة" : "Item / Plan"}</th>
-                <th className="p-3.5 text-center">{lang === "ar" ? "رصيد الرموز" : "Tokens"}</th>
-                <th className="p-3.5 text-center">{lang === "ar" ? "تاريخ الإصدار" : "Date"}</th>
-                <th className="p-3.5 text-right rtl:text-right ltr:text-left font-bold text-foreground">{lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}</th>
-                <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "Status"}</th>
-                <th className="p-3.5 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="p-12 text-center text-muted-foreground">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
-                    <span>{lang === "ar" ? "جاري تحميل الفواتير..." : "Loading invoices..."}</span>
-                  </td>
-                </tr>
-              ) : filteredInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-12 text-center text-muted-foreground">
-                    <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="font-semibold">{lang === "ar" ? "لا توجد فواتير مطابقة للبحث" : "No invoices found"}</p>
-                    <p className="text-[11px] text-muted-foreground/80 mt-1">
-                      {lang === "ar" ? "جرّب تغيير فلاتر البحث أو حدد فترة أخرى." : "Try adjusting your search filters."}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredInvoices.map((inv) => {
-                  const localPrice = convertPrice(inv.priceUsd);
-                  const isPaid = inv.status === "paid" || inv.status === "activated";
+      {/* ── MAIN CONTENT: GROUPED BY COMPANY OR FLAT TABLE ── */}
+      {viewMode === "grouped" ? (
+        <div className="space-y-4">
+          {/* Header Bar above groups: total count & expand/collapse all */}
+          <div className="flex items-center justify-between px-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-500" />
+              <span className="font-bold text-foreground">
+                {lang === "ar"
+                  ? `فواتير الشركات (${groupedCompanies.length} شركة)`
+                  : `Company Bills (${groupedCompanies.length} companies)`}
+              </span>
+              <span className="text-muted-foreground">
+                • {filteredInvoices.length} {lang === "ar" ? "فاتورة إجمالاً" : "invoices total"}
+              </span>
+            </div>
 
-                  return (
-                    <tr key={inv.id} className="hover:bg-muted/20 transition-colors">
-                      {/* Invoice Number & Type */}
-                      <td className="p-3.5 font-mono text-[11px] font-bold text-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <span>#{inv.invoiceNumber}</span>
-                          {inv.itemType === "plan" && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
-                              {lang === "ar" ? "باقة" : "Plan"}
-                            </Badge>
-                          )}
-                          {inv.itemType === "topup" && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
-                              {lang === "ar" ? "شحن" : "Topup"}
-                            </Badge>
-                          )}
-                          {inv.itemType === "quota_usage" && (
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
-                              {lang === "ar" ? "حصة" : "Quota"}
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expandAll}
+                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2.5 rounded-lg border-border/60"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "توسيع الكل" : "Expand All"}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={collapseAll}
+                className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2.5 rounded-lg border-border/60"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "طي الكل" : "Collapse All"}</span>
+              </Button>
+            </div>
+          </div>
 
-                      {/* Company & Client */}
-                      <td className="p-3.5">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-foreground text-xs">{inv.companyName}</span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {inv.clientName} {inv.clientPhone ? `• ${inv.clientPhone}` : ""}
-                          </span>
-                        </div>
-                      </td>
+          {isLoading ? (
+            <Card className="border-border/60 bg-card/60 p-12 text-center text-muted-foreground rounded-2xl">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
+              <span>{lang === "ar" ? "جاري تحميل الفواتير..." : "Loading invoices..."}</span>
+            </Card>
+          ) : groupedCompanies.length === 0 ? (
+            <Card className="border-border/60 bg-card/60 p-12 text-center text-muted-foreground rounded-2xl">
+              <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="font-semibold">{lang === "ar" ? "لا توجد فواتير مطابقة للبحث" : "No invoices found"}</p>
+              <p className="text-[11px] text-muted-foreground/80 mt-1">
+                {lang === "ar" ? "جرّب تغيير فلاتر البحث أو حدد شركة أخرى." : "Try adjusting your search filters."}
+              </p>
+            </Card>
+          ) : (
+            groupedCompanies.map((group) => {
+              const isCollapsed = Boolean(collapsedCompanies[group.companyKey]);
+              const groupLocalTotal = convertPrice(group.totalUsd);
+              const isAllPaid = group.pendingCount === 0;
 
-                      {/* Item / Plan Title */}
-                      <td className="p-3.5">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">
-                            {lang === "ar" ? inv.titleAr : inv.titleEn}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {inv.billingCycleAr} {inv.retentionDays ? `• حفظ ${inv.retentionDays} يوم` : ""}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Token Quota */}
-                      <td className="p-3.5 text-center font-mono font-semibold text-blue-600 dark:text-blue-400">
-                        {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
-                      </td>
-
-                      {/* Issue Date */}
-                      <td className="p-3.5 text-center font-mono text-muted-foreground">
-                        {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </td>
-
-                      {/* Amount */}
-                      <td className="p-3.5 text-right rtl:text-right ltr:text-left">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
-                            ${inv.priceUsd} USD
-                          </span>
-                          <span className="text-[11px] text-muted-foreground font-mono">
-                            ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="p-3.5 text-center">
-                        {isPaid ? (
-                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px]">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            {lang === "ar" ? "مسددة ونشطة" : "Active & Paid"}
+              return (
+                <Card
+                  key={group.companyKey}
+                  className="border-border/70 bg-card/75 backdrop-blur-sm shadow-sm hover:shadow-md transition-all rounded-2xl overflow-hidden"
+                >
+                  {/* Company Header Banner (Click to toggle) */}
+                  <div
+                    onClick={() => toggleCompanyCollapse(group.companyKey)}
+                    className="p-4 sm:p-5 bg-gradient-to-r from-muted/50 via-muted/30 to-background border-b border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none hover:bg-muted/60 transition-colors"
+                  >
+                    <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+                        <Building2 className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-base sm:text-lg text-foreground truncate max-w-sm sm:max-w-md">
+                            {group.companyName}
+                          </h3>
+                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-bold">
+                            {group.totalInvoices} {lang === "ar" ? (group.totalInvoices === 1 ? "فاتورة واحدة" : group.totalInvoices === 2 ? "فاتورتان" : "فواتير") : "Invoices"}
                           </Badge>
-                        ) : (
-                          <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px]">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {lang === "ar" ? "معلقة" : "Pending"}
-                          </Badge>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                          {/* ── THE PROMINENT "SEND COPY" BUTTON ── */}
-                          <Button
-                            size="sm"
-                            onClick={() => handleOpenSendCopy(inv)}
-                            title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send a copy via Email or WhatsApp"}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg"
-                          >
-                            <Send className="w-3 h-3" />
-                            <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
-                          </Button>
-
-                          {/* View Full Invoice */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setViewingInvoice(inv);
-                              setViewInvoiceModalOpen(true);
-                            }}
-                            className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground rounded-lg"
-                            title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
-                          >
-                            <Eye className="w-3 h-3" />
-                          </Button>
-
-                          {/* Copy Summary */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCopySummary(inv)}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg"
-                            title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
-                          >
-                            {copiedId === inv.id ? (
-                              <Check className="w-3 h-3 text-emerald-500" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
-                          </Button>
+                          {isAllPaid ? (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-medium">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              {lang === "ar" ? "مسددة بالكامل" : "All Paid"}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-medium">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {lang === "ar" ? `${group.pendingCount} معلقة` : `${group.pendingCount} Pending`}
+                            </Badge>
+                          )}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+
+                        {/* Client details subtitle */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
+                          {group.clientName && (
+                            <span className="flex items-center gap-1 font-medium text-foreground/80">
+                              <User className="w-3.5 h-3.5 text-muted-foreground" />
+                              {group.clientName}
+                            </span>
+                          )}
+                          {group.clientEmail && (
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-muted-foreground/70" />
+                              {group.clientEmail}
+                            </span>
+                          )}
+                          {group.clientPhone && (
+                            <span className="text-[11px] text-muted-foreground font-mono flex items-center gap-1">
+                              <MessageCircle className="w-3 h-3 text-emerald-500/70" />
+                              {group.clientPhone}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right side summary & toggle button */}
+                    <div className="flex items-center justify-between md:justify-end gap-5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-border/40">
+                      <div className="text-right rtl:text-right ltr:text-left">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold block">
+                          {lang === "ar" ? "إجمالي فواتير الشركة" : "Company Invoices Total"}
+                        </span>
+                        <div className="flex items-baseline gap-1.5 justify-end">
+                          <span className="font-extrabold text-base sm:text-lg text-emerald-600 dark:text-emerald-400 font-mono">
+                            ${group.totalUsd.toLocaleString()} USD
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground font-mono block">
+                          ≈ {groupLocalTotal.toLocaleString()} {currencyInfo.symbol}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-8 h-8 p-0 rounded-xl text-muted-foreground hover:text-foreground"
+                          title={isCollapsed ? (lang === "ar" ? "توسيع الفواتير" : "Expand") : (lang === "ar" ? "طي الفواتير" : "Collapse")}
+                        >
+                          {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Company Invoices Table (Expanded) */}
+                  {!isCollapsed && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border/50 bg-muted/25 text-muted-foreground font-semibold">
+                            <th className="p-3 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
+                            <th className="p-3 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "البند / الباقة" : "Item / Plan"}</th>
+                            <th className="p-3 text-center">{lang === "ar" ? "رصيد الرموز" : "Tokens"}</th>
+                            <th className="p-3 text-center">{lang === "ar" ? "تاريخ الإصدار" : "Date"}</th>
+                            <th className="p-3 text-right rtl:text-right ltr:text-left font-bold text-foreground">
+                              {lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}
+                            </th>
+                            <th className="p-3 text-center">{lang === "ar" ? "الحالة" : "Status"}</th>
+                            <th className="p-3 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                          {group.invoices.map((inv) => {
+                            const localPrice = convertPrice(inv.priceUsd);
+                            const isPaid = inv.status === "paid" || inv.status === "activated";
+
+                            return (
+                              <tr key={inv.id} className="hover:bg-muted/20 transition-colors">
+                                {/* Invoice # & Type */}
+                                <td className="p-3 font-mono text-[11px] font-bold text-foreground">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>#{inv.invoiceNumber}</span>
+                                    {inv.itemType === "plan" && (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
+                                        {lang === "ar" ? "باقة" : "Plan"}
+                                      </Badge>
+                                    )}
+                                    {inv.itemType === "topup" && (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
+                                        {lang === "ar" ? "شحن" : "Topup"}
+                                      </Badge>
+                                    )}
+                                    {inv.itemType === "quota_usage" && (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                                        {lang === "ar" ? "حصة" : "Quota"}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Item / Title */}
+                                <td className="p-3">
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold text-foreground">
+                                      {lang === "ar" ? inv.titleAr : inv.titleEn}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {inv.billingCycleAr} {inv.retentionDays ? `• حفظ ${inv.retentionDays} يوم` : ""}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                {/* Token Quota */}
+                                <td className="p-3 text-center font-mono font-semibold text-blue-600 dark:text-blue-400">
+                                  {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                                </td>
+
+                                {/* Issue Date */}
+                                <td className="p-3 text-center font-mono text-muted-foreground">
+                                  {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </td>
+
+                                {/* Price */}
+                                <td className="p-3 text-right rtl:text-right ltr:text-left">
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
+                                      ${inv.priceUsd} USD
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                      ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                {/* Status */}
+                                <td className="p-3 text-center">
+                                  {isPaid ? (
+                                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px]">
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                      {lang === "ar" ? "مسددة ونشطة" : "Active & Paid"}
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px]">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {lang === "ar" ? "معلقة" : "Pending"}
+                                    </Badge>
+                                  )}
+                                </td>
+
+                                {/* Actions */}
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleOpenSendCopy(inv)}
+                                      title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg"
+                                    >
+                                      <Send className="w-3 h-3" />
+                                      <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
+                                    </Button>
+
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setViewingInvoice(inv);
+                                        setViewInvoiceModalOpen(true);
+                                      }}
+                                      className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground rounded-lg"
+                                      title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
+                                    >
+                                      <Eye className="w-3 h-3" />
+                                    </Button>
+
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleCopySummary(inv)}
+                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg"
+                                      title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
+                                    >
+                                      {copiedId === inv.id ? (
+                                        <Check className="w-3 h-3 text-emerald-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+
+                        {/* Company Invoices Summary Footer */}
+                        <tfoot>
+                          <tr className="border-t-2 border-border/60 bg-muted/30 font-semibold text-foreground">
+                            <td colSpan={2} className="p-3">
+                              <span className="text-xs text-muted-foreground">
+                                {lang === "ar"
+                                  ? `مجموع فواتير ${group.companyName} (${group.totalInvoices} فواتير)`
+                                  : `Total for ${group.companyName} (${group.totalInvoices} invoices)`}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center font-mono text-blue-600 dark:text-blue-400">
+                              {group.totalTokens > 0 ? group.totalTokens.toLocaleString() : "—"}
+                            </td>
+                            <td className="p-3 text-center text-muted-foreground text-[11px]">
+                              {lang === "ar" ? "آخر فاتورة: " : "Latest: "}
+                              {new Date(group.latestDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}
+                            </td>
+                            <td className="p-3 text-right rtl:text-right ltr:text-left font-mono">
+                              <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                                ${group.totalUsd.toLocaleString()} USD
+                              </span>
+                              <span className="block text-[11px] text-muted-foreground font-normal">
+                                ≈ {groupLocalTotal.toLocaleString()} {currencyInfo.symbol}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              {isAllPaid ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px]">
+                                  {lang === "ar" ? "الكل مسدد" : "All Paid"}
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px]">
+                                  {lang === "ar" ? `${group.pendingCount} معلقة` : `${group.pendingCount} Pending`}
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="p-3 text-center text-[10px] text-muted-foreground">
+                              —
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </Card>
+              );
+            })
+          )}
         </div>
-      </Card>
+      ) : (
+        /* ── FLAT TABLE VIEW (ALTERNATIVE VIEW) ── */
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-semibold">
+                  <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
+                  <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "الشركة / العميل" : "Company / Client"}</th>
+                  <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "البند / الباقة" : "Item / Plan"}</th>
+                  <th className="p-3.5 text-center">{lang === "ar" ? "رصيد الرموز" : "Tokens"}</th>
+                  <th className="p-3.5 text-center">{lang === "ar" ? "تاريخ الإصدار" : "Date"}</th>
+                  <th className="p-3.5 text-right rtl:text-right ltr:text-left font-bold text-foreground">{lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}</th>
+                  <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "Status"}</th>
+                  <th className="p-3.5 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
+                      <span>{lang === "ar" ? "جاري تحميل الفواتير..." : "Loading invoices..."}</span>
+                    </td>
+                  </tr>
+                ) : filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                      <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="font-semibold">{lang === "ar" ? "لا توجد فواتير مطابقة للبحث" : "No invoices found"}</p>
+                      <p className="text-[11px] text-muted-foreground/80 mt-1">
+                        {lang === "ar" ? "جرّب تغيير فلاتر البحث أو حدد فترة أخرى." : "Try adjusting your search filters."}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((inv) => {
+                    const localPrice = convertPrice(inv.priceUsd);
+                    const isPaid = inv.status === "paid" || inv.status === "activated";
+
+                    return (
+                      <tr key={inv.id} className="hover:bg-muted/20 transition-colors">
+                        {/* Invoice Number & Type */}
+                        <td className="p-3.5 font-mono text-[11px] font-bold text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span>#{inv.invoiceNumber}</span>
+                            {inv.itemType === "plan" && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
+                                {lang === "ar" ? "باقة" : "Plan"}
+                              </Badge>
+                            )}
+                            {inv.itemType === "topup" && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
+                                {lang === "ar" ? "شحن" : "Topup"}
+                              </Badge>
+                            )}
+                            {inv.itemType === "quota_usage" && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                                {lang === "ar" ? "حصة" : "Quota"}
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Company & Client */}
+                        <td className="p-3.5">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-foreground text-xs">{inv.companyName}</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {inv.clientName} {inv.clientPhone ? `• ${inv.clientPhone}` : ""}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Item / Plan Title */}
+                        <td className="p-3.5">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">
+                              {lang === "ar" ? inv.titleAr : inv.titleEn}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {inv.billingCycleAr} {inv.retentionDays ? `• حفظ ${inv.retentionDays} يوم` : ""}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Token Quota */}
+                        <td className="p-3.5 text-center font-mono font-semibold text-blue-600 dark:text-blue-400">
+                          {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                        </td>
+
+                        {/* Issue Date */}
+                        <td className="p-3.5 text-center font-mono text-muted-foreground">
+                          {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </td>
+
+                        {/* Amount */}
+                        <td className="p-3.5 text-right rtl:text-right ltr:text-left">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
+                              ${inv.priceUsd} USD
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-mono">
+                              ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-3.5 text-center">
+                          {isPaid ? (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px]">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              {lang === "ar" ? "مسددة ونشطة" : "Active & Paid"}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px]">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {lang === "ar" ? "معلقة" : "Pending"}
+                            </Badge>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenSendCopy(inv)}
+                              title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send a copy via Email or WhatsApp"}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg"
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setViewingInvoice(inv);
+                                setViewInvoiceModalOpen(true);
+                              }}
+                              className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground rounded-lg"
+                              title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopySummary(inv)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg"
+                              title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
+                            >
+                              {copiedId === inv.id ? (
+                                <Check className="w-3 h-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* ── MODAL: SEND INVOICE COPY (إرسال نسخة من الفاتورة) ── */}
