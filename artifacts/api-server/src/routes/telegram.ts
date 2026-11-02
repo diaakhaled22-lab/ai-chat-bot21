@@ -34,7 +34,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, buildWelcomeInstruction } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { requireAuth } from "../middlewares/requireAuth";
 import { webhookLimiter, apiLimiter } from "../lib/security";
@@ -47,7 +47,7 @@ function telegramWebhookSecret(token: string): string {
 
 const router = Router();
 
-async function callAI(company: typeof companiesTable.$inferSelect, userMessage: string, history: { role: "user" | "assistant"; content: string }[], overrideAiConfig?: ResolvedAiConfig, knownCustomerContext?: string): Promise<string> {
+async function callAI(company: typeof companiesTable.$inferSelect, userMessage: string, history: { role: "user" | "assistant"; content: string }[], overrideAiConfig?: ResolvedAiConfig, knownCustomerContext?: string, isFirstMessage?: boolean): Promise<string> {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   
 
@@ -62,6 +62,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
   sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
   sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+  sysContent += `\n\n${buildWelcomeInstruction(company, Boolean(isFirstMessage))}`;
   if (knownCustomerContext) {
     sysContent += `\n\n${knownCustomerContext}`;
   }
@@ -300,7 +301,9 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
 
     const priorLogs = recentLogs.reverse();
 
-    if (!priorLogs || priorLogs.length === 0) {
+    const isFirstMessage = !priorLogs || priorLogs.length === 0;
+
+    if (isFirstMessage) {
       notifyNewConversation(
         { id: currentCompany.id, name: currentCompany.name },
         { channel: "telegram", sessionId, initialMessage: userText }
@@ -351,7 +354,7 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
 
     let rawReply: string;
     try {
-      rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext);
+      rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
     } catch (aiErr: any) {
       void reportSystemMalfunction(
         `Telegram AI Generation Error: ${company.name}`,
@@ -368,7 +371,7 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
     }
     const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
     const { cleanResponse, metrics } = extractMetrics(tempResponse);
-    let aiReply = enforceResponseLanguage(cleanResponse, userText);
+    let aiReply = enforceResponseLanguage(cleanResponse, userText, undefined, company.name);
     let isHandoff = false;
 
     if (leadData && sessionId && typeof sessionId === "string") {

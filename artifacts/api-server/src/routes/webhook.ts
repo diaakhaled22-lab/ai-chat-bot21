@@ -40,7 +40,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, buildWelcomeInstruction } from "../lib/promptInstructions";
 import { detectResponseLanguage, enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { webhookLimiter, escapeHtml } from "../lib/security";
 import { getEmailConfig } from "../lib/email";
@@ -53,7 +53,8 @@ async function callAI(
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],
   overrideAiConfig?: ResolvedAiConfig,
-  knownCustomerContext?: string
+  knownCustomerContext?: string,
+  isFirstMessage?: boolean
 ): Promise<string> {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
 
@@ -67,6 +68,7 @@ async function callAI(
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
   sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
   sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+  sysContent += `\n\n${buildWelcomeInstruction(company, Boolean(isFirstMessage))}`;
   if (knownCustomerContext) {
     sysContent += `\n\n${knownCustomerContext}`;
   }
@@ -255,8 +257,9 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
         .limit(30);
 
       priorLogs = recentLogs.reverse();
+      const isFirstMessage = !priorLogs || priorLogs.length === 0;
 
-      if (!priorLogs || priorLogs.length === 0) {
+      if (isFirstMessage) {
         notifyNewConversation(
           { id: company.id, name: company.name },
           { channel, sessionId, initialMessage: customerMessage }
@@ -447,11 +450,12 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
 
     // Generate response using full multi-source AI pipeline
     try {
-      const rawReply = await callAI(company, customerMessage, conversationHistory, aiConfig, knownCustomerContext);
+      const isFirstTurn = !priorLogs || priorLogs.length === 0;
+      const rawReply = await callAI(company, customerMessage, conversationHistory, aiConfig, knownCustomerContext, isFirstTurn);
       const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
       const { cleanResponse } = extractMetrics(tempResponse);
 
-      let aiReply = enforceResponseLanguage(cleanResponse, customerMessage);
+      let aiReply = enforceResponseLanguage(cleanResponse, customerMessage, undefined, company.name);
       let isHandoff = false;
 
       if (isHandoffRequested(customerMessage, rawReply, aiReply)) {

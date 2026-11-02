@@ -30,6 +30,44 @@ export const CONVERSATIONAL_MEMORY_INSTRUCTION =
   "3. Avoid Repetitive Lead Capture Prompts: Never interrupt or derail the conversation with generic templates like 'لتوفير أفضل خدمة لك، يرجى تزويدي باسمك الكامل ورقم هاتفك' or 'يرجى تزويدنا بعنوانك ورقم هاتفك' if you already know their details or if they already provided them. Proceed directly to answering the customer's question or assisting them with their inquiry.\n" +
   "4. Natural Direct Answers: When a customer asks a question (such as 'ليس لديكم فروع' or 'ما موقع الشركة' or questions about prices, products, or delivery), answer the question directly and politely based on your knowledge base without demanding their name or phone number if they already provided them.";
 
+/**
+ * Resolves the official business or company brand name as specified in the
+ * "Company Information & Overview" (generalInfo) field, falling back to company.name.
+ */
+export function getCompanyNameFromOverview(company: { name: string; generalInfo?: string | null }): string {
+  if (company.generalInfo) {
+    const text = company.generalInfo.trim();
+    const firstLine = text.split(/\r?\n/)[0].trim();
+    const companyRegex = /(?:شركة|متجر|مؤسسة|مكتب|مستشفى|مجمع|عيادة|مركز|صيدلية|فندق|مطعم|معرض|وكالة|براند|brand|company|store|clinic|hospital)\s+[^\n\r,.:;!؟]+/i;
+    const match = text.match(companyRegex);
+    if (match) return match[0].trim();
+    if (firstLine.length > 0 && firstLine.length <= 60 && !/[.!?]/.test(firstLine)) return firstLine;
+  }
+  return company.name || "الشركة";
+}
+
+/**
+ * Builds instructions for the AI to welcome the user in their first message
+ * including the company name from "Company Information & Overview".
+ */
+export function buildWelcomeInstruction(company: { name: string; generalInfo?: string | null }, isFirstMessage: boolean): string {
+  const brandName = getCompanyNameFromOverview(company);
+  if (isFirstMessage) {
+    return (
+      `FIRST MESSAGE WELCOME MANDATE:\n` +
+      `- This is the customer's VERY FIRST message in the conversation.\n` +
+      `- You MUST start your response by warmly welcoming the customer and explicitly introducing the brand name ("${brandName}") as specified in the "Company Information & Overview" field.\n` +
+      `- In Arabic: Start with a welcoming opening such as "أهلاً وسهلاً بك في ${brandName}! يسعدنا تواصلك معنا." (or if the customer began with Salam: "وعليكم السلام ورحمة الله وبركاته! مرحباً بك في ${brandName}."). Immediately after this warm welcome, address and answer whatever question or request the customer mentioned.\n` +
+      `- In English: Start with "Welcome to ${brandName}! We are glad to assist you." and immediately answer their inquiry.\n` +
+      `- DO NOT begin by demanding their personal contact information (like name or phone) before welcoming them or answering their question.`
+    );
+  }
+  return (
+    `COMPANY BRAND CONTEXT:\n` +
+    `You represent "${brandName}" (from Company Information & Overview). Maintain this brand identity throughout the conversation.`
+  );
+}
+
 
 export const DEFAULT_SECURITY_PROMPT = `# CHAT PROTECTION AND INPUT SANITIZATION
 

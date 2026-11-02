@@ -122,7 +122,7 @@ const GREETING_FALLBACKS: Record<string, string> = {
   "hey": "Hey! How can I help you today?",
 };
 
-export function enforceResponseLanguage(text: string, latestUserMessage: string, explicitLang?: "ar" | "en"): string {
+export function enforceResponseLanguage(text: string, latestUserMessage: string, explicitLang?: "ar" | "en", companyName?: string): string {
   const language = explicitLang 
     ? (explicitLang === "ar" ? "Arabic" : "English") 
     : detectResponseLanguage(latestUserMessage);
@@ -132,16 +132,28 @@ export function enforceResponseLanguage(text: string, latestUserMessage: string,
     return cleanMarkdownStars(cleaned);
   }
 
+  const nameSuffixAr = companyName ? ` في ${companyName}` : "";
+  const nameSuffixEn = companyName ? ` to ${companyName}` : "";
+
   // Smart fallback for greetings if AI model returned empty or stripped
   const normalizedUserMsg = latestUserMessage.trim().replace(/[!.,؟?]/g, "").trim().toLowerCase();
+  if (normalizedUserMsg === "السلام عليكم" || normalizedUserMsg === "سلام عليكم") {
+    return `وعليكم السلام ورحمة الله وبركاته! أهلاً وسهلاً بك${nameSuffixAr}، كيف يمكنني مساعدتك اليوم؟`;
+  }
+  if (normalizedUserMsg === "السلام" || normalizedUserMsg === "سلام") {
+    return `وعليكم السلام ورحمة الله! أهلاً بك${nameSuffixAr}، كيف أستطيع خدمتك اليوم؟`;
+  }
+  if (normalizedUserMsg.includes("مرحبا") || normalizedUserMsg.includes("أهلا") || normalizedUserMsg.includes("اهلا")) {
+    return `مرحباً وأهلاً بك${nameSuffixAr}! يسعدني مساعدتك، تفضل بسؤالك.`;
+  }
   if (GREETING_FALLBACKS[normalizedUserMsg]) {
     return GREETING_FALLBACKS[normalizedUserMsg];
   }
 
   // Friendly conversational fallback instead of generic error
   return language === "Arabic"
-    ? "أهلاً بك! كيف يمكنني مساعدتك اليوم؟"
-    : "Hello! How can I help you today?";
+    ? `أهلاً وسهلاً بك${nameSuffixAr}! كيف يمكنني مساعدتك اليوم؟`
+    : `Hello and welcome${nameSuffixEn}! How can I help you today?`;
 }
 
 export function localizedChannelMessage(

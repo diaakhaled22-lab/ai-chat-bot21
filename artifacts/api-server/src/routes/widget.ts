@@ -21,7 +21,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, buildWelcomeInstruction } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
@@ -231,6 +231,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
     sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
     sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+    sysContent += `\n\n${buildWelcomeInstruction(company, Boolean(isNewConversation))}`;
     if (knownCustomerContext) {
       sysContent += `\n\n${knownCustomerContext}`;
     }
@@ -347,7 +348,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
         const { cleanResponse: tempResponse, leadData } = extractLeadData(aiReply);
     const { cleanResponse, metrics } = extractMetrics(tempResponse);
-    aiReply = enforceResponseLanguage(cleanResponse, message.trim(), explicitLang);
+    aiReply = enforceResponseLanguage(cleanResponse, message.trim(), explicitLang, company.name);
     let isHandoff = false;
     
     if (leadData && sessionId && typeof sessionId === "string") {

@@ -24,7 +24,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, buildWelcomeInstruction } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 
 import crypto from 'crypto';
@@ -36,7 +36,8 @@ async function callAI(
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],
   overrideAiConfig?: ResolvedAiConfig,
-  knownCustomerContext?: string
+  knownCustomerContext?: string,
+  isFirstMessage?: boolean
 ): Promise<string> {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
 
@@ -50,6 +51,7 @@ async function callAI(
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
   sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
   sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+  sysContent += `\n\n${buildWelcomeInstruction(company, Boolean(isFirstMessage))}`;
   if (knownCustomerContext) {
     sysContent += `\n\n${knownCustomerContext}`;
   }
@@ -329,8 +331,9 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
             .limit(30);
 
           const priorLogs = recentLogs.reverse();
+          const isFirstMessage = !priorLogs || priorLogs.length === 0;
 
-          if (!priorLogs || priorLogs.length === 0) {
+          if (isFirstMessage) {
             notifyNewConversation(
               { id: company.id, name: company.name },
               { channel: "whatsapp", sessionId, initialMessage: userText }
@@ -381,7 +384,7 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
 
           let rawReply: string;
           try {
-            rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext);
+            rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
     } catch (aiErr: any) {
       void reportSystemMalfunction(
         `WhatsApp AI Generation Error: ${company.name}`,
@@ -399,7 +402,7 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
     const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
     const { cleanResponse, metrics } = extractMetrics(tempResponse);
     
-    let aiReply = enforceResponseLanguage(cleanResponse, userText);
+    let aiReply = enforceResponseLanguage(cleanResponse, userText, undefined, company.name);
     let isHandoff = false;
 
     if (isHandoffRequested(userText, rawReply, aiReply)) {
@@ -721,8 +724,9 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
             .limit(30);
 
           const priorLogs = recentLogs.reverse();
+          const isFirstMessage = !priorLogs || priorLogs.length === 0;
 
-          if (!priorLogs || priorLogs.length === 0) {
+          if (isFirstMessage) {
             notifyNewConversation(
               { id: currentCompany.id, name: currentCompany.name },
               { channel: "whatsapp", sessionId, initialMessage: userText }
@@ -770,7 +774,7 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
 
           let rawReply: string;
           try {
-            rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext);
+            rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
           } catch (aiErr: any) {
             void reportSystemMalfunction(
               `Custom WhatsApp AI Generation Error: ${company.name}`,
@@ -787,7 +791,7 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
           }
           const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
           const { cleanResponse, metrics } = extractMetrics(tempResponse);
-          let aiReply = enforceResponseLanguage(cleanResponse, userText);
+          let aiReply = enforceResponseLanguage(cleanResponse, userText, undefined, company.name);
           let isHandoff = false;
 
           if (isHandoffRequested(userText, rawReply, aiReply)) {
