@@ -1356,10 +1356,10 @@ export default function ClientPackages() {
       {/* ── Dialog: Subscribe to Plan ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
-          className="max-w-2xl w-[95vw] max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-3xl shadow-2xl"
+          className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden p-6 rounded-3xl shadow-2xl modal-custom-scroll block"
           dir={lang === "ar" ? "rtl" : "ltr"}
         >
-          <DialogHeader className="p-5 pb-3 border-b border-border/40 shrink-0 bg-background/95 backdrop-blur-xs">
+          <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
               <span>
@@ -1380,7 +1380,7 @@ export default function ClientPackages() {
           </DialogHeader>
 
           {selectedPlan && (
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+            <div className="space-y-4 py-4">
               {activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id && (
                 <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
@@ -1869,7 +1869,7 @@ export default function ClientPackages() {
             </div>
           )}
 
-          <DialogFooter className="p-4 sm:p-5 border-t border-border/40 shrink-0 bg-background/95 backdrop-blur-xs gap-2 sm:gap-2 flex-col-reverse sm:flex-row justify-end">
+          <DialogFooter className="sticky -bottom-6 -mx-6 -mb-6 p-4 sm:p-5 bg-card/95 backdrop-blur-md border-t border-border/50 gap-2 sm:gap-2 flex-col-reverse sm:flex-row justify-end z-20 mt-4">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
@@ -1900,10 +1900,10 @@ export default function ClientPackages() {
       {/* ── Dialog: Request Top-Up Pack ── */}
       <Dialog open={topupDialogOpen} onOpenChange={setTopupDialogOpen}>
         <DialogContent
-          className="max-w-md w-[95vw] max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-3xl shadow-2xl"
+          className="max-w-md w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden p-6 rounded-3xl shadow-2xl modal-custom-scroll block"
           dir={lang === "ar" ? "rtl" : "ltr"}
         >
-          <DialogHeader className="p-5 pb-3 border-b border-border/40 shrink-0 bg-background/95">
+          <DialogHeader className="pb-3 border-b border-border/40">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               <Coins className="w-5 h-5 text-amber-500" />
               <span>{lang === "ar" ? "طلب شحن رصيد إضافي" : "Request Extra Token Top-Up"}</span>
@@ -1916,7 +1916,7 @@ export default function ClientPackages() {
           </DialogHeader>
 
           {topupPack && (
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="space-y-4 py-4">
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
                 <div>
                   <h4 className="font-bold text-sm text-foreground">
@@ -1948,7 +1948,7 @@ export default function ClientPackages() {
             </div>
           )}
 
-          <DialogFooter className="p-4 border-t border-border/40 shrink-0 bg-background/95 gap-2 sm:gap-2">
+          <DialogFooter className="sticky -bottom-6 -mx-6 -mb-6 p-4 bg-card/95 backdrop-blur-md border-t border-border/50 gap-2 sm:gap-2 flex justify-end z-20 mt-4">
             <Button
               variant="outline"
               onClick={() => setTopupDialogOpen(false)}

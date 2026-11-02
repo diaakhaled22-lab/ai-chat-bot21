@@ -199,3 +199,23 @@
     @apply h-full;
   }
 }
+
+.modal-custom-scroll {
+  scrollbar-width: thin !important;
+  scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--muted) / 0.3) !important;
+}
+.modal-custom-scroll::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+.modal-custom-scroll::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.25) !important;
+  border-radius: 999px !important;
+}
+.modal-custom-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.6) !important;
+  border-radius: 999px !important;
+}
+.modal-custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.9) !important;
+}

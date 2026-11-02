@@ -1010,7 +1010,7 @@ export default function AdminPackages() {
 
       {/* ── Dialog: Add / Edit Plan ── */}
       <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
-        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-3xl p-4 sm:p-6">
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-3xl p-4 sm:p-6 modal-custom-scroll">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
@@ -1856,7 +1856,7 @@ export default function AdminPackages() {
       {/* ── Dialog: Add / Edit Top-Up ── */}
       <Dialog open={isTopupModalOpen} onOpenChange={setIsTopupModalOpen}>
         <DialogContent
-          className="max-w-md w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl p-4 sm:p-6"
+          className="max-w-md w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-3xl p-4 sm:p-6 modal-custom-scroll"
           dir={lang === "ar" ? "rtl" : "ltr"}
         >
           <DialogHeader>
