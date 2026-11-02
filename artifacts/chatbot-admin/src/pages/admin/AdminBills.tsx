@@ -80,6 +80,8 @@ export interface InvoiceItem {
   retentionDays?: number | null;
   channels?: string[];
   tools?: string[];
+  state: "active" | "pending";
+  isPaid: boolean;
   status: "paid" | "activated" | "pending";
   issueDate: string;
   notes?: string;
@@ -125,10 +127,12 @@ export default function AdminBills() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "plan" | "topup" | "quota_usage">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "activated" | "pending">("all");
+  const [stateFilter, setStateFilter] = useState<"all" | "active" | "pending">("all");
+  const [paidFilter, setPaidFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [selectedCurrency, setSelectedCurrency] = useState("EGP");
   const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
   const [collapsedCompanies, setCollapsedCompanies] = useState<Record<string, boolean>>({});
+  const [togglingInvoice, setTogglingInvoice] = useState<string | null>(null);
 
   // Send Copy Modal state
   const [sendCopyModalOpen, setSendCopyModalOpen] = useState(false);
@@ -152,8 +156,23 @@ export default function AdminBills() {
     refetchInterval: 15_000,
   });
 
-  const invoices = data?.invoices || [];
+  const rawInvoices = data?.invoices || [];
   const rates = data?.rates || {};
+
+  // Normalize each invoice so state and isPaid are strictly defined
+  const invoices: InvoiceItem[] = useMemo(() => {
+    return rawInvoices.map((inv) => {
+      const isPaid = inv.isPaid !== undefined ? Boolean(inv.isPaid) : (inv.status === "paid" || inv.status === "activated");
+      const state: "active" | "pending" = inv.state === "active" || inv.state === "pending"
+        ? inv.state
+        : (inv.status === "paid" || inv.status === "activated" ? "active" : "pending");
+      return {
+        ...inv,
+        state,
+        isPaid,
+      };
+    });
+  }, [rawInvoices]);
 
   // Currency rate calculator
   const currencyInfo = SUPPORTED_CURRENCIES[selectedCurrency] || SUPPORTED_CURRENCIES.EGP;
@@ -176,8 +195,61 @@ export default function AdminBills() {
         map.set(key, { key, name, count: 1 });
       }
     });
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.entries()).map(([key, item]) => ({ key, name: item.name, count: item.count })).sort((a, b) => a.name.localeCompare(b.name));
   }, [invoices, lang]);
+
+  // Toggle paid status on click
+  const handleTogglePaid = async (inv: InvoiceItem) => {
+    const newPaid = !inv.isPaid;
+    try {
+      setTogglingInvoice(inv.invoiceNumber);
+
+      // Optimistic cache update
+      queryClient.setQueryData<InvoicesApiResponse>(["admin-invoices"], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          invoices: old.invoices.map((i) =>
+            i.invoiceNumber === inv.invoiceNumber
+              ? { ...i, isPaid: newPaid, status: newPaid ? "paid" : "pending" }
+              : i
+          ),
+        };
+      });
+
+      await customFetch("/api/admin/invoices/toggle-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceNumber: inv.invoiceNumber,
+          ticketId: inv.ticketId ?? null,
+          companyId: inv.companyId ?? null,
+          isPaid: newPaid,
+        }),
+      });
+
+      toast({
+        title: newPaid
+          ? (lang === "ar" ? "✅ تم تحديد الفاتورة كـ مسددة" : "Invoice marked as Paid ✅")
+          : (lang === "ar" ? "⏳ تم إلغاء سداد الفاتورة" : "Invoice marked as Unpaid ⏳"),
+        description:
+          lang === "ar"
+            ? `الفاتورة #${inv.invoiceNumber} أصبحت ${newPaid ? "مسددة (Paid)" : "غير مسددة (Unpaid)"}.`
+            : `Invoice #${inv.invoiceNumber} is now ${newPaid ? "Paid" : "Unpaid"}.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+    } catch (err: any) {
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      toast({
+        title: lang === "ar" ? "خطأ في تعديل السداد" : "Failed to update payment",
+        description: err?.message || (lang === "ar" ? "تعذر تغيير حالة سداد الفاتورة" : "Could not update payment status"),
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingInvoice(null);
+    }
+  };
 
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
@@ -191,10 +263,13 @@ export default function AdminBills() {
       // Type filter
       if (typeFilter !== "all" && inv.itemType !== typeFilter) return false;
 
-      // Status filter
-      if (statusFilter !== "all") {
-        if (statusFilter === "paid" && inv.status !== "paid" && inv.status !== "activated") return false;
-        if (statusFilter === "pending" && inv.status !== "pending") return false;
+      // State filter (only 'active' and 'pending')
+      if (stateFilter !== "all" && inv.state !== stateFilter) return false;
+
+      // Paid filter
+      if (paidFilter !== "all") {
+        if (paidFilter === "paid" && !inv.isPaid) return false;
+        if (paidFilter === "unpaid" && inv.isPaid) return false;
       }
 
       // Search query
@@ -211,7 +286,7 @@ export default function AdminBills() {
 
       return true;
     });
-  }, [invoices, selectedCompanyFilter, typeFilter, statusFilter, searchQuery]);
+  }, [invoices, selectedCompanyFilter, typeFilter, stateFilter, paidFilter, searchQuery]);
 
   // Grouped by company structure
   const groupedCompanies = useMemo(() => {
@@ -242,7 +317,7 @@ export default function AdminBills() {
       group.totalInvoices += 1;
       group.totalTokens += inv.tokenQuota || 0;
       group.totalUsd += inv.priceUsd || 0;
-      if (inv.status === "paid" || inv.status === "activated") {
+      if (inv.isPaid) {
         group.paidCount += 1;
       } else {
         group.pendingCount += 1;
@@ -258,6 +333,13 @@ export default function AdminBills() {
     // Sort each group's invoices by date (newest first)
     map.forEach((group) => {
       group.invoices.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+    });
+
+    // Return groups sorted by latest invoice date (newest first)
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
+    );
+  }, [filteredInvoices, lang]);
     });
 
     // Return groups sorted by latest invoice date (newest first)
@@ -404,7 +486,8 @@ export default function AdminBills() {
       `البند: ${lang === "ar" ? inv.titleAr : inv.titleEn}`,
       `رصيد الرموز: ${inv.tokenQuota?.toLocaleString()} Tokens`,
       `المبلغ: $${inv.priceUsd} USD (~ ${converted.toLocaleString()} ${currencyInfo.symbol})`,
-      `الحالة: ${inv.status === "paid" || inv.status === "activated" ? "معتمدة ومسددة ✅" : "معلقة ⏳"}`,
+      `الحالة (State): ${inv.state === "active" ? (lang === "ar" ? "نشطة" : "Active") : (lang === "ar" ? "معلقة" : "Pending")}`,
+      `السداد (Paid): ${inv.isPaid ? (lang === "ar" ? "مسددة ✅" : "Paid ✅") : (lang === "ar" ? "غير مسددة ⏳" : "Unpaid ⏳")}`,
       `تاريخ الإصدار: ${new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}`,
     ].join("\n");
 
@@ -432,7 +515,8 @@ export default function AdminBills() {
       "Tokens Quota",
       "Amount USD",
       `Amount (${currencyInfo.code})`,
-      "Status",
+      "State",
+      "Paid",
       "Issue Date",
     ];
 
@@ -447,7 +531,8 @@ export default function AdminBills() {
       inv.tokenQuota || 0,
       inv.priceUsd,
       convertPrice(inv.priceUsd),
-      inv.status,
+      inv.state,
+      inv.isPaid ? "Paid" : "Unpaid",
       new Date(inv.issueDate).toISOString().slice(0, 10),
     ]);
 
@@ -706,15 +791,27 @@ export default function AdminBills() {
             </SelectContent>
           </Select>
 
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+          {/* State Filter (Active / Pending only) */}
+          <Select value={stateFilter} onValueChange={(v: any) => setStateFilter(v)}>
             <SelectTrigger className="w-[130px] h-9 text-xs bg-background rounded-xl border-border/60">
-              <SelectValue placeholder={lang === "ar" ? "الحالة" : "Status"} />
+              <SelectValue placeholder={lang === "ar" ? "الحالة" : "State"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{lang === "ar" ? "جميع الحالات" : "All Status"}</SelectItem>
-              <SelectItem value="paid">{lang === "ar" ? "نشطة / مسددة" : "Active / Paid"}</SelectItem>
-              <SelectItem value="pending">{lang === "ar" ? "معلقة" : "Pending"}</SelectItem>
+              <SelectItem value="all">{lang === "ar" ? "جميع الحالات" : "All States"}</SelectItem>
+              <SelectItem value="active">{lang === "ar" ? "نشطة (Active)" : "Active"}</SelectItem>
+              <SelectItem value="pending">{lang === "ar" ? "معلقة (Pending)" : "Pending"}</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Paid Filter (Paid / Unpaid) */}
+          <Select value={paidFilter} onValueChange={(v: any) => setPaidFilter(v)}>
+            <SelectTrigger className="w-[130px] h-9 text-xs bg-background rounded-xl border-border/60">
+              <SelectValue placeholder={lang === "ar" ? "السداد" : "Paid"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{lang === "ar" ? "جميع السداد" : "All Payment"}</SelectItem>
+              <SelectItem value="paid">{lang === "ar" ? "مسددة (✓)" : "Paid (✓)"}</SelectItem>
+              <SelectItem value="unpaid">{lang === "ar" ? "غير مسددة" : "Unpaid"}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -733,14 +830,15 @@ export default function AdminBills() {
           </Select>
 
           {/* Reset Filters */}
-          {(selectedCompanyFilter !== "all" || typeFilter !== "all" || statusFilter !== "all" || searchQuery.trim()) && (
+          {(selectedCompanyFilter !== "all" || typeFilter !== "all" || stateFilter !== "all" || paidFilter !== "all" || searchQuery.trim()) && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setSelectedCompanyFilter("all");
                 setTypeFilter("all");
-                setStatusFilter("all");
+                setStateFilter("all");
+                setPaidFilter("all");
                 setSearchQuery("");
               }}
               className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
@@ -910,14 +1008,14 @@ export default function AdminBills() {
                             <th className="p-3 text-right rtl:text-right ltr:text-left font-bold text-foreground">
                               {lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}
                             </th>
-                            <th className="p-3 text-center">{lang === "ar" ? "الحالة" : "Status"}</th>
+                            <th className="p-3 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
+                            <th className="p-3 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
                             <th className="p-3 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
                           {group.invoices.map((inv) => {
                             const localPrice = convertPrice(inv.priceUsd);
-                            const isPaid = inv.status === "paid" || inv.status === "activated";
 
                             return (
                               <tr key={inv.id} className="hover:bg-muted/20 transition-colors">
@@ -981,19 +1079,51 @@ export default function AdminBills() {
                                   </div>
                                 </td>
 
-                                {/* Status */}
+                                {/* State (only 'active' and 'pending') */}
                                 <td className="p-3 text-center">
-                                  {isPaid ? (
-                                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px]">
-                                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                                      {lang === "ar" ? "مسددة ونشطة" : "Active & Paid"}
+                                  {inv.state === "active" ? (
+                                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                      {lang === "ar" ? "نشطة" : "Active"}
                                     </Badge>
                                   ) : (
-                                    <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px]">
-                                      <Clock className="w-3 h-3 mr-1" />
+                                    <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-semibold gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                       {lang === "ar" ? "معلقة" : "Pending"}
                                     </Badge>
                                   )}
+                                </td>
+
+                                {/* Paid (field that when checked indicates paid) */}
+                                <td className="p-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePaid(inv)}
+                                    disabled={togglingInvoice === inv.invoiceNumber}
+                                    title={
+                                      inv.isPaid
+                                        ? (lang === "ar" ? "مسددة (انقر لإلغاء السداد)" : "Paid (Click to mark unpaid)")
+                                        : (lang === "ar" ? "غير مسددة (انقر للتحديد كمسددة)" : "Unpaid (Click to mark paid)")
+                                    }
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none ${
+                                      inv.isPaid
+                                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                                        : "bg-muted/40 border-border/70 text-muted-foreground hover:bg-muted/70 hover:border-emerald-500/40"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-all ${
+                                        inv.isPaid
+                                          ? "bg-emerald-600 text-white shadow-xs"
+                                          : "border-2 border-muted-foreground/40 bg-background"
+                                      }`}
+                                    >
+                                      {inv.isPaid && <Check className="w-3 h-3 stroke-[3]" />}
+                                    </span>
+                                    <span className="text-[11px]">
+                                      {inv.isPaid ? (lang === "ar" ? "مسددة" : "Paid") : (lang === "ar" ? "غير مسددة" : "Unpaid")}
+                                    </span>
+                                  </button>
                                 </td>
 
                                 {/* Actions */}
@@ -1068,15 +1198,14 @@ export default function AdminBills() {
                               </span>
                             </td>
                             <td className="p-3 text-center">
-                              {isAllPaid ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px]">
-                                  {lang === "ar" ? "الكل مسدد" : "All Paid"}
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[9px]">
-                                  {lang === "ar" ? `${group.pendingCount} معلقة` : `${group.pendingCount} Pending`}
-                                </Badge>
-                              )}
+                              <span className="text-[11px] text-muted-foreground font-medium">
+                                {group.invoices.filter((i) => i.state === "active").length} {lang === "ar" ? "نشطة" : "Active"}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                {group.paidCount}/{group.totalInvoices} {lang === "ar" ? "مسددة" : "Paid"}
+                              </span>
                             </td>
                             <td className="p-3 text-center text-[10px] text-muted-foreground">
                               —
@@ -1104,21 +1233,22 @@ export default function AdminBills() {
                   <th className="p-3.5 text-center">{lang === "ar" ? "رصيد الرموز" : "Tokens"}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "تاريخ الإصدار" : "Date"}</th>
                   <th className="p-3.5 text-right rtl:text-right ltr:text-left font-bold text-foreground">{lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}</th>
-                  <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "Status"}</th>
+                  <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
+                  <th className="p-3.5 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                    <td colSpan={9} className="p-12 text-center text-muted-foreground">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
                       <span>{lang === "ar" ? "جاري تحميل الفواتير..." : "Loading invoices..."}</span>
                     </td>
                   </tr>
                 ) : filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                    <td colSpan={9} className="p-12 text-center text-muted-foreground">
                       <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       <p className="font-semibold">{lang === "ar" ? "لا توجد فواتير مطابقة للبحث" : "No invoices found"}</p>
                       <p className="text-[11px] text-muted-foreground/80 mt-1">
@@ -1129,7 +1259,6 @@ export default function AdminBills() {
                 ) : (
                   filteredInvoices.map((inv) => {
                     const localPrice = convertPrice(inv.priceUsd);
-                    const isPaid = inv.status === "paid" || inv.status === "activated";
 
                     return (
                       <tr key={inv.id} className="hover:bg-muted/20 transition-colors">
@@ -1203,19 +1332,51 @@ export default function AdminBills() {
                           </div>
                         </td>
 
-                        {/* Status */}
+                        {/* State (only 'active' and 'pending') */}
                         <td className="p-3.5 text-center">
-                          {isPaid ? (
-                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px]">
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              {lang === "ar" ? "مسددة ونشطة" : "Active & Paid"}
+                          {inv.state === "active" ? (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              {lang === "ar" ? "نشطة" : "Active"}
                             </Badge>
                           ) : (
-                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px]">
-                              <Clock className="w-3 h-3 mr-1" />
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-semibold gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                               {lang === "ar" ? "معلقة" : "Pending"}
                             </Badge>
                           )}
+                        </td>
+
+                        {/* Paid (field that when checked indicates paid) */}
+                        <td className="p-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePaid(inv)}
+                            disabled={togglingInvoice === inv.invoiceNumber}
+                            title={
+                              inv.isPaid
+                                ? (lang === "ar" ? "مسددة (انقر لإلغاء السداد)" : "Paid (Click to mark unpaid)")
+                                : (lang === "ar" ? "غير مسددة (انقر للتحديد كمسددة)" : "Unpaid (Click to mark paid)")
+                            }
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none ${
+                              inv.isPaid
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                                : "bg-muted/40 border-border/70 text-muted-foreground hover:bg-muted/70 hover:border-emerald-500/40"
+                            }`}
+                          >
+                            <span
+                              className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-all ${
+                                inv.isPaid
+                                  ? "bg-emerald-600 text-white shadow-xs"
+                                  : "border-2 border-muted-foreground/40 bg-background"
+                              }`}
+                            >
+                              {inv.isPaid && <Check className="w-3 h-3 stroke-[3]" />}
+                            </span>
+                            <span className="text-[11px]">
+                              {inv.isPaid ? (lang === "ar" ? "مسددة" : "Paid") : (lang === "ar" ? "غير مسددة" : "Unpaid")}
+                            </span>
+                          </button>
                         </td>
 
                         {/* Actions */}

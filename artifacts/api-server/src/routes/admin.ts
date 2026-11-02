@@ -3059,6 +3059,8 @@ router.get("/admin/invoices", async (req, res) => {
         retentionDays: parsed.retentionDays,
         channels: parsed.channels || [],
         tools: parsed.tools || [],
+        state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
+        isPaid: t.status === "resolved",
         status: t.status === "resolved" ? "paid" : "pending",
         issueDate: t.createdAt.toISOString(),
         notes: t.adminNote || t.aiResponse || undefined,
@@ -3114,6 +3116,8 @@ router.get("/admin/invoices", async (req, res) => {
               priceUsd: inv.priceUsd || 10,
               priceLocal: inv.priceLocal || Math.round((inv.priceUsd || 10) * exchangeRate),
               currencySymbol: inv.currencySymbol || currencySymbol,
+              state: "active",
+              isPaid: true,
               status: "paid",
               issueDate: tl.log.createdAt.toISOString(),
               notes: `تم الشحن والاعتماد بواسطة ${tl.log.performedBy}`,
@@ -3160,9 +3164,39 @@ router.get("/admin/invoices", async (req, res) => {
         periodStart: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : undefined,
         periodEnd: comp.quotaEndDate ? comp.quotaEndDate.toISOString() : undefined,
         retentionDays: comp.chatLogRetentionDays,
+        state: comp.isActive ? "active" : "pending",
+        isPaid: Boolean(comp.isActive),
         status: comp.isActive ? "activated" : "pending",
         issueDate: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : comp.createdAt.toISOString(),
       });
+    }
+
+    // 4. Apply manual invoice payment status overrides (if recorded)
+    try {
+      const paymentOverrides = await db
+        .select()
+        .from(companyActivityLogsTable)
+        .where(eq(companyActivityLogsTable.action, "invoice_payment_override"))
+        .orderBy(desc(companyActivityLogsTable.createdAt));
+
+      const overrideMap = new Map<string, boolean>();
+      for (const ov of paymentOverrides) {
+        try {
+          const parsedNote = JSON.parse(ov.note || "{}");
+          if (parsedNote.invoiceNumber && !overrideMap.has(parsedNote.invoiceNumber)) {
+            overrideMap.set(parsedNote.invoiceNumber, Boolean(parsedNote.isPaid));
+          }
+        } catch {}
+      }
+
+      for (const inv of invoiceList) {
+        if (overrideMap.has(inv.invoiceNumber)) {
+          inv.isPaid = overrideMap.get(inv.invoiceNumber)!;
+          inv.status = inv.isPaid ? "paid" : "pending";
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to fetch invoice payment overrides");
     }
 
     // Sort by issueDate descending
@@ -3177,6 +3211,45 @@ router.get("/admin/invoices", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "Get admin invoices error");
     res.status(500).json({ error: err?.message || "Failed to fetch invoices" });
+  }
+});
+
+// POST /admin/invoices/toggle-paid - Toggle or set paid status of an invoice
+router.post("/admin/invoices/toggle-paid", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId, isPaid } = req.body as {
+      invoiceNumber: string;
+      ticketId?: number | null;
+      companyId?: number | null;
+      isPaid: boolean;
+    };
+
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+
+    if (ticketId) {
+      await db
+        .update(ticketsTable)
+        .set({ status: isPaid ? "resolved" : "open", updatedAt: new Date() })
+        .where(eq(ticketsTable.id, ticketId));
+    }
+
+    // Always log the payment override in companyActivityLogsTable if companyId is available
+    if (companyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId,
+        action: "invoice_payment_override",
+        performedBy: (req.session as any)?.userName || "Admin",
+        note: JSON.stringify({ invoiceNumber, isPaid: Boolean(isPaid), updatedAt: new Date().toISOString() }),
+      });
+    }
+
+    res.json({ ok: true, invoiceNumber, isPaid: Boolean(isPaid) });
+  } catch (err: any) {
+    logger.error({ err }, "Toggle invoice paid error");
+    res.status(500).json({ error: err?.message || "Failed to toggle invoice payment" });
   }
 });
 
