@@ -126,6 +126,17 @@ export default function ClientChatLogs() {
     return options;
   }, [currentRetention, lang]);
 
+  const allDaysLabel = useMemo(() => {
+    const count = dateOptions.length;
+    if (lang === "ar") {
+      if (count === 1) return "كل الأيام (يوم واحد)";
+      if (count === 2) return "كل الأيام (يومان)";
+      if (count >= 3 && count <= 10) return `كل الأيام (${count} أيام)`;
+      return `كل الأيام (${count} يوم)`;
+    }
+    return `All Days (${count} ${count === 1 ? "Day" : "Days"})`;
+  }, [dateOptions.length, lang]);
+
   const defaultFromDate = useMemo(() => {
     return dateOptions.length > 0 ? dateOptions[dateOptions.length - 1].value : undefined;
   }, [dateOptions]);
@@ -448,7 +459,7 @@ export default function ClientChatLogs() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-full md:w-[220px]">
+        <div className="w-full md:w-[230px]">
           <Select 
             value={hasDateFilter ? fromDate : "all"} 
             onValueChange={(val) => {
@@ -463,11 +474,11 @@ export default function ClientChatLogs() {
             <SelectTrigger className="h-full bg-card">
               <div className="flex items-center gap-2 truncate">
                 <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
-                <SelectValue placeholder={lang === "ar" ? "كل الأيام" : "All Days"} />
+                <SelectValue placeholder={allDaysLabel} />
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{lang === "ar" ? "كل الأيام" : "All Days"}</SelectItem>
+              <SelectItem value="all">{allDaysLabel}</SelectItem>
               {dateOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
