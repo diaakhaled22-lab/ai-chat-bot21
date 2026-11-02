@@ -82,6 +82,7 @@ out
 .nuxt
 dist
 !artifacts/api-server/dist/
+!artifacts/chatbot-admin/dist/
 .output
 
 # Gatsby files
@@ -93,6 +94,7 @@ dist
 # vuepress build output
 .vuepress/dist
 !artifacts/api-server/dist/
+!artifacts/chatbot-admin/dist/
 
 # vuepress v2.x temp directory
 .temp
@@ -103,6 +105,7 @@ dist
 # vitepress build output
 **/.vitepress/dist
 !artifacts/api-server/dist/
+!artifacts/chatbot-admin/dist/
 
 # vitepress cache directory
 **/.vitepress/cache
