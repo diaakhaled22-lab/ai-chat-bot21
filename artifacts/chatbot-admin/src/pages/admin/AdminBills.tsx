@@ -53,6 +53,8 @@ import {
   ChevronUp,
   Layers,
   List,
+  CalendarRange,
+  Hourglass,
 } from "lucide-react";
 
 export interface InvoiceItem {
@@ -99,7 +101,9 @@ export interface CompanyInvoiceGroup {
   totalTokens: number;
   totalUsd: number;
   paidCount: number;
-  pendingCount: number;
+  unpaidCount: number;
+  pendingStateCount: number;
+  activeStateCount: number;
   latestDate: string;
 }
 
@@ -129,6 +133,7 @@ export default function AdminBills() {
   const [typeFilter, setTypeFilter] = useState<"all" | "plan" | "topup" | "quota_usage">("all");
   const [stateFilter, setStateFilter] = useState<"all" | "active" | "pending">("all");
   const [paidFilter, setPaidFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   const [selectedCurrency, setSelectedCurrency] = useState("EGP");
   const [viewMode, setViewMode] = useState<"grouped" | "flat">("grouped");
   const [collapsedCompanies, setCollapsedCompanies] = useState<Record<string, boolean>>({});
@@ -197,6 +202,41 @@ export default function AdminBills() {
     });
     return Array.from(map.entries()).map(([key, item]) => ({ key, name: item.name, count: item.count })).sort((a, b) => a.name.localeCompare(b.name));
   }, [invoices, lang]);
+
+  // Unique dates extracted from invoices for date filtering
+  const dateOptions = useMemo(() => {
+    const datesSet = new Set<string>();
+    invoices.forEach((inv) => {
+      if (inv.issueDate) {
+        const d = inv.issueDate.slice(0, 10);
+        if (d) datesSet.add(d);
+      }
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = yesterdayDate.toISOString().slice(0, 10);
+
+    const sortedDates = Array.from(datesSet).sort((a, b) => b.localeCompare(a));
+    return sortedDates.map((iso) => {
+      let label = iso;
+      if (iso === today) label = lang === "ar" ? `اليوم (${iso})` : `Today (${iso})`;
+      else if (iso === yesterday) label = lang === "ar" ? `أمس (${iso})` : `Yesterday (${iso})`;
+      return { value: iso, label };
+    });
+  }, [invoices, lang]);
+
+  const allDaysLabel = useMemo(() => {
+    const count = dateOptions.length;
+    if (lang === "ar") {
+      if (count === 0) return "كل الأيام";
+      if (count === 1) return "كل الأيام (يوم واحد)";
+      if (count === 2) return "كل الأيام (يومان)";
+      if (count >= 3 && count <= 10) return `كل الأيام (${count} أيام)`;
+      return `كل الأيام (${count} يوم)`;
+    }
+    return `All Days (${count} ${count === 1 ? "Day" : "Days"})`;
+  }, [dateOptions.length, lang]);
 
   // Toggle paid status on click
   const handleTogglePaid = async (inv: InvoiceItem) => {
@@ -272,6 +312,12 @@ export default function AdminBills() {
         if (paidFilter === "unpaid" && inv.isPaid) return false;
       }
 
+      // Date filter
+      if (dateFilter !== "all") {
+        const invDate = inv.issueDate ? inv.issueDate.slice(0, 10) : "";
+        if (invDate !== dateFilter) return false;
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -286,7 +332,7 @@ export default function AdminBills() {
 
       return true;
     });
-  }, [invoices, selectedCompanyFilter, typeFilter, stateFilter, paidFilter, searchQuery]);
+  }, [invoices, selectedCompanyFilter, typeFilter, stateFilter, paidFilter, dateFilter, searchQuery]);
 
   // Grouped by company structure
   const groupedCompanies = useMemo(() => {
@@ -307,7 +353,9 @@ export default function AdminBills() {
           totalTokens: 0,
           totalUsd: 0,
           paidCount: 0,
-          pendingCount: 0,
+          unpaidCount: 0,
+          pendingStateCount: 0,
+          activeStateCount: 0,
           latestDate: inv.issueDate,
         });
       }
@@ -320,7 +368,12 @@ export default function AdminBills() {
       if (inv.isPaid) {
         group.paidCount += 1;
       } else {
-        group.pendingCount += 1;
+        group.unpaidCount += 1;
+      }
+      if (inv.state === "pending") {
+        group.pendingStateCount += 1;
+      } else if (inv.state === "active") {
+        group.activeStateCount += 1;
       }
       if (new Date(inv.issueDate) > new Date(group.latestDate)) {
         group.latestDate = inv.issueDate;
@@ -364,6 +417,8 @@ export default function AdminBills() {
   // Statistics
   const stats = useMemo(() => {
     const totalCount = invoices.length;
+    const paidCount = invoices.filter((i) => i.isPaid).length;
+    const unpaidCount = invoices.filter((i) => !i.isPaid).length;
     const planCount = invoices.filter((i) => i.itemType === "plan").length;
     const topupCount = invoices.filter((i) => i.itemType === "topup").length;
     const quotaCount = invoices.filter((i) => i.itemType === "quota_usage").length;
@@ -373,7 +428,7 @@ export default function AdminBills() {
       invoices.map((i) => (i.companyId ? `comp-${i.companyId}` : `name-${i.companyName}`))
     ).size;
 
-    return { totalCount, planCount, topupCount, quotaCount, totalUsd, totalLocal, uniqueCompanies };
+    return { totalCount, paidCount, unpaidCount, planCount, topupCount, quotaCount, totalUsd, totalLocal, uniqueCompanies };
   }, [invoices, activeRate]);
 
   // Handle open Send Copy Modal
@@ -639,7 +694,7 @@ export default function AdminBills() {
               </p>
               <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.totalCount}</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
-                {lang === "ar" ? "كافة السجلات المسجلة" : "All recorded bills"}
+                {lang === "ar" ? `${stats.paidCount} مسددة • ${stats.unpaidCount} غير مسددة` : `${stats.paidCount} Paid • ${stats.unpaidCount} Unpaid`}
               </p>
             </div>
           </CardContent>
@@ -808,6 +863,22 @@ export default function AdminBills() {
             </SelectContent>
           </Select>
 
+          {/* Date Filter */}
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-[160px] h-9 text-xs bg-background rounded-xl border-border/60">
+              <CalendarRange className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder={allDaysLabel} />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">{allDaysLabel}</SelectItem>
+              {dateOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Currency Switcher */}
           <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
             <SelectTrigger className="w-[120px] h-9 text-xs bg-background rounded-xl border-border/60 font-semibold text-emerald-600 dark:text-emerald-400">
@@ -823,7 +894,7 @@ export default function AdminBills() {
           </Select>
 
           {/* Reset Filters */}
-          {(selectedCompanyFilter !== "all" || typeFilter !== "all" || stateFilter !== "all" || paidFilter !== "all" || searchQuery.trim()) && (
+          {(selectedCompanyFilter !== "all" || typeFilter !== "all" || stateFilter !== "all" || paidFilter !== "all" || dateFilter !== "all" || searchQuery.trim()) && (
             <Button
               variant="ghost"
               size="sm"
@@ -832,6 +903,7 @@ export default function AdminBills() {
                 setTypeFilter("all");
                 setStateFilter("all");
                 setPaidFilter("all");
+                setDateFilter("all");
                 setSearchQuery("");
               }}
               className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
@@ -898,7 +970,7 @@ export default function AdminBills() {
             groupedCompanies.map((group) => {
               const isCollapsed = Boolean(collapsedCompanies[group.companyKey]);
               const groupLocalTotal = convertPrice(group.totalUsd);
-              const isAllPaid = group.pendingCount === 0;
+              const isAllPaid = group.unpaidCount === 0;
 
               return (
                 <Card
@@ -922,6 +994,7 @@ export default function AdminBills() {
                           <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-bold">
                             {group.totalInvoices} {lang === "ar" ? (group.totalInvoices === 1 ? "فاتورة واحدة" : group.totalInvoices === 2 ? "فاتورتان" : "فواتير") : "Invoices"}
                           </Badge>
+                          {/* Payment status badge strictly based on Paid column */}
                           {isAllPaid ? (
                             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-medium">
                               <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -930,7 +1003,14 @@ export default function AdminBills() {
                           ) : (
                             <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-medium">
                               <Clock className="w-3 h-3 mr-1" />
-                              {lang === "ar" ? `${group.pendingCount} معلقة` : `${group.pendingCount} Pending`}
+                              {lang === "ar" ? `${group.unpaidCount} غير مسددة` : `${group.unpaidCount} Unpaid`}
+                            </Badge>
+                          )}
+                          {/* Subscription state badge based on State column */}
+                          {group.pendingStateCount > 0 && (
+                            <Badge variant="outline" className="bg-muted/60 text-muted-foreground border-border/80 text-[10px] font-medium">
+                              <Hourglass className="w-3 h-3 mr-1" />
+                              {lang === "ar" ? `${group.pendingStateCount} معلقة (حالة)` : `${group.pendingStateCount} Pending (State)`}
                             </Badge>
                           )}
                         </div>
@@ -1192,13 +1272,20 @@ export default function AdminBills() {
                             </td>
                             <td className="p-3 text-center">
                               <span className="text-[11px] text-muted-foreground font-medium">
-                                {group.invoices.filter((i) => i.state === "active").length} {lang === "ar" ? "نشطة" : "Active"}
+                                {group.activeStateCount} {lang === "ar" ? "نشطة" : "Active"}
                               </span>
                             </td>
                             <td className="p-3 text-center">
-                              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                                {group.paidCount}/{group.totalInvoices} {lang === "ar" ? "مسددة" : "Paid"}
-                              </span>
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  {group.paidCount}/{group.totalInvoices} {lang === "ar" ? "مسددة" : "Paid"}
+                                </span>
+                                {group.unpaidCount > 0 && (
+                                  <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                                    {group.unpaidCount} {lang === "ar" ? "غير مسددة" : "Unpaid"}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-3 text-center text-[10px] text-muted-foreground">
                               —
