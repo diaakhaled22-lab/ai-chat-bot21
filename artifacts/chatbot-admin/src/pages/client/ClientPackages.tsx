@@ -59,8 +59,10 @@ import {
   Code2,
   ShoppingBag,
   Database,
+  SlidersHorizontal,
 } from "lucide-react";
 import { COMMUNICATION_CHANNELS, SYSTEM_TOOLS, DATA_SOURCE_PERMISSIONS } from "@/pages/admin/AdminPackages";
+import { CLIENT_PAGES_META } from "@/pages/admin/AdminCompanies";
 
 type CurrencyCode = "USD" | "SAR" | "AED" | "EGP";
 
@@ -1353,8 +1355,11 @@ export default function ClientPackages() {
 
       {/* ── Dialog: Subscribe to Plan ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg rounded-3xl p-6">
-          <DialogHeader>
+        <DialogContent
+          className="max-w-2xl w-[95vw] max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-3xl shadow-2xl"
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        >
+          <DialogHeader className="p-5 pb-3 border-b border-border/40 shrink-0 bg-background/95 backdrop-blur-xs">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
               <span>
@@ -1375,7 +1380,7 @@ export default function ClientPackages() {
           </DialogHeader>
 
           {selectedPlan && (
-            <div className="space-y-4 py-2">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {activeSelectedPlanId && activeSelectedPlanId !== selectedPlan.id && (
                 <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
@@ -1811,6 +1816,40 @@ export default function ClientPackages() {
                 </div>
               </div>
 
+              {/* Allowed Pages Preview Section */}
+              {selectedPlan.allowedPages && selectedPlan.allowedPages.length > 0 && (
+                <div className="space-y-2 p-3.5 rounded-2xl bg-slate-500/5 border border-slate-500/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                      <span>{lang === "ar" ? "صفحات وأقسام لوحة التحكم المتاحة مع الباقة" : "Included Dashboard Pages"}</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                      {selectedPlan.allowedPages.length} {lang === "ar" ? "صفحات متاحة" : "Pages"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {lang === "ar"
+                      ? "الصفحات والأقسام المسموح بفتحها واستخدامها في لوحة تحكم حسابك عند تفعيل هذه الباقة."
+                      : "The dashboard pages and modules unlocked for your account under this plan."}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {selectedPlan.allowedPages.map((pageId) => {
+                      const pageMeta = CLIENT_PAGES_META.find((p) => p.id === pageId);
+                      return (
+                        <span
+                          key={pageId}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-background border border-border/70 text-foreground/90 shadow-2xs"
+                        >
+                          <Check className="w-3 h-3 text-emerald-500" />
+                          <span>{lang === "ar" ? pageMeta?.titleAr || pageId : pageMeta?.titleEn || pageId}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">
                   {lang === "ar" ? "ملاحظات إضافية أو قنوات مطلوبة (اختياري)" : "Additional Notes / Specific Needs (Optional)"}
@@ -1830,7 +1869,7 @@ export default function ClientPackages() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="p-4 sm:p-5 border-t border-border/40 shrink-0 bg-background/95 backdrop-blur-xs gap-2 sm:gap-2 flex-col-reverse sm:flex-row justify-end">
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
@@ -1841,7 +1880,7 @@ export default function ClientPackages() {
             <Button
               onClick={handleConfirmSubscribe}
               disabled={submitTicketMutation.isPending}
-              className="rounded-xl text-xs font-bold bg-[#2D5BE3] hover:bg-[#254ec2] text-white gap-1.5"
+              className="rounded-xl text-xs font-bold bg-[#2D5BE3] hover:bg-[#254ec2] text-white gap-1.5 shadow-md"
             >
               <Send className="w-3.5 h-3.5" />
               <span>
@@ -1860,8 +1899,11 @@ export default function ClientPackages() {
 
       {/* ── Dialog: Request Top-Up Pack ── */}
       <Dialog open={topupDialogOpen} onOpenChange={setTopupDialogOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6">
-          <DialogHeader>
+        <DialogContent
+          className="max-w-md w-[95vw] max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-3xl shadow-2xl"
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        >
+          <DialogHeader className="p-5 pb-3 border-b border-border/40 shrink-0 bg-background/95">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               <Coins className="w-5 h-5 text-amber-500" />
               <span>{lang === "ar" ? "طلب شحن رصيد إضافي" : "Request Extra Token Top-Up"}</span>
@@ -1874,7 +1916,7 @@ export default function ClientPackages() {
           </DialogHeader>
 
           {topupPack && (
-            <div className="space-y-4 py-2">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
                 <div>
                   <h4 className="font-bold text-sm text-foreground">
@@ -1906,7 +1948,7 @@ export default function ClientPackages() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="p-4 border-t border-border/40 shrink-0 bg-background/95 gap-2 sm:gap-2">
             <Button
               variant="outline"
               onClick={() => setTopupDialogOpen(false)}
@@ -1917,7 +1959,7 @@ export default function ClientPackages() {
             <Button
               onClick={handleConfirmTopup}
               disabled={submitTicketMutation.isPending}
-              className="rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 gap-1.5"
+              className="rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 gap-1.5 shadow-md"
             >
               <Send className="w-3.5 h-3.5" />
               <span>

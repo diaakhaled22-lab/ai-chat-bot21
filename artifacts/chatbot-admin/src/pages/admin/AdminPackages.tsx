@@ -1855,7 +1855,10 @@ export default function AdminPackages() {
 
       {/* ── Dialog: Add / Edit Top-Up ── */}
       <Dialog open={isTopupModalOpen} onOpenChange={setIsTopupModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6">
+        <DialogContent
+          className="max-w-md w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl p-4 sm:p-6"
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        >
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               <Coins className="w-5 h-5 text-amber-500" />
