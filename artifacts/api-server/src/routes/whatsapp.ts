@@ -11,7 +11,7 @@ import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
 import { Router } from "express";
 import { downloadWhatsAppAudio, transcribeAudio, generateVoiceResponse, sendWhatsAppVoiceNote } from '../lib/audio';
 import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
@@ -24,7 +24,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 
 import crypto from 'crypto';
@@ -35,7 +35,8 @@ async function callAI(
   company: typeof companiesTable.$inferSelect,
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],
-  overrideAiConfig?: ResolvedAiConfig
+  overrideAiConfig?: ResolvedAiConfig,
+  knownCustomerContext?: string
 ): Promise<string> {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
 
@@ -48,6 +49,10 @@ async function callAI(
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
   sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
+  sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+  if (knownCustomerContext) {
+    sysContent += `\n\n${knownCustomerContext}`;
+  }
   if (company.generalInfo) sysContent += `\n\nCompany Info:\n${company.generalInfo}`;
 
   sysContent += await getWebsiteKnowledgeSection(company);
@@ -316,12 +321,14 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
             continue;
           }
 
-          const priorLogs = await db
+          const recentLogs = await db
             .select()
             .from(chatLogsTable)
             .where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId)))
-            .orderBy(asc(chatLogsTable.createdAt))
-            .limit(20);
+            .orderBy(desc(chatLogsTable.createdAt))
+            .limit(30);
+
+          const priorLogs = recentLogs.reverse();
 
           if (!priorLogs || priorLogs.length === 0) {
             notifyNewConversation(
@@ -336,8 +343,28 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
             if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
           }
 
-          
-    if (isSessionInHandoff(priorLogs)) {
+          // Lookup previously collected lead info to avoid asking for already provided details
+          let knownCustomerContext = "";
+          try {
+            const [knownLead] = await db
+              .select()
+              .from(leadsTable)
+              .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
+              .limit(1);
+
+            if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
+              const details: string[] = [];
+              if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
+              if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
+              if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
+              if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
+              knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
+            }
+          } catch {
+            // Non-blocking
+          }
+
+          if (isSessionInHandoff(priorLogs)) {
             await db.insert(chatLogsTable).values({
               companyId: company.id,
               channel: "whatsapp",
@@ -347,14 +374,14 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
               isHandoff: true
             });
 
-    // Notify client of new message
-    triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
+            // Notify client of new message
+            triggerNewMessageNotification(company, sessionId, "whatsapp", userText);
             return;
           }
 
-    let rawReply: string;
-    try {
-      rawReply = await callAI(company, userText, history, aiConfig);
+          let rawReply: string;
+          try {
+            rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext);
     } catch (aiErr: any) {
       void reportSystemMalfunction(
         `WhatsApp AI Generation Error: ${company.name}`,
@@ -686,12 +713,14 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
             continue;
           }
 
-          const priorLogs = await db
+          const recentLogs = await db
             .select()
             .from(chatLogsTable)
             .where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId)))
-            .orderBy(asc(chatLogsTable.createdAt))
-            .limit(20);
+            .orderBy(desc(chatLogsTable.createdAt))
+            .limit(30);
+
+          const priorLogs = recentLogs.reverse();
 
           if (!priorLogs || priorLogs.length === 0) {
             notifyNewConversation(
@@ -704,6 +733,27 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
           for (const log of priorLogs) {
             history.push({ role: "user", content: log.customerMessage });
             if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
+          }
+
+          // Lookup previously collected lead info to avoid asking for already provided details
+          let knownCustomerContext = "";
+          try {
+            const [knownLead] = await db
+              .select()
+              .from(leadsTable)
+              .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
+              .limit(1);
+
+            if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
+              const details: string[] = [];
+              if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
+              if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
+              if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
+              if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
+              knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
+            }
+          } catch {
+            // Non-blocking
           }
 
           if (isSessionInHandoff(priorLogs)) {
@@ -720,7 +770,7 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
 
           let rawReply: string;
           try {
-            rawReply = await callAI(company, userText, history, aiConfig);
+            rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext);
           } catch (aiErr: any) {
             void reportSystemMalfunction(
               `Custom WhatsApp AI Generation Error: ${company.name}`,

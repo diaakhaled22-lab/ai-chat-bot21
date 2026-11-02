@@ -8,7 +8,7 @@ import {
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
@@ -21,7 +21,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
@@ -156,8 +156,17 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 
     let conversationHistory: { role: "user" | "assistant"; content: string }[] = [];
     let isNewConversation = false;
+    let knownCustomerContext = "";
+
     if (sessionId && typeof sessionId === "string") {
-      const priorLogs = await db.select().from(chatLogsTable).where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId))).orderBy(asc(chatLogsTable.createdAt)).limit(20);
+      const recentLogs = await db
+        .select()
+        .from(chatLogsTable)
+        .where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId)))
+        .orderBy(desc(chatLogsTable.createdAt))
+        .limit(30);
+
+      const priorLogs = recentLogs.reverse();
 
       if (!priorLogs || priorLogs.length === 0) {
         isNewConversation = true;
@@ -190,6 +199,26 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
           conversationHistory.push({ role: "assistant", content: log.botResponse });
         }
       }
+
+      // Lookup previously collected lead info to avoid asking for already provided details
+      try {
+        const [knownLead] = await db
+          .select()
+          .from(leadsTable)
+          .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
+          .limit(1);
+
+        if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
+          const details: string[] = [];
+          if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
+          if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
+          if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
+          if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
+          knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
+        }
+      } catch {
+        // Non-blocking
+      }
     }
 
     let sysContent = company.systemPrompt ?? "";
@@ -201,6 +230,10 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
     sysContent += `\n\n${getLanguageInstruction(message.trim(), explicitLang)}`;
     sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
     sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
+    sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+    if (knownCustomerContext) {
+      sysContent += `\n\n${knownCustomerContext}`;
+    }
     if (company.generalInfo) {
       sysContent += `\n\nCompany Info:\n${company.generalInfo}`;
     }

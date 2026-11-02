@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, companiesTable, chatLogsTable, leadsTable, usersTable, ticketsTable } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { IngestChatMessageBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import {
@@ -40,7 +40,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { detectResponseLanguage, enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { webhookLimiter, escapeHtml } from "../lib/security";
 import { getEmailConfig } from "../lib/email";
@@ -52,7 +52,8 @@ async function callAI(
   company: typeof companiesTable.$inferSelect,
   userMessage: string,
   history: { role: "user" | "assistant"; content: string }[],
-  overrideAiConfig?: ResolvedAiConfig
+  overrideAiConfig?: ResolvedAiConfig,
+  knownCustomerContext?: string
 ): Promise<string> {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
 
@@ -65,6 +66,10 @@ async function callAI(
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
   sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
+  sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+  if (knownCustomerContext) {
+    sysContent += `\n\n${knownCustomerContext}`;
+  }
   if (company.generalInfo) sysContent += `\n\nCompany Info:\n${company.generalInfo}`;
 
   sysContent += await getWebsiteKnowledgeSection(company);
@@ -234,9 +239,10 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
     // Fetch prior turns for this session
     let conversationHistory: { role: "user" | "assistant"; content: string }[] = [];
     let priorLogs: (typeof chatLogsTable.$inferSelect)[] = [];
+    let knownCustomerContext = "";
 
     if (sessionId) {
-      priorLogs = await db
+      const recentLogs = await db
         .select()
         .from(chatLogsTable)
         .where(
@@ -245,8 +251,10 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
             eq(chatLogsTable.sessionId, sessionId)
           )
         )
-        .orderBy(asc(chatLogsTable.createdAt))
-        .limit(20);
+        .orderBy(desc(chatLogsTable.createdAt))
+        .limit(30);
+
+      priorLogs = recentLogs.reverse();
 
       if (!priorLogs || priorLogs.length === 0) {
         notifyNewConversation(
@@ -260,6 +268,26 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
         if (log.botResponse) {
           conversationHistory.push({ role: "assistant", content: log.botResponse });
         }
+      }
+
+      // Lookup previously collected lead info to avoid asking for already provided details
+      try {
+        const [knownLead] = await db
+          .select()
+          .from(leadsTable)
+          .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
+          .limit(1);
+
+        if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
+          const details: string[] = [];
+          if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
+          if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
+          if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
+          if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
+          knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
+        }
+      } catch {
+        // Non-blocking
       }
     }
 
@@ -419,7 +447,7 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
 
     // Generate response using full multi-source AI pipeline
     try {
-      const rawReply = await callAI(company, customerMessage, conversationHistory, aiConfig);
+      const rawReply = await callAI(company, customerMessage, conversationHistory, aiConfig, knownCustomerContext);
       const { cleanResponse: tempResponse, leadData } = extractLeadData(rawReply);
       const { cleanResponse } = extractMetrics(tempResponse);
 

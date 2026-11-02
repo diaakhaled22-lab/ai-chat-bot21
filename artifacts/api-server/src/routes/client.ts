@@ -27,7 +27,7 @@ import { sendNewTicketNotification, sendPlanRequestAdminNotification, sendMalfun
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, buildOpenRouterChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
 import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
-import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
+import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
@@ -3291,6 +3291,7 @@ router.post("/client/chatbot-trial", async (req, res) => {
     }
     parts.push("\n\nNote: This is a preview/trial session.");
     parts.push(`\n\n${ANTI_HALLUCINATION_INSTRUCTION}`);
+    parts.push(`\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`);
     parts.push(`\n\n${getLanguageInstruction(latestUserMessage)}`);
     const systemContent = parts.join("");
 

@@ -21,7 +21,7 @@ import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig 
 import { Router } from "express";
 import { downloadTelegramAudio, transcribeAudio, generateVoiceResponse, sendTelegramVoiceNote } from '../lib/audio';
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
@@ -34,7 +34,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { requireAuth } from "../middlewares/requireAuth";
 import { webhookLimiter, apiLimiter } from "../lib/security";
@@ -47,7 +47,7 @@ function telegramWebhookSecret(token: string): string {
 
 const router = Router();
 
-async function callAI(company: typeof companiesTable.$inferSelect, userMessage: string, history: { role: "user" | "assistant"; content: string }[], overrideAiConfig?: ResolvedAiConfig): Promise<string> {
+async function callAI(company: typeof companiesTable.$inferSelect, userMessage: string, history: { role: "user" | "assistant"; content: string }[], overrideAiConfig?: ResolvedAiConfig, knownCustomerContext?: string): Promise<string> {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   
 
@@ -61,6 +61,10 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   sysContent += `\n\n${getLanguageInstruction(userMessage)}`;
   sysContent += `\n\n${OUTPUT_FORMAT_INSTRUCTION}`;
   sysContent += `\n\n${ANTI_HALLUCINATION_INSTRUCTION}`;
+  sysContent += `\n\n${CONVERSATIONAL_MEMORY_INSTRUCTION}`;
+  if (knownCustomerContext) {
+    sysContent += `\n\n${knownCustomerContext}`;
+  }
   if (company.generalInfo) sysContent += `\n\nCompany Info:\n${company.generalInfo}`;
 
   sysContent += await getWebsiteKnowledgeSection(company);
@@ -287,12 +291,14 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
       return;
     }
 
-    const priorLogs = await db
+    const recentLogs = await db
       .select()
       .from(chatLogsTable)
       .where(and(eq(chatLogsTable.companyId, company.id), eq(chatLogsTable.sessionId, sessionId)))
-      .orderBy(asc(chatLogsTable.createdAt))
-      .limit(20);
+      .orderBy(desc(chatLogsTable.createdAt))
+      .limit(30);
+
+    const priorLogs = recentLogs.reverse();
 
     if (!priorLogs || priorLogs.length === 0) {
       notifyNewConversation(
@@ -307,24 +313,45 @@ router.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhookL
       if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
     }
 
-        if (isSessionInHandoff(priorLogs)) {
-            await db.insert(chatLogsTable).values({
-              companyId: company.id,
-              channel: "telegram",
-              sessionId,
-              customerMessage: userText,
-              botResponse: null,
-              isHandoff: true
-            });
+    // Lookup any previously collected customer info (lead) to prevent the AI from forgetting or repeatedly asking
+    let knownCustomerContext = "";
+    try {
+      const [knownLead] = await db
+        .select()
+        .from(leadsTable)
+        .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
+        .limit(1);
 
-    // Notify client of new message
-    triggerNewMessageNotification(company, sessionId, "telegram", userText);
-            return;
-          }
+      if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
+        const details: string[] = [];
+        if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
+        if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
+        if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
+        if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
+        knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
+      }
+    } catch {
+      // Non-blocking
+    }
+
+    if (isSessionInHandoff(priorLogs)) {
+      await db.insert(chatLogsTable).values({
+        companyId: company.id,
+        channel: "telegram",
+        sessionId,
+        customerMessage: userText,
+        botResponse: null,
+        isHandoff: true
+      });
+
+      // Notify client of new message
+      triggerNewMessageNotification(company, sessionId, "telegram", userText);
+      return;
+    }
 
     let rawReply: string;
     try {
-      rawReply = await callAI(company, userText, history, aiConfig);
+      rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext);
     } catch (aiErr: any) {
       void reportSystemMalfunction(
         `Telegram AI Generation Error: ${company.name}`,
