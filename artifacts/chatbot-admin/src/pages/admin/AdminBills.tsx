@@ -428,66 +428,67 @@ export default function AdminBills() {
       {/* ── KPI Overview Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-              <Receipt className="w-5 h-5 text-emerald-500" />
+          <CardContent className="p-5 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mb-2.5">
+              <Receipt className="w-6 h-6 text-emerald-500" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">
-                {lang === "ar" ? "إجمالي الفواتير" : "Total Invoices"}
-              </p>
-              <h3 className="text-xl font-extrabold text-foreground mt-0.5">{stats.totalCount}</h3>
-            </div>
+            <p className="text-xs text-muted-foreground font-medium text-center">
+              {lang === "ar" ? "إجمالي الفواتير" : "Total Invoices"}
+            </p>
+            <h3 className="text-2xl font-black text-foreground mt-1 text-center tabular-nums">{stats.totalCount}</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium">
+              {lang === "ar" ? "كافة السجلات المسجلة" : "All recorded bills"}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-              <DollarSign className="w-5 h-5 text-blue-500" />
+          <CardContent className="p-5 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mb-2.5">
+              <DollarSign className="w-6 h-6 text-blue-500" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">
-                {lang === "ar" ? "القيمة الإجمالية" : "Total Value"}
-              </p>
-              <h3 className="text-xl font-extrabold text-foreground mt-0.5">
-                ${stats.totalUsd.toLocaleString()}{" "}
-                <span className="text-xs font-normal text-muted-foreground">USD</span>
-              </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                ≈ {stats.totalLocal.toLocaleString()} {currencyInfo.symbol}
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground font-medium text-center">
+              {lang === "ar" ? "القيمة الإجمالية" : "Total Value"}
+            </p>
+            <h3 className="text-2xl font-black text-foreground mt-1 text-center tabular-nums">
+              ${stats.totalUsd.toLocaleString()}{" "}
+              <span className="text-xs font-semibold text-muted-foreground">USD</span>
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium">
+              ≈ {stats.totalLocal.toLocaleString()} {currencyInfo.symbol}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-violet-500" />
+          <CardContent className="p-5 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 mb-2.5">
+              <Sparkles className="w-6 h-6 text-violet-500" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">
-                {lang === "ar" ? "فواتير الباقات" : "Plan Invoices"}
-              </p>
-              <h3 className="text-xl font-extrabold text-foreground mt-0.5">{stats.planCount}</h3>
-            </div>
+            <p className="text-xs text-muted-foreground font-medium text-center">
+              {lang === "ar" ? "فواتير الباقات" : "Plan Invoices"}
+            </p>
+            <h3 className="text-2xl font-black text-foreground mt-1 text-center tabular-nums">{stats.planCount}</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium">
+              {lang === "ar" ? "اشتراكات وترقيات" : "Subscriptions & upgrades"}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-              <Coins className="w-5 h-5 text-amber-500" />
+          <CardContent className="p-5 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mb-2.5">
+              <Coins className="w-6 h-6 text-amber-500" />
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">
-                {lang === "ar" ? "شحن رصيد / حصص" : "Top-up & Quotas"}
-              </p>
-              <h3 className="text-xl font-extrabold text-foreground mt-0.5">
-                {stats.topupCount + stats.quotaCount}
-              </h3>
-            </div>
+            <p className="text-xs text-muted-foreground font-medium text-center">
+              {lang === "ar" ? "شحن رصيد / حصص" : "Top-up & Quotas"}
+            </p>
+            <h3 className="text-2xl font-black text-foreground mt-1 text-center tabular-nums">
+              {stats.topupCount + stats.quotaCount}
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium">
+              {lang === "ar" ? "شحن رمزي واستهلاك" : "Extra tokens & quotas"}
+            </p>
           </CardContent>
         </Card>
       </div>
