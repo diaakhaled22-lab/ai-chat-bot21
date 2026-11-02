@@ -284,6 +284,27 @@ router.delete("/admin/attack-monitoring/logs/:id", async (req, res) => {
   }
 });
 
+// POST /admin/attack-monitoring/logs/:id/delete (fallback)
+router.post("/admin/attack-monitoring/logs/:id/delete", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid log id" });
+      return;
+    }
+    const deleted = await deleteAttackLog(id);
+    if (!deleted) {
+      res.status(404).json({ error: "Attack log entry not found" });
+      return;
+    }
+    await logAdminActivity(req.session.userId!, "Delete Security Log Entry", `Deleted security log entry #${id}`, req.ip || null);
+    res.json({ ok: true, message: `Security log entry #${id} deleted successfully` });
+  } catch (err: any) {
+    logger.error({ err }, "Failed to delete attack log");
+    res.status(500).json({ error: err.message || "Failed to delete attack log" });
+  }
+});
+
 // GET /admin/usage-cost
 router.get("/admin/usage-cost", async (req, res) => {
   await ensureQuotaColumns();

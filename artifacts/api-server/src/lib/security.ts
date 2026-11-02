@@ -349,8 +349,9 @@ export async function clearAttackLogs(): Promise<void> {
   }
 }
 
-export async function deleteAttackLog(id: number): Promise<boolean> {
-  const index = attackLogs.findIndex((log) => log.id === id);
+export async function deleteAttackLog(id: number | string): Promise<boolean> {
+  const numId = Number(id);
+  const index = attackLogs.findIndex((log) => Number(log.id) === numId);
   if (index === -1) return false;
   attackLogs.splice(index, 1);
   try {

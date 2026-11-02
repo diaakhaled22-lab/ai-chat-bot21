@@ -161,10 +161,17 @@ export default function AdminAttackMonitoring() {
   });
 
   const deleteLogMutation = useMutation({
-    mutationFn: (id: number) =>
-      customFetch(`/api/admin/attack-monitoring/logs/${id}`, {
-        method: "DELETE",
-      }),
+    mutationFn: async (id: number) => {
+      try {
+        return await customFetch(`/api/admin/attack-monitoring/logs/${id}`, {
+          method: "DELETE",
+        });
+      } catch (err: any) {
+        return await customFetch(`/api/admin/attack-monitoring/logs/${id}/delete`, {
+          method: "POST",
+        });
+      }
+    },
     onSuccess: () => {
       toast({
         title: lang === "ar" ? "تم حذف السجل بنجاح" : "Security log entry deleted successfully",
