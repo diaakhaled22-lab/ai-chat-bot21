@@ -30,7 +30,14 @@ export default defineConfig({
     {
       name: "prevent-browser-cache",
       configureServer(server) {
-        server.middlewares.use((_req, res, next) => {
+        server.middlewares.use((req, res, next) => {
+          const url = req.url || "";
+          // Do NOT block caching for pre-bundled dependencies or node_modules
+          // otherwise browser fires hundreds of simultaneous requests and causes 504 Gateway Timeout
+          if (url.includes("/node_modules/") || url.includes("/.vite") || url.startsWith("/@")) {
+            return next();
+          }
+
           const origSetHeader = res.setHeader.bind(res);
           res.setHeader = (name: string, value: any) => {
             if (name.toLowerCase() === "cache-control") {
@@ -53,9 +60,20 @@ export default defineConfig({
       },
     },
   ],
-  cacheDir: path.resolve(import.meta.dirname, "node_modules/.vite_clean"),
+  cacheDir: path.resolve(import.meta.dirname, "node_modules/.vite"),
   optimizeDeps: {
-    force: true,
+    include: [
+      "react",
+      "react-dom",
+      "@tanstack/react-query",
+      "lucide-react",
+      "wouter",
+      "@radix-ui/react-tooltip",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-select",
+      "@radix-ui/react-toast",
+      "@radix-ui/react-dropdown-menu",
+    ],
   },
   resolve: {
     alias: {
