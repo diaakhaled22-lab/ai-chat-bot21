@@ -111,7 +111,7 @@ export default function ClientPrompts() {
               <Textarea
                 {...register("systemPrompt")}
                 className="bg-background min-h-[120px] font-mono text-xs resize-y"
-                placeholder={t("company_system_prompt")}
+                placeholder={t("company_system_prompt_placeholder")}
               />
               <p className="text-[10px] text-muted-foreground">
                 Define the personality, tone, and specific rules your AI agent should follow. 

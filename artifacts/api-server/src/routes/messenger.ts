@@ -21,7 +21,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, buildWelcomeInstruction } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, DEFAULT_PERSONALITY_PROMPT, buildWelcomeInstruction } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { webhookLimiter } from "../lib/security";
 import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
@@ -34,7 +34,7 @@ async function callAI(company: typeof companiesTable.$inferSelect, userMessage: 
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   
 
-  let sysContent = company.systemPrompt ?? "";
+  let sysContent = company.systemPrompt?.trim() || DEFAULT_PERSONALITY_PROMPT;
   sysContent += HANDOFF_SYSTEM_PROMPT;
   sysContent += LEAD_GEN_SYSTEM_PROMPT;
   sysContent += METRICS_SYSTEM_PROMPT;

@@ -30,6 +30,12 @@ export const CONVERSATIONAL_MEMORY_INSTRUCTION =
   "3. Avoid Repetitive Lead Capture Prompts: Never interrupt or derail the conversation with generic templates like 'لتوفير أفضل خدمة لك، يرجى تزويدي باسمك الكامل ورقم هاتفك' or 'يرجى تزويدنا بعنوانك ورقم هاتفك' if you already know their details or if they already provided them. Proceed directly to answering the customer's question or assisting them with their inquiry.\n" +
   "4. Natural Direct Answers: When a customer asks a question (such as 'ليس لديكم فروع' or 'ما موقع الشركة' or questions about prices, products, or delivery), answer the question directly and politely based on your knowledge base without demanding their name or phone number if they already provided them.";
 
+export const DEFAULT_PERSONALITY_PROMPT =
+  "Personality & Instructions:\n" +
+  "- You are a polite, professional, and helpful customer support assistant.\n" +
+  "- In your very first message, greet the customer warmly introducing the company brand name, answer their inquiry directly and concisely, and politely ask for their full name and phone number to follow up and assist them best.\n" +
+  "- Continuous Retention: Remember the customer's name, phone number, and preferences throughout the conversation. Once provided, never ask for them again under any circumstances.";
+
 /**
  * Resolves the official business or company brand name as specified in the
  * "Company Information & Overview" (generalInfo) field, falling back to company.name.
@@ -48,23 +54,29 @@ export function getCompanyNameFromOverview(company: { name: string; generalInfo?
 
 /**
  * Builds instructions for the AI to welcome the user in their first message
- * including the company name from "Company Information & Overview".
+ * including the company name from "Company Information & Overview",
+ * and to ask for customer details (name and phone number) after the welcome message.
  */
 export function buildWelcomeInstruction(company: { name: string; generalInfo?: string | null }, isFirstMessage: boolean): string {
   const brandName = getCompanyNameFromOverview(company);
   if (isFirstMessage) {
     return (
-      `FIRST MESSAGE WELCOME MANDATE:\n` +
+      `### FIRST MESSAGE WELCOME & CUSTOMER DETAILS COLLECTION MANDATE:\n` +
       `- This is the customer's VERY FIRST message in the conversation.\n` +
-      `- You MUST start your response by warmly welcoming the customer and explicitly introducing the brand name ("${brandName}") as specified in the "Company Information & Overview" field.\n` +
-      `- In Arabic: Start with a welcoming opening such as "أهلاً وسهلاً بك في ${brandName}! يسعدنا تواصلك معنا." (or if the customer began with Salam: "وعليكم السلام ورحمة الله وبركاته! مرحباً بك في ${brandName}."). Immediately after this warm welcome, address and answer whatever question or request the customer mentioned.\n` +
-      `- In English: Start with "Welcome to ${brandName}! We are glad to assist you." and immediately answer their inquiry.\n` +
-      `- DO NOT begin by demanding their personal contact information (like name or phone) before welcoming them or answering their question.`
+      `- 1. Welcome & Brand Introduction: You MUST begin your response by warmly welcoming the customer and explicitly introducing the brand name ("${brandName}") as specified in the "Company Information & Overview" field.\n` +
+      `  * In Arabic: "أهلاً وسهلاً بك في ${brandName}! يسعدنا تواصلك معنا." (or if the customer greeted with Salam: "وعليكم السلام ورحمة الله وبركاته! مرحباً بك في ${brandName}."). \n` +
+      `  * In English: "Welcome to ${brandName}! We are delighted to assist you."\n` +
+      `- 2. Address Question: If the customer asked a question in their message (e.g. asking about location, products, prices, services, or branches), answer their inquiry directly, politely, and concisely.\n` +
+      `- 3. Request Customer Details: Immediately following your welcome (and after answering their inquiry if any), politely ask for the customer's details (full name and phone number) so you can follow up with them and provide the best service:\n` +
+      `  * In Arabic: "لتوفير أفضل خدمة ومتابعة طلبك معك، هل يمكنك تزويدنا باسمك الكريم ورقم هاتفك؟"\n` +
+      `  * In English: "To best serve you and follow up on your request, could you please provide your full name and phone number?"\n` +
+      `- CRITICAL EXCEPTION (Memory Rule): If the customer has ALREADY provided their name, phone number, or contact info in this initial message (e.g. "أنا فلان ورقمي..."), DO NOT ask for them again! Thank them and proceed directly.`
     );
   }
   return (
-    `COMPANY BRAND CONTEXT:\n` +
-    `You represent "${brandName}" (from Company Information & Overview). Maintain this brand identity throughout the conversation.`
+    `COMPANY BRAND & PERSONALITY CONTEXT:\n` +
+    `You represent "${brandName}" (from Company Information & Overview). Maintain this brand identity throughout the conversation.\n` +
+    `CUSTOMER DETAILS RETENTION RULE: If the customer has already provided their name and phone number, you are strictly prohibited from asking for them again in subsequent turns.`
   );
 }
 
