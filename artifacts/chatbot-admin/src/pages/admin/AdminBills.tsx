@@ -340,13 +340,6 @@ export default function AdminBills() {
       (a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
     );
   }, [filteredInvoices, lang]);
-    });
-
-    // Return groups sorted by latest invoice date (newest first)
-    return Array.from(map.values()).sort(
-      (a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime()
-    );
-  }, [filteredInvoices, lang]);
 
   // Collapse / Expand handlers
   const toggleCompanyCollapse = (key: string) => {
