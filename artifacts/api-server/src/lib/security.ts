@@ -349,6 +349,24 @@ export async function clearAttackLogs(): Promise<void> {
   }
 }
 
+export async function deleteAttackLog(id: number): Promise<boolean> {
+  const index = attackLogs.findIndex((log) => log.id === id);
+  if (index === -1) return false;
+  attackLogs.splice(index, 1);
+  try {
+    const value = JSON.stringify(attackLogs.slice(-MAX_ATTACK_LOG_ENTRIES));
+    const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "attack_logs"));
+    if (existing) {
+      await db.update(adminConfigTable).set({ value }).where(eq(adminConfigTable.key, "attack_logs"));
+    } else {
+      await db.insert(adminConfigTable).values({ key: "attack_logs", value });
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to save attack logs to DB after delete");
+  }
+  return true;
+}
+
 function normalizeMac(mac?: string | null): string | null {
   if (!mac || typeof mac !== "string") return null;
   const clean = mac.trim().replace(/-/g, ":").toUpperCase();

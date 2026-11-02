@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -154,6 +155,26 @@ export default function AdminAttackMonitoring() {
       toast({
         title: "Failed to clear logs",
         description: err.message || "Failed to clear attack logs",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteLogMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/admin/attack-monitoring/logs/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      toast({
+        title: lang === "ar" ? "تم حذف السجل بنجاح" : "Security log entry deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
+    },
+    onError: (err: any) => {
+      toast({
+        title: lang === "ar" ? "فشل حذف السجل" : "Failed to delete log entry",
+        description: err.message || "Failed to delete attack log entry",
         variant: "destructive",
       });
     },
@@ -482,27 +503,49 @@ export default function AdminAttackMonitoring() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          {isBlocked ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 text-[11px] px-3 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
-                              onClick={() => unblockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
-                              disabled={unblockIpMutation.isPending}
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isBlocked ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[11px] px-3 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
+                                onClick={() => unblockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
+                                disabled={unblockIpMutation.isPending}
+                              >
+                                {lang === "ar" ? "إلغاء الحظر" : "Unblock"}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-6 text-[11px] px-3"
+                                onClick={() => blockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
+                                disabled={blockIpMutation.isPending}
+                              >
+                                {lang === "ar" ? "حظر" : "Block"}
+                              </Button>
+                            )}
+                            <ConfirmDeleteDialog
+                              title={lang === "ar" ? "حذف سجل الأمان" : "Delete Security Log Entry"}
+                              description={
+                                lang === "ar"
+                                  ? `هل أنت متأكد من حذف هذا السجل (IP: ${log.ip}) من سجل الأمان والحماية؟`
+                                  : `Are you sure you want to delete this log entry (IP: ${log.ip}) from the Security Log?`
+                              }
+                              onConfirm={() => deleteLogMutation.mutate(log.id)}
                             >
-                              Unblock
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="h-6 text-[11px] px-4"
-                              onClick={() => blockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
-                              disabled={blockIpMutation.isPending}
-                            >
-                              Block
-                            </Button>
-                          )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                disabled={deleteLogMutation.isPending}
+                                title={lang === "ar" ? "حذف السجل" : "Delete log entry"}
+                                aria-label="Delete log entry"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            </ConfirmDeleteDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

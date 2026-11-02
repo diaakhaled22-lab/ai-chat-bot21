@@ -20,7 +20,7 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, buildOpenRouterChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
-import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, clearAttackLogs, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
+import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, clearAttackLogs, deleteAttackLog, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, sendNewClientNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
@@ -260,6 +260,27 @@ router.delete("/admin/attack-monitoring/logs", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "Failed to clear attack logs");
     res.status(500).json({ error: err.message || "Failed to clear attack logs" });
+  }
+});
+
+// DELETE /admin/attack-monitoring/logs/:id
+router.delete("/admin/attack-monitoring/logs/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid log id" });
+      return;
+    }
+    const deleted = await deleteAttackLog(id);
+    if (!deleted) {
+      res.status(404).json({ error: "Attack log entry not found" });
+      return;
+    }
+    await logAdminActivity(req.session.userId!, "Delete Security Log Entry", `Deleted security log entry #${id}`, req.ip || null);
+    res.json({ ok: true, message: `Security log entry #${id} deleted successfully` });
+  } catch (err: any) {
+    logger.error({ err }, "Failed to delete attack log");
+    res.status(500).json({ error: err.message || "Failed to delete attack log" });
   }
 });
 
