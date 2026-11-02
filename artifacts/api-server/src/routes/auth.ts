@@ -73,7 +73,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     const arpMac = await getArpMac(clientIp);
     const finalMac = bodyMac || headerMac || arpMac || null;
 
-    if (isIpBlocked(ip, finalMac)) {
+    if (isIpBlocked(clientIp, finalMac)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
       return;
     }
@@ -220,7 +220,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     const arpMac = await getArpMac(clientIp);
     let finalMac = bodyMac || headerMac || arpMac || null;
 
-    if (isIpBlocked(ip, finalMac)) {
+    if (isIpBlocked(clientIp, finalMac)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
       return;
     }
@@ -310,7 +310,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     const rawMac = arpMac || bodyMac || null;
     const finalMac = rawMac ? rawMac.replace(/-/g, ":").toUpperCase() : null;
 
-    if (isIpBlocked(ip, finalMac)) {
+    if (isIpBlocked(clientIp, finalMac)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
       return;
     }

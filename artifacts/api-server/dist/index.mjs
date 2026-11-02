@@ -24040,17 +24040,17 @@ var require_proxy_addr = __commonJS({
       if (!isip(str)) {
         throw new TypeError("invalid IP address: " + str);
       }
-      var ip2 = parseip(str);
-      if (pos === -1 && ip2.kind() === "ipv6" && ip2.isIPv4MappedAddress()) {
-        ip2 = ip2.toIPv4Address();
+      var ip = parseip(str);
+      if (pos === -1 && ip.kind() === "ipv6" && ip.isIPv4MappedAddress()) {
+        ip = ip.toIPv4Address();
       }
-      var max = ip2.kind() === "ipv6" ? 128 : 32;
+      var max = ip.kind() === "ipv6" ? 128 : 32;
       var range = pos !== -1 ? note.substring(pos + 1, note.length) : null;
       if (range === null) {
         range = max;
       } else if (DIGIT_REGEXP.test(range)) {
         range = parseInt(range, 10);
-      } else if (ip2.kind() === "ipv4" && isip(range)) {
+      } else if (ip.kind() === "ipv4" && isip(range)) {
         range = parseNetmask(range);
       } else {
         range = null;
@@ -24058,12 +24058,12 @@ var require_proxy_addr = __commonJS({
       if (range <= 0 || range > max) {
         throw new TypeError("invalid range on address: " + note);
       }
-      return [ip2, range];
+      return [ip, range];
     }
     function parseNetmask(netmask) {
-      var ip2 = parseip(netmask);
-      var kind = ip2.kind();
-      return kind === "ipv4" ? ip2.prefixLengthFromSubnetMask() : null;
+      var ip = parseip(netmask);
+      var kind = ip.kind();
+      return kind === "ipv4" ? ip.prefixLengthFromSubnetMask() : null;
     }
     function proxyaddr(req, trust) {
       if (!req) {
@@ -24082,21 +24082,21 @@ var require_proxy_addr = __commonJS({
     function trustMulti(subnets) {
       return function trust(addr) {
         if (!isip(addr)) return false;
-        var ip2 = parseip(addr);
+        var ip = parseip(addr);
         var ipconv;
-        var kind = ip2.kind();
+        var kind = ip.kind();
         for (var i = 0; i < subnets.length; i++) {
           var subnet = subnets[i];
           var subnetip = subnet[0];
           var subnetkind = subnetip.kind();
           var subnetrange = subnet[1];
-          var trusted = ip2;
+          var trusted = ip;
           if (kind !== subnetkind) {
-            if (subnetkind === "ipv4" && !ip2.isIPv4MappedAddress()) {
+            if (subnetkind === "ipv4" && !ip.isIPv4MappedAddress()) {
               continue;
             }
             if (!ipconv) {
-              ipconv = subnetkind === "ipv4" ? ip2.toIPv4Address() : ip2.toIPv4MappedAddress();
+              ipconv = subnetkind === "ipv4" ? ip.toIPv4Address() : ip.toIPv4MappedAddress();
             }
             trusted = ipconv;
           }
@@ -24114,15 +24114,15 @@ var require_proxy_addr = __commonJS({
       var subnetrange = subnet[1];
       return function trust(addr) {
         if (!isip(addr)) return false;
-        var ip2 = parseip(addr);
-        var kind = ip2.kind();
+        var ip = parseip(addr);
+        var kind = ip.kind();
         if (kind !== subnetkind) {
-          if (subnetisipv4 && !ip2.isIPv4MappedAddress()) {
+          if (subnetisipv4 && !ip.isIPv4MappedAddress()) {
             return false;
           }
-          ip2 = subnetisipv4 ? ip2.toIPv4Address() : ip2.toIPv4MappedAddress();
+          ip = subnetisipv4 ? ip.toIPv4Address() : ip.toIPv4MappedAddress();
         }
-        return ip2.match(subnetip, subnetrange);
+        return ip.match(subnetip, subnetrange);
       };
     }
   }
@@ -26466,7 +26466,7 @@ var require_request = __commonJS({
     defineGetter(req, "secure", function secure() {
       return this.protocol === "https";
     });
-    defineGetter(req, "ip", function ip2() {
+    defineGetter(req, "ip", function ip() {
       var trust = this.app.get("trust proxy fn");
       return proxyaddr(this, trust);
     });
@@ -56335,8 +56335,8 @@ var init_currencyRates = __esm({
 // artifacts/api-server/src/lib/security.ts
 function rateLimit(windowMs, maxRequests, keyPrefix = "rl") {
   return (req, res, next) => {
-    const ip2 = req.ip || req.socket.remoteAddress || "unknown";
-    const key = `${keyPrefix}:${ip2}`;
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const key = `${keyPrefix}:${ip}`;
     const now = Date.now();
     let entry = rateLimitStore.get(key);
     if (!entry || now > entry.resetAt) {
@@ -56348,7 +56348,7 @@ function rateLimit(windowMs, maxRequests, keyPrefix = "rl") {
     res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
     res.setHeader("X-RateLimit-Reset", String(Math.ceil(entry.resetAt / 1e3)));
     if (entry.count > maxRequests) {
-      logger.warn({ ip: ip2, key, count: entry.count }, "Rate limit exceeded");
+      logger.warn({ ip, key, count: entry.count }, "Rate limit exceeded");
       res.status(429).json({ error: "Too many requests. Please try again later." });
       return;
     }
@@ -56475,9 +56475,9 @@ async function loadBlockedIpsFromDb() {
     const [ipRow] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "blocked_ips"));
     if (ipRow && ipRow.value) {
       const ips = JSON.parse(ipRow.value);
-      for (const [ip2, timestamp2] of Object.entries(ips)) {
-        if (!isLoopbackIp(ip2)) {
-          blockedIps.set(ip2, timestamp2);
+      for (const [ip, timestamp2] of Object.entries(ips)) {
+        if (!isLoopbackIp(ip)) {
+          blockedIps.set(ip, timestamp2);
         }
       }
     }
@@ -56555,18 +56555,18 @@ function removeTotpSecret(userId) {
   totpSecrets.delete(userId);
   void saveTotpSecretsToDb();
 }
-function isLoopbackIp(ip2) {
-  const clean = ip2.replace(/^::ffff:/, "").trim().toLowerCase();
+function isLoopbackIp(ip) {
+  const clean = ip.replace(/^::ffff:/, "").trim().toLowerCase();
   return clean === "127.0.0.1" || clean === "::1" || clean === "localhost" || clean === "unknown";
 }
-function normalizeIp(ip2) {
-  return ip2.trim() || "unknown";
+function normalizeIp(ip) {
+  return ip.trim() || "unknown";
 }
-function appendAttackLog(ip2, username, failedAttempts, event, timestamp2 = Date.now(), macAddress) {
+function appendAttackLog(ip, username, failedAttempts, event, timestamp2 = Date.now(), macAddress) {
   const normalizedMac = macAddress ? macAddress.replace(/-/g, ":").toUpperCase() : "\u2014";
   attackLogs.push({
     id: nextAttackLogId++,
-    ip: normalizeIp(ip2),
+    ip: normalizeIp(ip),
     macAddress: normalizedMac,
     time: new Date(timestamp2).toISOString(),
     username: username.trim() || "(unknown)",
@@ -56593,8 +56593,8 @@ function isAccountLocked(username) {
   const remaining = entry.lockedUntil - Date.now();
   return remaining > 0 ? Math.ceil(remaining / 1e3) : 0;
 }
-function isIpBlocked(ip2, macAddress) {
-  const norm = normalizeIp(ip2);
+function isIpBlocked(ip, macAddress) {
+  const norm = normalizeIp(ip);
   if (!isLoopbackIp(norm) && blockedIps.has(norm)) return true;
   const normMac = normalizeMac(macAddress);
   if (normMac && blockedMacs.has(normMac)) return true;
@@ -56602,13 +56602,13 @@ function isIpBlocked(ip2, macAddress) {
   if (mappedMac && blockedMacs.has(mappedMac)) return true;
   return false;
 }
-function recordBlockedLoginAttempt(username, ip2, macAddress) {
+function recordBlockedLoginAttempt(username, ip, macAddress) {
   const entry = getOrCreateLoginAttempt(username);
   entry.postLockoutFailures++;
   const attempts = MAX_LOGIN_ATTEMPTS + entry.postLockoutFailures;
-  appendAttackLog(ip2, username, attempts, "blocked_attempt", Date.now(), macAddress);
+  appendAttackLog(ip, username, attempts, "blocked_attempt", Date.now(), macAddress);
   if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
-    const normalizedIp = normalizeIp(ip2);
+    const normalizedIp = normalizeIp(ip);
     const normMac = normalizeMac(macAddress);
     let newlyBlocked = false;
     if (!isLoopbackIp(normalizedIp) && !blockedIps.has(normalizedIp)) {
@@ -56623,7 +56623,7 @@ function recordBlockedLoginAttempt(username, ip2, macAddress) {
     if (newlyBlocked) {
       void saveBlockedIpsToDb();
       void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
-      appendAttackLog(ip2, username, attempts, "ip_blocked", Date.now(), macAddress);
+      appendAttackLog(ip, username, attempts, "ip_blocked", Date.now(), macAddress);
       logger.warn(
         { username: username.toLowerCase(), ip: normalizedIp, macAddress: normMac, attempts },
         "IP and MAC address blocked after suspicious activity during account lockout"
@@ -56633,10 +56633,10 @@ function recordBlockedLoginAttempt(username, ip2, macAddress) {
   }
   return false;
 }
-function recordFailedLogin(username, ip2, macAddress) {
+function recordFailedLogin(username, ip, macAddress) {
   const cleanUsername = username.trim() || "(unknown)";
   const normUser = cleanUsername.toLowerCase();
-  const normalizedIp = normalizeIp(ip2);
+  const normalizedIp = normalizeIp(ip);
   const now = Date.now();
   const entry = getOrCreateLoginAttempt(normUser);
   entry.failureTimes = entry.failureTimes.filter((time4) => now - time4 <= FAILURE_WINDOW_MS);
@@ -56724,11 +56724,11 @@ function getAttackMonitoringSnapshot() {
   return {
     logs: [...attackLogs].reverse(),
     analytics: getAttackAnalytics(),
-    blockedIps: [...blockedIps.entries()].map(([ip2, blockedAt]) => {
-      const foundLog = attackLogs.find((l) => l.ip === ip2 && l.macAddress && l.macAddress !== "\u2014");
+    blockedIps: [...blockedIps.entries()].map(([ip, blockedAt]) => {
+      const foundLog = attackLogs.find((l) => l.ip === ip && l.macAddress && l.macAddress !== "\u2014");
       return {
-        ip: ip2,
-        macAddress: foundLog ? foundLog.macAddress : ipToMacMap.get(ip2) || null,
+        ip,
+        macAddress: foundLog ? foundLog.macAddress : ipToMacMap.get(ip) || null,
         blockedAt: new Date(blockedAt).toISOString()
       };
     }).sort((a, b) => b.blockedAt.localeCompare(a.blockedAt)),
@@ -56745,14 +56745,14 @@ function getAttackMonitoringSnapshot() {
     }
   };
 }
-function resetLoginAttempts(username, ip2) {
+function resetLoginAttempts(username, ip) {
   loginAttempts.delete(username.toLowerCase());
-  if (ip2) {
-    ipLoginAttempts.delete(normalizeIp(ip2));
+  if (ip) {
+    ipLoginAttempts.delete(normalizeIp(ip));
   }
 }
-function manualBlockIp(ip2, macAddress) {
-  const normalizedIp = normalizeIp(ip2);
+function manualBlockIp(ip, macAddress) {
+  const normalizedIp = normalizeIp(ip);
   const normMac = normalizeMac(macAddress);
   let changed = false;
   if (normalizedIp && normalizedIp !== "unknown" && !blockedIps.has(normalizedIp)) {
@@ -56770,8 +56770,8 @@ function manualBlockIp(ip2, macAddress) {
     logger.info({ ip: normalizedIp, macAddress: normMac }, "IP and MAC manually blocked by admin");
   }
 }
-function manualUnblockIp(ip2, macAddress) {
-  const normalizedIp = normalizeIp(ip2);
+function manualUnblockIp(ip, macAddress) {
+  const normalizedIp = normalizeIp(ip);
   const normMac = normalizeMac(macAddress);
   let changed = false;
   if (normalizedIp && blockedIps.has(normalizedIp)) {
@@ -56948,9 +56948,9 @@ function suspiciousActivityDetector(req, res, next) {
     for (const pattern of ATTACK_PATTERNS) {
       if (pattern.global) pattern.lastIndex = 0;
       if (pattern.test(str)) {
-        const ip2 = req.ip || req.socket.remoteAddress || "unknown";
+        const ip = req.ip || req.socket.remoteAddress || "unknown";
         logger.warn(
-          { ip: ip2, path: req.path, method: req.method, pattern: pattern.source, value: str.slice(0, 200) },
+          { ip, path: req.path, method: req.method, pattern: pattern.source, value: str.slice(0, 200) },
           "\u{1F6A8} Suspicious activity detected \u2014 possible attack attempt"
         );
         res.status(400).json({ error: "Request blocked: invalid input detected." });
@@ -63667,7 +63667,7 @@ async function sendAttackSpikeNotification(input) {
     logger.error({ err }, "Failed to send security alert email");
   }
 }
-async function sendSecurityEventEmail(event, ip2, username, attempts) {
+async function sendSecurityEventEmail(event, ip, username, attempts) {
   let title;
   let message;
   let subjectBadge;
@@ -63677,7 +63677,7 @@ async function sendSecurityEventEmail(event, ip2, username, attempts) {
   let alertSubtitleAr;
   if (event === "failed_attempts_warning") {
     title = `\u062A\u062D\u0630\u064A\u0631 \u0623\u0645\u0646\u064A: ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u062F\u062E\u0648\u0644 \u0641\u0627\u0634\u0644\u0629 \u0645\u062A\u062A\u0627\u0644\u064A\u0629 (${username})`;
-    message = `\u062A\u0645 \u0631\u0635\u062F ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u062A\u0633\u062C\u064A\u0644 \u062F\u062E\u0648\u0644 \u0641\u0627\u0634\u0644\u0629 \u0645\u062A\u062A\u0627\u0644\u064A\u0629 \u0644\u0644\u062D\u0633\u0627\u0628 "${username}" \u0645\u0646 \u0639\u0646\u0648\u0627\u0646 IP: ${ip2}. \u064A\u0631\u062C\u0649 \u0645\u0631\u0627\u062C\u0639\u0629 \u0635\u0641\u062D\u0629 \u0645\u0631\u0627\u0642\u0628\u0629 \u0627\u0644\u0647\u062C\u0648\u0645.`;
+    message = `\u062A\u0645 \u0631\u0635\u062F ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u062A\u0633\u062C\u064A\u0644 \u062F\u062E\u0648\u0644 \u0641\u0627\u0634\u0644\u0629 \u0645\u062A\u062A\u0627\u0644\u064A\u0629 \u0644\u0644\u062D\u0633\u0627\u0628 "${username}" \u0645\u0646 \u0639\u0646\u0648\u0627\u0646 IP: ${ip}. \u064A\u0631\u062C\u0649 \u0645\u0631\u0627\u062C\u0639\u0629 \u0635\u0641\u062D\u0629 \u0645\u0631\u0627\u0642\u0628\u0629 \u0627\u0644\u0647\u062C\u0648\u0645.`;
     subjectBadge = "\u062A\u062D\u0630\u064A\u0631 \u0623\u0645\u0646\u064A";
     alertHeaderBg = "#fef3c7";
     alertHeaderColor = "#92400e";
@@ -63685,15 +63685,15 @@ async function sendSecurityEventEmail(event, ip2, username, attempts) {
     alertSubtitleAr = `\u062A\u0645 \u0631\u0635\u062F \u0646\u0634\u0627\u0637 \u062F\u062E\u0648\u0644 \u0645\u0634\u0628\u0648\u0647 \u0628\u0639\u062F ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0645\u062A\u062A\u0627\u0644\u064A\u0629`;
   } else if (event === "account_locked") {
     title = `\u062A\u0646\u0628\u064A\u0647 \u0623\u0645\u0646\u064A: \u062A\u0645 \u0642\u0641\u0644 \u0627\u0644\u062D\u0633\u0627\u0628 (${username})`;
-    message = `\u062A\u0645 \u0642\u0641\u0644 \u0627\u0644\u062D\u0633\u0627\u0628 "${username}" \u0645\u0624\u0642\u062A\u064B\u0627 \u0628\u0639\u062F \u0648\u0635\u0648\u0644 \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0627\u0644\u0641\u0627\u0634\u0644\u0629 \u0625\u0644\u0649 ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0645\u0646 \u0639\u0646\u0648\u0627\u0646 IP: ${ip2}.`;
+    message = `\u062A\u0645 \u0642\u0641\u0644 \u0627\u0644\u062D\u0633\u0627\u0628 "${username}" \u0645\u0624\u0642\u062A\u064B\u0627 \u0628\u0639\u062F \u0648\u0635\u0648\u0644 \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0627\u0644\u0641\u0627\u0634\u0644\u0629 \u0625\u0644\u0649 ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0645\u0646 \u0639\u0646\u0648\u0627\u0646 IP: ${ip}.`;
     subjectBadge = "\u0642\u0641\u0644 \u062D\u0633\u0627\u0628";
     alertHeaderBg = "#fee2e2";
     alertHeaderColor = "#991b1b";
     alertTitleAr = "\u062A\u0646\u0628\u064A\u0647 \u0623\u0645\u0646\u064A: \u062A\u0645 \u0642\u0641\u0644 \u0627\u0644\u062D\u0633\u0627\u0628 \u0645\u0624\u0642\u062A\u064B\u0627";
     alertSubtitleAr = `\u062A\u062C\u0627\u0648\u0632 \u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 \u0644\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u0641\u0627\u0634\u0644\u0629 (${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A)`;
   } else {
-    title = `\u062A\u0646\u0628\u064A\u0647 \u0623\u0645\u0646\u064A: \u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 IP (${ip2})`;
-    message = `\u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 IP: ${ip2} \u062A\u0644\u0642\u0627\u0626\u064A\u064B\u0627 \u0628\u0639\u062F ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0645\u0634\u0628\u0648\u0647\u0629 \u0627\u0633\u062A\u0647\u062F\u0641\u062A \u0627\u0644\u062D\u0633\u0627\u0628 "${username}".`;
+    title = `\u062A\u0646\u0628\u064A\u0647 \u0623\u0645\u0646\u064A: \u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 IP (${ip})`;
+    message = `\u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 IP: ${ip} \u062A\u0644\u0642\u0627\u0626\u064A\u064B\u0627 \u0628\u0639\u062F ${attempts} \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0645\u0634\u0628\u0648\u0647\u0629 \u0627\u0633\u062A\u0647\u062F\u0641\u062A \u0627\u0644\u062D\u0633\u0627\u0628 "${username}".`;
     subjectBadge = "\u062D\u0638\u0631 IP";
     alertHeaderBg = "#fee2e2";
     alertHeaderColor = "#7f1d1d";
@@ -63751,7 +63751,7 @@ async function sendSecurityEventEmail(event, ip2, username, attempts) {
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                   <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">\u0639\u0646\u0648\u0627\u0646 IP \u0627\u0644\u0645\u0635\u062F\u0631:</td>
-                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml(ip2)}</td>
+                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml(ip)}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                   <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">\u0639\u062F\u062F \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u0641\u0627\u0634\u0644\u0629:</td>
@@ -63777,7 +63777,7 @@ async function sendSecurityEventEmail(event, ip2, username, attempts) {
         </div>
       `
     });
-    logger.info({ event, ip: ip2, recipient: cfg.recipientEmail }, "Security event email sent successfully to admin");
+    logger.info({ event, ip, recipient: cfg.recipientEmail }, "Security event email sent successfully to admin");
   } catch (err) {
     logger.error({ err }, "Failed to send security event email");
   }
@@ -87100,11 +87100,11 @@ function datetimeRegex(args) {
   regex = `${regex}(${opts.join("|")})`;
   return new RegExp(`^${regex}$`);
 }
-function isValidIP(ip2, version3) {
-  if ((version3 === "v4" || !version3) && ipv4Regex.test(ip2)) {
+function isValidIP(ip, version3) {
+  if ((version3 === "v4" || !version3) && ipv4Regex.test(ip)) {
     return true;
   }
-  if ((version3 === "v6" || !version3) && ipv6Regex.test(ip2)) {
+  if ((version3 === "v6" || !version3) && ipv6Regex.test(ip)) {
     return true;
   }
   return false;
@@ -87131,11 +87131,11 @@ function isValidJWT2(jwt2, alg) {
     return false;
   }
 }
-function isValidCidr(ip2, version3) {
-  if ((version3 === "v4" || !version3) && ipv4CidrRegex.test(ip2)) {
+function isValidCidr(ip, version3) {
+  if ((version3 === "v4" || !version3) && ipv4CidrRegex.test(ip)) {
     return true;
   }
-  if ((version3 === "v6" || !version3) && ipv6CidrRegex.test(ip2)) {
+  if ((version3 === "v6" || !version3) && ipv6CidrRegex.test(ip)) {
     return true;
   }
   return false;
@@ -92644,13 +92644,13 @@ function extractClientIp(req) {
   const raw = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") || req.ip || req.socket?.remoteAddress || "unknown";
   return raw.replace(/^::ffff:/, "").trim();
 }
-function getArpMac(ip2) {
+function getArpMac(ip) {
   return new Promise((resolve) => {
-    if (!ip2 || ip2 === "unknown" || ip2 === "127.0.0.1" || ip2 === "::1" || ip2 === "localhost") {
+    if (!ip || ip === "unknown" || ip === "127.0.0.1" || ip === "::1" || ip === "localhost") {
       return resolve(null);
     }
     const isWin = process.platform === "win32";
-    const cmd = isWin ? `arp -a ${ip2}` : `arp -n ${ip2}`;
+    const cmd = isWin ? `arp -a ${ip}` : `arp -n ${ip}`;
     exec(cmd, { timeout: 1500 }, (err, stdout) => {
       if (err || !stdout) return resolve(null);
       const match = stdout.match(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/);
@@ -92671,26 +92671,26 @@ router3.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
     const { username, password } = parsed.data;
-    const ip2 = req.ip || "unknown";
+    const ip = req.ip || "unknown";
     const clientIp = extractClientIp(req);
     const bodyMac = typeof req.body?.macAddress === "string" ? req.body.macAddress.trim() : null;
     const headerMac = typeof req.headers["x-mac-address"] === "string" ? req.headers["x-mac-address"].trim() : null;
     const arpMac = await getArpMac(clientIp);
     const finalMac = bodyMac || headerMac || arpMac || null;
-    if (isIpBlocked(ip2, finalMac)) {
+    if (isIpBlocked(clientIp, finalMac)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
       return;
     }
     const lockSeconds = isAccountLocked(username);
     if (lockSeconds > 0) {
-      recordBlockedLoginAttempt(username, ip2, finalMac);
+      recordBlockedLoginAttempt(username, ip, finalMac);
       res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
     if (!user || user.role !== "admin") {
       if (username) {
-        const result = recordFailedLogin(username, ip2, finalMac);
+        const result = recordFailedLogin(username, ip, finalMac);
         if (result.spikeDetected) {
           void sendAttackSpikeNotification({
             recentFailedAttempts: result.recentFailedAttempts,
@@ -92703,7 +92703,7 @@ router3.post("/auth/admin/login", authLimiter, async (req, res) => {
     }
     const valid = await bcryptjs_default.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, ip2, finalMac);
+      const result = recordFailedLogin(username, ip, finalMac);
       if (result.spikeDetected) {
         void sendAttackSpikeNotification({
           recentFailedAttempts: result.recentFailedAttempts,
@@ -92713,7 +92713,7 @@ router3.post("/auth/admin/login", authLimiter, async (req, res) => {
       res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
-    resetLoginAttempts(username, ip2);
+    resetLoginAttempts(username, ip);
     const totpSecret = getTotpSecret(user.id);
     if (totpSecret) {
       const tempToken = crypto5.randomBytes(32).toString("hex");
@@ -92781,19 +92781,19 @@ router3.post("/auth/client/login", authLimiter, async (req, res) => {
       return;
     }
     const { username, password } = parsed.data;
-    const ip2 = req.ip || "unknown";
+    const ip = req.ip || "unknown";
     const clientIp = extractClientIp(req);
     const bodyMac = typeof req.body?.macAddress === "string" ? req.body.macAddress.trim() : null;
     const headerMac = typeof req.headers["x-mac-address"] === "string" ? req.headers["x-mac-address"].trim() : null;
     const arpMac = await getArpMac(clientIp);
     let finalMac = bodyMac || headerMac || arpMac || null;
-    if (isIpBlocked(ip2, finalMac)) {
+    if (isIpBlocked(clientIp, finalMac)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
       return;
     }
     const lockSeconds = isAccountLocked(username);
     if (lockSeconds > 0) {
-      recordBlockedLoginAttempt(username, ip2, finalMac);
+      recordBlockedLoginAttempt(username, ip, finalMac);
       res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
@@ -92803,7 +92803,7 @@ router3.post("/auth/client/login", authLimiter, async (req, res) => {
     }
     if (!user || user.role !== "client") {
       if (username) {
-        const result = recordFailedLogin(username, ip2, finalMac);
+        const result = recordFailedLogin(username, ip, finalMac);
         if (result.spikeDetected) {
           void sendAttackSpikeNotification({
             recentFailedAttempts: result.recentFailedAttempts,
@@ -92816,7 +92816,7 @@ router3.post("/auth/client/login", authLimiter, async (req, res) => {
     }
     const valid = await bcryptjs_default.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, ip2, finalMac);
+      const result = recordFailedLogin(username, ip, finalMac);
       if (result.spikeDetected) {
         void sendAttackSpikeNotification({
           recentFailedAttempts: result.recentFailedAttempts,
@@ -92826,7 +92826,7 @@ router3.post("/auth/client/login", authLimiter, async (req, res) => {
       res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
-    resetLoginAttempts(username, ip2);
+    resetLoginAttempts(username, ip);
     await regenerateSession(req);
     const loginUpdates = { lastLoginIp: clientIp };
     if (finalMac) {
@@ -92850,7 +92850,7 @@ router3.post("/auth/client/register", authLimiter, async (req, res) => {
     const arpMac = await getArpMac(clientIp);
     const rawMac = arpMac || bodyMac || null;
     const finalMac = rawMac ? rawMac.replace(/-/g, ":").toUpperCase() : null;
-    if (isIpBlocked(ip, finalMac)) {
+    if (isIpBlocked(clientIp, finalMac)) {
       res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
       return;
     }
@@ -93300,30 +93300,30 @@ router4.get("/admin/attack-monitoring", async (_req, res) => {
   res.json(getAttackMonitoringSnapshot());
 });
 router4.post("/admin/attack-monitoring/block", async (req, res) => {
-  const { ip: ip2, macAddress } = req.body;
-  if (!ip2 || typeof ip2 !== "string") {
+  const { ip, macAddress } = req.body;
+  if (!ip || typeof ip !== "string") {
     res.status(400).json({ error: "Valid IP is required" });
     return;
   }
-  manualBlockIp(ip2, macAddress);
-  await logAdminActivity(req.session.userId, "IP Blocked", `Manually blocked IP: ${ip2}`, req.ip || null);
+  manualBlockIp(ip, macAddress);
+  await logAdminActivity(req.session.userId, "IP Blocked", `Manually blocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
 });
 router4.post("/admin/attack-monitoring/unblock", async (req, res) => {
-  const { ip: ip2, macAddress } = req.body;
-  if (!ip2 || typeof ip2 !== "string") {
+  const { ip, macAddress } = req.body;
+  if (!ip || typeof ip !== "string") {
     res.status(400).json({ error: "Valid IP is required" });
     return;
   }
-  manualUnblockIp(ip2, macAddress);
-  await logAdminActivity(req.session.userId, "IP Unblocked", `Manually unblocked IP: ${ip2}`, req.ip || null);
+  manualUnblockIp(ip, macAddress);
+  await logAdminActivity(req.session.userId, "IP Unblocked", `Manually unblocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
 });
 router4.post("/admin/attack-monitoring/test-alert", async (req, res) => {
   try {
-    const ip2 = req.ip || "127.0.0.1";
-    await sendSecurityEventEmail("failed_attempts_warning", ip2, "admin_test", 3);
-    await logAdminActivity(req.session.userId, "Test Security Alert", "Sent test security warning alert to admin bell and email", ip2);
+    const ip = req.ip || "127.0.0.1";
+    await sendSecurityEventEmail("failed_attempts_warning", ip, "admin_test", 3);
+    await logAdminActivity(req.session.userId, "Test Security Alert", "Sent test security warning alert to admin bell and email", ip);
     res.json({ ok: true, message: "Test security alert sent successfully" });
   } catch (err) {
     logger.error({ err }, "Failed to send test security alert");
