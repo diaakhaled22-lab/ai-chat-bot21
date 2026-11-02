@@ -28,6 +28,7 @@ export interface InvoiceData {
   tools?: string[];
   dataSources?: string[];
   status: "paid" | "activated";
+  isPaid?: boolean;
 }
 
 /**
@@ -65,10 +66,17 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
             <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">تمت الموافقة وتفعيل الباقة بنجاح من قبل إدارة المنصة</p>
           </td>
           <td style="vertical-align:middle;text-align:left;">
-            <div style="background:rgba(34,197,94,0.18);border:1px solid rgba(74,222,128,0.4);border-radius:12px;padding:8px 16px;display:inline-block;text-align:center;">
-              <span style="display:block;font-size:11px;color:#86efac;font-weight:600;text-transform:uppercase;">الحالة / STATUS</span>
-              <strong style="font-size:14px;color:#4ade80;">✅ نشط ومفعّل</strong>
-            </div>
+            ${
+              inv.isPaid === false
+                ? `<div style="background:rgba(245,158,11,0.18);border:1px solid rgba(251,191,36,0.4);border-radius:12px;padding:8px 16px;display:inline-block;text-align:center;">
+                    <span style="display:block;font-size:11px;color:#fde68a;font-weight:600;text-transform:uppercase;">الحالة / STATUS</span>
+                    <strong style="font-size:14px;color:#fbbf24;">⏳ نشط ومفعّل (غير مسددة)</strong>
+                  </div>`
+                : `<div style="background:rgba(34,197,94,0.18);border:1px solid rgba(74,222,128,0.4);border-radius:12px;padding:8px 16px;display:inline-block;text-align:center;">
+                    <span style="display:block;font-size:11px;color:#86efac;font-weight:600;text-transform:uppercase;">الحالة / STATUS</span>
+                    <strong style="font-size:14px;color:#4ade80;">✅ نشط ومفعّل (مسددة)</strong>
+                  </div>`
+            }
           </td>
         </tr>
       </table>
@@ -247,7 +255,7 @@ export function generateInvoiceWhatsAppText(inv: InvoiceData): string {
     `• القنوات المتاحة: *${channelsText}*`,
     `• الإجمالي: *$${inv.priceUsd} USD*${localPriceText}`,
     `━━━━━━━━━━━━━━━━━━━━━━`,
-    `⚡ *الحالة:* ✅ *تمت الموافقة والتفعيل بنجاح*`,
+    `⚡ *الحالة:* ${inv.isPaid === false ? "⏳ *مفعّلة - غير مسددة (بانتظار السداد)*" : "✅ *تمت الموافقة والتفعيل - مسددة بالكامل*"}`,
     `تم شحن الرصيد وتحديث إعدادات الذكاء الاصطناعي الخاصة بكم.`,
     `شكراً لثقتكم بنا! في حال وجود أي استفسار، يسعدنا دائماً خدمتكم.`,
   ]

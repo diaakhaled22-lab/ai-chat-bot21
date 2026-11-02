@@ -15,6 +15,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -117,6 +125,8 @@ function TicketCard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [approvingPlan, setApprovingPlan] = useState(false);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [selectedPaidStatus, setSelectedPaidStatus] = useState<boolean>(true);
   const [expanded,    setExpanded]    = useState(false);
   const [manualMode,  setManualMode]  = useState(false);
   const [manualNote,  setManualNote]  = useState("");
@@ -153,21 +163,37 @@ function TicketCard({
     );
   }, [ticket.title, ticket.description]);
 
-  async function handleApprovePlan(e: React.MouseEvent) {
+  function handleApprovePlan(e: React.MouseEvent) {
     e.stopPropagation();
+    setSelectedPaidStatus(true);
+    setShowApproveDialog(true);
+  }
+
+  async function executeApprovePlan(isPaid: boolean) {
     try {
       setApprovingPlan(true);
       const res: any = await customFetch(`/api/admin/plan-requests/${ticket.id}/approve`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPaid }),
       });
+      setShowApproveDialog(false);
       toast({
-        title: lang === "ar" ? "✅ تم الاعتماد وتفعيل الباقة بنجاح!" : "Plan Approved & Activated!",
+        title:
+          lang === "ar"
+            ? isPaid
+              ? "✅ تم الاعتماد والتفعيل كـ [مسددة Paid] بنجاح!"
+              : "⏳ تم الاعتماد والتفعيل كـ [غير مسددة Unpaid] بنجاح!"
+            : isPaid
+            ? "Plan Approved & Activated as Paid!"
+            : "Plan Approved & Activated as Unpaid!",
         description:
           lang === "ar"
-            ? `تم تفعيل الباقة وتحديث الكوتا، وتم إصدار وإرسال الفاتورة رقم #${res?.result?.invoice?.invoiceNumber || ticket.id} للعميل عبر الواتساب والإيميل.`
-            : "Plan activated, quota updated, and invoice dispatched via WhatsApp and Email.",
+            ? `تم تفعيل الباقة وتحديث الكوتا، وإصدار الفاتورة رقم #${res?.result?.invoice?.invoiceNumber || ticket.id} وحالتها (${isPaid ? "مسددة Paid" : "غير مسددة Unpaid"}) وإرسالها للعميل.`
+            : `Plan activated, quota updated, and invoice #${res?.result?.invoice?.invoiceNumber || ticket.id} (${isPaid ? "Paid" : "Unpaid"}) dispatched.`,
       });
       queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
@@ -611,6 +637,137 @@ function TicketCard({
           </div>
         </div>
       )}
+
+      {/* ── Approve & Activate Dialog (Paid vs Unpaid Selection) ── */}
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">
+              {lang === "ar" ? "اعتماد وتفعيل الباقة وإصدار الفاتورة" : "Approve & Activate Plan & Send Invoice"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {lang === "ar"
+                ? `طلب #${ticket.id} للعميل: ${ticket.clientName} (@${ticket.clientUsername})`
+                : `Ticket #${ticket.id} for client: ${ticket.clientName} (@${ticket.clientUsername})`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            {/* Request Summary Box */}
+            <div className="p-3 bg-muted/40 rounded-xl border border-border/70 text-xs space-y-1">
+              <div className="font-bold text-foreground text-sm">{ticket.title}</div>
+              <p className="text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line">
+                {ticket.description}
+              </p>
+            </div>
+
+            {/* Selection Prompt */}
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-2">
+                {lang === "ar"
+                  ? "يرجى تحديد حالة سداد الفاتورة للعميل (لتحديث عمود Paid في صفحة الفواتير):"
+                  : "Select invoice payment status (updates the Paid column in Bills):"}
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Option 1: Paid */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedPaidStatus(true)}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 select-none ${
+                    selectedPaidStatus === true
+                      ? "border-emerald-500 bg-emerald-500/10 shadow-sm"
+                      : "border-border/60 hover:border-emerald-500/40 bg-card"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                      selectedPaidStatus === true ? "bg-emerald-600 text-white" : "border-2 border-muted-foreground/40"
+                    }`}
+                  >
+                    {selectedPaidStatus === true && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400 block">
+                      {lang === "ar" ? "مسددة (Paid)" : "Paid"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+                      {lang === "ar" ? "تم استلام المبلغ، وتظهر مسددة في الفواتير." : "Payment received, marked as Paid."}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Option 2: Unpaid */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedPaidStatus(false)}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 select-none ${
+                    selectedPaidStatus === false
+                      ? "border-amber-500 bg-amber-500/10 shadow-sm"
+                      : "border-border/60 hover:border-amber-500/40 bg-card"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                      selectedPaidStatus === false ? "bg-amber-600 text-white" : "border-2 border-muted-foreground/40"
+                    }`}
+                  >
+                    {selectedPaidStatus === false && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-amber-600 dark:text-amber-400 block">
+                      {lang === "ar" ? "غير مسددة (Unpaid)" : "Unpaid"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+                      {lang === "ar" ? "آجل أو بانتظار الدفع، وتظهر غير مسددة." : "Awaiting payment, marked as Unpaid."}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowApproveDialog(false)}
+              disabled={approvingPlan}
+              className="text-xs h-9"
+            >
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => executeApprovePlan(selectedPaidStatus)}
+              disabled={approvingPlan}
+              className={`text-xs h-9 font-semibold text-white gap-1.5 ${
+                selectedPaidStatus ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"
+              }`}
+            >
+              {approvingPlan ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              <span>
+                {lang === "ar"
+                  ? selectedPaidStatus
+                    ? "تأكيد التفعيل كـ مسددة 🧾"
+                    : "تأكيد التفعيل كـ غير مسددة 🧾"
+                  : selectedPaidStatus
+                  ? "Confirm as Paid 🧾"
+                  : "Confirm as Unpaid 🧾"}
+              </span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1253,6 +1410,137 @@ export default function AdminTickets() {
           ))}
         </div>
       )}
+
+      {/* ── Approve & Activate Dialog (Paid vs Unpaid Selection) ── */}
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">
+              {lang === "ar" ? "اعتماد وتفعيل الباقة وإصدار الفاتورة" : "Approve & Activate Plan & Send Invoice"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {lang === "ar"
+                ? `طلب #${ticket.id} للعميل: ${ticket.clientName} (@${ticket.clientUsername})`
+                : `Ticket #${ticket.id} for client: ${ticket.clientName} (@${ticket.clientUsername})`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-2">
+            {/* Request Summary Box */}
+            <div className="p-3 bg-muted/40 rounded-xl border border-border/70 text-xs space-y-1">
+              <div className="font-bold text-foreground text-sm">{ticket.title}</div>
+              <p className="text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line">
+                {ticket.description}
+              </p>
+            </div>
+
+            {/* Selection Prompt */}
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-2">
+                {lang === "ar"
+                  ? "يرجى تحديد حالة سداد الفاتورة للعميل (لتحديث عمود Paid في صفحة الفواتير):"
+                  : "Select invoice payment status (updates the Paid column in Bills):"}
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Option 1: Paid */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedPaidStatus(true)}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 select-none ${
+                    selectedPaidStatus === true
+                      ? "border-emerald-500 bg-emerald-500/10 shadow-sm"
+                      : "border-border/60 hover:border-emerald-500/40 bg-card"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                      selectedPaidStatus === true ? "bg-emerald-600 text-white" : "border-2 border-muted-foreground/40"
+                    }`}
+                  >
+                    {selectedPaidStatus === true && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400 block">
+                      {lang === "ar" ? "مسددة (Paid)" : "Paid"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+                      {lang === "ar" ? "تم استلام المبلغ، وتظهر مسددة في الفواتير." : "Payment received, marked as Paid."}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Option 2: Unpaid */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedPaidStatus(false)}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 select-none ${
+                    selectedPaidStatus === false
+                      ? "border-amber-500 bg-amber-500/10 shadow-sm"
+                      : "border-border/60 hover:border-amber-500/40 bg-card"
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                      selectedPaidStatus === false ? "bg-amber-600 text-white" : "border-2 border-muted-foreground/40"
+                    }`}
+                  >
+                    {selectedPaidStatus === false && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-amber-600 dark:text-amber-400 block">
+                      {lang === "ar" ? "غير مسددة (Unpaid)" : "Unpaid"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+                      {lang === "ar" ? "آجل أو بانتظار الدفع، وتظهر غير مسددة." : "Awaiting payment, marked as Unpaid."}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowApproveDialog(false)}
+              disabled={approvingPlan}
+              className="text-xs h-9"
+            >
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => executeApprovePlan(selectedPaidStatus)}
+              disabled={approvingPlan}
+              className={`text-xs h-9 font-semibold text-white gap-1.5 ${
+                selectedPaidStatus ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-600 hover:bg-amber-700"
+              }`}
+            >
+              {approvingPlan ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              <span>
+                {lang === "ar"
+                  ? selectedPaidStatus
+                    ? "تأكيد التفعيل كـ مسددة 🧾"
+                    : "تأكيد التفعيل كـ غير مسددة 🧾"
+                  : selectedPaidStatus
+                  ? "Confirm as Paid 🧾"
+                  : "Confirm as Unpaid 🧾"}
+              </span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3180,11 +3180,15 @@ router.get("/admin/invoices", async (req, res) => {
         .orderBy(desc(companyActivityLogsTable.createdAt));
 
       const overrideMap = new Map<string, boolean>();
+      const overrideTicketMap = new Map<number, boolean>();
       for (const ov of paymentOverrides) {
         try {
           const parsedNote = JSON.parse(ov.note || "{}");
           if (parsedNote.invoiceNumber && !overrideMap.has(parsedNote.invoiceNumber)) {
             overrideMap.set(parsedNote.invoiceNumber, Boolean(parsedNote.isPaid));
+          }
+          if (parsedNote.ticketId && !overrideTicketMap.has(Number(parsedNote.ticketId))) {
+            overrideTicketMap.set(Number(parsedNote.ticketId), Boolean(parsedNote.isPaid));
           }
         } catch {}
       }
@@ -3192,6 +3196,9 @@ router.get("/admin/invoices", async (req, res) => {
       for (const inv of invoiceList) {
         if (overrideMap.has(inv.invoiceNumber)) {
           inv.isPaid = overrideMap.get(inv.invoiceNumber)!;
+          inv.status = inv.isPaid ? "paid" : "pending";
+        } else if (inv.ticketId && overrideTicketMap.has(Number(inv.ticketId))) {
+          inv.isPaid = overrideTicketMap.get(Number(inv.ticketId))!;
           inv.status = inv.isPaid ? "paid" : "pending";
         }
       }
@@ -3229,20 +3236,27 @@ router.post("/admin/invoices/toggle-paid", async (req, res) => {
       return;
     }
 
-    if (ticketId) {
-      await db
-        .update(ticketsTable)
-        .set({ status: isPaid ? "resolved" : "open", updatedAt: new Date() })
-        .where(eq(ticketsTable.id, ticketId));
+    let effectiveCompanyId = companyId;
+    if (!effectiveCompanyId && ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      if (ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
     }
 
     // Always log the payment override in companyActivityLogsTable if companyId is available
-    if (companyId) {
+    if (effectiveCompanyId) {
       await db.insert(companyActivityLogsTable).values({
-        companyId,
+        companyId: effectiveCompanyId,
         action: "invoice_payment_override",
         performedBy: (req.session as any)?.userName || "Admin",
-        note: JSON.stringify({ invoiceNumber, isPaid: Boolean(isPaid), updatedAt: new Date().toISOString() }),
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          isPaid: Boolean(isPaid),
+          updatedAt: new Date().toISOString(),
+        }),
       });
     }
 
@@ -3549,15 +3563,19 @@ router.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
     const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
     const adminName = adminUser[0]?.name || "Admin";
 
+    const { isPaid } = req.body || {};
+    const effectiveIsPaid = isPaid !== undefined ? Boolean(isPaid) : true;
+
     const result = await processApprovedPlanRequest(ticketId, {
       approvedBy: adminName,
       channel: "admin_ui",
+      isPaid: effectiveIsPaid,
     });
 
     await logAdminActivity(
       req.session.userId!,
       "Approve Plan Request",
-      `Admin approved plan request #${ticketId} and dispatched invoice #${result.invoice.invoiceNumber}`,
+      `Admin approved plan request #${ticketId} as ${effectiveIsPaid ? "Paid" : "Unpaid"} and dispatched invoice #${result.invoice.invoiceNumber}`,
       req.ip || null
     );
 

@@ -717,10 +717,31 @@ router.post(
         }
       }
 
+      // Determine if text explicitly indicates unpaid or paid
+      let replyIsPaid = true;
+      const lowerReply = rawText.toLowerCase();
+      if (
+        lowerReply.includes("unpaid") ||
+        lowerReply.includes("غير مسدد") ||
+        lowerReply.includes("غير مدفوع") ||
+        lowerReply.includes("آجل") ||
+        lowerReply.includes("اجل")
+      ) {
+        replyIsPaid = false;
+      } else if (
+        lowerReply.includes("paid") ||
+        lowerReply.includes("مسدد") ||
+        lowerReply.includes("مدفوع") ||
+        lowerReply.includes("كاش")
+      ) {
+        replyIsPaid = true;
+      }
+
       // Process the approved plan / top-up request!
       const result = await processApprovedPlanRequest(ticketId, {
         approvedBy: senderEmail || "Admin (Email Reply)",
         channel: "email_reply",
+        isPaid: replyIsPaid,
       });
 
       logger.info({ ticketId, senderEmail, invoiceNumber: result.invoice.invoiceNumber }, "Plan request approved via email OK reply");
@@ -776,9 +797,71 @@ router.get(
         return;
       }
 
+      const isPaidParam = req.query.isPaid as string | undefined;
+
+      // If payment status (Paid vs Unpaid) is not specified yet, display interactive choice page
+      if (isPaidParam === undefined) {
+        const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+        const [clientUser] = ticket ? await db.select().from(usersTable).where(eq(usersTable.id, ticket.clientId)).limit(1) : [null];
+        const clientDisplayName = clientUser?.name || "العميل";
+
+        res.send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>تحديد حالة سداد الفاتورة - طلب #${ticketId}</title>
+          </head>
+          <body style="margin:0;padding:40px 20px;background:#f8fafc;font-family:'Segoe UI',Tahoma,sans-serif;color:#0f172a;">
+            <div style="max-width:540px;margin:0 auto;background:#ffffff;border-radius:18px;padding:36px 32px;box-shadow:0 10px 30px rgba(0,0,0,0.06);border:1px solid #e2e8f0;text-align:center;">
+              <div style="width:68px;height:68px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;border:2px solid #bfdbfe;">
+                🧾
+              </div>
+              <h1 style="margin:0 0 8px;font-size:22px;color:#1e3a8a;font-weight:800;">اعتماد وتفعيل الباقة وإصدار الفاتورة</h1>
+              <p style="margin:0 0 20px;color:#64748b;font-size:14px;">
+                طلب رقم <strong>#${ticketId}</strong> • العميل: <strong>${escapeHtml(clientDisplayName)}</strong>
+              </p>
+
+              ${
+                ticket
+                  ? `
+                <div style="background:#f1f5f9;border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:right;font-size:13px;line-height:1.7;border:1px solid #e2e8f0;">
+                  <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml(ticket.title)}</div>
+                  <div style="color:#475569;font-size:12px;">${escapeHtml(ticket.description.slice(0, 180))}${ticket.description.length > 180 ? "..." : ""}</div>
+                </div>
+              `
+                  : ""
+              }
+
+              <p style="margin:0 0 18px;font-size:15px;font-weight:700;color:#1e293b;">
+                يرجى تحديد حالة سداد الفاتورة للعميل ليتم تحديث عمود Paid في صفحة الفواتير تلقائياً:
+              </p>
+
+              <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+                <a href="${req.path}?ticketId=${ticketId}&token=${encodeURIComponent(token)}&isPaid=true" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;border-radius:12px;font-size:15px;box-shadow:0 4px 12px rgba(22,163,74,0.25);">
+                  ✅ اعتماد وتفعيل كـ مسددة (Paid)
+                </a>
+                <a href="${req.path}?ticketId=${ticketId}&token=${encodeURIComponent(token)}&isPaid=false" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;background:#d97706;color:#ffffff;text-decoration:none;font-weight:700;border-radius:12px;font-size:15px;box-shadow:0 4px 12px rgba(217,119,6,0.25);">
+                  ⏳ اعتماد وتفعيل كـ غير مسددة (Unpaid)
+                </a>
+              </div>
+
+              <a href="/admin/tickets" style="color:#64748b;text-decoration:none;font-size:13px;">
+                إلغاء والعودة للوحة التحكم
+              </a>
+            </div>
+          </body>
+          </html>
+        `);
+        return;
+      }
+
+      const isPaid = isPaidParam === "true";
       const result = await processApprovedPlanRequest(ticketId, {
         approvedBy: "Admin (1-Click Email Link)",
         channel: "email_button",
+        isPaid,
       });
 
       res.send(`
@@ -795,12 +878,21 @@ router.get(
               ✅
             </div>
             <h1 style="margin:0 0 10px;font-size:22px;color:#166534;font-weight:800;">تمت الموافقة وتفعيل الباقة بنجاح!</h1>
-            <p style="margin:0 0 24px;color:#475569;font-size:14px;line-height:1.6;">
+            <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6;">
               تم اعتماد طلب العميل <strong>${escapeHtml(result.invoice.clientName)}</strong> وتفعيل باقة <strong>${escapeHtml(result.invoice.itemNameAr)}</strong> بنجاح وتحديث الكوتا.
             </p>
 
+            <div style="display:inline-block;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:20px;${
+              isPaid
+                ? "background:#dcfce7;color:#166534;border:1px solid #86efac;"
+                : "background:#fef3c7;color:#92400e;border:1px solid #fcd34d;"
+            }">
+              حالة الفاتورة في كشف الحساب: ${isPaid ? "✅ مسددة (Paid)" : "⏳ غير مسددة (Unpaid)"}
+            </div>
+
             <div style="background:#f1f5f9;border-radius:12px;padding:18px 20px;margin-bottom:24px;text-align:right;font-size:13px;line-height:1.8;border:1px solid #e2e8f0;">
               <div>• <strong>رقم الفاتورة:</strong> #${escapeHtml(result.invoice.invoiceNumber)}</div>
+              <div>• <strong>حالة السداد:</strong> ${isPaid ? "مسددة (Paid)" : "غير مسددة (Unpaid)"}</div>
               <div>• <strong>رصيد الرموز المضاف:</strong> ${result.invoice.tokenQuota.toLocaleString()} Tokens</div>
               <div>• <strong>إرسال الفاتورة عبر الإيميل:</strong> ${result.dispatchResult.emailSent ? "✅ تم الإرسال بنجاح" : "⚠️ بريد العميل أو SMTP غير متوفر"}</div>
               <div>• <strong>إرسال الفاتورة عبر الواتساب:</strong> ${result.dispatchResult.whatsappSent ? "✅ تم الإرسال عبر WhatsApp Cloud API" : "📲 تم تجهيز رابط المحادثة ومشاركتها في صندوق الوارد"}</div>
@@ -814,6 +906,9 @@ router.get(
                     </a>`
                   : ""
               }
+              <a href="/admin/bills" style="padding:12px 22px;background:#0f766e;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:13px;">
+                📑 الانتقال إلى كشف الفواتير (Bills & Invoices)
+              </a>
               <a href="/admin/tickets" style="padding:12px 22px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:13px;">
                 الانتقال إلى تذاكر الإدارة
               </a>

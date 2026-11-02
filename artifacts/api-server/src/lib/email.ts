@@ -149,19 +149,24 @@ export async function sendPlanRequestAdminNotification(input: {
 
         <!-- Content Body -->
         <div style="padding:24px;">
-          <!-- Action Callout Box (Prominent for "OK" reply) -->
+          <!-- Action Callout Box (Prominent for "OK" reply & Paid/Unpaid options) -->
           <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;">
-            <h3 style="margin:0 0 10px;color:#1d4ed8;font-size:17px;font-weight:800;">⚡ طريقة الموافقة والتفعيل الفوري:</h3>
+            <h3 style="margin:0 0 10px;color:#1d4ed8;font-size:17px;font-weight:800;">⚡ خيارات الموافقة والتفعيل الفوري (مسددة أو غير مسددة):</h3>
             <p style="margin:0 0 14px;color:#1e3a8a;font-size:14px;line-height:1.6;">
-              يمكنك ببساطة <strong>الرد على هذا البريد الإلكتروني بكلمة "OK"</strong> أو <strong>"موافق"</strong>.<br/>
-              فور وصول ردك، سيقوم النظام تلقائياً بتفعيل الباقة / شحن الرصيد لحساب العميل وإرسال الفاتورة الرسمية له عبر الواتساب والبريد!
+              يمكنك الرد على هذا البريد الإلكتروني بكلمة <strong>"OK"</strong>، أو تحديد حالة سداد الفاتورة مباشرة بنقرة واحدة أدناه:
             </p>
-            <div style="margin:16px 0 8px;">
-              <a href="${approveUrl}" style="display:inline-block;padding:12px 28px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;border-radius:8px;box-shadow:0 4px 12px rgba(37,99,235,0.25);">
-                ✅ الموافقة والتفعيل بنقرة واحدة (One-Click Approve)
+            <div style="margin:16px 0 12px;text-align:center;">
+              <a href="${approveUrl}&isPaid=true" style="display:inline-block;padding:12px 22px;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;border-radius:8px;box-shadow:0 4px 12px rgba(22,163,74,0.25);margin:4px;">
+                ✅ اعتماد كـ مسددة (Paid)
+              </a>
+              <a href="${approveUrl}&isPaid=false" style="display:inline-block;padding:12px 22px;background:#d97706;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;border-radius:8px;box-shadow:0 4px 12px rgba(217,119,6,0.25);margin:4px;">
+                ⏳ اعتماد كـ غير مسددة (Unpaid)
               </a>
             </div>
-            <span style="display:block;margin-top:6px;font-size:11px;color:#64748b;">رابط آمن ومشفر برقم التذكرة #${input.id}</span>
+            <div style="font-size:12px;color:#475569;margin-top:6px;line-height:1.6;">
+              • للرد السريع عبر الإيميل: أرسل <strong>OK PAID</strong> للاعتماد كـ مسددة، أو <strong>OK UNPAID</strong> للاعتماد كـ غير مسددة.
+            </div>
+            <span style="display:block;margin-top:8px;font-size:11px;color:#64748b;">رابط آمن ومشفر برقم التذكرة #${input.id}</span>
           </div>
 
           <!-- Request Details Table -->

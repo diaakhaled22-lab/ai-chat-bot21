@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { db, ticketsTable, companiesTable, usersTable, notificationsTable, chatLogsTable, type Ticket, type Company, type User } from "@workspace/db";
+import { db, ticketsTable, companiesTable, usersTable, notificationsTable, chatLogsTable, companyActivityLogsTable, type Ticket, type Company, type User } from "@workspace/db";
 import { eq, and, ilike } from "drizzle-orm";
 import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem } from "./packagesCatalog";
 import { getExchangeRates } from "./currencyRates";
@@ -189,6 +189,7 @@ export function parseTicketPlanDetails(ticket: Ticket) {
 export interface ProcessApprovalOptions {
   approvedBy: string;
   channel: "email_reply" | "email_button" | "admin_ui";
+  isPaid?: boolean;
 }
 
 /**
@@ -321,6 +322,7 @@ export async function processApprovedPlanRequest(
       priceLocal,
       currencySymbol,
       status: "activated",
+      isPaid: options.isPaid !== undefined ? Boolean(options.isPaid) : true,
     };
   } else {
     // ── SUBSCRIPTION PLAN APPROVAL ──
@@ -407,13 +409,30 @@ export async function processApprovedPlanRequest(
       tools: tools,
       dataSources: sources,
       status: "activated",
+      isPaid: options.isPaid !== undefined ? Boolean(options.isPaid) : true,
     };
   }
 
   // 4. Dispatch Invoice via Email and WhatsApp
   const dispatchResult = await sendInvoiceToClient(invoice, client, company);
 
-  // 5. Update Ticket Status
+  // 5. Update Ticket Status & Record Payment Override
+  const isPaid = options.isPaid !== undefined ? Boolean(options.isPaid) : true;
+  await db
+    .insert(companyActivityLogsTable)
+    .values({
+      companyId: company.id,
+      action: "invoice_payment_override",
+      performedBy: options.approvedBy || "Admin",
+      note: JSON.stringify({
+        invoiceNumber,
+        ticketId: ticket.id,
+        isPaid,
+        updatedAt: now.toISOString(),
+      }),
+    })
+    .catch((err) => logger.warn({ err }, "Failed to record invoice payment override in company activity logs"));
+
   const approvalSourceText =
     options.channel === "email_reply"
       ? `رد الإدارة عبر البريد الإلكتروني ("OK") بواسطة [${options.approvedBy}]`
@@ -421,14 +440,15 @@ export async function processApprovedPlanRequest(
       ? `رابط الموافقة الفوري في البريد الإلكتروني (1-Click Approve)`
       : `لوحة تحكم الإدارة بواسطة [${options.approvedBy}]`;
 
-  const resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} وإرسالها للعميل عبر البريد الإلكتروني والواتساب.`;
+  const paymentBadge = isPaid ? "مسددة (Paid)" : "غير مسددة (Unpaid)";
+  const resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل عبر البريد الإلكتروني والواتساب.`;
 
   await db
     .update(ticketsTable)
     .set({
       status: "resolved",
       adminNote: resolutionNote,
-      aiResponse: `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} وإرسالها إليكم عبر البريد والواتساب.`,
+      aiResponse: `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} (${isPaid ? "مسددة" : "غير مسددة"}) وإرسالها إليكم عبر البريد والواتساب.`,
       updatedAt: now,
     })
     .where(eq(ticketsTable.id, ticket.id));
