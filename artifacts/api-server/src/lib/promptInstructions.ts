@@ -26,9 +26,9 @@ export const ANTI_HALLUCINATION_INSTRUCTION =
 export const CONVERSATIONAL_MEMORY_INSTRUCTION =
   "Conversational Memory & Customer Context Retention Rules:\n" +
   "1. Active Context Retention: You must continuously remember all customer details (name, phone number, address, location, email, preferences) provided anywhere in the chat history.\n" +
-  "2. Strict Prohibition on Re-Asking Information: If the customer has ALREADY provided their name, phone number, address, or email at ANY point earlier in the conversation, you are STRICTLY FORBIDDEN from asking for that information again under any circumstances.\n" +
-  "3. Avoid Repetitive Lead Capture Prompts: Never interrupt or derail the conversation with generic templates like 'لتوفير أفضل خدمة لك، يرجى تزويدي باسمك الكامل ورقم هاتفك' or 'يرجى تزويدنا بعنوانك ورقم هاتفك' if you already know their details or if they already provided them. Proceed directly to answering the customer's question or assisting them with their inquiry.\n" +
-  "4. Natural Direct Answers: When a customer asks a question (such as 'ليس لديكم فروع' or 'ما موقع الشركة' or questions about prices, products, or delivery), answer the question directly and politely based on your knowledge base without demanding their name or phone number if they already provided them.";
+  "2. Strict Prohibition on Re-Asking Information: If the customer's name, phone number, address, or email is already known or was provided at ANY point earlier in the conversation, you are STRICTLY FORBIDDEN from asking for that information again.\n" +
+  "3. Answer Questions Directly: When a customer asks a question (such as 'ليس لديكم فروع' or inquiries about store locations, products, prices, or shipping), answer the question directly, concisely, and politely based on your company information and knowledge base. If the company operates exclusively as an online store without physical branches, state that clearly and confirm that orders are delivered directly to their address.\n" +
+  "4. Never Stall or Intercept with Contact Requests: Once customer contact details are known, never interrupt or replace your answer with requests for contact information.";
 
 export const DEFAULT_PERSONALITY_PROMPT =
   "Personality & Instructions:\n" +
@@ -78,6 +78,62 @@ export function buildWelcomeInstruction(company: { name: string; generalInfo?: s
     `You represent "${brandName}" (from Company Information & Overview). Maintain this brand identity throughout the conversation.\n` +
     `CUSTOMER DETAILS RETENTION RULE: If the customer has already provided their name and phone number, you are strictly prohibited from asking for them again in subsequent turns.`
   );
+}
+
+/**
+ * Builds the known customer context string from either a database lead record
+ * or by scanning the conversation history for customer name, phone, email, and address.
+ */
+export function buildKnownCustomerContext(
+  knownLead?: { name?: string | null; phone?: string | null; email?: string | null; notes?: string | null } | null,
+  history: Array<{ role: string; content: string }> = []
+): string {
+  let name = knownLead?.name?.trim() || "";
+  let phone = knownLead?.phone?.trim() || "";
+  let email = knownLead?.email?.trim() || "";
+  let notes = knownLead?.notes?.trim() || "";
+
+  // If phone is missing, scan history for phone numbers (e.g. Egyptian 01xxxxxxxxx or international format)
+  if (!phone) {
+    for (const msg of history) {
+      const phoneMatch = msg.content.match(/(?:\+?\d{1,4}[\s-]?)?(?:01[0125]\d{8}|\b\d{10,14}\b)/);
+      if (phoneMatch) {
+        phone = phoneMatch[0].trim();
+        break;
+      }
+    }
+  }
+
+  // If name is missing, scan history for Arabic/English name patterns
+  if (!name) {
+    for (const msg of history) {
+      const nameMatch = msg.content.match(/(?:شكرا لك[،,\s]+|اسمي\s+|الاسم:\s*|معك\s+)([\u0621-\u064A]{2,}(?:\s+[\u0621-\u064A]{2,}){1,3})/);
+      if (nameMatch) {
+        name = nameMatch[1].trim();
+        break;
+      }
+    }
+  }
+
+  const details: string[] = [];
+  if (name) details.push(`- Customer Name: ${name}`);
+  if (phone) details.push(`- Customer Phone: ${phone}`);
+  if (email) details.push(`- Customer Email: ${email}`);
+  if (notes) details.push(`- Customer Address / Notes: ${notes}`);
+
+  if (details.length > 0) {
+    return (
+      `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n` +
+      `${details.join("\n")}\n` +
+      `CRITICAL OVERRIDE RULE:\n` +
+      `- The customer has ALREADY provided their identity and contact details earlier in this conversation.\n` +
+      `- You are STRICTLY FORBIDDEN from asking for their name, phone number, address, or email under any circumstances.\n` +
+      `- If the customer asks a question (such as 'ليس لديكم فروع' or questions about store locations, products, prices, or shipping), you MUST answer their question directly, concisely, and helpfully.\n` +
+      `- If asked whether the company has physical branches ('ليس لديكم فروع'), clearly answer whether you have physical branches or if you operate strictly as an online store with direct delivery, according to the company info.`
+    );
+  }
+
+  return "";
 }
 
 

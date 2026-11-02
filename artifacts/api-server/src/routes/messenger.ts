@@ -21,7 +21,7 @@ import { getWebsiteKnowledgeSection } from "../lib/websiteSync";
 import { getWordPressKnowledgeSection } from "../lib/wordpressSync";
 import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
-import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, DEFAULT_PERSONALITY_PROMPT, buildWelcomeInstruction } from "../lib/promptInstructions";
+import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, DEFAULT_PERSONALITY_PROMPT, buildWelcomeInstruction, buildKnownCustomerContext } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { webhookLimiter } from "../lib/security";
 import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
@@ -303,16 +303,9 @@ router.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verify
             .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
             .limit(1);
 
-          if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-            const details: string[] = [];
-            if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-            if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-            if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-            if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-            knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-          }
+          knownCustomerContext = buildKnownCustomerContext(knownLead, history);
         } catch {
-          // Non-blocking
+          knownCustomerContext = buildKnownCustomerContext(null, history);
         }
 
         if (isSessionInHandoff(priorLogs)) {
@@ -641,16 +634,9 @@ router.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webhoo
             .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
             .limit(1);
 
-          if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-            const details: string[] = [];
-            if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-            if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-            if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-            if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-            knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):\n${details.join("\n")}\nIMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-          }
+          knownCustomerContext = buildKnownCustomerContext(knownLead, history);
         } catch {
-          // Non-blocking
+          knownCustomerContext = buildKnownCustomerContext(null, history);
         }
 
         if (isSessionInHandoff(priorLogs)) {

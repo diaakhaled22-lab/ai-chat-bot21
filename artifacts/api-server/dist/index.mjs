@@ -58473,9 +58473,9 @@ function extractAnthropicText(content) {
   }
   return "";
 }
-function formatAnthropicMessages(history, userMessage) {
+function formatAnthropicMessages(history2, userMessage) {
   const rawList = [];
-  for (const h of history) {
+  for (const h of history2) {
     const text2 = (h.content || "").trim();
     if (!text2) continue;
     const role = h.role === "assistant" ? "assistant" : "user";
@@ -61617,6 +61617,45 @@ function buildWelcomeInstruction(company, isFirstMessage) {
 You represent "${brandName}" (from Company Information & Overview). Maintain this brand identity throughout the conversation.
 CUSTOMER DETAILS RETENTION RULE: If the customer has already provided their name and phone number, you are strictly prohibited from asking for them again in subsequent turns.`;
 }
+function buildKnownCustomerContext(knownLead, history2 = []) {
+  let name = knownLead?.name?.trim() || "";
+  let phone = knownLead?.phone?.trim() || "";
+  let email3 = knownLead?.email?.trim() || "";
+  let notes = knownLead?.notes?.trim() || "";
+  if (!phone) {
+    for (const msg of history2) {
+      const phoneMatch = msg.content.match(/(?:\+?\d{1,4}[\s-]?)?(?:01[0125]\d{8}|\b\d{10,14}\b)/);
+      if (phoneMatch) {
+        phone = phoneMatch[0].trim();
+        break;
+      }
+    }
+  }
+  if (!name) {
+    for (const msg of history2) {
+      const nameMatch = msg.content.match(/(?:شكرا لك[،,\s]+|اسمي\s+|الاسم:\s*|معك\s+)([\u0621-\u064A]{2,}(?:\s+[\u0621-\u064A]{2,}){1,3})/);
+      if (nameMatch) {
+        name = nameMatch[1].trim();
+        break;
+      }
+    }
+  }
+  const details = [];
+  if (name) details.push(`- Customer Name: ${name}`);
+  if (phone) details.push(`- Customer Phone: ${phone}`);
+  if (email3) details.push(`- Customer Email: ${email3}`);
+  if (notes) details.push(`- Customer Address / Notes: ${notes}`);
+  if (details.length > 0) {
+    return `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
+${details.join("\n")}
+CRITICAL OVERRIDE RULE:
+- The customer has ALREADY provided their identity and contact details earlier in this conversation.
+- You are STRICTLY FORBIDDEN from asking for their name, phone number, address, or email under any circumstances.
+- If the customer asks a question (such as '\u0644\u064A\u0633 \u0644\u062F\u064A\u0643\u0645 \u0641\u0631\u0648\u0639' or questions about store locations, products, prices, or shipping), you MUST answer their question directly, concisely, and helpfully.
+- If asked whether the company has physical branches ('\u0644\u064A\u0633 \u0644\u062F\u064A\u0643\u0645 \u0641\u0631\u0648\u0639'), clearly answer whether you have physical branches or if you operate strictly as an online store with direct delivery, according to the company info.`;
+  }
+  return "";
+}
 var LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, DEFAULT_PERSONALITY_PROMPT, DEFAULT_SECURITY_PROMPT;
 var init_promptInstructions = __esm({
   "artifacts/api-server/src/lib/promptInstructions.ts"() {
@@ -61624,7 +61663,7 @@ var init_promptInstructions = __esm({
     LANGUAGE_MATCH_INSTRUCTION = "Strict Language Rule: You are authorized to respond in ONLY TWO LANGUAGES: Arabic and English. No other language is permitted under any circumstances. If the customer writes in Arabic, reply exclusively in natural Arabic script. If the customer writes in English, reply exclusively in natural English. If the customer writes in any other language (such as French, Spanish, German, Russian, Chinese, Hindi, Turkish, Hebrew, etc.), respond ONLY in Arabic or English stating that support is only available in Arabic and English, or answer them in Arabic/English. Never output Chinese (CJK), Japanese, Korean, Cyrillic, Hebrew, or any foreign scripts.";
     OUTPUT_FORMAT_INSTRUCTION = "Output formatting rule: The 'Website Knowledge Base' and 'Uploaded Files Knowledge Base' sections below are raw reference data for you only \u2014 the customer never sees them directly. Never show raw JSON, code blocks, curly braces {}, square brackets [], quoted key names, file names, or any technical/data-file formatting in your replies. Always translate the data into clear, organized, natural language: use short sentences, or a simple bulleted/numbered list when presenting multiple items or attributes. Formatting: Do NOT use markdown bold asterisks (**) or bullet asterisks (*) in your responses, especially in Arabic, as asterisks corrupt right-to-left text direction. Write clean natural text without asterisks, and for lists use clean bullet points (\u2022), dashes (-), or numbers (1, 2, 3). This applies no matter which language you are replying in (Arabic or English) and no matter which file type the data came from (JSON, CSV, Excel, PDF, or a Google Sheet). Truthfulness & Catalog Grounding: You must strictly base all statements regarding products, services, prices, stock, or offers ONLY on the company's verified Knowledge Base below. If the knowledge base does not contain the requested product or catalog, NEVER make up, invent, or guess products, prices, or inventory counts (such as laptops, phones, or gadgets); instead, politely state in the customer's language that this information is not currently available and offer to assist them or connect them to human support.";
     ANTI_HALLUCINATION_INSTRUCTION = "Strict Factuality & Anti-Hallucination Policy:\n1. Ground Truth Only: You represent ONLY this specific company/organization and must NEVER fabricate, assume, or hallucinate products, services, prices, discounts, stock quantities, or policies that are not explicitly documented in the provided Knowledge Base or Company Info.\n2. No Generic or Fake Catalogs: NEVER invent generic, demo, or placeholder items (such as laptops, smartphones, headphones, clothes, or made-up prices like $1200, $699, $89.5, etc.) if they are not part of the company's verified data.\n3. Missing Information Protocol: If a customer asks about products, services, pricing, or catalog items that are NOT mentioned in your knowledge sources, state politely and honestly (in Arabic if the customer writes Arabic, in English if English) that you do not have catalog or pricing details for those items at this time, and invite them to specify what they need or offer to connect them with customer service.\n4. Never pretend to be an all-purpose store or ecommerce shop unless the company's explicit knowledge base documents those specific items.";
-    CONVERSATIONAL_MEMORY_INSTRUCTION = "Conversational Memory & Customer Context Retention Rules:\n1. Active Context Retention: You must continuously remember all customer details (name, phone number, address, location, email, preferences) provided anywhere in the chat history.\n2. Strict Prohibition on Re-Asking Information: If the customer has ALREADY provided their name, phone number, address, or email at ANY point earlier in the conversation, you are STRICTLY FORBIDDEN from asking for that information again under any circumstances.\n3. Avoid Repetitive Lead Capture Prompts: Never interrupt or derail the conversation with generic templates like '\u0644\u062A\u0648\u0641\u064A\u0631 \u0623\u0641\u0636\u0644 \u062E\u062F\u0645\u0629 \u0644\u0643\u060C \u064A\u0631\u062C\u0649 \u062A\u0632\u0648\u064A\u062F\u064A \u0628\u0627\u0633\u0645\u0643 \u0627\u0644\u0643\u0627\u0645\u0644 \u0648\u0631\u0642\u0645 \u0647\u0627\u062A\u0641\u0643' or '\u064A\u0631\u062C\u0649 \u062A\u0632\u0648\u064A\u062F\u0646\u0627 \u0628\u0639\u0646\u0648\u0627\u0646\u0643 \u0648\u0631\u0642\u0645 \u0647\u0627\u062A\u0641\u0643' if you already know their details or if they already provided them. Proceed directly to answering the customer's question or assisting them with their inquiry.\n4. Natural Direct Answers: When a customer asks a question (such as '\u0644\u064A\u0633 \u0644\u062F\u064A\u0643\u0645 \u0641\u0631\u0648\u0639' or '\u0645\u0627 \u0645\u0648\u0642\u0639 \u0627\u0644\u0634\u0631\u0643\u0629' or questions about prices, products, or delivery), answer the question directly and politely based on your knowledge base without demanding their name or phone number if they already provided them.";
+    CONVERSATIONAL_MEMORY_INSTRUCTION = "Conversational Memory & Customer Context Retention Rules:\n1. Active Context Retention: You must continuously remember all customer details (name, phone number, address, location, email, preferences) provided anywhere in the chat history.\n2. Strict Prohibition on Re-Asking Information: If the customer's name, phone number, address, or email is already known or was provided at ANY point earlier in the conversation, you are STRICTLY FORBIDDEN from asking for that information again.\n3. Answer Questions Directly: When a customer asks a question (such as '\u0644\u064A\u0633 \u0644\u062F\u064A\u0643\u0645 \u0641\u0631\u0648\u0639' or inquiries about store locations, products, prices, or shipping), answer the question directly, concisely, and politely based on your company information and knowledge base. If the company operates exclusively as an online store without physical branches, state that clearly and confirm that orders are delivered directly to their address.\n4. Never Stall or Intercept with Contact Requests: Once customer contact details are known, never interrupt or replace your answer with requests for contact information.";
     DEFAULT_PERSONALITY_PROMPT = "Personality & Instructions:\n- You are a polite, professional, and helpful customer support assistant.\n- In your very first message, greet the customer warmly introducing the company brand name, answer their inquiry directly and concisely, and politely ask for their full name and phone number to follow up and assist them best.\n- Continuous Retention: Remember the customer's name, phone number, and preferences throughout the conversation. Once provided, never ask for them again under any circumstances.";
     DEFAULT_SECURITY_PROMPT = `# CHAT PROTECTION AND INPUT SANITIZATION
 
@@ -61913,7 +61952,7 @@ var init_language = __esm({
 import OpenAI5 from "openai";
 import Anthropic2 from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI as GoogleGenerativeAI4 } from "@google/generative-ai";
-async function callAI(company, userMessage, history, overrideAiConfig, knownCustomerContext, isFirstMessage) {
+async function callAI(company, userMessage, history2, overrideAiConfig, knownCustomerContext, isFirstMessage) {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   let sysContent = company.systemPrompt?.trim() || DEFAULT_PERSONALITY_PROMPT;
   sysContent += HANDOFF_SYSTEM_PROMPT;
@@ -61958,7 +61997,7 @@ ${company.generalInfo}`;
   if (provider === "anthropic") {
     const client = new Anthropic2({ apiKey });
     const effectiveModel = sanitizeAnthropicModel(model);
-    const anthropicMsgs = formatAnthropicMessages(history, userMessage);
+    const anthropicMsgs = formatAnthropicMessages(history2, userMessage);
     let resp;
     try {
       resp = await client.messages.create({
@@ -62000,7 +62039,7 @@ ${company.generalInfo}`;
       systemInstruction: sysContent || void 0
     });
     const chat = genModel.startChat({
-      history: formatGeminiHistory(history)
+      history: formatGeminiHistory(history2)
     });
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
@@ -62013,7 +62052,7 @@ ${company.generalInfo}`;
     const effectiveModel = sanitizeOpenRouterModel(model);
     const msgs = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
-    history.forEach((h) => msgs.push({ role: h.role, content: h.content }));
+    history2.forEach((h) => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     let completion;
     try {
@@ -62034,7 +62073,7 @@ ${company.generalInfo}`;
     const openai3 = new OpenAI5({ apiKey });
     const msgs = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
-    history.forEach((h) => msgs.push({ role: h.role, content: h.content }));
+    history2.forEach((h) => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     const completion = await openai3.chat.completions.create(
       buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
@@ -62188,25 +62227,17 @@ var init_whatsapp = __esm({
                   { channel: "whatsapp", sessionId, initialMessage: userText }
                 ).catch((e) => logger.warn({ err: e, companyId: company.id }, "WhatsApp new conversation email failed"));
               }
-              const history = [];
+              const history2 = [];
               for (const log of priorLogs) {
-                history.push({ role: "user", content: log.customerMessage });
-                if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
+                history2.push({ role: "user", content: log.customerMessage });
+                if (log.botResponse) history2.push({ role: "assistant", content: log.botResponse });
               }
               let knownCustomerContext = "";
               try {
                 const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-                if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-                  const details = [];
-                  if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-                  if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-                  if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-                  if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-                  knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-                }
+                knownCustomerContext = buildKnownCustomerContext(knownLead, history2);
               } catch {
+                knownCustomerContext = buildKnownCustomerContext(null, history2);
               }
               if (isSessionInHandoff(priorLogs)) {
                 await db.insert(chatLogsTable).values({
@@ -62222,7 +62253,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
               }
               let rawReply;
               try {
-                rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
+                rawReply = await callAI(company, userText, history2, aiConfig, knownCustomerContext, isFirstMessage);
               } catch (aiErr) {
                 void reportSystemMalfunction(
                   `WhatsApp AI Generation Error: ${company.name}`,
@@ -62350,7 +62381,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
               }
               await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
               void syncConversationToSheet(company, [
-                ...history,
+                ...history2,
                 { role: "user", content: userText },
                 { role: "assistant", content: aiReply }
               ]);
@@ -62474,25 +62505,17 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
                   { channel: "whatsapp", sessionId, initialMessage: userText }
                 ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom WhatsApp new conversation email failed"));
               }
-              const history = [];
+              const history2 = [];
               for (const log of priorLogs) {
-                history.push({ role: "user", content: log.customerMessage });
-                if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
+                history2.push({ role: "user", content: log.customerMessage });
+                if (log.botResponse) history2.push({ role: "assistant", content: log.botResponse });
               }
               let knownCustomerContext = "";
               try {
                 const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-                if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-                  const details = [];
-                  if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-                  if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-                  if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-                  if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-                  knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-                }
+                knownCustomerContext = buildKnownCustomerContext(knownLead, history2);
               } catch {
+                knownCustomerContext = buildKnownCustomerContext(null, history2);
               }
               if (isSessionInHandoff(priorLogs)) {
                 await db.insert(chatLogsTable).values({
@@ -62507,7 +62530,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
               }
               let rawReply;
               try {
-                rawReply = await callAI(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
+                rawReply = await callAI(company, userText, history2, aiConfig, knownCustomerContext, isFirstMessage);
               } catch (aiErr) {
                 void reportSystemMalfunction(
                   `Custom WhatsApp AI Generation Error: ${company.name}`,
@@ -62635,7 +62658,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
               }
               await sendWhatsAppMessage(phoneNumberId, company.whatsappApiToken, senderPhone, aiReply);
               void syncConversationToSheet(company, [
-                ...history,
+                ...history2,
                 { role: "user", content: userText },
                 { role: "assistant", content: aiReply }
               ]);
@@ -97831,7 +97854,7 @@ function telegramWebhookSecret(token) {
   return crypto6.createHash("sha256").update(token).digest("hex").slice(0, 32);
 }
 var router5 = (0, import_express5.Router)();
-async function callAI2(company, userMessage, history, overrideAiConfig, knownCustomerContext, isFirstMessage) {
+async function callAI2(company, userMessage, history2, overrideAiConfig, knownCustomerContext, isFirstMessage) {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   let sysContent = company.systemPrompt?.trim() || DEFAULT_PERSONALITY_PROMPT;
   sysContent += HANDOFF_SYSTEM_PROMPT;
@@ -97876,7 +97899,7 @@ ${company.generalInfo}`;
   if (provider === "anthropic") {
     const client = new Anthropic3({ apiKey });
     const effectiveModel = sanitizeAnthropicModel(model);
-    const anthropicMsgs = formatAnthropicMessages(history, userMessage);
+    const anthropicMsgs = formatAnthropicMessages(history2, userMessage);
     let resp;
     try {
       resp = await client.messages.create({
@@ -97918,7 +97941,7 @@ ${company.generalInfo}`;
       systemInstruction: sysContent || void 0
     });
     const chat = genModel.startChat({
-      history: formatGeminiHistory(history)
+      history: formatGeminiHistory(history2)
     });
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
@@ -97931,7 +97954,7 @@ ${company.generalInfo}`;
     const effectiveModel = sanitizeOpenRouterModel(model);
     const msgs = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
-    history.forEach((h) => msgs.push({ role: h.role, content: h.content }));
+    history2.forEach((h) => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     let completion;
     try {
@@ -97952,7 +97975,7 @@ ${company.generalInfo}`;
     const openai3 = new OpenAI7({ apiKey });
     const msgs = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
-    history.forEach((h) => msgs.push({ role: h.role, content: h.content }));
+    history2.forEach((h) => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     const completion = await openai3.chat.completions.create(
       buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
@@ -98072,25 +98095,17 @@ router5.post(["/telegram/webhook/:secret", "/webhook/telegram/:secret"], webhook
         { channel: "telegram", sessionId, initialMessage: userText }
       ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Telegram new conversation email failed"));
     }
-    const history = [];
+    const history2 = [];
     for (const log of priorLogs) {
-      history.push({ role: "user", content: log.customerMessage });
-      if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
+      history2.push({ role: "user", content: log.customerMessage });
+      if (log.botResponse) history2.push({ role: "assistant", content: log.botResponse });
     }
     let knownCustomerContext = "";
     try {
       const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-      if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-        const details = [];
-        if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-        if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-        if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-        if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-        knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-      }
+      knownCustomerContext = buildKnownCustomerContext(knownLead, history2);
     } catch {
+      knownCustomerContext = buildKnownCustomerContext(null, history2);
     }
     if (isSessionInHandoff(priorLogs)) {
       await db.insert(chatLogsTable).values({
@@ -98106,7 +98121,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
     }
     let rawReply;
     try {
-      rawReply = await callAI2(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
+      rawReply = await callAI2(company, userText, history2, aiConfig, knownCustomerContext, isFirstMessage);
     } catch (aiErr) {
       void reportSystemMalfunction(
         `Telegram AI Generation Error: ${company.name}`,
@@ -98234,7 +98249,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
     }
     await sendTelegramMessage(company.telegramBotApiKey, chatId, aiReply);
     void syncConversationToSheet(company, [
-      ...history,
+      ...history2,
       { role: "user", content: userText },
       { role: "assistant", content: aiReply }
     ]);
@@ -98340,7 +98355,7 @@ import OpenAI8 from "openai";
 import Anthropic4 from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI as GoogleGenerativeAI6 } from "@google/generative-ai";
 var router6 = (0, import_express6.Router)();
-async function callAI3(company, userMessage, history, overrideAiConfig, knownCustomerContext, isFirstMessage) {
+async function callAI3(company, userMessage, history2, overrideAiConfig, knownCustomerContext, isFirstMessage) {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   let sysContent = company.systemPrompt?.trim() || DEFAULT_PERSONALITY_PROMPT;
   sysContent += HANDOFF_SYSTEM_PROMPT;
@@ -98385,7 +98400,7 @@ ${company.generalInfo}`;
   if (provider === "anthropic") {
     const client = new Anthropic4({ apiKey });
     const effectiveModel = sanitizeAnthropicModel(model);
-    const anthropicMsgs = formatAnthropicMessages(history, userMessage);
+    const anthropicMsgs = formatAnthropicMessages(history2, userMessage);
     let resp;
     try {
       resp = await client.messages.create({
@@ -98427,7 +98442,7 @@ ${company.generalInfo}`;
       systemInstruction: sysContent || void 0
     });
     const chat = genModel.startChat({
-      history: formatGeminiHistory(history)
+      history: formatGeminiHistory(history2)
     });
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
@@ -98440,7 +98455,7 @@ ${company.generalInfo}`;
     const effectiveModel = sanitizeOpenRouterModel(model);
     const msgs = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
-    history.forEach((h) => msgs.push({ role: h.role, content: h.content }));
+    history2.forEach((h) => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     let completion;
     try {
@@ -98461,7 +98476,7 @@ ${company.generalInfo}`;
     const openai3 = new OpenAI8({ apiKey });
     const msgs = [];
     if (sysContent) msgs.push({ role: "system", content: sysContent });
-    history.forEach((h) => msgs.push({ role: h.role, content: h.content }));
+    history2.forEach((h) => msgs.push({ role: h.role, content: h.content }));
     msgs.push({ role: "user", content: userMessage });
     const completion = await openai3.chat.completions.create(
       buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
@@ -98560,25 +98575,17 @@ router6.post(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, verif
             { channel: "messenger", sessionId, initialMessage: userText }
           ).catch((e) => logger.warn({ err: e, companyId: company.id }, "Messenger new conversation email failed"));
         }
-        const history = [];
+        const history2 = [];
         for (const log of priorLogs) {
-          history.push({ role: "user", content: log.customerMessage });
-          if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
+          history2.push({ role: "user", content: log.customerMessage });
+          if (log.botResponse) history2.push({ role: "assistant", content: log.botResponse });
         }
         let knownCustomerContext = "";
         try {
           const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-          if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-            const details = [];
-            if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-            if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-            if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-            if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-            knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-          }
+          knownCustomerContext = buildKnownCustomerContext(knownLead, history2);
         } catch {
+          knownCustomerContext = buildKnownCustomerContext(null, history2);
         }
         if (isSessionInHandoff(priorLogs)) {
           await db.insert(chatLogsTable).values({
@@ -98594,7 +98601,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
         }
         let rawReply;
         try {
-          rawReply = await callAI3(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
+          rawReply = await callAI3(company, userText, history2, aiConfig, knownCustomerContext, isFirstMessage);
         } catch (aiErr) {
           void reportSystemMalfunction(
             `Messenger AI Generation Error: ${company.name}`,
@@ -98712,7 +98719,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
         triggerNewMessageNotification(company, sessionId, "messenger", userText);
         await sendMessengerMessage(company.messengerApiKey, senderId, aiReply);
         void syncConversationToSheet(company, [
-          ...history,
+          ...history2,
           { role: "user", content: userText },
           { role: "assistant", content: aiReply }
         ]);
@@ -98810,25 +98817,17 @@ router6.post(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], webho
             { channel: "messenger", sessionId, initialMessage: userText }
           ).catch((e) => logger.warn({ err: e, companyId: currentCompany.id }, "Custom Messenger new conversation email failed"));
         }
-        const history = [];
+        const history2 = [];
         for (const log of priorLogs) {
-          history.push({ role: "user", content: log.customerMessage });
-          if (log.botResponse) history.push({ role: "assistant", content: log.botResponse });
+          history2.push({ role: "user", content: log.customerMessage });
+          if (log.botResponse) history2.push({ role: "assistant", content: log.botResponse });
         }
         let knownCustomerContext = "";
         try {
           const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-          if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-            const details = [];
-            if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-            if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-            if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-            if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-            knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-          }
+          knownCustomerContext = buildKnownCustomerContext(knownLead, history2);
         } catch {
+          knownCustomerContext = buildKnownCustomerContext(null, history2);
         }
         if (isSessionInHandoff(priorLogs)) {
           await db.insert(chatLogsTable).values({
@@ -98843,7 +98842,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
         }
         let rawReply;
         try {
-          rawReply = await callAI3(company, userText, history, aiConfig, knownCustomerContext, isFirstMessage);
+          rawReply = await callAI3(company, userText, history2, aiConfig, knownCustomerContext, isFirstMessage);
         } catch (aiErr) {
           void reportSystemMalfunction(
             `Custom Messenger AI Generation Error: ${company.name}`,
@@ -98961,7 +98960,7 @@ IMPORTANT: The customer has ALREADY provided these contact details earlier in th
         triggerNewMessageNotification(company, sessionId, "messenger", userText);
         await sendMessengerMessage(company.messengerApiKey, senderId, aiReply);
         void syncConversationToSheet(company, [
-          ...history,
+          ...history2,
           { role: "user", content: userText },
           { role: "assistant", content: aiReply }
         ]);
@@ -101536,8 +101535,8 @@ router7.post("/client/multi-ai/chat", async (req, res) => {
       const effectiveModel = sanitizeGoogleModel(model);
       const genModel = genAI.getGenerativeModel({ model: effectiveModel, systemInstruction: SYSTEM });
       const lastMsg = formatted[formatted.length - 1].content;
-      const history = formatGeminiHistory(formatted.slice(0, -1));
-      const chat = genModel.startChat({ history });
+      const history2 = formatGeminiHistory(formatted.slice(0, -1));
+      const chat = genModel.startChat({ history: history2 });
       const result = await chat.sendMessageStream(lastMsg);
       for await (const chunk of result.stream) {
         const text2 = chunk.text();
@@ -102047,7 +102046,7 @@ import OpenAI9 from "openai";
 import Anthropic5 from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI as GoogleGenerativeAI7 } from "@google/generative-ai";
 var router8 = (0, import_express8.Router)();
-async function callAI4(company, userMessage, history, overrideAiConfig, knownCustomerContext, isFirstMessage) {
+async function callAI4(company, userMessage, history2, overrideAiConfig, knownCustomerContext, isFirstMessage) {
   const { apiKey, provider, model } = overrideAiConfig ?? await resolveCompanyAi(company);
   let sysContent = company.systemPrompt?.trim() || DEFAULT_PERSONALITY_PROMPT;
   sysContent += HANDOFF_SYSTEM_PROMPT;
@@ -102092,7 +102091,7 @@ ${company.generalInfo}`;
   if (provider === "anthropic") {
     const client = new Anthropic5({ apiKey });
     const effectiveModel = sanitizeAnthropicModel(model);
-    const anthropicMsgs = formatAnthropicMessages(history, userMessage);
+    const anthropicMsgs = formatAnthropicMessages(history2, userMessage);
     let resp;
     try {
       resp = await client.messages.create({
@@ -102133,7 +102132,7 @@ ${company.generalInfo}`;
       model: effectiveModel,
       systemInstruction: sysContent || void 0
     });
-    const geminiHistory = formatGeminiHistory(history);
+    const geminiHistory = formatGeminiHistory(history2);
     const chat = genModel.startChat({ history: geminiHistory });
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
@@ -102146,7 +102145,7 @@ ${company.generalInfo}`;
     const effectiveModel = sanitizeOpenRouterModel(model);
     const messages2 = [];
     if (sysContent) messages2.push({ role: "system", content: sysContent });
-    for (const turn of history) {
+    for (const turn of history2) {
       messages2.push({ role: turn.role, content: turn.content });
     }
     messages2.push({ role: "user", content: userMessage });
@@ -102169,7 +102168,7 @@ ${company.generalInfo}`;
     const effectiveModel = sanitizeOpenAiModel(model);
     const messages2 = [];
     if (sysContent) messages2.push({ role: "system", content: sysContent });
-    for (const turn of history) {
+    for (const turn of history2) {
       messages2.push({ role: turn.role, content: turn.content });
     }
     messages2.push({ role: "user", content: userMessage });
@@ -102237,17 +102236,9 @@ router8.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) 
       }
       try {
         const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-        if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-          const details = [];
-          if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-          if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-          if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-          if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-          knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-        }
+        knownCustomerContext = buildKnownCustomerContext(knownLead, conversationHistory);
       } catch {
+        knownCustomerContext = buildKnownCustomerContext(null, conversationHistory);
       }
     }
     const inHandoff = isSessionInHandoff(priorLogs);
@@ -102832,17 +102823,9 @@ router9.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => 
       }
       try {
         const [knownLead] = await db.select().from(leadsTable).where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId))).limit(1);
-        if (knownLead && (knownLead.name || knownLead.phone || knownLead.email || knownLead.notes)) {
-          const details = [];
-          if (knownLead.name) details.push(`- Customer Name: ${knownLead.name}`);
-          if (knownLead.phone) details.push(`- Customer Phone: ${knownLead.phone}`);
-          if (knownLead.email) details.push(`- Customer Email: ${knownLead.email}`);
-          if (knownLead.notes) details.push(`- Customer Address / Notes: ${knownLead.notes}`);
-          knownCustomerContext = `### VERIFIED CUSTOMER PROFILE (ALREADY PROVIDED BY USER):
-${details.join("\n")}
-IMPORTANT: The customer has ALREADY provided these contact details earlier in this conversation. You must NEVER ask for their name, phone number, address, or email again. Address them naturally and answer their question directly without re-requesting contact info!`;
-        }
+        knownCustomerContext = buildKnownCustomerContext(knownLead, history);
       } catch {
+        knownCustomerContext = buildKnownCustomerContext(null, history);
       }
     }
     let sysContent = company.systemPrompt?.trim() || DEFAULT_PERSONALITY_PROMPT;
@@ -102935,8 +102918,8 @@ ${company.generalInfo}`;
         model: effectiveModel,
         systemInstruction: sysContent || void 0
       });
-      const history = formatGeminiHistory(conversationHistory);
-      const chat = genModel.startChat({ history });
+      const history2 = formatGeminiHistory(conversationHistory);
+      const chat = genModel.startChat({ history: history2 });
       const result = await chat.sendMessage(message.trim());
       aiReply = result.response.text();
     } else if (provider === "openrouter") {
@@ -103308,8 +103291,8 @@ router10.post("/openai/conversations/:id/messages", async (req, res) => {
       return;
     }
     await db.insert(messages).values({ conversationId: id, role: "user", content: userContent });
-    const history = await db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(asc(messages.createdAt));
-    const chatMessages = history.map((m) => ({
+    const history2 = await db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(asc(messages.createdAt));
+    const chatMessages = history2.map((m) => ({
       role: m.role,
       content: m.content
     }));
@@ -103336,7 +103319,7 @@ router10.post("/openai/conversations/:id/messages", async (req, res) => {
       }
     }
     await db.insert(messages).values({ conversationId: id, role: "assistant", content: fullResponse });
-    if (conv.title === "New Chat" && history.length === 1) {
+    if (conv.title === "New Chat" && history2.length === 1) {
       await db.update(conversations).set({ title: userContent.slice(0, 60).trim() }).where(eq(conversations.id, id));
     }
     res.write(`data: ${JSON.stringify({ done: true })}
