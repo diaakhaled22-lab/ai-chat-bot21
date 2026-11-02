@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead, useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles, Clock, CalendarRange, LifeBuoy, AlertTriangle } from 'lucide-react';
+import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles, Clock, CalendarRange } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -285,6 +285,7 @@ export default function ClientUniversalChat() {
 
     const map = new Map<string, typeof logs>();
     logs.forEach(log => {
+      if (log.sessionId && log.sessionId.startsWith("ticket_")) return;
       const key = log.sessionId || `msg_${log.id}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(log);
@@ -316,7 +317,6 @@ export default function ClientUniversalChat() {
         totalSessions: 0,
         todaySessions: 0,
         activeHandoffCount: 0,
-        ticketsCount: 0,
         unreadCount: 0,
         aiAutomatedRate: 100,
         channelCounts: { whatsapp: 0, telegram: 0, messenger: 0, website: 0 },
@@ -326,7 +326,6 @@ export default function ClientUniversalChat() {
     const todayStr = new Date().toDateString();
     let todayCount = 0;
     let handoffCount = 0;
-    let ticketsCount = 0;
     const channelCounts: Record<string, number> = { whatsapp: 0, telegram: 0, messenger: 0, website: 0 };
 
     sessions.forEach((s) => {
@@ -336,19 +335,16 @@ export default function ClientUniversalChat() {
       if (s.channel && channelCounts[s.channel] !== undefined) {
         channelCounts[s.channel]++;
       }
-      if (s.id.startsWith("ticket_")) {
-        ticketsCount++;
-      }
       for (let i = s.messages.length - 1; i >= 0; i--) {
         if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
-        if ((s.messages[i] as any).isHandoff || s.id.startsWith("ticket_")) {
+        if ((s.messages[i] as any).isHandoff) {
           handoffCount++;
           break;
         }
       }
     });
 
-    const unread = logs.filter((l) => !l.isRead).length;
+    const unread = logs.filter((l) => !l.isRead && !l.sessionId?.startsWith("ticket_")).length;
     const total = sessions.length;
     const aiRate = total > 0 ? Math.round(((total - handoffCount) / total) * 100) : 100;
 
@@ -356,7 +352,6 @@ export default function ClientUniversalChat() {
       totalSessions: total,
       todaySessions: todayCount,
       activeHandoffCount: handoffCount,
-      ticketsCount,
       unreadCount: unread,
       aiAutomatedRate: Math.max(0, aiRate),
       channelCounts,
@@ -385,8 +380,6 @@ export default function ClientUniversalChat() {
       case "telegram": return <MessageCircle className="w-4 h-4 text-sky-500 shrink-0" />;
       case "messenger": return <MessageCircle className="w-4 h-4 text-blue-500 shrink-0" />;
       case "website": return <Globe className="w-4 h-4 text-purple-500 shrink-0" />;
-      case "problems": return <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />;
-      case "tickets": return <LifeBuoy className="w-4 h-4 text-indigo-500 shrink-0" />;
       case "handoff": return <UserCheck className="w-4 h-4 text-amber-500 shrink-0" />;
       default: return <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />;
     }
@@ -398,25 +391,7 @@ export default function ClientUniversalChat() {
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
-      if (channelFilter === "problems") {
-        let isProblem = s.id.startsWith("ticket_");
-        if (!isProblem) {
-          for (let i = s.messages.length - 1; i >= 0; i--) {
-            if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
-            if (
-              (s.messages[i] as any).isHandoff ||
-              (s.messages[i].customerMessage &&
-                /مشكل|عطل|شكوى|توقف|خربان|معلق|تذكرة|problem|issue|broken|bug|error/i.test(s.messages[i].customerMessage!))
-            ) {
-              isProblem = true;
-              break;
-            }
-          }
-        }
-        if (!isProblem) return false;
-      } else if (channelFilter === "tickets") {
-        if (!s.id.startsWith("ticket_")) return false;
-      } else if (channelFilter === "handoff") {
+      if (channelFilter === "handoff") {
         let hasHandoff = false;
         for (let i = s.messages.length - 1; i >= 0; i--) {
           if (s.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
@@ -584,7 +559,7 @@ export default function ClientUniversalChat() {
       </Card>
 
       {/* KPI Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 shrink-0">
         {/* Total Conversations */}
         <Card 
           onClick={() => setChannelFilter("all")}
@@ -602,31 +577,6 @@ export default function ClientUniversalChat() {
             <span className="text-2xl font-bold tracking-tight tabular-nums">{kpis.totalSessions}</span>
             <span className="text-[11px] text-muted-foreground">
               {kpis.todaySessions} {lang === "ar" ? "اليوم" : "today"}
-            </span>
-          </div>
-        </Card>
-
-        {/* Active Problems / Handoffs */}
-        <Card 
-          onClick={() => setChannelFilter(channelFilter === "problems" ? "all" : "problems")}
-          className={`p-4 border transition-all cursor-pointer border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 ${channelFilter === "problems" ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30" : kpis.activeHandoffCount > 0 ? "border-amber-500/40 bg-amber-500/5" : "border-[#DCE7FF] bg-card/60"}`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
-              {lang === "ar" ? "المشاكل والشكاوى المعلقة" : "Pending Problems & Complaints"}
-            </span>
-            <div className={`p-2 rounded-lg ${kpis.activeHandoffCount > 0 ? "bg-amber-500/20 text-amber-500 animate-pulse" : "bg-muted text-muted-foreground"}`}>
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className={`text-2xl font-bold tracking-tight tabular-nums ${kpis.activeHandoffCount > 0 ? "text-amber-500" : ""}`}>
-              {kpis.activeHandoffCount}
-            </span>
-            <span className="text-[11px] text-muted-foreground">
-              {kpis.activeHandoffCount > 0 
-                ? (lang === "ar" ? "تتطلب التدخل" : "needs action")
-                : (lang === "ar" ? "لا توجد معلقة" : "all resolved")}
             </span>
           </div>
         </Card>
@@ -693,8 +643,6 @@ export default function ClientUniversalChat() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{lang === "ar" ? "كل القنوات والمحادثات" : "All Channels"} ({sessions.length})</SelectItem>
-              <SelectItem value="problems">{lang === "ar" ? "⚠️ المشاكل والشكاوى" : "⚠️ Problems & Complaints"} ({kpis.activeHandoffCount})</SelectItem>
-              <SelectItem value="tickets">{lang === "ar" ? "🎫 تذاكر الدعم" : "🎫 Support Tickets"} ({kpis.ticketsCount})</SelectItem>
               <SelectItem value="handoff">{lang === "ar" ? "تدخل بشري" : "Human Handoff"}</SelectItem>
               <SelectItem value="whatsapp">WhatsApp ({kpis.channelCounts.whatsapp || 0})</SelectItem>
               <SelectItem value="telegram">Telegram ({kpis.channelCounts.telegram || 0})</SelectItem>
@@ -756,21 +704,14 @@ export default function ClientUniversalChat() {
               filteredSessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
                 const displayName = session.userName || extractUserName(session.messages, leadsBySession.get(session.id)) || formatFallbackUser(session, lang);
-                const isTicket = session.id.startsWith("ticket_");
-                let isSessionComplaint = isTicket;
-                if (!isSessionComplaint) {
+                const sessionHandoff = (() => {
                   for (let i = session.messages.length - 1; i >= 0; i--) {
-                    if (session.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
-                    if (
-                      (session.messages[i] as any).isHandoff ||
-                      (session.messages[i].customerMessage &&
-                        /مشكل|عطل|شكوى|توقف|خربان|معلق|تذكرة|problem|issue|broken|bug|error/i.test(session.messages[i].customerMessage!))
-                    ) {
-                      isSessionComplaint = true;
-                      break;
-                    }
+                    if (session.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
+                    if ((session.messages[i] as any).isHandoff) return true;
                   }
-                }
+                  return false;
+                })();
+
                 return (
                   <div
                     key={session.id}
@@ -779,11 +720,7 @@ export default function ClientUniversalChat() {
                     className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative cursor-pointer ${isSelected ? 'bg-muted border-l-4 border-l-primary' : ''}`}
                   >
                     <div className="mt-1 relative">
-                      {isTicket ? (
-                        <LifeBuoy className="w-4 h-4 text-indigo-500" />
-                      ) : (
-                        getChannelIcon(session.channel)
-                      )}
+                      {getChannelIcon(session.channel)}
                       {!localReadSessions.has(session.id) && session.messages.some(m => !m.isRead) && (
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
                       )}
@@ -794,15 +731,11 @@ export default function ClientUniversalChat() {
                           <span className="text-sm font-semibold truncate capitalize" title={displayName}>
                             {displayName}
                           </span>
-                          {isTicket ? (
-                            <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-500 border-indigo-500/20 font-semibold px-1 py-0 shrink-0">
-                              🎫 {lang === "ar" ? "تذكرة مشكلة" : "Ticket"}
-                            </Badge>
-                          ) : isSessionComplaint ? (
+                          {sessionHandoff && (
                             <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-semibold px-1 py-0 shrink-0">
-                              ⚠️ {lang === "ar" ? "مشكلة / شكوى" : "Complaint"}
+                              {lang === "ar" ? "تدخل بشري" : "Live Agent"}
                             </Badge>
-                          ) : null}
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[10px] text-muted-foreground">
@@ -854,11 +787,7 @@ export default function ClientUniversalChat() {
                       <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                       {selectedSession.id.startsWith("ticket_") ? (
-                         <LifeBuoy className="w-5 h-5 text-indigo-500" />
-                       ) : (
-                         getChannelIcon(selectedSession.channel)
-                       )}
+                       {getChannelIcon(selectedSession.channel)}
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm capitalize">
@@ -867,25 +796,12 @@ export default function ClientUniversalChat() {
                       <p className="text-xs text-muted-foreground">{selectedSession.messages.length} {lang === "ar" ? "رسالة" : "messages"}</p>
                     </div>
                   </div>
-                  {selectedSession.id.startsWith("ticket_") ? (
-                    <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/30 gap-1 font-semibold">
-                      🎫 {lang === "ar" ? "تذكرة دعم فني" : "Support Ticket"}
-                    </Badge>
-                  ) : isHandoff ? (
+                  {isHandoff && (
                     <Badge variant="destructive" className="animate-pulse">
-                      {lang === "ar" ? "تدخل بشري / شكوى نشطة" : "Active Handoff / Complaint"}
+                      {lang === "ar" ? "تدخل بشري نشط" : "Live Human Handoff"}
                     </Badge>
-                  ) : null}
+                  )}
                 </div>
-
-                {selectedSession.id.startsWith("ticket_") && (
-                  <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-2.5 flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <LifeBuoy className="w-4 h-4 text-indigo-500 shrink-0" />
-                      <span>{lang === "ar" ? "هذه المحادثة مرتبطة بتذكرة مشكلة مرسلة للدعم الفني. تظهر ردودك وحلول المشرفين هنا مباشرة." : "This conversation is linked to a customer problem ticket."}</span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Chat Messages */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -929,18 +845,14 @@ export default function ClientUniversalChat() {
 
                 {/* Reply Box */}
                 <div className="p-4 border-t border-border bg-card flex flex-col gap-3 shrink-0">
-                  {(isHandoff || selectedSession.id.startsWith("ticket_")) && (
+                  {isHandoff && (
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs text-muted-foreground">
-                        {selectedSession.id.startsWith("ticket_")
-                          ? (lang === "ar" ? "يمكنك الرد المباشر على التذكرة أو تأكيد حلها وإغلاقها." : "You can reply to this ticket or resolve and close it.")
-                          : (lang === "ar" ? "أنت تتحدث حالياً مع المستخدم مباشرة." : "You are currently speaking directly with the user.")}
+                        {lang === "ar" ? "أنت تتحدث حالياً مع المستخدم مباشرة." : "You are currently speaking directly with the user."}
                       </span>
-                      <Button size="sm" variant={selectedSession.id.startsWith("ticket_") ? "default" : "outline"} onClick={handleResolveHandoff} disabled={useReplyMutation.isPending}>
+                      <Button size="sm" variant="outline" onClick={handleResolveHandoff} disabled={useReplyMutation.isPending}>
                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                        {selectedSession.id.startsWith("ticket_")
-                          ? (lang === "ar" ? "حل المشكلة وإغلاقها" : "Resolve Problem")
-                          : (lang === "ar" ? "إنهاء التدخل" : "Resolve Handoff")}
+                        {lang === "ar" ? "إنهاء التدخل" : "Resolve Handoff"}
                       </Button>
                     </div>
                   )}

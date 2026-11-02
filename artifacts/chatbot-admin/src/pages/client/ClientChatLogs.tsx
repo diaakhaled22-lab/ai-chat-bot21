@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useMarkClientLogAsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot, ArrowLeft, Smile, Frown, Meh, Angry, LifeBuoy, AlertTriangle } from 'lucide-react';
+import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot, ArrowLeft, Smile, Frown, Meh, Angry } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
@@ -143,13 +143,9 @@ export default function ClientChatLogs() {
   const sessions = useMemo(() => {
     if (!logs) return [];
     
-    // First, apply text search filter and custom problems/tickets filter
+    // First, apply text search filter and exclude tickets
     const filteredLogs = logs.filter(log => {
-      if (channelFilter === "tickets" && !log.sessionId?.startsWith("ticket_")) return false;
-      if (channelFilter === "problems") {
-        const isProb = log.sessionId?.startsWith("ticket_") || (log as any).isHandoff || (log.customerMessage && /مشكل|عطل|شكوى|توقف|خربان|معلق|تذكرة|problem|issue|broken|bug|error/i.test(log.customerMessage));
-        if (!isProb) return false;
-      }
+      if (log.sessionId && log.sessionId.startsWith("ticket_")) return false;
 
       if (!search) return true;
       const searchLower = search.toLowerCase();
@@ -445,8 +441,6 @@ export default function ClientChatLogs() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("chat_logs_channel_all")}</SelectItem>
-              <SelectItem value="problems">{lang === "ar" ? "⚠️ المشاكل والشكاوى" : "⚠️ Problems & Complaints"}</SelectItem>
-              <SelectItem value="tickets">{lang === "ar" ? "🎫 تذاكر الدعم" : "🎫 Support Tickets"}</SelectItem>
               <SelectItem value="telegram">{t("chat_logs_channel_telegram")}</SelectItem>
               <SelectItem value="whatsapp">{t("chat_logs_channel_whatsapp")}</SelectItem>
               <SelectItem value="messenger">{t("chat_logs_channel_messenger")}</SelectItem>
@@ -503,21 +497,14 @@ export default function ClientChatLogs() {
               sessions.map((session) => {
                 const isSelected = selectedSession?.id === session.id;
                 const userName = extractUserName(session.messages);
-                const isTicket = session.id.startsWith("ticket_");
-                let isProblem = isTicket;
-                if (!isProblem) {
+                const sessionHandoff = (() => {
                   for (let i = session.messages.length - 1; i >= 0; i--) {
-                    if (session.messages[i].botResponse === "[HANDOFF_RESOLVED]") break;
-                    if (
-                      (session.messages[i] as any).isHandoff ||
-                      (session.messages[i].customerMessage &&
-                        /مشكل|عطل|شكوى|توقف|خربان|معلق|تذكرة|problem|issue|broken|bug|error/i.test(session.messages[i].customerMessage!))
-                    ) {
-                      isProblem = true;
-                      break;
-                    }
+                    if (session.messages[i].botResponse === "[HANDOFF_RESOLVED]") return false;
+                    if ((session.messages[i] as any).isHandoff) return true;
                   }
-                }
+                  return false;
+                })();
+
                 return (
                   <div
                     key={session.id}
@@ -526,11 +513,7 @@ export default function ClientChatLogs() {
                     className={`w-full text-start p-4 border-b border-border transition-colors hover:bg-muted/50 flex items-start gap-3 relative group cursor-pointer ${isSelected ? 'bg-muted border-l-4 border-l-primary' : ''}`}
                   >
                     <div className="mt-1 relative">
-                      {isTicket ? (
-                        <LifeBuoy className="w-4 h-4 text-indigo-500" />
-                      ) : (
-                        getChannelIcon(session.channel)
-                      )}
+                      {getChannelIcon(session.channel)}
                       {!localReadSessions.has(session.id) && session.messages.some(m => !m.isRead) && (
                         <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 dark:bg-green-400 border-2 border-card rounded-full" title={lang === "ar" ? "رسالة جديدة" : "New message"} />
                       )}
@@ -541,15 +524,11 @@ export default function ClientChatLogs() {
                           <span className="text-sm font-semibold truncate capitalize">
                             {userName ? userName : `${session.channel} ${lang === "ar" ? "مستخدم" : "User"}`}
                           </span>
-                          {isTicket ? (
-                            <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-500 border-indigo-500/20 font-semibold px-1 py-0 shrink-0">
-                              🎫 {lang === "ar" ? "تذكرة مشكلة" : "Ticket"}
-                            </Badge>
-                          ) : isProblem ? (
+                          {sessionHandoff && (
                             <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-semibold px-1 py-0 shrink-0">
-                              ⚠️ {lang === "ar" ? "مشكلة / شكوى" : "Complaint"}
+                              {lang === "ar" ? "تدخل بشري" : "Live Agent"}
                             </Badge>
-                          ) : null}
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground shrink-0">

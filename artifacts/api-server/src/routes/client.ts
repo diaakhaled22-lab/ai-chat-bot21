@@ -1430,52 +1430,23 @@ router.get("/client/chat-logs", async (req, res) => {
 
     const rows = await query.orderBy(sql`${chatLogsTable.createdAt} DESC`).limit(200);
 
-    // Merge client tickets into chat logs so they appear directly in the Inbox
-    const clientTickets = await db
-      .select()
-      .from(ticketsTable)
-      .where(eq(ticketsTable.clientId, req.session.userId!))
-      .orderBy(sql`${ticketsTable.createdAt} DESC`);
+    // Filter out any mirrored ticket logs so chat logs and AI chat remain pure customer conversations
+    const filteredRows = rows.filter((log) => !log.sessionId?.startsWith("ticket_"));
 
-    const existingSessionIds = new Set(rows.map((r) => r.sessionId));
-    const mergedRows: any[] = rows.map((log) => ({
-      id: log.id,
-      companyId: log.companyId,
-      companyName: myCompany.name,
-      channel: log.channel,
-      sessionId: log.sessionId,
-      customerMessage: log.customerMessage,
-      botResponse: log.botResponse,
-      isRead: log.isRead,
-      isHandoff: log.isHandoff,
-      createdAt: log.createdAt.toISOString(),
-    }));
-
-    for (const t of clientTickets) {
-      const sessId = `ticket_${t.id}`;
-      if (!existingSessionIds.has(sessId)) {
-        mergedRows.push({
-          id: 9000000 + t.id,
-          companyId: myCompany.id,
-          companyName: myCompany.name,
-          channel: "website",
-          sessionId: sessId,
-          customerMessage: `[تذكرة مشكلة #${t.id}: ${t.title}]\n\n${t.description}`,
-          botResponse: t.aiResponse
-            ? `[حل الذكاء الاصطناعي]:\n${t.aiResponse}`
-            : t.adminNote
-            ? `[حل المشرف]:\n${t.adminNote}`
-            : null,
-          isRead: t.status === "resolved",
-          isHandoff: t.status === "open",
-          createdAt: t.createdAt.toISOString(),
-        });
-      }
-    }
-
-    mergedRows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    res.json(mergedRows);
+    res.json(
+      filteredRows.map((log) => ({
+        id: log.id,
+        companyId: log.companyId,
+        companyName: myCompany.name,
+        channel: log.channel,
+        sessionId: log.sessionId,
+        customerMessage: log.customerMessage,
+        botResponse: log.botResponse,
+        isRead: log.isRead,
+        isHandoff: log.isHandoff,
+        createdAt: log.createdAt.toISOString(),
+      }))
+    );
   } catch (err) {
     logger.error({ err }, "List client chat logs error");
     res.status(500).json({ error: "Internal server error" });
@@ -2121,23 +2092,6 @@ router.post("/client/tickets", async (req, res) => {
       if (oldPlanNotifIds.length > 0) {
         await db.delete(notificationsTable).where(inArray(notificationsTable.id, oldPlanNotifIds)).catch(() => {});
       }
-    }
-
-    // Also record into chatLogsTable so it appears in the Inbox (Chat Logs & Universal Chat)
-    if (company) {
-      await db.insert(chatLogsTable).values({
-        companyId: company.id,
-        channel: "website" as any,
-        sessionId: `ticket_${ticket.id}`,
-        customerMessage: isPlanSwitch
-          ? `[⚡ طلب باقة / ترقية جديدة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`
-          : `[تذكرة مشكلة #${ticket.id}: ${ticket.title}]\n\n${ticket.description}`,
-        botResponse: null,
-        isRead: false,
-        isHandoff: true,
-        intent: isPlanSwitch ? "upgrade" : "support",
-        sentiment: isPlanSwitch ? "positive" : "negative",
-      }).catch((e) => logger.warn({ err: e }, "Failed to mirror ticket into chat logs"));
     }
 
     // Instant notification for the client confirming receipt
