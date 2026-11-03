@@ -153,11 +153,12 @@ export default function ClientChannels() {
     }
   }, [company, form]);
 
-  const isTelegramAllowed  = company?.telegramEnabled !== false;
-  const isWhatsappAllowed  = company?.whatsappEnabled !== false;
-  const isMessengerAllowed = company?.messengerEnabled !== false;
-  const isWidgetAllowed    = company?.widgetEnabled !== false;
-  const hasAnyAllowedChannel = isTelegramAllowed || isWhatsappAllowed || isMessengerAllowed || isWidgetAllowed;
+  /* Channels are always accessible for the client to configure and toggle on/off */
+  const isTelegramAllowed  = true;
+  const isWhatsappAllowed  = true;
+  const isMessengerAllowed = true;
+  const isWidgetAllowed    = true;
+  const hasAnyAllowedChannel = true;
 
   const defaultAccordionValues = [
     isTelegramAllowed && "telegram",
