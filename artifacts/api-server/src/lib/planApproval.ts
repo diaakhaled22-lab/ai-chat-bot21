@@ -403,7 +403,7 @@ export async function processApprovedPlanRequest(
       activationEnd,
       quotaStartDate,
       quotaEndDate,
-      aiExecutionMode: "tokens",
+      aiExecutionMode: "quota",
       monthlyTokenQuota: plan.tokensMonthly,
       chatLogRetentionDays: parsed.retentionDays !== undefined ? parsed.retentionDays : plan.retentionDays,
       widgetEnabled: channels.includes("widget"),

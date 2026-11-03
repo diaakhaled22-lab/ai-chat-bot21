@@ -63274,7 +63274,7 @@ async function processApprovedPlanRequest(ticketId, options) {
       activationEnd,
       quotaStartDate,
       quotaEndDate,
-      aiExecutionMode: "tokens",
+      aiExecutionMode: "quota",
       monthlyTokenQuota: plan.tokensMonthly,
       chatLogRetentionDays: parsed.retentionDays !== void 0 ? parsed.retentionDays : plan.retentionDays,
       widgetEnabled: channels.includes("widget"),

@@ -1041,10 +1041,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     },
     { href: "/client/company",          label: t("nav_company"),         icon: Building2 },
     { href: "/client/packages",         label: t("nav_packages") || (lang === "ar" ? "الباقات والاشتراكات" : "Packages & Plans"), icon: Package },
-    { href: "/client/ai-model",         label: t("nav_ai_model") || "AI Model & Provider", icon: Cpu },
+    { href: "/client/usage",            label: lang === "ar" ? "رصيد الرموز والاستهلاك (Quota)" : "Token Quota / Usage", icon: Coins },
     ...(isTokensMode
-      ? [{ href: "/client/api-tokens",  label: lang === "ar" ? "رموز API" : "API Tokens", icon: KeyRound }]
-      : [{ href: "/client/usage",       label: lang === "ar" ? "الحصة الشهرية (Quota)" : "Token Quota", icon: Coins }]
+      ? [{ href: "/client/ai-model",    label: t("nav_ai_model") || "AI Model & Provider", icon: Cpu }]
+      : []
     ),
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },

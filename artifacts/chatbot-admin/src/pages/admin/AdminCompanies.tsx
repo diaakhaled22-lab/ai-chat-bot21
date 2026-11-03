@@ -2102,7 +2102,82 @@ export default function AdminCompanies() {
                       />
                     </div>
 
+                    {/* AI Execution Mode Control */}
+                    <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-xs font-bold text-foreground">
+                            {lang === "ar" ? "نمط تشغيل الذكاء الاصطناعي (AI Execution Mode)" : "AI Execution Mode"}
+                          </Label>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {lang === "ar"
+                              ? "الوضع الافتراضي والموصى به هو حصة المنصة (Quota) حيث يستهلك العميل من رصيد الرموز المشحونة."
+                              : "Recommended mode is Platform Quota where user consumes from token package."}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={
+                            manageForm.aiExecutionMode === "tokens"
+                              ? "bg-blue-500/10 text-blue-600 border-blue-500/30 text-xs font-semibold"
+                              : "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs font-semibold"
+                          }
+                        >
+                          {manageForm.aiExecutionMode === "tokens"
+                            ? (lang === "ar" ? "مفتاح خاص (BYOK Tokens)" : "Custom API Key")
+                            : (lang === "ar" ? "حصة المنصة (Quota - مفعّل)" : "Platform Quota (Active)")}
+                        </Badge>
+                      </div>
 
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setManageForm({ ...manageForm, aiExecutionMode: "quota" })}
+                          className={`p-3 rounded-lg border text-start text-xs transition-all `}
+                        >
+                          <div className="font-bold flex items-center gap-1.5 text-foreground mb-1">
+                            <Coins className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>{lang === "ar" ? "حصة الرموز (Platform Quota)" : "Platform Quota (Recommended)"}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {lang === "ar"
+                              ? "استهلاك الرموز من رصيد الباقة وباقات الشحن التابعة للمنصة (الأساسي والربحي)."
+                              : "Consumes tokens from purchased monthly packages & top-ups."}
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setManageForm({ ...manageForm, aiExecutionMode: "tokens" })}
+                          className={`p-3 rounded-lg border text-start text-xs transition-all `}
+                        >
+                          <div className="font-bold flex items-center gap-1.5 text-foreground mb-1">
+                            <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                            <span>{lang === "ar" ? "مفتاح العميل الخاص (Enterprise BYOK)" : "Custom API Key (Enterprise)"}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {lang === "ar"
+                              ? "للشركات الكبرى التي ترغب بإدخال مفتاحها الخاص من OpenAI أو Google مباشرة."
+                              : "For enterprise clients who bring their own API key directly."}
+                          </p>
+                        </button>
+                      </div>
+
+                      {manageForm.aiExecutionMode === "tokens" && (
+                        <div className="pt-2 border-t border-border/40 space-y-2">
+                          <Label className="text-xs font-semibold">
+                            {lang === "ar" ? "مفتاح API الخاص بالشركة (Custom API Key):" : "Custom AI Agent API Key:"}
+                          </Label>
+                          <Input
+                            type="password"
+                            value={manageForm.aiAgentApiKey || ""}
+                            onChange={(e) => setManageForm({ ...manageForm, aiAgentApiKey: e.target.value })}
+                            placeholder="sk-..."
+                            className="h-8 text-xs font-mono"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
