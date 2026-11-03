@@ -1356,7 +1356,7 @@ export default function ClientPackages() {
       {/* ── Dialog: Subscribe to Plan ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
-          className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden p-6 rounded-3xl shadow-2xl modal-custom-scroll block"
+          className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden p-6 rounded-3xl shadow-2xl modal-custom-scroll"
           dir={lang === "ar" ? "rtl" : "ltr"}
         >
           <DialogHeader className="pb-3 border-b border-border/40">
@@ -1900,7 +1900,7 @@ export default function ClientPackages() {
       {/* ── Dialog: Request Top-Up Pack ── */}
       <Dialog open={topupDialogOpen} onOpenChange={setTopupDialogOpen}>
         <DialogContent
-          className="max-w-md w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden p-6 rounded-3xl shadow-2xl modal-custom-scroll block"
+          className="max-w-md w-[95vw] max-h-[85vh] overflow-y-auto overflow-x-hidden p-6 rounded-3xl shadow-2xl modal-custom-scroll"
           dir={lang === "ar" ? "rtl" : "ltr"}
         >
           <DialogHeader className="pb-3 border-b border-border/40">
