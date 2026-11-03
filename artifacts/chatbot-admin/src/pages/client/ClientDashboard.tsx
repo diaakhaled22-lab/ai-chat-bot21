@@ -34,6 +34,7 @@ interface DashboardData {
   monthlyTokenQuota: number | null;
   hasOwnApiKey: boolean;
   hasQuota: boolean;
+  aiExecutionMode?: "quota" | "tokens";
   activeExecutionMode: "quota" | "own_key" | "none";
   quotaAiProvider: string | null;
   quotaAiModel: string | null;
@@ -127,15 +128,15 @@ export default function ClientDashboard() {
     }
   }, [isLoading, data, setLocation]);
 
-  const [filterMode, setFilterMode] = useState<"own_key" | "quota">("own_key");
+  const [filterMode, setFilterMode] = useState<"own_key" | "quota">("quota");
   const [userSelected, setUserSelected] = useState(false);
 
   useEffect(() => {
     if (data && !userSelected) {
-      if (data.activeExecutionMode === "quota" || data.hasQuota) {
-        setFilterMode("quota");
-      } else if (data.activeExecutionMode === "own_key" || data.hasOwnApiKey) {
+      if (data.aiExecutionMode === "tokens" && data.hasOwnApiKey) {
         setFilterMode("own_key");
+      } else {
+        setFilterMode("quota");
       }
     }
   }, [data, userSelected]);
@@ -224,30 +225,7 @@ export default function ClientDashboard() {
       <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3.5 shadow-md shadow-[#2D5BE3]/15 space-y-3.5 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="inline-flex items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/40 rounded-xl border border-[#DCE7FF] dark:border-slate-800">
-            {/* Filter 1: Own API Key Model */}
-            <button
-              type="button"
-              onClick={() => {
-                setUserSelected(true);
-                setFilterMode("own_key");
-              }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                filterMode === "own_key"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
-              }`}
-            >
-              <KeyRound className="w-4 h-4 shrink-0" />
-              <span>{lang === "ar" ? "نموذج مفتاح API الخاص" : "Own API Key Model"}</span>
-              {data?.activeExecutionMode === "own_key" && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  
-                  {lang === "ar" ? "نشط حالياً" : "Active"}
-                </span>
-              )}
-            </button>
-
-            {/* Filter 2: Admin Assigned Quota */}
+            {/* Filter 1: Admin Assigned Quota (Primary & Default) */}
             <button
               type="button"
               onClick={() => {
@@ -264,7 +242,6 @@ export default function ClientDashboard() {
               <span>{lang === "ar" ? "الحصة المخصصة من المسؤول" : "Admin Assigned Quota"}</span>
               {data?.activeExecutionMode === "quota" && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  
                   {lang === "ar" ? "نشط حالياً" : "Active"}
                 </span>
               )}
@@ -275,6 +252,33 @@ export default function ClientDashboard() {
                     : "bg-muted-foreground/20 text-foreground"
                 }`}>
                   {quotaPercent.toFixed(0)}%
+                </span>
+              )}
+            </button>
+
+            {/* Filter 2: Own API Key Model */}
+            <button
+              type="button"
+              onClick={() => {
+                setUserSelected(true);
+                setFilterMode("own_key");
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                filterMode === "own_key"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+              }`}
+            >
+              <KeyRound className="w-4 h-4 shrink-0" />
+              <span>{lang === "ar" ? "نموذج مفتاح API الخاص" : "Own API Key Model"}</span>
+              {data?.aiExecutionMode !== "tokens" && (
+                <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded border border-amber-500/30">
+                  Enterprise
+                </span>
+              )}
+              {data?.activeExecutionMode === "own_key" && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  {lang === "ar" ? "نشط حالياً" : "Active"}
                 </span>
               )}
             </button>
