@@ -95670,6 +95670,40 @@ router4.get("/admin/invoices", async (req, res) => {
       });
     }
     try {
+      const invoiceStatusLogs = await db.select().from(companyActivityLogsTable).where(
+        inArray(companyActivityLogsTable.action, ["invoice_deleted", "invoice_void"])
+      ).orderBy(desc(companyActivityLogsTable.createdAt));
+      const deletedInvoicesSet = /* @__PURE__ */ new Set();
+      const voidedInvoicesMap = /* @__PURE__ */ new Map();
+      for (const logItem of invoiceStatusLogs) {
+        try {
+          const parsed = JSON.parse(logItem.note || "{}");
+          if (logItem.action === "invoice_deleted" && parsed.invoiceNumber) {
+            deletedInvoicesSet.add(parsed.invoiceNumber);
+            if (parsed.ticketId) deletedInvoicesSet.add(`ticket-${parsed.ticketId}`);
+          } else if (logItem.action === "invoice_void" && parsed.invoiceNumber) {
+            if (!voidedInvoicesMap.has(parsed.invoiceNumber)) {
+              voidedInvoicesMap.set(parsed.invoiceNumber, parsed.reason || "Voided");
+            }
+          }
+        } catch {
+        }
+      }
+      for (let i = invoiceList.length - 1; i >= 0; i--) {
+        const item = invoiceList[i];
+        if (deletedInvoicesSet.has(item.invoiceNumber) || item.ticketId && deletedInvoicesSet.has(`ticket-${item.ticketId}`)) {
+          invoiceList.splice(i, 1);
+        } else if (voidedInvoicesMap.has(item.invoiceNumber)) {
+          item.isVoided = true;
+          item.state = "voided";
+          item.status = "voided";
+          item.voidReason = voidedInvoicesMap.get(item.invoiceNumber);
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to process deleted/voided invoice logs");
+    }
+    try {
       const paymentOverrides = await db.select().from(companyActivityLogsTable).where(eq(companyActivityLogsTable.action, "invoice_payment_override")).orderBy(desc(companyActivityLogsTable.createdAt));
       const overrideMap = /* @__PURE__ */ new Map();
       const overrideTicketMap = /* @__PURE__ */ new Map();
@@ -95707,6 +95741,120 @@ router4.get("/admin/invoices", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Get admin invoices error");
     res.status(500).json({ error: err?.message || "Failed to fetch invoices" });
+  }
+});
+router4.post("/admin/invoices/void", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId, reason } = req.body;
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+    let effectiveCompanyId = companyId;
+    if (!effectiveCompanyId && ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      if (ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
+    }
+    if (ticketId) {
+      await db.update(ticketsTable).set({
+        status: "resolved",
+        adminNote: ("\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629 \u0648\u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (" + invoiceNumber + ") \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. " + (reason ? "\u0627\u0644\u0633\u0628\u0628: " + reason : "")).trim(),
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(ticketsTable.id, ticketId)).catch(() => {
+      });
+    }
+    if (effectiveCompanyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId: effectiveCompanyId,
+        action: "invoice_void",
+        performedBy: req.session?.userName || "Admin",
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          reason: reason || "Voided / Cancelled by Admin",
+          isVoided: true,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        })
+      });
+    }
+    await logAdminActivity(
+      req.session.userId,
+      "Void Invoice",
+      "Admin voided invoice #" + invoiceNumber + " (ticket: #" + (ticketId || "none") + ")",
+      req.ip || null
+    );
+    res.json({ ok: true, invoiceNumber, voided: true });
+  } catch (err) {
+    logger.error({ err }, "Void invoice error");
+    res.status(500).json({ error: err?.message || "Failed to void invoice" });
+  }
+});
+router4.post("/admin/invoices/delete", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId } = req.body;
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+    let effectiveCompanyId = companyId;
+    if (!effectiveCompanyId && ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      if (ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
+    }
+    if (ticketId) {
+      await db.delete(ticketsTable).where(eq(ticketsTable.id, ticketId)).catch(() => {
+      });
+    }
+    await db.delete(companyActivityLogsTable).where(
+      and(
+        eq(companyActivityLogsTable.action, "topup_invoice"),
+        sql`note LIKE ${"%" + invoiceNumber + "%"}`
+      )
+    ).catch(() => {
+    });
+    if (effectiveCompanyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId: effectiveCompanyId,
+        action: "invoice_deleted",
+        performedBy: req.session?.userName || "Admin",
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          deletedAt: (/* @__PURE__ */ new Date()).toISOString()
+        })
+      });
+    } else {
+      const [firstComp] = await db.select().from(companiesTable).limit(1);
+      if (firstComp) {
+        await db.insert(companyActivityLogsTable).values({
+          companyId: firstComp.id,
+          action: "invoice_deleted",
+          performedBy: req.session?.userName || "Admin",
+          note: JSON.stringify({
+            invoiceNumber,
+            ticketId: ticketId || null,
+            deletedAt: (/* @__PURE__ */ new Date()).toISOString()
+          })
+        }).catch(() => {
+        });
+      }
+    }
+    await logAdminActivity(
+      req.session.userId,
+      "Delete Invoice",
+      "Admin deleted invoice #" + invoiceNumber,
+      req.ip || null
+    );
+    res.json({ ok: true, invoiceNumber, deleted: true });
+  } catch (err) {
+    logger.error({ err }, "Delete invoice error");
+    res.status(500).json({ error: err?.message || "Failed to delete invoice" });
   }
 });
 router4.post("/admin/invoices/toggle-paid", async (req, res) => {

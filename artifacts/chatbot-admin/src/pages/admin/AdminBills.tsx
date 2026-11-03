@@ -55,6 +55,8 @@ import {
   List,
   CalendarRange,
   Hourglass,
+  Ban,
+  Trash2,
 } from "lucide-react";
 
 export interface InvoiceItem {
@@ -82,7 +84,9 @@ export interface InvoiceItem {
   retentionDays?: number | null;
   channels?: string[];
   tools?: string[];
-  state: "active" | "pending";
+  state: "active" | "pending" | "voided";
+  isVoided?: boolean;
+  voidReason?: string;
   isPaid: boolean;
   status: "paid" | "activated" | "pending";
   issueDate: string;
@@ -149,6 +153,17 @@ export default function AdminBills() {
   const [customNotes, setCustomNotes] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
 
+  // Void / Cancel Modal state
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [invoiceToVoid, setInvoiceToVoid] = useState<InvoiceItem | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [isVoiding, setIsVoiding] = useState(false);
+
+  // Delete Invoice Modal state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<InvoiceItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // View Invoice Modal state
   const [viewInvoiceModalOpen, setViewInvoiceModalOpen] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceItem | null>(null);
@@ -168,13 +183,17 @@ export default function AdminBills() {
   const invoices: InvoiceItem[] = useMemo(() => {
     return rawInvoices.map((inv) => {
       const isPaid = inv.isPaid !== undefined ? Boolean(inv.isPaid) : (inv.status === "paid" || inv.status === "activated");
-      const state: "active" | "pending" = inv.state === "active" || inv.state === "pending"
+      const isVoided = Boolean(inv.isVoided || inv.state === "voided" || inv.status === "voided");
+      const state: "active" | "pending" | "voided" = isVoided
+        ? "voided"
+        : inv.state === "active" || inv.state === "pending"
         ? inv.state
         : (inv.status === "paid" || inv.status === "activated" ? "active" : "pending");
       return {
         ...inv,
         state,
         isPaid,
+        isVoided,
       };
     });
   }, [rawInvoices]);
@@ -520,6 +539,92 @@ export default function AdminBills() {
       });
     } finally {
       setIsSendingCopy(false);
+    }
+  };
+
+  // Void / Cancel transaction handler
+  const handleOpenVoidDialog = (inv: InvoiceItem) => {
+    setInvoiceToVoid(inv);
+    setVoidReason("");
+    setVoidDialogOpen(true);
+  };
+
+  const handleConfirmVoid = async () => {
+    if (!invoiceToVoid) return;
+    try {
+      setIsVoiding(true);
+      await customFetch("/api/admin/invoices/void", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceNumber: invoiceToVoid.invoiceNumber,
+          ticketId: invoiceToVoid.ticketId || null,
+          companyId: invoiceToVoid.companyId || null,
+          reason: voidReason.trim() || undefined,
+        }),
+      });
+
+      toast({
+        title: lang === "ar" ? "✅ تم إلغاء العملية وحجز الفاتورة" : "Invoice Voided Successfully",
+        description:
+          lang === "ar"
+            ? `تم إلغاء العملية للفاتورة #${invoiceToVoid.invoiceNumber} بنجاح.`
+            : `Invoice #${invoiceToVoid.invoiceNumber} has been voided/cancelled.`,
+      });
+
+      setVoidDialogOpen(false);
+      setInvoiceToVoid(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في إلغاء العملية" : "Failed to void invoice",
+        description: err?.message || (lang === "ar" ? "تعذر إلغاء العملية." : "Could not void invoice."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
+  // Delete invoice handler
+  const handleOpenDeleteDialog = (inv: InvoiceItem) => {
+    setInvoiceToDelete(inv);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!invoiceToDelete) return;
+    try {
+      setIsDeleting(true);
+      await customFetch("/api/admin/invoices/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceNumber: invoiceToDelete.invoiceNumber,
+          ticketId: invoiceToDelete.ticketId || null,
+          companyId: invoiceToDelete.companyId || null,
+        }),
+      });
+
+      toast({
+        title: lang === "ar" ? "🗑️ تم حذف الفاتورة نهائياً" : "Invoice Deleted",
+        description:
+          lang === "ar"
+            ? `تم حذف الفاتورة #${invoiceToDelete.invoiceNumber} من كشف الفواتير بنجاح.`
+            : `Invoice #${invoiceToDelete.invoiceNumber} removed from Bills & Invoices.`,
+      });
+
+      setDeleteDialogOpen(false);
+      setInvoiceToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في حذف الفاتورة" : "Failed to delete invoice",
+        description: err?.message || (lang === "ar" ? "تعذر حذف الفاتورة." : "Could not delete invoice."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1152,9 +1257,14 @@ export default function AdminBills() {
                                   </div>
                                 </td>
 
-                                {/* State (only 'active' and 'pending') */}
+                                {/* State ('active', 'pending', or 'voided') */}
                                 <td className="p-3 text-center">
-                                  {inv.state === "active" ? (
+                                  {inv.isVoided || inv.state === "voided" ? (
+                                    <Badge variant="outline" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1">
+                                      <Ban className="w-3 h-3" />
+                                      {lang === "ar" ? "ملغاة" : "Voided"}
+                                    </Badge>
+                                  ) : inv.state === "active" ? (
                                     <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                       {lang === "ar" ? "نشطة" : "Active"}
