@@ -145,6 +145,41 @@ function toDateInputValue(iso?: string | null): string {
   return "";
 }
 
+
+function parseTokenQuota(val: string | number | null | undefined): number | null {
+  if (val === null || val === undefined) return null;
+  const str = String(val).trim().toLowerCase();
+  if (!str) return null;
+  if (str.endsWith("m")) {
+    const num = parseFloat(str.slice(0, -1).trim());
+    return isNaN(num) || num <= 0 ? null : Math.round(num * 1000000);
+  }
+  if (str.endsWith("k")) {
+    const num = parseFloat(str.slice(0, -1).trim());
+    return isNaN(num) || num <= 0 ? null : Math.round(num * 1000);
+  }
+  const clean = str.replace(/,/g, "").trim();
+  const num = parseFloat(clean);
+  return isNaN(num) || num <= 0 ? null : Math.round(num);
+}
+
+function formatQuotaToKM(val: number | string | null | undefined): string {
+  if (val === null || val === undefined || val === "") return "";
+  const str = String(val).trim().toLowerCase();
+  if (str.endsWith("k") || str.endsWith("m")) return str;
+  const num = typeof val === "number" ? val : parseFloat(str.replace(/,/g, ""));
+  if (isNaN(num) || num <= 0) return "";
+  if (num >= 1000000) {
+    const m = num / 1000000;
+    return Number.isInteger(m) ? (m + "m") : (parseFloat(m.toFixed(2)) + "m");
+  }
+  if (num >= 1000) {
+    const k = num / 1000;
+    return Number.isInteger(k) ? (k + "k") : (parseFloat(k.toFixed(2)) + "k");
+  }
+  return String(num);
+}
+
 function toIsoFromInput(dateStr?: string | null, isEnd = false): string | null {
   if (!dateStr || typeof dateStr !== "string") return null;
   const trimmed = dateStr.trim();
@@ -649,9 +684,9 @@ export default function AdminCompanies() {
       googleCalendarBookingRules: freshCompany.googleCalendarBookingRules || "",
       googleCalendarServiceAccountKey: freshCompany.googleCalendarServiceAccountKey || "",
       isActive: freshCompany.isActive ?? false,
-      monthlyTokenQuota: freshCompany.monthlyTokenQuota !== undefined && freshCompany.monthlyTokenQuota !== null ? String(freshCompany.monthlyTokenQuota) : "",
-      activationStart: toDateInputValue(freshCompany.activationStart),
-      activationEnd: toDateInputValue(freshCompany.activationEnd),
+      monthlyTokenQuota: formatQuotaToKM(freshCompany.monthlyTokenQuota),
+      activationStart: new Date().toISOString().split("T")[0],
+      activationEnd: toDateInputValue(freshCompany.activationEnd) || (() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split("T")[0]; })(),
       chatLogRetentionDays: freshCompany.chatLogRetentionDays !== undefined && freshCompany.chatLogRetentionDays !== null
         ? String(freshCompany.chatLogRetentionDays)
         : String(packagesCatalog?.packages?.find((p) => p.tokensMonthly === freshCompany.monthlyTokenQuota)?.retentionDays ?? 3),
@@ -889,10 +924,10 @@ export default function AdminCompanies() {
     const updatedForm = {
       ...manageForm,
       isActive: true,
-      monthlyTokenQuota: quota,
+      monthlyTokenQuota: formatQuotaToKM(quota),
       chatLogRetentionDays: retention,
-      activationStart: startStr,
-      activationEnd: endStr,
+      activationStart: today.toISOString().split("T")[0],
+      activationEnd: future30.toISOString().split("T")[0],
       widgetEnabled: widget,
       telegramEnabled: telegram,
       whatsappEnabled: whatsapp,
@@ -1010,7 +1045,7 @@ export default function AdminCompanies() {
         aiAgentApiKey: manageForm.aiAgentApiKey,
         aiAgentUrl: manageForm.aiAgentUrl,
         isActive: manageForm.isActive,
-        monthlyTokenQuota: manageForm.monthlyTokenQuota ? Number(manageForm.monthlyTokenQuota) : null,
+        monthlyTokenQuota: parseTokenQuota(manageForm.monthlyTokenQuota),
         activationStart: toIsoFromInput(manageForm.activationStart, false),
         activationEnd: toIsoFromInput(manageForm.activationEnd, true),
         chatLogRetentionDays: manageForm.chatLogRetentionDays !== undefined && manageForm.chatLogRetentionDays !== null && manageForm.chatLogRetentionDays !== ""
@@ -2392,7 +2427,7 @@ export default function AdminCompanies() {
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {availablePlans.map((plan) => {
-                            const isCurrent = Number(manageForm.monthlyTokenQuota) === plan.tokensMonthly;
+                            const isCurrent = parseTokenQuota(manageForm.monthlyTokenQuota) === plan.tokensMonthly;
                             const channelsCount = plan.channels ? plan.channels.length : 0;
                             const toolsCount = plan.tools ? plan.tools.length : 0;
                             const sourcesCount = plan.dataSources ? plan.dataSources.length : 0;
@@ -2545,7 +2580,7 @@ export default function AdminCompanies() {
                       {/* Sync plan indicator */}
                       {(() => {
                         const matchedPlan = availablePlans.find(
-                          (p) => Number(manageForm.monthlyTokenQuota) === p.tokensMonthly
+                          (p) => parseTokenQuota(manageForm.monthlyTokenQuota) === p.tokensMonthly
                         );
                         if (!matchedPlan) return null;
                         const planRetention = matchedPlan.retentionDays ?? 3;
@@ -2590,22 +2625,65 @@ export default function AdminCompanies() {
                     </div>
 
                     <div>
-                      <Label className="text-xs font-semibold">{lang === "ar" ? "الحصة الشهرية من التوكنز (Monthly Quota)" : "Monthly Token Quota"}</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">{lang === "ar" ? "الحصة الشهرية من التوكنز (Monthly Quota)" : "Monthly Token Quota"}</Label>
+                        {manageForm.monthlyTokenQuota && parseTokenQuota(manageForm.monthlyTokenQuota) && (
+                          <span className="text-[11px] font-mono text-primary font-bold">
+                            = {parseTokenQuota(manageForm.monthlyTokenQuota)?.toLocaleString()} tokens
+                          </span>
+                        )}
+                      </div>
                       <Input
-                        type="number"
+                        type="text"
                         value={manageForm.monthlyTokenQuota || ""}
                         onChange={(e) => setManageForm({ ...manageForm, monthlyTokenQuota: e.target.value })}
                         className="mt-1 text-xs font-mono"
-                        placeholder="e.g. 500000 (leave empty for unlimited)"
+                        placeholder="e.g. 50k, 100k, 1.5m, 2m"
                       />
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {lang === "ar" ? "اترك الحقل فارغاً لجعل الحصة غير محدودة." : "Leave empty for unlimited tokens."}
-                      </p>
+                      <div className="flex items-center justify-between gap-2 mt-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] text-muted-foreground">{lang === "ar" ? "خيارات سريعة:" : "Presets:"}</span>
+                          {["25k", "50k", "100k", "500k", "1m", "2m"].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setManageForm({ ...manageForm, monthlyTokenQuota: preset })}
+                              className={'px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ' + (
+                                String(manageForm.monthlyTokenQuota).trim().toLowerCase() === preset
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border-border'
+                              )}
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {lang === "ar" ? "اترك الحقل فارغاً لجعل الحصة غير محدودة." : "Leave empty for unlimited tokens."}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-semibold">{lang === "ar" ? "تاريخ بدء الاشتراك" : "Start Date"}</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold">{lang === "ar" ? "تاريخ بدء الاشتراك" : "Start Date"}</Label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const t = new Date();
+                              const tStr = t.toISOString().split("T")[0];
+                              const f = new Date();
+                              f.setDate(t.getDate() + 30);
+                              const fStr = f.toISOString().split("T")[0];
+                              setManageForm({ ...manageForm, activationStart: tStr, activationEnd: fStr });
+                            }}
+                            className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <CalendarIcon className="w-3 h-3" />
+                            {lang === "ar" ? "مزامنة مع تاريخ اليوم" : "Sync with today"}
+                          </button>
+                        </div>
                         <Input
                           type="date"
                           value={manageForm.activationStart || ""}
