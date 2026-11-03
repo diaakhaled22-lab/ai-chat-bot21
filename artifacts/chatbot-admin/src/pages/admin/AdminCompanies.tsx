@@ -544,6 +544,22 @@ function StatCard({
 // ── Fallback Plans ─────────────────────────────────────────────────────────────
 const FALLBACK_PLANS: PackageItem[] = [
   {
+    id: "free_trial",
+    nameAr: "الباقة التجريبية المجانية (7 أيام)",
+    nameEn: "Free 7-Day Trial",
+    descriptionAr: "تجربة مجانية كاملة لجميع مميزات المنصة والذكاء الاصطناعي لمدة 7 أيام دون أي تكلفة.",
+    descriptionEn: "Full 7-day free trial of all platform features at zero cost.",
+    monthlyPriceUsd: 0,
+    tokensMonthly: 25_000,
+    tokensFormatted: "25,000",
+    channels: ["widget", "telegram"],
+    tools: ["leads_crm"],
+    dataSources: ["website", "files"],
+    retentionDays: 7,
+    featuresAr: [],
+    featuresEn: [],
+  },
+  {
     id: "starter",
     nameAr: "الباقة الأساسية (Starter)",
     nameEn: "Starter Plan",

@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, adminConfigTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
+import { DEFAULT_PACKAGES_CATALOG } from "./packagesCatalog";
 
 export async function ensureAdminExists(database: typeof db = db): Promise<void> {
   try {
@@ -79,6 +80,40 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       WHERE (key = 'quota_ai_model' OR key = 'support_ai_model')
         AND (value = 'nvidia/nemotron-nano-9b-v2:free' OR value LIKE '%nemotron-nano%');
     `);
+
+    // Ensure packages catalog in database includes the free_trial plan
+    try {
+      const [catRow] = await db
+        .select()
+        .from(adminConfigTable)
+        .where(eq(adminConfigTable.key, "packages_catalog"));
+
+      if (catRow && catRow.value) {
+        const parsed = JSON.parse(catRow.value);
+        if (Array.isArray(parsed.packages)) {
+          const hasFreeTrial = parsed.packages.some((p: any) => p.id === "free_trial");
+          if (!hasFreeTrial) {
+            const freeTrialPkg = DEFAULT_PACKAGES_CATALOG.packages.find((p) => p.id === "free_trial");
+            if (freeTrialPkg) {
+              parsed.packages = [freeTrialPkg, ...parsed.packages];
+              // Normalize sortOrder
+              parsed.packages.forEach((pkg: any, idx: number) => {
+                pkg.sortOrder = idx + 1;
+              });
+              parsed.updatedAt = new Date().toISOString();
+              await db
+                .update(adminConfigTable)
+                .set({ value: JSON.stringify(parsed), updatedAt: new Date() })
+                .where(eq(adminConfigTable.key, "packages_catalog"));
+              logger.info("Auto-synced free_trial package into database admin_config table");
+            }
+          }
+        }
+      }
+    } catch (catErr) {
+      logger.warn({ err: catErr }, "Could not check or sync free_trial package into database catalog");
+    }
+
     logger.info("Data source permissions schema columns and model migrations ensured successfully");
   } catch (err) {
     logger.error({ err }, "Failed to ensure data source permissions schema columns");
