@@ -1348,6 +1348,31 @@ export default function AdminBills() {
                                         <Copy className="w-3 h-3" />
                                       )}
                                     </Button>
+
+                                      {/* Void / Cancel Booking Button */}
+                                      {!inv.isVoided && inv.state !== "voided" && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenVoidDialog(inv)}
+                                          className="h-7 px-2 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/10 border-amber-500/30 rounded-lg gap-1"
+                                          title={lang === "ar" ? "إلغاء حجز العملية (Void Transaction)" : "Cancel Booking & Void"}
+                                        >
+                                          <Ban className="w-3 h-3" />
+                                          <span className="hidden sm:inline">{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
+                                        </Button>
+                                      )}
+
+                                      {/* Delete Invoice Button */}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleOpenDeleteDialog(inv)}
+                                        className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg"
+                                        title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
                                   </div>
                                 </td>
                               </tr>
@@ -1608,6 +1633,31 @@ export default function AdminBills() {
                                 <Copy className="w-3 h-3" />
                               )}
                             </Button>
+
+                                      {/* Void / Cancel Booking Button */}
+                                      {!inv.isVoided && inv.state !== "voided" && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenVoidDialog(inv)}
+                                          className="h-7 px-2 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/10 border-amber-500/30 rounded-lg gap-1"
+                                          title={lang === "ar" ? "إلغاء حجز العملية (Void Transaction)" : "Cancel Booking & Void"}
+                                        >
+                                          <Ban className="w-3 h-3" />
+                                          <span className="hidden sm:inline">{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
+                                        </Button>
+                                      )}
+
+                                      {/* Delete Invoice Button */}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleOpenDeleteDialog(inv)}
+                                        className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg"
+                                        title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
                           </div>
                         </td>
                       </tr>
