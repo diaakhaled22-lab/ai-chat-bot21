@@ -29,6 +29,8 @@ import {
   Info,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +81,8 @@ export default function ClientAiModel() {
   // Mode tracking
   const userToggledRef = useRef(false);
   const [activeMode, setActiveMode] = useState<"quota" | "tokens">("quota");
+  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
+  const isEnterpriseTokensAllowed = (company as any)?.aiExecutionMode === "tokens";
 
   // Form states with smart initial values
   const [selectedProvider, setSelectedProvider] = useState<AiProvider>("openrouter");
@@ -223,6 +227,10 @@ export default function ClientAiModel() {
 
   const handleToggleMode = (newMode: "quota" | "tokens") => {
     if (newMode === activeMode) return;
+    if (newMode === "tokens" && !isEnterpriseTokensAllowed) {
+      setEnterpriseModalOpen(true);
+      return;
+    }
     userToggledRef.current = true;
     setActiveMode(newMode);
     toggleExecutionModeMutation.mutate(newMode);
@@ -681,7 +689,13 @@ export default function ClientAiModel() {
               id="ai-execution-mode-switch"
               checked={activeMode === "tokens"}
               disabled={toggleExecutionModeMutation.isPending}
-              onCheckedChange={(checked) => handleToggleMode(checked ? "tokens" : "quota")}
+              onCheckedChange={(checked) => {
+                if (checked && !isEnterpriseTokensAllowed) {
+                  setEnterpriseModalOpen(true);
+                  return;
+                }
+                handleToggleMode(checked ? "tokens" : "quota");
+              }}
             />
 
             <span
@@ -736,8 +750,14 @@ export default function ClientAiModel() {
 
           {/* API Tokens Option Card */}
           <div
-            onClick={() => handleToggleMode("tokens")}
-            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
+            onClick={() => {
+              if (!isEnterpriseTokensAllowed) {
+                setEnterpriseModalOpen(true);
+              } else {
+                handleToggleMode("tokens");
+              }
+            }}
+            className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all relative overflow-hidden ${
               activeMode === "tokens"
                 ? "bg-blue-500/10 border-blue-500/40 text-foreground ring-1 ring-blue-500/30"
                 : "bg-muted/20 border-[#DCE7FF] text-muted-foreground hover:bg-muted/40"
@@ -748,11 +768,16 @@ export default function ClientAiModel() {
                 <KeyRound className="w-4 h-4 text-blue-500" />
                 <span>{lang === "ar" ? "رموز ومفتاح API الخاص (BYOK)" : "Own API Key & Tokens"}</span>
               </div>
-              {activeMode === "tokens" && (
+              {!isEnterpriseTokensAllowed ? (
+                <Badge variant="outline" className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 gap-1">
+                  <Lock className="w-2.5 h-2.5" />
+                  {lang === "ar" ? "حصري لباقات Enterprise" : "Enterprise Only"}
+                </Badge>
+              ) : activeMode === "tokens" ? (
                 <span className="text-[10px] font-bold text-blue-500 bg-blue-500/15 px-2 py-0.5 rounded border border-blue-500/30">
                   {lang === "ar" ? "الوضع النشط حالياً" : "Active Now"}
                 </span>
-              )}
+              ) : null}
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {hasOwnKey
@@ -1158,6 +1183,58 @@ export default function ClientAiModel() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Enterprise Byok Guard Modal ── */}
+      <Dialog open={enterpriseModalOpen} onOpenChange={setEnterpriseModalOpen}>
+        <DialogContent className="max-w-md p-6 rounded-2xl" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto mb-3 text-amber-600 dark:text-amber-400 shadow-sm">
+              <Lock className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold text-foreground">
+              {lang === "ar" ? "ميزة حصرية لباقات الشركات الكبرى (Enterprise)" : "Enterprise Exclusive Feature"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground leading-relaxed pt-1">
+              {lang === "ar"
+                ? "يعمل حسابك حالياً بنظام حصة المنصة المدارة (Platform Quota) المضمنة في باقتك. استخدام مفتاح API خاص ومخصص لشركتك (BYOK) يتطلب موافقة وتفعيل من إدارة المنصة لحسابات الـ Enterprise."
+                : "Your account is currently running on the managed Platform Quota. Bringing your own private API key (BYOK) requires an Enterprise plan activated by the platform administrator."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-2 mt-2">
+            <div className="flex items-center gap-2 font-semibold text-foreground">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>{lang === "ar" ? "مزايا العمل بنظام حصة المنصة الحالي (Quota):" : "Benefits of Platform Quota:"}</span>
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px] ps-1">
+              <li>{lang === "ar" ? "ربط فوري ومستقر دون الحاجة لبطاقات دفع دولية أو حسابات مطورين." : "Instant stable connection without overseas cards or developer accounts."}</li>
+              <li>{lang === "ar" ? "متابعة دقيقة لاستهلاك الرموز مع إمكانية شحن رصيد إضافي في أي وقت." : "Accurate token tracking with instant top-up packs anytime."}</li>
+              <li>{lang === "ar" ? "صيانة وتحديث دوري لنماذج الذكاء الاصطناعي الأسرع والأعلى كفاءة." : "Regular updates and maintenance for top-tier AI models."}</li>
+            </ul>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEnterpriseModalOpen(false)}
+              className="text-xs"
+            >
+              {lang === "ar" ? "إغلاق ومتابعة بنظام الحصة" : "Stay on Quota"}
+            </Button>
+            <Button
+              size="sm"
+              asChild
+              className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white font-bold text-xs gap-1.5 shadow-sm"
+            >
+              <Link href="/client/support">
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>{lang === "ar" ? "تواصل مع الدعم الفني للترقية" : "Contact Support / Upgrade"}</span>
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

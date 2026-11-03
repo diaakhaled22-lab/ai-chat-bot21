@@ -758,13 +758,22 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
     }
 
     const [existingCompany] = await db
-      .select({ id: companiesTable.id })
+      .select({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode })
       .from(companiesTable)
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
 
     if (!existingCompany) {
       res.status(404).json({ error: "No company found" });
+      return;
+    }
+
+    // Enterprise Guard: Switching to private tokens requires Enterprise authorization by Admin
+    if (mode === "tokens" && existingCompany.aiExecutionMode !== "tokens") {
+      res.status(403).json({
+        error: "خاصية مفتاح API الخاص (BYOK) مخصصة فقط لباقات الشركات الكبرى (Enterprise). يرجى التواصل مع الإدارة لتفعيلها لشركتك.",
+        requiresEnterprise: true,
+      });
       return;
     }
 

@@ -100145,9 +100145,16 @@ router7.all("/client/company/execution-mode", async (req, res, next) => {
       res.status(400).json({ error: "Invalid mode. Must be 'quota' or 'tokens'" });
       return;
     }
-    const [existingCompany] = await db.select({ id: companiesTable.id }).from(companiesTable).where(eq(companiesTable.clientId, req.session.userId)).limit(1);
+    const [existingCompany] = await db.select({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode }).from(companiesTable).where(eq(companiesTable.clientId, req.session.userId)).limit(1);
     if (!existingCompany) {
       res.status(404).json({ error: "No company found" });
+      return;
+    }
+    if (mode === "tokens" && existingCompany.aiExecutionMode !== "tokens") {
+      res.status(403).json({
+        error: "\u062E\u0627\u0635\u064A\u0629 \u0645\u0641\u062A\u0627\u062D API \u0627\u0644\u062E\u0627\u0635 (BYOK) \u0645\u062E\u0635\u0635\u0629 \u0641\u0642\u0637 \u0644\u0628\u0627\u0642\u0627\u062A \u0627\u0644\u0634\u0631\u0643\u0627\u062A \u0627\u0644\u0643\u0628\u0631\u0649 (Enterprise). \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0644\u062A\u0641\u0639\u064A\u0644\u0647\u0627 \u0644\u0634\u0631\u0643\u062A\u0643.",
+        requiresEnterprise: true
+      });
       return;
     }
     await pool.query(
