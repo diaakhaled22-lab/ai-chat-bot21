@@ -108,6 +108,7 @@ export interface CompanyInvoiceGroup {
   unpaidCount: number;
   pendingStateCount: number;
   activeStateCount: number;
+  voidedCount?: number;
   latestDate: string;
 }
 
@@ -382,17 +383,23 @@ export default function AdminBills() {
       const group = map.get(key)!;
       group.invoices.push(inv);
       group.totalInvoices += 1;
-      group.totalTokens += inv.tokenQuota || 0;
-      group.totalUsd += inv.priceUsd || 0;
-      if (inv.isPaid) {
-        group.paidCount += 1;
+
+      const isVoided = Boolean(inv.isVoided || inv.state === "voided");
+      if (!isVoided) {
+        group.totalTokens += inv.tokenQuota || 0;
+        group.totalUsd += inv.priceUsd || 0;
+        if (inv.isPaid) {
+          group.paidCount += 1;
+        } else {
+          group.unpaidCount += 1;
+        }
+        if (inv.state === "pending") {
+          group.pendingStateCount += 1;
+        } else if (inv.state === "active") {
+          group.activeStateCount += 1;
+        }
       } else {
-        group.unpaidCount += 1;
-      }
-      if (inv.state === "pending") {
-        group.pendingStateCount += 1;
-      } else if (inv.state === "active") {
-        group.activeStateCount += 1;
+        group.voidedCount = (group.voidedCount || 0) + 1;
       }
       if (new Date(inv.issueDate) > new Date(group.latestDate)) {
         group.latestDate = inv.issueDate;
@@ -435,19 +442,21 @@ export default function AdminBills() {
 
   // Statistics
   const stats = useMemo(() => {
-    const totalCount = invoices.length;
-    const paidCount = invoices.filter((i) => i.isPaid).length;
-    const unpaidCount = invoices.filter((i) => !i.isPaid).length;
-    const planCount = invoices.filter((i) => i.itemType === "plan").length;
-    const topupCount = invoices.filter((i) => i.itemType === "topup").length;
-    const quotaCount = invoices.filter((i) => i.itemType === "quota_usage").length;
-    const totalUsd = invoices.reduce((acc, i) => acc + (i.priceUsd || 0), 0);
+    const activeInvoices = invoices.filter((i) => !i.isVoided && i.state !== "voided");
+    const totalCount = activeInvoices.length;
+    const paidCount = activeInvoices.filter((i) => i.isPaid).length;
+    const unpaidCount = activeInvoices.filter((i) => !i.isPaid).length;
+    const voidedCount = invoices.filter((i) => i.isVoided || i.state === "voided").length;
+    const planCount = activeInvoices.filter((i) => i.itemType === "plan").length;
+    const topupCount = activeInvoices.filter((i) => i.itemType === "topup").length;
+    const quotaCount = activeInvoices.filter((i) => i.itemType === "quota_usage").length;
+    const totalUsd = activeInvoices.reduce((acc, i) => acc + (i.priceUsd || 0), 0);
     const totalLocal = convertPrice(totalUsd);
     const uniqueCompanies = new Set(
       invoices.map((i) => (i.companyId ? `comp-${i.companyId}` : `name-${i.companyName}`))
     ).size;
 
-    return { totalCount, paidCount, unpaidCount, planCount, topupCount, quotaCount, totalUsd, totalLocal, uniqueCompanies };
+    return { totalCount, paidCount, unpaidCount, voidedCount, planCount, topupCount, quotaCount, totalUsd, totalLocal, uniqueCompanies };
   }, [invoices, activeRate]);
 
   // Handle open Send Copy Modal
@@ -553,7 +562,7 @@ export default function AdminBills() {
     if (!invoiceToVoid) return;
     try {
       setIsVoiding(true);
-      const res = await customFetch<{ ok: boolean; tokensDeducted?: number; newQuota?: number }>("/api/admin/invoices/void", {
+      const res = await customFetch<{ ok: boolean; tokensDeducted?: number; costDeducted?: number; newQuota?: number }>("/api/admin/invoices/void", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -561,22 +570,30 @@ export default function AdminBills() {
           ticketId: invoiceToVoid.ticketId || null,
           companyId: invoiceToVoid.companyId || null,
           tokensToDeduct: invoiceToVoid.tokenQuota || 0,
+          costToDeduct: invoiceToVoid.priceUsd || 0,
           reason: voidReason.trim() || undefined,
         }),
       });
 
-      const deductedMsg = res?.tokensDeducted && res.tokensDeducted > 0
+      const details: string[] = [];
+      if (res?.tokensDeducted && res.tokensDeducted > 0) {
+        details.push(lang === "ar" ? `${res.tokensDeducted.toLocaleString()} رمز` : `${res.tokensDeducted.toLocaleString()} tokens`);
+      }
+      if (res?.costDeducted && res.costDeducted > 0) {
+        details.push(`$${res.costDeducted} USD`);
+      }
+      const deductedMsg = details.length > 0
         ? lang === "ar"
-          ? ` وتم خصم ${res.tokensDeducted.toLocaleString()} رمز من رصيد الشركة.`
-          : ` and ${res.tokensDeducted.toLocaleString()} tokens were deducted from company quota.`
+          ? ` وتم خصم ${details.join(" و ")} من حساب العميل.`
+          : ` and ${details.join(" & ")} were deducted from customer account.`
         : "";
 
       toast({
-        title: lang === "ar" ? "✅ تم إلغاء العملية وحجز الفاتورة" : "Invoice Voided Successfully",
+        title: lang === "ar" ? "✅ تم إلغاء العملية وخصم التكلفة والرموز" : "Invoice Voided & Deducted",
         description:
           lang === "ar"
             ? `تم إلغاء العملية للفاتورة #${invoiceToVoid.invoiceNumber}${deductedMsg}`
-            : `Invoice #${invoiceToVoid.invoiceNumber} has been voided/cancelled${deductedMsg}`,
+            : `Invoice #${invoiceToVoid.invoiceNumber} has been voided${deductedMsg}`,
       });
 
       setVoidDialogOpen(false);
@@ -1241,7 +1258,18 @@ export default function AdminBills() {
 
                                 {/* Token Quota */}
                                 <td className="p-3 text-center font-mono font-semibold text-blue-600 dark:text-blue-400">
-                                  {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                                  {inv.isVoided || inv.state === "voided" ? (
+                                    <div className="flex flex-col items-center">
+                                      <span className="line-through text-muted-foreground/60 text-xs">
+                                        {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                                      </span>
+                                      <span className="text-[10px] text-rose-500 font-bold">
+                                        {lang === "ar" ? "مخصومة" : "Deducted"}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"
+                                  )}
                                 </td>
 
                                 {/* Issue Date */}
@@ -1255,14 +1283,25 @@ export default function AdminBills() {
 
                                 {/* Price */}
                                 <td className="p-3 text-right rtl:text-right ltr:text-left">
-                                  <div className="flex flex-col">
-                                    <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
-                                      ${inv.priceUsd} USD
-                                    </span>
-                                    <span className="text-[11px] text-muted-foreground font-mono">
-                                      ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
-                                    </span>
-                                  </div>
+                                  {inv.isVoided || inv.state === "voided" ? (
+                                    <div className="flex flex-col">
+                                      <span className="line-through text-muted-foreground/60 text-xs font-mono">
+                                        ${inv.priceUsd} USD
+                                      </span>
+                                      <span className="text-[10px] text-rose-500 font-bold">
+                                        {lang === "ar" ? "ملغاة ومخصومة" : "Voided & Deducted"}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
+                                        ${inv.priceUsd} USD
+                                      </span>
+                                      <span className="text-[11px] text-muted-foreground font-mono">
+                                        ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                                      </span>
+                                    </div>
+                                  )}
                                 </td>
 
                                 {/* State ('active', 'pending', or 'voided') */}
@@ -1428,6 +1467,11 @@ export default function AdminBills() {
                                     {group.unpaidCount} {lang === "ar" ? "غير مسددة" : "Unpaid"}
                                   </span>
                                 )}
+                                {Boolean(group.voidedCount && group.voidedCount > 0) && (
+                                  <span className="text-[10px] font-medium text-rose-500">
+                                    {group.voidedCount} {lang === "ar" ? "ملغاة ومخصومة" : "Voided"}
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="p-3 text-center text-[10px] text-muted-foreground">
@@ -1531,7 +1575,18 @@ export default function AdminBills() {
 
                         {/* Token Quota */}
                         <td className="p-3.5 text-center font-mono font-semibold text-blue-600 dark:text-blue-400">
-                          {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                          {inv.isVoided || inv.state === "voided" ? (
+                            <div className="flex flex-col items-center">
+                              <span className="line-through text-muted-foreground/60 text-xs">
+                                {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                              </span>
+                              <span className="text-[10px] text-rose-500 font-bold">
+                                {lang === "ar" ? "مخصومة" : "Deducted"}
+                              </span>
+                            </div>
+                          ) : (
+                            inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"
+                          )}
                         </td>
 
                         {/* Issue Date */}
@@ -1545,19 +1600,35 @@ export default function AdminBills() {
 
                         {/* Amount */}
                         <td className="p-3.5 text-right rtl:text-right ltr:text-left">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
-                              ${inv.priceUsd} USD
-                            </span>
-                            <span className="text-[11px] text-muted-foreground font-mono">
-                              ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
-                            </span>
-                          </div>
+                          {inv.isVoided || inv.state === "voided" ? (
+                            <div className="flex flex-col">
+                              <span className="line-through text-muted-foreground/60 text-xs font-mono">
+                                ${inv.priceUsd} USD
+                              </span>
+                              <span className="text-[10px] text-rose-500 font-bold">
+                                {lang === "ar" ? "ملغاة ومخصومة" : "Voided & Deducted"}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col">
+                              <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
+                                ${inv.priceUsd} USD
+                              </span>
+                              <span className="text-[11px] text-muted-foreground font-mono">
+                                ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                              </span>
+                            </div>
+                          )}
                         </td>
 
-                        {/* State (only 'active' and 'pending') */}
+                        {/* State ('active', 'pending', or 'voided') */}
                         <td className="p-3.5 text-center">
-                          {inv.state === "active" ? (
+                          {inv.isVoided || inv.state === "voided" ? (
+                            <Badge variant="outline" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1">
+                              <Ban className="w-3 h-3" />
+                              {lang === "ar" ? "ملغاة" : "Voided"}
+                            </Badge>
+                          ) : inv.state === "active" ? (
                             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               {lang === "ar" ? "نشطة" : "Active"}
@@ -1848,25 +1919,39 @@ export default function AdminBills() {
 
           {invoiceToVoid && (
             <div className="space-y-3 py-2 text-xs">
-              <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-2">
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/70 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-foreground text-sm">
                     {lang === "ar" ? invoiceToVoid.titleAr : invoiceToVoid.titleEn}
                   </span>
-                  <span className="font-mono font-bold text-foreground">
+                  <span className="font-mono font-bold text-foreground text-sm">
                     ${invoiceToVoid.priceUsd} USD
                   </span>
                 </div>
-                {Boolean(invoiceToVoid.tokenQuota && invoiceToVoid.tokenQuota > 0) && (
-                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-center gap-2 text-xs font-semibold">
+                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 space-y-1 text-xs font-semibold">
+                  <div className="flex items-center gap-2">
                     <Ban className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                     <span>
                       {lang === "ar"
-                        ? `سيتم خصم ${invoiceToVoid.tokenQuota?.toLocaleString()} رمز (Tokens) تلقائياً من رصيد الشركة عند التأكيد.`
-                        : `${invoiceToVoid.tokenQuota?.toLocaleString()} tokens will be deducted from company quota.`}
+                        ? `عند تأكيد الإلغاء، سيتم تلقائياً:`
+                        : `Upon confirmation, the following will be deducted:`}
                     </span>
                   </div>
-                )}
+                  <ul className="list-disc list-inside text-[11px] font-normal space-y-0.5 text-amber-900 dark:text-amber-200 ps-1">
+                    {Boolean(invoiceToVoid.tokenQuota && invoiceToVoid.tokenQuota > 0) && (
+                      <li>
+                        {lang === "ar"
+                          ? `خصم ${invoiceToVoid.tokenQuota?.toLocaleString()} رمز (Tokens) من رصيد الشركة.`
+                          : `Deduct ${invoiceToVoid.tokenQuota?.toLocaleString()} tokens from company quota.`}
+                      </li>
+                    )}
+                    <li>
+                      {lang === "ar"
+                        ? `خصم تكلفة العملية (${invoiceToVoid.priceUsd}$ USD) وإلغاؤها من فواتير وحساب العميل.`
+                        : `Deduct transaction cost ($${invoiceToVoid.priceUsd} USD) from customer account.`}
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -1900,7 +1985,7 @@ export default function AdminBills() {
               className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
             >
               {isVoiding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
-              <span>{lang === "ar" ? "تأكيد إلغاء العملية وخصم الرموز" : "Confirm Void & Deduct"}</span>
+              <span>{lang === "ar" ? "تأكيد إلغاء العملية وخصم التكلفة والرموز" : "Confirm Void & Deduct"}</span>
             </Button>
           </DialogFooter>
         </DialogContent>

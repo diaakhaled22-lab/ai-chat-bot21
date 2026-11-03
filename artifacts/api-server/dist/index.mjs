@@ -95697,6 +95697,7 @@ router4.get("/admin/invoices", async (req, res) => {
           item.isVoided = true;
           item.state = "voided";
           item.status = "voided";
+          item.isPaid = false;
           item.voidReason = voidedInvoicesMap.get(item.invoiceNumber);
         }
       }
@@ -95720,6 +95721,11 @@ router4.get("/admin/invoices", async (req, res) => {
         }
       }
       for (const inv of invoiceList) {
+        if (inv.isVoided || inv.state === "voided" || inv.status === "voided") {
+          inv.isPaid = false;
+          inv.status = "voided";
+          continue;
+        }
         if (overrideMap.has(inv.invoiceNumber)) {
           inv.isPaid = overrideMap.get(inv.invoiceNumber);
           inv.status = inv.isPaid ? "paid" : "pending";
@@ -95745,7 +95751,7 @@ router4.get("/admin/invoices", async (req, res) => {
 });
 router4.post("/admin/invoices/void", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, tokensToDeduct, reason } = req.body;
+    const { invoiceNumber, ticketId, companyId, tokensToDeduct, costToDeduct, reason } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
@@ -95767,19 +95773,33 @@ router4.post("/admin/invoices/void", async (req, res) => {
       }
     }
     let deductAmount = 0;
+    let deductCost = 0;
     if (typeof tokensToDeduct === "number" && tokensToDeduct > 0) {
       deductAmount = tokensToDeduct;
-    } else if (associatedTicket) {
+    }
+    if (typeof costToDeduct === "number" && costToDeduct > 0) {
+      deductCost = costToDeduct;
+    }
+    if (associatedTicket && (deductAmount === 0 || deductCost === 0)) {
       try {
         const catalog2 = await getActivePackagesCatalog();
         const parsed = parseTicketPlanDetails(associatedTicket, catalog2);
-        if (parsed.isTopup && parsed.tokens) {
-          deductAmount = parsed.tokens;
-        } else if (parsed.plan?.tokensMonthly) {
-          deductAmount = parsed.plan.tokensMonthly;
+        if (deductAmount === 0) {
+          if (parsed.isTopup && parsed.tokens) {
+            deductAmount = parsed.tokens;
+          } else if (parsed.plan?.tokensMonthly) {
+            deductAmount = parsed.plan.tokensMonthly;
+          }
+        }
+        if (deductCost === 0) {
+          if (parsed.isTopup && parsed.topupPack?.priceUsd) {
+            deductCost = parsed.topupPack.priceUsd;
+          } else if (parsed.plan?.monthlyPriceUsd) {
+            deductCost = parsed.plan.monthlyPriceUsd;
+          }
         }
       } catch (err) {
-        logger.warn({ err }, "Could not parse ticket details to calculate void token deduction");
+        logger.warn({ err }, "Could not parse ticket details to calculate void token/cost deduction");
       }
     }
     let previousQuota = null;
@@ -95794,21 +95814,24 @@ router4.post("/admin/invoices/void", async (req, res) => {
           updatedAt: /* @__PURE__ */ new Date()
         }).where(eq(companiesTable.id, effectiveCompanyId));
         logger.info(
-          { effectiveCompanyId, invoiceNumber, deductAmount, previousQuota, newQuota },
-          "Successfully deducted tokens from company quota due to voided invoice"
+          { effectiveCompanyId, invoiceNumber, deductAmount, deductCost, previousQuota, newQuota },
+          "Successfully deducted tokens & cost from customer account due to voided invoice"
         );
       }
     }
+    const deductionsList = [];
+    if (deductAmount > 0) deductionsList.push(`${deductAmount.toLocaleString()} \u0631\u0645\u0632 (Tokens)`);
+    if (deductCost > 0) deductionsList.push(`\u062A\u0643\u0644\u0641\u0629 $${deductCost} USD`);
+    const deductionNote = deductionsList.length > 0 ? ` \u0648\u062A\u0645 \u062E\u0635\u0645 ${deductionsList.join(" \u0648 ")} \u0645\u0646 \u062D\u0633\u0627\u0628 \u0627\u0644\u0639\u0645\u064A\u0644.` : "";
     if (ticketId) {
-      const deductionText = deductAmount > 0 ? ` \u0648\u062A\u0645 \u062E\u0635\u0645 ${deductAmount.toLocaleString()} \u0631\u0645\u0632 (Tokens) \u0645\u0646 \u0631\u0635\u064A\u062F \u0627\u0644\u0634\u0631\u0643\u0629.` : "";
       await db.update(ticketsTable).set({
         status: "resolved",
-        adminNote: `\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629 \u0648\u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (#${invoiceNumber}) \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.${deductionText} ${reason ? "\u0627\u0644\u0633\u0628\u0628: " + reason : ""}`.trim(),
+        adminNote: `\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629 \u0648\u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (#${invoiceNumber}) \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.${deductionNote} ${reason ? "\u0627\u0644\u0633\u0628\u0628: " + reason : ""}`.trim(),
         updatedAt: /* @__PURE__ */ new Date()
       }).where(eq(ticketsTable.id, ticketId)).catch(() => {
       });
       await db.update(chatLogsTable).set({
-        botResponse: `\u26A0\uFE0F [\u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629] \u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}${deductAmount > 0 ? ` \u0648\u062E\u0635\u0645 ${deductAmount.toLocaleString()} \u0631\u0645\u0632 \u0645\u0646 \u0627\u0644\u0631\u0635\u064A\u062F` : ""}.`
+        botResponse: `\u26A0\uFE0F [\u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629] \u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}${deductionsList.length > 0 ? ` \u0648\u062E\u0635\u0645 ${deductionsList.join(" \u0648 ")}` : ""} \u0645\u0646 \u0627\u0644\u062D\u0633\u0627\u0628.`
       }).where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`)).catch(() => {
       });
     }
@@ -95821,6 +95844,7 @@ router4.post("/admin/invoices/void", async (req, res) => {
           invoiceNumber,
           ticketId: ticketId || null,
           tokensDeducted: deductAmount,
+          costDeducted: deductCost,
           previousQuota,
           newQuota,
           reason: reason || "Voided / Cancelled by Admin",
@@ -95832,7 +95856,7 @@ router4.post("/admin/invoices/void", async (req, res) => {
     await logAdminActivity(
       req.session.userId,
       "Void Invoice",
-      `Admin voided invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${deductAmount > 0 ? `, deducted ${deductAmount.toLocaleString()} tokens` : ""}`,
+      `Admin voided invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${deductionsList.length > 0 ? `, deducted ${deductionsList.join(" and ")}` : ""}`,
       req.ip || null
     );
     res.json({
@@ -95840,6 +95864,7 @@ router4.post("/admin/invoices/void", async (req, res) => {
       invoiceNumber,
       voided: true,
       tokensDeducted: deductAmount,
+      costDeducted: deductCost,
       previousQuota,
       newQuota
     });

@@ -3208,6 +3208,7 @@ router.get("/admin/invoices", async (req, res) => {
           item.isVoided = true;
           item.state = "voided";
           item.status = "voided";
+          item.isPaid = false;
           item.voidReason = voidedInvoicesMap.get(item.invoiceNumber);
         }
       }
@@ -3238,6 +3239,11 @@ router.get("/admin/invoices", async (req, res) => {
       }
 
       for (const inv of invoiceList) {
+        if (inv.isVoided || inv.state === "voided" || inv.status === "voided") {
+          inv.isPaid = false;
+          inv.status = "voided";
+          continue;
+        }
         if (overrideMap.has(inv.invoiceNumber)) {
           inv.isPaid = overrideMap.get(inv.invoiceNumber)!;
           inv.status = inv.isPaid ? "paid" : "pending";
@@ -3265,14 +3271,15 @@ router.get("/admin/invoices", async (req, res) => {
   }
 });
 
-// POST /admin/invoices/void - Void/Cancel an invoice transaction & booking (and deduct tokens from company quota)
+// POST /admin/invoices/void - Void/Cancel an invoice transaction & booking (and deduct tokens & cost from customer account)
 router.post("/admin/invoices/void", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, tokensToDeduct, reason } = req.body as {
+    const { invoiceNumber, ticketId, companyId, tokensToDeduct, costToDeduct, reason } = req.body as {
       invoiceNumber: string;
       ticketId?: number | null;
       companyId?: number | null;
       tokensToDeduct?: number | null;
+      costToDeduct?: number | null;
       reason?: string;
     };
 
@@ -3305,21 +3312,37 @@ router.post("/admin/invoices/void", async (req, res) => {
       }
     }
 
-    // Determine token deduction amount
+    // Determine token deduction amount and corresponding cost deduction
     let deductAmount = 0;
+    let deductCost = 0;
+
     if (typeof tokensToDeduct === "number" && tokensToDeduct > 0) {
       deductAmount = tokensToDeduct;
-    } else if (associatedTicket) {
+    }
+    if (typeof costToDeduct === "number" && costToDeduct > 0) {
+      deductCost = costToDeduct;
+    }
+
+    if (associatedTicket && (deductAmount === 0 || deductCost === 0)) {
       try {
         const catalog = await getActivePackagesCatalog();
         const parsed = parseTicketPlanDetails(associatedTicket, catalog);
-        if (parsed.isTopup && parsed.tokens) {
-          deductAmount = parsed.tokens;
-        } else if (parsed.plan?.tokensMonthly) {
-          deductAmount = parsed.plan.tokensMonthly;
+        if (deductAmount === 0) {
+          if (parsed.isTopup && parsed.tokens) {
+            deductAmount = parsed.tokens;
+          } else if (parsed.plan?.tokensMonthly) {
+            deductAmount = parsed.plan.tokensMonthly;
+          }
+        }
+        if (deductCost === 0) {
+          if (parsed.isTopup && parsed.topupPack?.priceUsd) {
+            deductCost = parsed.topupPack.priceUsd;
+          } else if (parsed.plan?.monthlyPriceUsd) {
+            deductCost = parsed.plan.monthlyPriceUsd;
+          }
         }
       } catch (err) {
-        logger.warn({ err }, "Could not parse ticket details to calculate void token deduction");
+        logger.warn({ err }, "Could not parse ticket details to calculate void token/cost deduction");
       }
     }
 
@@ -3347,20 +3370,25 @@ router.post("/admin/invoices/void", async (req, res) => {
           .where(eq(companiesTable.id, effectiveCompanyId));
 
         logger.info(
-          { effectiveCompanyId, invoiceNumber, deductAmount, previousQuota, newQuota },
-          "Successfully deducted tokens from company quota due to voided invoice"
+          { effectiveCompanyId, invoiceNumber, deductAmount, deductCost, previousQuota, newQuota },
+          "Successfully deducted tokens & cost from customer account due to voided invoice"
         );
       }
     }
 
+    // Construct human-readable deduction summary
+    const deductionsList: string[] = [];
+    if (deductAmount > 0) deductionsList.push(`${deductAmount.toLocaleString()} رمز (Tokens)`);
+    if (deductCost > 0) deductionsList.push(`تكلفة $${deductCost} USD`);
+    const deductionNote = deductionsList.length > 0 ? ` وتم خصم ${deductionsList.join(" و ")} من حساب العميل.` : "";
+
     // If there is an associated ticket, update it to cancelled/voided
     if (ticketId) {
-      const deductionText = deductAmount > 0 ? ` وتم خصم ${deductAmount.toLocaleString()} رمز (Tokens) من رصيد الشركة.` : "";
       await db
         .update(ticketsTable)
         .set({
           status: "resolved",
-          adminNote: (`تم إلغاء العملية وحجز الفاتورة (#${invoiceNumber}) بواسطة الإدارة.${deductionText} ${reason ? "السبب: " + reason : ""}`).trim(),
+          adminNote: (`تم إلغاء العملية وحجز الفاتورة (#${invoiceNumber}) بواسطة الإدارة.${deductionNote} ${reason ? "السبب: " + reason : ""}`).trim(),
           updatedAt: new Date(),
         })
         .where(eq(ticketsTable.id, ticketId))
@@ -3370,7 +3398,7 @@ router.post("/admin/invoices/void", async (req, res) => {
       await db
         .update(chatLogsTable)
         .set({
-          botResponse: `⚠️ [إلغاء العملية] تم إلغاء حجز الفاتورة رقم #${invoiceNumber}${deductAmount > 0 ? ` وخصم ${deductAmount.toLocaleString()} رمز من الرصيد` : ""}.`,
+          botResponse: `⚠️ [إلغاء العملية] تم إلغاء حجز الفاتورة رقم #${invoiceNumber}${deductionsList.length > 0 ? ` وخصم ${deductionsList.join(" و ")}` : ""} من الحساب.`,
         })
         .where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`))
         .catch(() => {});
@@ -3386,6 +3414,7 @@ router.post("/admin/invoices/void", async (req, res) => {
           invoiceNumber,
           ticketId: ticketId || null,
           tokensDeducted: deductAmount,
+          costDeducted: deductCost,
           previousQuota,
           newQuota,
           reason: reason || "Voided / Cancelled by Admin",
@@ -3398,7 +3427,7 @@ router.post("/admin/invoices/void", async (req, res) => {
     await logAdminActivity(
       req.session.userId!,
       "Void Invoice",
-      `Admin voided invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${deductAmount > 0 ? `, deducted ${deductAmount.toLocaleString()} tokens` : ""}`,
+      `Admin voided invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${deductionsList.length > 0 ? `, deducted ${deductionsList.join(" and ")}` : ""}`,
       req.ip || null
     );
 
@@ -3407,6 +3436,7 @@ router.post("/admin/invoices/void", async (req, res) => {
       invoiceNumber,
       voided: true,
       tokensDeducted: deductAmount,
+      costDeducted: deductCost,
       previousQuota,
       newQuota,
     });
