@@ -382,8 +382,9 @@ export async function processApprovedPlanRequest(
   } else {
     // ── SUBSCRIPTION PLAN APPROVAL ──
     const plan = parsed.plan!;
-    const isYearly = parsed.billingCycle === "yearly";
-    const durationDays = isYearly ? 365 : 30;
+    const isFreeTrial = plan.id === "free_trial";
+    const isYearly = !isFreeTrial && parsed.billingCycle === "yearly";
+    const durationDays = isFreeTrial ? 7 : (isYearly ? 365 : 30);
     const rawPrice = isYearly ? plan.monthlyPriceUsd * 12 * 0.8 : plan.monthlyPriceUsd;
     const priceUsd = Math.round(rawPrice);
     const priceLocal = Math.round(priceUsd * exchangeRate);
@@ -391,7 +392,7 @@ export async function processApprovedPlanRequest(
     const activationStart = now;
     const activationEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
     const quotaStartDate = now;
-    const quotaEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const quotaEndDate = new Date(now.getTime() + (isFreeTrial ? 7 : 30) * 24 * 60 * 60 * 1000);
 
     const channels = parsed.channels || [];
     const tools = parsed.tools || [];
@@ -423,6 +424,10 @@ export async function processApprovedPlanRequest(
 
     if (plan.allowedPages && plan.allowedPages.length > 0) {
       companyUpdates.enabledClientPages = JSON.stringify(plan.allowedPages);
+    }
+
+    if (isFreeTrial) {
+      companyUpdates.freeTrialClaimed = true;
     }
 
     if (parsed.phone && !company.whatsappNumber) {

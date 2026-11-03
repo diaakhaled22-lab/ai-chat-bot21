@@ -510,7 +510,19 @@ export default function ClientPackages() {
     },
   });
 
+  const isFreeTrialClaimed = Boolean((company as any)?.freeTrialClaimed);
+
   const handleOpenSubscribe = (plan: PlanDef) => {
+    if (plan.id === "free_trial" && isFreeTrialClaimed) {
+      toast({
+        title: lang === "ar" ? "الباقة التجريبية مستنفذة" : "Trial Already Used",
+        description: lang === "ar"
+          ? "لقد استفدت مسبقاً من الباقة التجريبية المجانية. هذه الباقة متاحة للعملاء الجدد فقط ولمرة واحدة."
+          : "You have already used your 7-day free trial. This offer is available for new clients only.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedPlan(plan);
     setPhoneError(null);
     setDuplicateWarning(null);
@@ -1009,10 +1021,19 @@ export default function ClientPackages() {
 
       {/* ── Main Plans Cards Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        {plans.map((plan) => {
+        {plans
+          .filter((plan) => {
+            // If free_trial and already claimed, hide it from active choices so customer only sees regular plans
+            if (plan.id === "free_trial" && isFreeTrialClaimed && activeSelectedPlanId !== "free_trial") {
+              return false;
+            }
+            return true;
+          })
+          .map((plan) => {
           const price = calcPrice(plan.monthlyPriceUsd);
           const isSelected = activeSelectedPlanId === plan.id;
           const isPop = plan.popular;
+          const isTrial = plan.id === "free_trial";
 
           return (
             <div
@@ -1125,9 +1146,12 @@ export default function ClientPackages() {
 
                 <Button
                   onClick={() => handleOpenSubscribe(plan)}
+                  disabled={isTrial && isFreeTrialClaimed && !isSelected}
                   className={`w-full py-5 rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all gap-2 cursor-pointer ${
                     isSelected
                       ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40"
+                      : isTrial
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25"
                       : isPop
                       ? "bg-[#2D5BE3] hover:bg-[#254ec2] text-white shadow-blue-500/25"
                       : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900"
@@ -1138,6 +1162,13 @@ export default function ClientPackages() {
                       <CheckCircle2 className="w-4 h-4 text-white" />
                       <span>
                         {lang === "ar" ? "الباقة المختارة (تعديل الطلب)" : "Selected Package (Edit Request)"}
+                      </span>
+                    </>
+                  ) : isTrial ? (
+                    <>
+                      <Sparkles className="w-4 h-4 text-white" />
+                      <span>
+                        {lang === "ar" ? "بدء التجربة المجانية (7 أيام)" : "Start Free 7-Day Trial"}
                       </span>
                     </>
                   ) : activeSelectedPlanId ? (

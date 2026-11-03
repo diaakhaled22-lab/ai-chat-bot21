@@ -196,6 +196,7 @@ router.get("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      freeTrialClaimed: Boolean((company as any).freeTrialClaimed),
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
@@ -2058,6 +2059,19 @@ router.post("/client/tickets", async (req, res) => {
 
     const titleLower = (title || "").toLowerCase();
     const descLower = (description || "").toLowerCase();
+    const isRequestingFreeTrial =
+      (description || "").includes("[معرف الباقة: free_trial]") ||
+      (description || "").includes("free_trial") ||
+      (title || "").includes("الباقة التجريبية المجانية") ||
+      (title || "").includes("Free 7-Day Trial");
+
+    if (isRequestingFreeTrial && company && (company as any).freeTrialClaimed) {
+      res.status(400).json({
+        error: "لقد استفدت مسبقاً من الباقة التجريبية المجانية (7 أيام). هذه الباقة متاحة للعملاء الجدد فقط ولمرة واحدة. يمكنك اختيار إحدى باقاتنا المتاحة.",
+      });
+      return;
+    }
+
     const isPlanSwitch =
       title.includes("طلب تغيير باقة") ||
       title.includes("طلب اشتراك") ||

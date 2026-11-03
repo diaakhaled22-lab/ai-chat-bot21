@@ -57,6 +57,7 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_booking_rules TEXT;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS free_trial_claimed BOOLEAN NOT NULL DEFAULT false;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_date TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS doctor TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
