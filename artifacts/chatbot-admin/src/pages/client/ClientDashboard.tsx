@@ -89,10 +89,14 @@ function StatCard({
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-5">
-        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">
-          {value}
+        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate min-h-[2.25rem]">
+          {value || "\u00A0"}
         </div>
-        {sub && <p className="text-xs text-muted-foreground mt-1.5 truncate font-medium">{sub}</p>}
+        {sub ? (
+          <p className="text-xs text-muted-foreground mt-1.5 truncate font-medium">{sub}</p>
+        ) : (
+          <div className="h-4 mt-1.5" />
+        )}
       </CardContent>
     </Card>
   );
@@ -453,8 +457,8 @@ export default function ClientDashboard() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {data?.hasOwnApiKey
                       ? (lang === "ar"
-                          ? `المزود: ${data.aiProvider || "—"} · النموذج: ${data.aiModel || "—"} · فواتير مباشرة حسب الاستهلاك دون سقف حصة`
-                          : `Provider: ${data.aiProvider || "—"} · Model: ${data.aiModel || "—"} · Pay-as-you-go with no quota cap`)
+                          ? `المزود: ${data.aiProvider || "—"} · فواتير مباشرة حسب الاستهلاك دون سقف حصة`
+                          : `Provider: ${data.aiProvider || "—"} · Pay-as-you-go with no quota cap`)
                       : (lang === "ar"
                           ? "أدخل مفتاحك الخاص في صفحة مزود ونموذج الذكاء الاصطناعي لتمكين الردود بنموذجك المفضل."
                           : "Configure your API key in AI Model & Provider to enable AI with your preferred model.")}
@@ -519,12 +523,12 @@ export default function ClientDashboard() {
               value={
                 filterMode === "quota"
                   ? (data?.quotaAiProvider ?? "openai").toUpperCase()
-                  : (data?.aiModel ?? (lang === "ar" ? "غير محدد" : "—"))
+                  : ""
               }
               sub={
                 filterMode === "quota"
                   ? (lang === "ar" ? "مزود التشغيل المعتمد من المنصة" : "Platform Operating Provider")
-                  : `${data?.aiProvider ?? (lang === "ar" ? "لم يحدد مزود" : "provider not set")} · ${lang === "ar" ? "مفتاحك الخاص" : "Own Key"}`
+                  : undefined
               }
               color={filterMode === "quota" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}
             />
