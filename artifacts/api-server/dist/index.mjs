@@ -34314,15 +34314,15 @@ var require_pg_pool = __commonJS({
       });
       return { callback: cb, result };
     }
-    function makeIdleListener(pool3, client) {
+    function makeIdleListener(pool2, client) {
       return function idleListener(err) {
         err.client = client;
         client.removeListener("error", idleListener);
         client.on("error", () => {
-          pool3.log("additional client error after disconnection due to error", err);
+          pool2.log("additional client error after disconnection due to error", err);
         });
-        pool3._remove(client);
-        pool3.emit("error", err, client);
+        pool2._remove(client);
+        pool2.emit("error", err, client);
       };
     }
     var Pool4 = class extends EventEmitter {
@@ -56149,13 +56149,13 @@ __export(src_exports, {
   messages: () => messages,
   notificationsTable: () => notificationsTable,
   passwordResetTokensTable: () => passwordResetTokensTable,
-  pool: () => pool2,
+  pool: () => pool,
   searchableText: () => searchableText,
   sessionTable: () => sessionTable,
   ticketsTable: () => ticketsTable,
   usersTable: () => usersTable
 });
-var Pool3, pool2, db;
+var Pool3, pool, db;
 var init_src = __esm({
   "lib/db/src/index.ts"() {
     "use strict";
@@ -56170,11 +56170,11 @@ var init_src = __esm({
         "DATABASE_URL must be set. Did you forget to provision a database?"
       );
     }
-    pool2 = new Pool3({ connectionString: process.env.DATABASE_URL });
-    pool2.on("error", (err) => {
+    pool = new Pool3({ connectionString: process.env.DATABASE_URL });
+    pool.on("error", (err) => {
       console.error("Unexpected error on idle database client", err);
     });
-    db = drizzle(pool2, { schema: schema_exports });
+    db = drizzle(pool, { schema: schema_exports });
   }
 });
 
@@ -57328,22 +57328,22 @@ __export(companyNotification_exports, {
 });
 async function ensureEmailNotificationSchema() {
   try {
-    if (!pool2) return;
-    await pool2.query(`
+    if (!pool) return;
+    await pool.query(`
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS notification_email text;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS resend_api_key text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email text;
     `);
     try {
-      await pool2.query(`
+      await pool.query(`
         ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_analysis text;
         ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_provider text;
         ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_model text;
       `);
     } catch (e) {
     }
-    await pool2.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS email_logs (
         id serial PRIMARY KEY,
         company_id integer NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -60210,14 +60210,14 @@ import OpenAI4 from "openai";
 import { GoogleGenerativeAI as GoogleGenerativeAI3 } from "@google/generative-ai";
 async function ensureRagSchema() {
   try {
-    if (!pool2) return;
+    if (!pool) return;
     try {
-      await pool2.query(`CREATE EXTENSION IF NOT EXISTS vector;`);
+      await pool.query(`CREATE EXTENSION IF NOT EXISTS vector;`);
       logger.info("pgvector extension enabled in PostgreSQL");
     } catch {
       logger.info("pgvector extension not present in PG engine; using hybrid JSON vector + lexical indexing");
     }
-    await pool2.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS company_knowledge_chunks (
         id serial PRIMARY KEY,
         company_id integer NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -60233,7 +60233,7 @@ async function ensureRagSchema() {
       CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON company_knowledge_chunks(file_id);
     `);
     try {
-      await pool2.query(`
+      await pool.query(`
         DO $$
         BEGIN
           IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
@@ -61049,8 +61049,8 @@ var init_wordpressSync = __esm({
 // artifacts/api-server/src/lib/restApiSync.ts
 async function ensureRestApiSchema() {
   try {
-    if (!pool2) return;
-    await pool2.query(`
+    if (!pool) return;
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS company_rest_api_integrations (
         id serial PRIMARY KEY,
         company_id integer NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,
@@ -61277,8 +61277,8 @@ var init_restApiSync = __esm({
 // artifacts/api-server/src/lib/shopifySync.ts
 async function ensureShopifySchema() {
   try {
-    if (!pool2) return;
-    await pool2.query(`
+    if (!pool) return;
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS company_shopify_integrations (
         id serial PRIMARY KEY,
         company_id integer NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,
@@ -93224,19 +93224,19 @@ var businessTypeEnsured = false;
 async function ensureBusinessTypeSchema() {
   if (businessTypeEnsured) return;
   try {
-    const { pool: pool3 } = await Promise.resolve().then(() => (init_src(), src_exports));
-    if (pool3) {
-      await pool3.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {
+    const { pool: pool2 } = await Promise.resolve().then(() => (init_src(), src_exports));
+    if (pool2) {
+      await pool2.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {
       });
-      await pool3.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_date TEXT;`).catch(() => {
+      await pool2.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_date TEXT;`).catch(() => {
       });
-      await pool3.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS doctor TEXT;`).catch(() => {
+      await pool2.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS doctor TEXT;`).catch(() => {
       });
-      await pool3.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';`).catch(() => {
+      await pool2.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';`).catch(() => {
       });
-      await pool3.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS booking_type TEXT DEFAULT 'new_checkup';`).catch(() => {
+      await pool2.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS booking_type TEXT DEFAULT 'new_checkup';`).catch(() => {
       });
-      await pool3.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT;`).catch(() => {
+      await pool2.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT;`).catch(() => {
       });
     } else {
       await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`).catch(() => {
@@ -93264,7 +93264,7 @@ var enabledPagesColumnEnsured = false;
 async function ensureEnabledClientPagesSchema() {
   if (enabledPagesColumnEnsured) return;
   try {
-    if (pool) {
+    if (pool && typeof pool.query === "function") {
       await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {
       });
     }
@@ -94316,7 +94316,7 @@ router4.put("/admin/companies/:id/pages", async (req, res) => {
     }).catch(() => {
     });
     try {
-      if (pool) {
+      if (pool && typeof pool.query === "function") {
         await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {
         });
         await pool.query(`UPDATE companies SET enabled_client_pages = $1 WHERE id = $2;`, [jsonStr, id]).catch(() => {
@@ -94346,7 +94346,7 @@ router4.patch("/admin/companies/:id/pages", async (req, res) => {
   }).catch(() => {
   });
   try {
-    if (pool) {
+    if (pool && typeof pool.query === "function") {
       await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {
       });
       await pool.query(`UPDATE companies SET enabled_client_pages = $1 WHERE id = $2;`, [jsonStr, id]).catch(() => {
@@ -94371,13 +94371,13 @@ router4.put("/admin/companies/:id/business-type", async (req, res) => {
     await ensureBusinessTypeSchema();
     const rawType = req.body?.businessType;
     const businessType = rawType === "clinic" ? "clinic" : "general";
-    const { pool: pool3 } = await Promise.resolve().then(() => (init_src(), src_exports));
-    if (pool3) {
-      await pool3.query(
+    const { pool: pool2 } = await Promise.resolve().then(() => (init_src(), src_exports));
+    if (pool2) {
+      await pool2.query(
         `ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';`
       ).catch(() => {
       });
-      await pool3.query(
+      await pool2.query(
         `UPDATE companies SET business_type = $1 WHERE id = $2;`,
         [businessType, id]
       );
@@ -99979,11 +99979,11 @@ router7.put("/client/company", async (req, res) => {
     if (rawAiExecutionMode !== void 0) {
       const mode = rawAiExecutionMode === "tokens" ? "tokens" : "quota";
       updates.aiExecutionMode = mode;
-      await pool2.query(
+      await pool.query(
         `ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`
       ).catch(() => {
       });
-      await pool2.query(
+      await pool.query(
         `UPDATE companies SET ai_execution_mode = $1 WHERE id = $2;`,
         [mode, existingCompany.id]
       ).catch(() => {
@@ -100031,9 +100031,9 @@ router7.put("/client/company", async (req, res) => {
     } catch (dbErr) {
       if (dbErr?.message?.includes("ai_execution_mode") || dbErr?.code === "42703") {
         try {
-          const { pool: pool3 } = await Promise.resolve().then(() => (init_src(), src_exports));
-          if (pool3) {
-            await pool3.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`);
+          const { pool: pool2 } = await Promise.resolve().then(() => (init_src(), src_exports));
+          if (pool2) {
+            await pool2.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`);
             const rows = await db.update(companiesTable).set(updates).where(eq(companiesTable.clientId, req.session.userId)).returning();
             company = rows[0];
           }
@@ -100150,16 +100150,16 @@ router7.all("/client/company/execution-mode", async (req, res, next) => {
       res.status(404).json({ error: "No company found" });
       return;
     }
-    await pool2.query(
+    await pool.query(
       `ALTER TABLE companies ADD COLUMN IF NOT EXISTS ai_execution_mode TEXT NOT NULL DEFAULT 'quota';`
     ).catch(() => {
     });
-    await pool2.query(
+    await pool.query(
       `UPDATE companies SET ai_execution_mode = $1 WHERE id = $2;`,
       [mode, existingCompany.id]
     );
     if (mode === "quota") {
-      await pool2.query(
+      await pool.query(
         `UPDATE companies SET monthly_token_quota = 250000 WHERE id = $1 AND (monthly_token_quota IS NULL OR monthly_token_quota = 0);`,
         [existingCompany.id]
       ).catch(() => {
@@ -104819,7 +104819,7 @@ if (!process.env.SESSION_SECRET) {
 }
 var PgStore = (0, import_connect_pg_simple.default)(import_express_session.default);
 var sessionStore = new PgStore({
-  pool: pool2,
+  pool,
   tableName: "session",
   createTableIfMissing: true
 });

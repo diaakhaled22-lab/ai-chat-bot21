@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable, emailLogsTable } from "@workspace/db";
+import { db, pool, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable, emailLogsTable } from "@workspace/db";
 import { eq, count, and, sql, desc, gte, lte, inArray, ilike } from "drizzle-orm";
 import OpenAI from "openai";
 import {
@@ -90,7 +90,7 @@ let enabledPagesColumnEnsured = false;
 async function ensureEnabledClientPagesSchema(): Promise<void> {
   if (enabledPagesColumnEnsured) return;
   try {
-    if (pool) {
+    if (pool && typeof (pool as any).query === "function") {
       await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
     }
     await db.execute(sql`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
@@ -1401,7 +1401,7 @@ router.put("/admin/companies/:id/pages", async (req, res) => {
 
     // 2. Save in companiesTable column if possible
     try {
-      if (pool) {
+      if (pool && typeof (pool as any).query === "function") {
         await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
         await pool.query(`UPDATE companies SET enabled_client_pages = $1 WHERE id = $2;`, [jsonStr, id]).catch(() => {});
       } else {
@@ -1432,7 +1432,7 @@ router.patch("/admin/companies/:id/pages", async (req, res) => {
     .catch(() => {});
 
   try {
-    if (pool) {
+    if (pool && typeof (pool as any).query === "function") {
       await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;`).catch(() => {});
       await pool.query(`UPDATE companies SET enabled_client_pages = $1 WHERE id = $2;`, [jsonStr, id]).catch(() => {});
     } else {
