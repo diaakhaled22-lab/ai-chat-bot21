@@ -95745,25 +95745,71 @@ router4.get("/admin/invoices", async (req, res) => {
 });
 router4.post("/admin/invoices/void", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, reason } = req.body;
+    const { invoiceNumber, ticketId, companyId, tokensToDeduct, reason } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
     }
     let effectiveCompanyId = companyId;
-    if (!effectiveCompanyId && ticketId) {
+    let associatedTicket = null;
+    if (ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
-      if (ticket) {
+      associatedTicket = ticket || null;
+      if (!effectiveCompanyId && ticket) {
         const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
         if (comp) effectiveCompanyId = comp.id;
       }
     }
+    if (!effectiveCompanyId) {
+      const [logRow] = await db.select().from(companyActivityLogsTable).where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)).limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+    let deductAmount = 0;
+    if (typeof tokensToDeduct === "number" && tokensToDeduct > 0) {
+      deductAmount = tokensToDeduct;
+    } else if (associatedTicket) {
+      try {
+        const catalog2 = await getActivePackagesCatalog();
+        const parsed = parseTicketPlanDetails(associatedTicket, catalog2);
+        if (parsed.isTopup && parsed.tokens) {
+          deductAmount = parsed.tokens;
+        } else if (parsed.plan?.tokensMonthly) {
+          deductAmount = parsed.plan.tokensMonthly;
+        }
+      } catch (err) {
+        logger.warn({ err }, "Could not parse ticket details to calculate void token deduction");
+      }
+    }
+    let previousQuota = null;
+    let newQuota = null;
+    if (effectiveCompanyId && deductAmount > 0) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, effectiveCompanyId)).limit(1);
+      if (comp) {
+        previousQuota = comp.monthlyTokenQuota ?? 0;
+        newQuota = Math.max(0, previousQuota - deductAmount);
+        await db.update(companiesTable).set({
+          monthlyTokenQuota: newQuota,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(companiesTable.id, effectiveCompanyId));
+        logger.info(
+          { effectiveCompanyId, invoiceNumber, deductAmount, previousQuota, newQuota },
+          "Successfully deducted tokens from company quota due to voided invoice"
+        );
+      }
+    }
     if (ticketId) {
+      const deductionText = deductAmount > 0 ? ` \u0648\u062A\u0645 \u062E\u0635\u0645 ${deductAmount.toLocaleString()} \u0631\u0645\u0632 (Tokens) \u0645\u0646 \u0631\u0635\u064A\u062F \u0627\u0644\u0634\u0631\u0643\u0629.` : "";
       await db.update(ticketsTable).set({
         status: "resolved",
-        adminNote: ("\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629 \u0648\u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (" + invoiceNumber + ") \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. " + (reason ? "\u0627\u0644\u0633\u0628\u0628: " + reason : "")).trim(),
+        adminNote: `\u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629 \u0648\u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (#${invoiceNumber}) \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.${deductionText} ${reason ? "\u0627\u0644\u0633\u0628\u0628: " + reason : ""}`.trim(),
         updatedAt: /* @__PURE__ */ new Date()
       }).where(eq(ticketsTable.id, ticketId)).catch(() => {
+      });
+      await db.update(chatLogsTable).set({
+        botResponse: `\u26A0\uFE0F [\u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0639\u0645\u0644\u064A\u0629] \u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u062D\u062C\u0632 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}${deductAmount > 0 ? ` \u0648\u062E\u0635\u0645 ${deductAmount.toLocaleString()} \u0631\u0645\u0632 \u0645\u0646 \u0627\u0644\u0631\u0635\u064A\u062F` : ""}.`
+      }).where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`)).catch(() => {
       });
     }
     if (effectiveCompanyId) {
@@ -95774,6 +95820,9 @@ router4.post("/admin/invoices/void", async (req, res) => {
         note: JSON.stringify({
           invoiceNumber,
           ticketId: ticketId || null,
+          tokensDeducted: deductAmount,
+          previousQuota,
+          newQuota,
           reason: reason || "Voided / Cancelled by Admin",
           isVoided: true,
           updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -95783,10 +95832,17 @@ router4.post("/admin/invoices/void", async (req, res) => {
     await logAdminActivity(
       req.session.userId,
       "Void Invoice",
-      "Admin voided invoice #" + invoiceNumber + " (ticket: #" + (ticketId || "none") + ")",
+      `Admin voided invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${deductAmount > 0 ? `, deducted ${deductAmount.toLocaleString()} tokens` : ""}`,
       req.ip || null
     );
-    res.json({ ok: true, invoiceNumber, voided: true });
+    res.json({
+      ok: true,
+      invoiceNumber,
+      voided: true,
+      tokensDeducted: deductAmount,
+      previousQuota,
+      newQuota
+    });
   } catch (err) {
     logger.error({ err }, "Void invoice error");
     res.status(500).json({ error: err?.message || "Failed to void invoice" });

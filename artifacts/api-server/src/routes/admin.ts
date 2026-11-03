@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, companiesTable, chatLogsTable, ticketsTable, adminConfigTable, companyActivityLogsTable, notificationsTable, adminActivityLogsTable, companyKnowledgeFilesTable, companyWordPressIntegrationsTable, malfunctionsTable, emailLogsTable } from "@workspace/db";
-import { eq, count, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
+import { eq, count, and, sql, desc, gte, lte, inArray, ilike } from "drizzle-orm";
 import OpenAI from "openai";
 import {
   CreateClientBody,
@@ -3265,13 +3265,14 @@ router.get("/admin/invoices", async (req, res) => {
   }
 });
 
-// POST /admin/invoices/void - Void/Cancel an invoice transaction & booking
+// POST /admin/invoices/void - Void/Cancel an invoice transaction & booking (and deduct tokens from company quota)
 router.post("/admin/invoices/void", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, reason } = req.body as {
+    const { invoiceNumber, ticketId, companyId, tokensToDeduct, reason } = req.body as {
       invoiceNumber: string;
       ticketId?: number | null;
       companyId?: number | null;
+      tokensToDeduct?: number | null;
       reason?: string;
     };
 
@@ -3281,24 +3282,97 @@ router.post("/admin/invoices/void", async (req, res) => {
     }
 
     let effectiveCompanyId = companyId;
-    if (!effectiveCompanyId && ticketId) {
+    let associatedTicket: any = null;
+
+    if (ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
-      if (ticket) {
+      associatedTicket = ticket || null;
+      if (!effectiveCompanyId && ticket) {
         const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
         if (comp) effectiveCompanyId = comp.id;
       }
     }
 
-    // If there is an associated ticket, update it to cancelled
+    // If companyId still unknown, try looking up via activity logs by invoiceNumber
+    if (!effectiveCompanyId) {
+      const [logRow] = await db
+        .select()
+        .from(companyActivityLogsTable)
+        .where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`))
+        .limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+
+    // Determine token deduction amount
+    let deductAmount = 0;
+    if (typeof tokensToDeduct === "number" && tokensToDeduct > 0) {
+      deductAmount = tokensToDeduct;
+    } else if (associatedTicket) {
+      try {
+        const catalog = await getActivePackagesCatalog();
+        const parsed = parseTicketPlanDetails(associatedTicket, catalog);
+        if (parsed.isTopup && parsed.tokens) {
+          deductAmount = parsed.tokens;
+        } else if (parsed.plan?.tokensMonthly) {
+          deductAmount = parsed.plan.tokensMonthly;
+        }
+      } catch (err) {
+        logger.warn({ err }, "Could not parse ticket details to calculate void token deduction");
+      }
+    }
+
+    // If company found and there are tokens to deduct, subtract from monthlyTokenQuota
+    let previousQuota: number | null = null;
+    let newQuota: number | null = null;
+
+    if (effectiveCompanyId && deductAmount > 0) {
+      const [comp] = await db
+        .select()
+        .from(companiesTable)
+        .where(eq(companiesTable.id, effectiveCompanyId))
+        .limit(1);
+
+      if (comp) {
+        previousQuota = comp.monthlyTokenQuota ?? 0;
+        newQuota = Math.max(0, previousQuota - deductAmount);
+
+        await db
+          .update(companiesTable)
+          .set({
+            monthlyTokenQuota: newQuota,
+            updatedAt: new Date(),
+          })
+          .where(eq(companiesTable.id, effectiveCompanyId));
+
+        logger.info(
+          { effectiveCompanyId, invoiceNumber, deductAmount, previousQuota, newQuota },
+          "Successfully deducted tokens from company quota due to voided invoice"
+        );
+      }
+    }
+
+    // If there is an associated ticket, update it to cancelled/voided
     if (ticketId) {
+      const deductionText = deductAmount > 0 ? ` وتم خصم ${deductAmount.toLocaleString()} رمز (Tokens) من رصيد الشركة.` : "";
       await db
         .update(ticketsTable)
         .set({
           status: "resolved",
-          adminNote: ("تم إلغاء العملية وحجز الفاتورة (" + invoiceNumber + ") بواسطة الإدارة. " + (reason ? "السبب: " + reason : "")).trim(),
+          adminNote: (`تم إلغاء العملية وحجز الفاتورة (#${invoiceNumber}) بواسطة الإدارة.${deductionText} ${reason ? "السبب: " + reason : ""}`).trim(),
           updatedAt: new Date(),
         })
         .where(eq(ticketsTable.id, ticketId))
+        .catch(() => {});
+
+      // Update universal chat / inbox for this ticket
+      await db
+        .update(chatLogsTable)
+        .set({
+          botResponse: `⚠️ [إلغاء العملية] تم إلغاء حجز الفاتورة رقم #${invoiceNumber}${deductAmount > 0 ? ` وخصم ${deductAmount.toLocaleString()} رمز من الرصيد` : ""}.`,
+        })
+        .where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`))
         .catch(() => {});
     }
 
@@ -3311,6 +3385,9 @@ router.post("/admin/invoices/void", async (req, res) => {
         note: JSON.stringify({
           invoiceNumber,
           ticketId: ticketId || null,
+          tokensDeducted: deductAmount,
+          previousQuota,
+          newQuota,
           reason: reason || "Voided / Cancelled by Admin",
           isVoided: true,
           updatedAt: new Date().toISOString(),
@@ -3321,11 +3398,18 @@ router.post("/admin/invoices/void", async (req, res) => {
     await logAdminActivity(
       req.session.userId!,
       "Void Invoice",
-      "Admin voided invoice #" + invoiceNumber + " (ticket: #" + (ticketId || "none") + ")",
+      `Admin voided invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${deductAmount > 0 ? `, deducted ${deductAmount.toLocaleString()} tokens` : ""}`,
       req.ip || null
     );
 
-    res.json({ ok: true, invoiceNumber, voided: true });
+    res.json({
+      ok: true,
+      invoiceNumber,
+      voided: true,
+      tokensDeducted: deductAmount,
+      previousQuota,
+      newQuota,
+    });
   } catch (err: any) {
     logger.error({ err }, "Void invoice error");
     res.status(500).json({ error: err?.message || "Failed to void invoice" });

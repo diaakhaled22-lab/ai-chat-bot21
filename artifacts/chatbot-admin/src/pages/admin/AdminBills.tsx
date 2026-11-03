@@ -183,7 +183,7 @@ export default function AdminBills() {
   const invoices: InvoiceItem[] = useMemo(() => {
     return rawInvoices.map((inv) => {
       const isPaid = inv.isPaid !== undefined ? Boolean(inv.isPaid) : (inv.status === "paid" || inv.status === "activated");
-      const isVoided = Boolean(inv.isVoided || inv.state === "voided" || inv.status === "voided");
+      const isVoided = Boolean(inv.isVoided || inv.state === "voided" || (inv.status as string) === "voided");
       const state: "active" | "pending" | "voided" = isVoided
         ? "voided"
         : inv.state === "active" || inv.state === "pending"
@@ -553,28 +553,36 @@ export default function AdminBills() {
     if (!invoiceToVoid) return;
     try {
       setIsVoiding(true);
-      await customFetch("/api/admin/invoices/void", {
+      const res = await customFetch<{ ok: boolean; tokensDeducted?: number; newQuota?: number }>("/api/admin/invoices/void", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           invoiceNumber: invoiceToVoid.invoiceNumber,
           ticketId: invoiceToVoid.ticketId || null,
           companyId: invoiceToVoid.companyId || null,
+          tokensToDeduct: invoiceToVoid.tokenQuota || 0,
           reason: voidReason.trim() || undefined,
         }),
       });
+
+      const deductedMsg = res?.tokensDeducted && res.tokensDeducted > 0
+        ? lang === "ar"
+          ? ` وتم خصم ${res.tokensDeducted.toLocaleString()} رمز من رصيد الشركة.`
+          : ` and ${res.tokensDeducted.toLocaleString()} tokens were deducted from company quota.`
+        : "";
 
       toast({
         title: lang === "ar" ? "✅ تم إلغاء العملية وحجز الفاتورة" : "Invoice Voided Successfully",
         description:
           lang === "ar"
-            ? `تم إلغاء العملية للفاتورة #${invoiceToVoid.invoiceNumber} بنجاح.`
-            : `Invoice #${invoiceToVoid.invoiceNumber} has been voided/cancelled.`,
+            ? `تم إلغاء العملية للفاتورة #${invoiceToVoid.invoiceNumber}${deductedMsg}`
+            : `Invoice #${invoiceToVoid.invoiceNumber} has been voided/cancelled${deductedMsg}`,
       });
 
       setVoidDialogOpen(false);
       setInvoiceToVoid(null);
       queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
     } catch (err: any) {
       toast({
         title: lang === "ar" ? "خطأ في إلغاء العملية" : "Failed to void invoice",
@@ -1188,7 +1196,7 @@ export default function AdminBills() {
                             </th>
                             <th className="p-3 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
                             <th className="p-3 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
-                            <th className="p-3 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                            <th className="p-3 text-center min-w-[260px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
@@ -1310,13 +1318,13 @@ export default function AdminBills() {
                                 </td>
 
                                 {/* Actions */}
-                                <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                <td className="p-3 text-center whitespace-nowrap min-w-[260px]">
+                                  <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                                     <Button
                                       size="sm"
                                       onClick={() => handleOpenSendCopy(inv)}
                                       title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg"
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg shrink-0"
                                     >
                                       <Send className="w-3 h-3" />
                                       <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
@@ -1329,50 +1337,50 @@ export default function AdminBills() {
                                         setViewingInvoice(inv);
                                         setViewInvoiceModalOpen(true);
                                       }}
-                                      className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground rounded-lg"
+                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
                                       title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
                                     >
-                                      <Eye className="w-3 h-3" />
+                                      <Eye className="w-3.5 h-3.5" />
                                     </Button>
 
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => handleCopySummary(inv)}
-                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg"
+                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
                                       title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
                                     >
                                       {copiedId === inv.id ? (
-                                        <Check className="w-3 h-3 text-emerald-500" />
+                                        <Check className="w-3.5 h-3.5 text-emerald-500" />
                                       ) : (
-                                        <Copy className="w-3 h-3" />
+                                        <Copy className="w-3.5 h-3.5" />
                                       )}
                                     </Button>
 
-                                      {/* Void / Cancel Booking Button */}
-                                      {!inv.isVoided && inv.state !== "voided" && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleOpenVoidDialog(inv)}
-                                          className="h-7 px-2 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/10 border-amber-500/30 rounded-lg gap-1"
-                                          title={lang === "ar" ? "إلغاء حجز العملية (Void Transaction)" : "Cancel Booking & Void"}
-                                        >
-                                          <Ban className="w-3 h-3" />
-                                          <span className="hidden sm:inline">{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
-                                        </Button>
-                                      )}
-
-                                      {/* Delete Invoice Button */}
+                                    {/* Void / Cancel Booking Button */}
+                                    {!inv.isVoided && inv.state !== "voided" && (
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => handleOpenDeleteDialog(inv)}
-                                        className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg"
-                                        title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
+                                        onClick={() => handleOpenVoidDialog(inv)}
+                                        className="h-7 px-2.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/15 border-amber-500/40 bg-amber-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
+                                        title={lang === "ar" ? "إلغاء حجز العملية وخصم الرموز (Void & Deduct Tokens)" : "Cancel Booking & Void"}
                                       >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <Ban className="w-3 h-3" />
+                                        <span>{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
                                       </Button>
+                                    )}
+
+                                    {/* Delete Invoice Button */}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleOpenDeleteDialog(inv)}
+                                      className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg shrink-0"
+                                      title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
                                   </div>
                                 </td>
                               </tr>
@@ -1450,7 +1458,7 @@ export default function AdminBills() {
                   <th className="p-3.5 text-right rtl:text-right ltr:text-left font-bold text-foreground">{lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
-                  <th className="p-3.5 text-center">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                  <th className="p-3.5 text-center min-w-[260px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -1595,13 +1603,13 @@ export default function AdminBills() {
                         </td>
 
                         {/* Actions */}
-                        <td className="p-3.5 text-center">
-                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        <td className="p-3.5 text-center whitespace-nowrap min-w-[260px]">
+                          <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                             <Button
                               size="sm"
                               onClick={() => handleOpenSendCopy(inv)}
                               title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send a copy via Email or WhatsApp"}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg shrink-0"
                             >
                               <Send className="w-3 h-3" />
                               <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
@@ -1614,50 +1622,50 @@ export default function AdminBills() {
                                 setViewingInvoice(inv);
                                 setViewInvoiceModalOpen(true);
                               }}
-                              className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground rounded-lg"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
                               title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
                             >
-                              <Eye className="w-3 h-3" />
+                              <Eye className="w-3.5 h-3.5" />
                             </Button>
 
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleCopySummary(inv)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
                               title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
                             >
                               {copiedId === inv.id ? (
-                                <Check className="w-3 h-3 text-emerald-500" />
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
                               ) : (
-                                <Copy className="w-3 h-3" />
+                                <Copy className="w-3.5 h-3.5" />
                               )}
                             </Button>
 
-                                      {/* Void / Cancel Booking Button */}
-                                      {!inv.isVoided && inv.state !== "voided" && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleOpenVoidDialog(inv)}
-                                          className="h-7 px-2 text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/10 border-amber-500/30 rounded-lg gap-1"
-                                          title={lang === "ar" ? "إلغاء حجز العملية (Void Transaction)" : "Cancel Booking & Void"}
-                                        >
-                                          <Ban className="w-3 h-3" />
-                                          <span className="hidden sm:inline">{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
-                                        </Button>
-                                      )}
+                            {/* Void / Cancel Booking Button */}
+                            {!inv.isVoided && inv.state !== "voided" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenVoidDialog(inv)}
+                                className="h-7 px-2.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/15 border-amber-500/40 bg-amber-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
+                                title={lang === "ar" ? "إلغاء حجز العملية وخصم الرموز (Void & Deduct Tokens)" : "Cancel Booking & Void"}
+                              >
+                                <Ban className="w-3 h-3" />
+                                <span>{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
+                              </Button>
+                            )}
 
-                                      {/* Delete Invoice Button */}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleOpenDeleteDialog(inv)}
-                                        className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg"
-                                        title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </Button>
+                            {/* Delete Invoice Button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDeleteDialog(inv)}
+                              className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg shrink-0"
+                              title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -1840,13 +1848,25 @@ export default function AdminBills() {
 
           {invoiceToVoid && (
             <div className="space-y-3 py-2 text-xs">
-              <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1">
-                <div className="font-semibold text-foreground">
-                  {lang === "ar" ? invoiceToVoid.titleAr : invoiceToVoid.titleEn}
+              <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground text-sm">
+                    {lang === "ar" ? invoiceToVoid.titleAr : invoiceToVoid.titleEn}
+                  </span>
+                  <span className="font-mono font-bold text-foreground">
+                    ${invoiceToVoid.priceUsd} USD
+                  </span>
                 </div>
-                <div className="text-muted-foreground">
-                  {lang === "ar" ? "المبلغ: " : "Amount: "}{invoiceToVoid.priceUsd}$ USD
-                </div>
+                {Boolean(invoiceToVoid.tokenQuota && invoiceToVoid.tokenQuota > 0) && (
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 flex items-center gap-2 text-xs font-semibold">
+                    <Ban className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span>
+                      {lang === "ar"
+                        ? `سيتم خصم ${invoiceToVoid.tokenQuota?.toLocaleString()} رمز (Tokens) تلقائياً من رصيد الشركة عند التأكيد.`
+                        : `${invoiceToVoid.tokenQuota?.toLocaleString()} tokens will be deducted from company quota.`}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -1880,7 +1900,7 @@ export default function AdminBills() {
               className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
             >
               {isVoiding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
-              <span>{lang === "ar" ? "تأكيد إلغاء العملية" : "Confirm Void"}</span>
+              <span>{lang === "ar" ? "تأكيد إلغاء العملية وخصم الرموز" : "Confirm Void & Deduct"}</span>
             </Button>
           </DialogFooter>
         </DialogContent>
