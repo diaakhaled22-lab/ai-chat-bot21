@@ -57,6 +57,8 @@ import {
   Hourglass,
   Ban,
   Trash2,
+  Pause,
+  Play,
 } from "lucide-react";
 
 export interface InvoiceItem {
@@ -84,11 +86,14 @@ export interface InvoiceItem {
   retentionDays?: number | null;
   channels?: string[];
   tools?: string[];
-  state: "active" | "pending" | "voided";
+  state: "active" | "pending" | "voided" | "paused";
   isVoided?: boolean;
   voidReason?: string;
+  isPaused?: boolean;
+  pauseReason?: string;
+  tokensWithheld?: number;
   isPaid: boolean;
-  status: "paid" | "activated" | "pending";
+  status: "paid" | "activated" | "pending" | "paused";
   issueDate: string;
   notes?: string;
 }
@@ -108,6 +113,7 @@ export interface CompanyInvoiceGroup {
   unpaidCount: number;
   pendingStateCount: number;
   activeStateCount: number;
+  pausedCount?: number;
   voidedCount?: number;
   latestDate: string;
 }
@@ -154,6 +160,16 @@ export default function AdminBills() {
   const [customNotes, setCustomNotes] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
 
+  // Pause / Resume Modal state
+  const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
+  const [invoiceToPause, setInvoiceToPause] = useState<InvoiceItem | null>(null);
+  const [pauseReason, setPauseReason] = useState("");
+  const [isPausing, setIsPausing] = useState(false);
+
+  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
+  const [invoiceToResume, setInvoiceToResume] = useState<InvoiceItem | null>(null);
+  const [isResuming, setIsResuming] = useState(false);
+
   // Void / Cancel Modal state
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [invoiceToVoid, setInvoiceToVoid] = useState<InvoiceItem | null>(null);
@@ -185,8 +201,11 @@ export default function AdminBills() {
     return rawInvoices.map((inv) => {
       const isPaid = inv.isPaid !== undefined ? Boolean(inv.isPaid) : (inv.status === "paid" || inv.status === "activated");
       const isVoided = Boolean(inv.isVoided || inv.state === "voided" || (inv.status as string) === "voided");
-      const state: "active" | "pending" | "voided" = isVoided
+      const isPaused = !isVoided && Boolean(inv.isPaused || inv.state === "paused" || (inv.status as string) === "paused");
+      const state: "active" | "pending" | "voided" | "paused" = isVoided
         ? "voided"
+        : isPaused
+        ? "paused"
         : inv.state === "active" || inv.state === "pending"
         ? inv.state
         : (inv.status === "paid" || inv.status === "activated" ? "active" : "pending");
@@ -195,6 +214,7 @@ export default function AdminBills() {
         state,
         isPaid,
         isVoided,
+        isPaused,
       };
     });
   }, [rawInvoices]);
@@ -385,7 +405,9 @@ export default function AdminBills() {
       group.totalInvoices += 1;
 
       const isVoided = Boolean(inv.isVoided || inv.state === "voided");
-      if (!isVoided) {
+      const isPaused = !isVoided && Boolean(inv.isPaused || inv.state === "paused");
+
+      if (!isVoided && !isPaused) {
         group.totalTokens += inv.tokenQuota || 0;
         group.totalUsd += inv.priceUsd || 0;
         if (inv.isPaid) {
@@ -397,6 +419,15 @@ export default function AdminBills() {
           group.pendingStateCount += 1;
         } else if (inv.state === "active") {
           group.activeStateCount += 1;
+        }
+      } else if (isPaused) {
+        // Paused transaction: tokens are withheld from customer utilization
+        group.pausedCount = (group.pausedCount || 0) + 1;
+        group.totalUsd += inv.priceUsd || 0;
+        if (inv.isPaid) {
+          group.paidCount += 1;
+        } else {
+          group.unpaidCount += 1;
         }
       } else {
         group.voidedCount = (group.voidedCount || 0) + 1;
@@ -548,6 +579,108 @@ export default function AdminBills() {
       });
     } finally {
       setIsSendingCopy(false);
+    }
+  };
+
+  // Pause transaction & tokens handler
+  const handleOpenPauseDialog = (inv: InvoiceItem) => {
+    setInvoiceToPause(inv);
+    setPauseReason("");
+    setPauseDialogOpen(true);
+  };
+
+  const handleConfirmPause = async () => {
+    if (!invoiceToPause) return;
+    try {
+      setIsPausing(true);
+      const res = await customFetch<{ ok: boolean; tokensWithheld?: number; newQuota?: number }>("/api/admin/invoices/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceNumber: invoiceToPause.invoiceNumber,
+          ticketId: invoiceToPause.ticketId || null,
+          companyId: invoiceToPause.companyId || null,
+          tokensToPause: invoiceToPause.tokenQuota || 0,
+          reason: pauseReason.trim() || undefined,
+        }),
+      });
+
+      const tokensText = res?.tokensWithheld && res.tokensWithheld > 0
+        ? lang === "ar"
+          ? ` وتجميد ${res.tokensWithheld.toLocaleString()} رمز مؤقتاً`
+          : ` and frozen ${res.tokensWithheld.toLocaleString()} tokens`
+        : "";
+
+      toast({
+        title: lang === "ar" ? "⏸️ تم إيقاف العملية مؤقتاً" : "Invoice Paused",
+        description:
+          lang === "ar"
+            ? `تم إيقاف الفاتورة #${invoiceToPause.invoiceNumber}${tokensText} بنجاح.`
+            : `Invoice #${invoiceToPause.invoiceNumber} paused${tokensText}.`,
+      });
+
+      setPauseDialogOpen(false);
+      setInvoiceToPause(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في إيقاف العملية" : "Failed to pause invoice",
+        description: err?.message || (lang === "ar" ? "تعذر إيقاف العملية مؤقتاً." : "Could not pause invoice."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  // Resume transaction & tokens handler
+  const handleOpenResumeDialog = (inv: InvoiceItem) => {
+    setInvoiceToResume(inv);
+    setResumeDialogOpen(true);
+  };
+
+  const handleConfirmResume = async () => {
+    if (!invoiceToResume) return;
+    try {
+      setIsResuming(true);
+      const res = await customFetch<{ ok: boolean; tokensRestored?: number; newQuota?: number }>("/api/admin/invoices/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceNumber: invoiceToResume.invoiceNumber,
+          ticketId: invoiceToResume.ticketId || null,
+          companyId: invoiceToResume.companyId || null,
+          tokensToResume: invoiceToResume.tokenQuota || 0,
+        }),
+      });
+
+      const tokensText = res?.tokensRestored && res.tokensRestored > 0
+        ? lang === "ar"
+          ? ` وإعادة تفعيل ${res.tokensRestored.toLocaleString()} رمز بنجاح`
+          : ` and restored ${res.tokensRestored.toLocaleString()} tokens`
+        : "";
+
+      toast({
+        title: lang === "ar" ? "▶️ تم استئناف العملية وتفعيل الرموز" : "Invoice Resumed",
+        description:
+          lang === "ar"
+            ? `تم استئناف الفاتورة #${invoiceToResume.invoiceNumber}${tokensText}.`
+            : `Invoice #${invoiceToResume.invoiceNumber} resumed${tokensText}.`,
+      });
+
+      setResumeDialogOpen(false);
+      setInvoiceToResume(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في استئناف العملية" : "Failed to resume invoice",
+        description: err?.message || (lang === "ar" ? "تعذر استئناف العملية." : "Could not resume invoice."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsResuming(false);
     }
   };
 
@@ -1213,7 +1346,7 @@ export default function AdminBills() {
                             </th>
                             <th className="p-3 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
                             <th className="p-3 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
-                            <th className="p-3 text-center min-w-[260px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                            <th className="p-3 text-center min-w-[320px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
@@ -1267,6 +1400,15 @@ export default function AdminBills() {
                                         {lang === "ar" ? "مخصومة" : "Deducted"}
                                       </span>
                                     </div>
+                                  ) : inv.isPaused || inv.state === "paused" ? (
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-blue-600 dark:text-blue-400 font-bold text-xs">
+                                        {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                                      </span>
+                                      <span className="text-[10px] text-blue-500 font-semibold">
+                                        {lang === "ar" ? "مجمدة مؤقتاً" : "Paused / Frozen"}
+                                      </span>
+                                    </div>
                                   ) : (
                                     inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"
                                   )}
@@ -1304,12 +1446,17 @@ export default function AdminBills() {
                                   )}
                                 </td>
 
-                                {/* State ('active', 'pending', or 'voided') */}
+                                {/* State ('active', 'pending', 'paused', or 'voided') */}
                                 <td className="p-3 text-center">
                                   {inv.isVoided || inv.state === "voided" ? (
                                     <Badge variant="outline" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1">
                                       <Ban className="w-3 h-3" />
                                       {lang === "ar" ? "ملغاة" : "Voided"}
+                                    </Badge>
+                                  ) : inv.isPaused || inv.state === "paused" ? (
+                                    <Badge variant="outline" className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-semibold gap-1">
+                                      <Pause className="w-3 h-3" />
+                                      {lang === "ar" ? "معلقة مؤقتاً" : "Paused"}
                                     </Badge>
                                   ) : inv.state === "active" ? (
                                     <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
@@ -1357,7 +1504,7 @@ export default function AdminBills() {
                                 </td>
 
                                 {/* Actions */}
-                                <td className="p-3 text-center whitespace-nowrap min-w-[260px]">
+                                <td className="p-3 text-center whitespace-nowrap min-w-[320px]">
                                   <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                                     <Button
                                       size="sm"
@@ -1395,6 +1542,32 @@ export default function AdminBills() {
                                         <Copy className="w-3.5 h-3.5" />
                                       )}
                                     </Button>
+
+                                    {/* Pause / Resume Button */}
+                                    {!inv.isVoided && inv.state !== "voided" && (
+                                      inv.isPaused || inv.state === "paused" ? (
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleOpenResumeDialog(inv)}
+                                          className="h-7 px-2.5 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 shrink-0 shadow-sm"
+                                          title={lang === "ar" ? "استئناف العملية وإعادة تفعيل الرموز (Resume)" : "Resume Transaction & Tokens"}
+                                        >
+                                          <Play className="w-3 h-3 fill-current" />
+                                          <span>{lang === "ar" ? "استئناف" : "Resume"}</span>
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenPauseDialog(inv)}
+                                          className="h-7 px-2.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-500/15 border-blue-500/40 bg-blue-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
+                                          title={lang === "ar" ? "إيقاف العملية وتجميد استخدام الرموز مؤقتاً (Pause Tokens)" : "Pause Transaction & Freeze Tokens"}
+                                        >
+                                          <Pause className="w-3 h-3" />
+                                          <span>{lang === "ar" ? "إيقاف مؤقت" : "Pause"}</span>
+                                        </Button>
+                                      )
+                                    )}
 
                                     {/* Void / Cancel Booking Button */}
                                     {!inv.isVoided && inv.state !== "voided" && (
@@ -1502,7 +1675,7 @@ export default function AdminBills() {
                   <th className="p-3.5 text-right rtl:text-right ltr:text-left font-bold text-foreground">{lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
-                  <th className="p-3.5 text-center min-w-[260px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                  <th className="p-3.5 text-center min-w-[320px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -1584,6 +1757,15 @@ export default function AdminBills() {
                                 {lang === "ar" ? "مخصومة" : "Deducted"}
                               </span>
                             </div>
+                          ) : inv.isPaused || inv.state === "paused" ? (
+                            <div className="flex flex-col items-center">
+                              <span className="text-muted-foreground/70 text-xs">
+                                {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                              </span>
+                              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                                {lang === "ar" ? "مجمدة مؤقتاً" : "Paused"}
+                              </span>
+                            </div>
                           ) : (
                             inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"
                           )}
@@ -1621,12 +1803,17 @@ export default function AdminBills() {
                           )}
                         </td>
 
-                        {/* State ('active', 'pending', or 'voided') */}
+                        {/* State ('active', 'pending', 'paused', or 'voided') */}
                         <td className="p-3.5 text-center">
                           {inv.isVoided || inv.state === "voided" ? (
                             <Badge variant="outline" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1">
                               <Ban className="w-3 h-3" />
                               {lang === "ar" ? "ملغاة" : "Voided"}
+                            </Badge>
+                          ) : inv.isPaused || inv.state === "paused" ? (
+                            <Badge variant="outline" className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-semibold gap-1">
+                              <Pause className="w-3 h-3" />
+                              {lang === "ar" ? "معلقة مؤقتاً" : "Paused"}
                             </Badge>
                           ) : inv.state === "active" ? (
                             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
@@ -1674,7 +1861,7 @@ export default function AdminBills() {
                         </td>
 
                         {/* Actions */}
-                        <td className="p-3.5 text-center whitespace-nowrap min-w-[260px]">
+                        <td className="p-3.5 text-center whitespace-nowrap min-w-[320px]">
                           <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                             <Button
                               size="sm"
@@ -1713,6 +1900,32 @@ export default function AdminBills() {
                               )}
                             </Button>
 
+                            {/* Pause / Resume Button */}
+                            {!inv.isVoided && inv.state !== "voided" && (
+                              inv.isPaused || inv.state === "paused" ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleOpenResumeDialog(inv)}
+                                  className="h-7 px-2.5 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 shrink-0 shadow-sm"
+                                  title={lang === "ar" ? "استئناف العملية وإعادة تفعيل الرموز (Resume)" : "Resume Transaction & Tokens"}
+                                >
+                                  <Play className="w-3 h-3 fill-current" />
+                                  <span>{lang === "ar" ? "استئناف" : "Resume"}</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenPauseDialog(inv)}
+                                  className="h-7 px-2.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-500/15 border-blue-500/40 bg-blue-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
+                                  title={lang === "ar" ? "إيقاف العملية وتجميد استخدام الرموز مؤقتاً (Pause Tokens)" : "Pause Transaction & Freeze Tokens"}
+                                >
+                                  <Pause className="w-3 h-3" />
+                                  <span>{lang === "ar" ? "إيقاف مؤقت" : "Pause"}</span>
+                                </Button>
+                              )
+                            )}
+
                             {/* Void / Cancel Booking Button */}
                             {!inv.isVoided && inv.state !== "voided" && (
                               <Button
@@ -1720,7 +1933,7 @@ export default function AdminBills() {
                                 size="sm"
                                 onClick={() => handleOpenVoidDialog(inv)}
                                 className="h-7 px-2.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/15 border-amber-500/40 bg-amber-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
-                                title={lang === "ar" ? "إلغاء حجز العملية وخصم الرموز (Void & Deduct Tokens)" : "Cancel Booking & Void"}
+                                title={lang === "ar" ? "إلغاء حجز العملية وخصم الرموز والتكلفة (Void & Deduct)" : "Cancel Booking & Void"}
                               >
                                 <Ban className="w-3 h-3" />
                                 <span>{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
@@ -1894,6 +2107,183 @@ export default function AdminBills() {
             >
               {isSendingCopy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               <span>{lang === "ar" ? "إرسال النسخة الآن" : "Send Copy Now"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* ── Pause Invoice & Token Quota Confirmation Dialog ── */}
+      <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
+        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-2">
+              <Pause className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">
+              {lang === "ar" ? "إيقاف العملية مؤقتاً وتجميد الرموز" : "Pause Transaction & Freeze Tokens"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {invoiceToPause && (lang === "ar"
+                ? `هل أنت متأكد من إيقاف عملية الفاتورة #${invoiceToPause.invoiceNumber} مؤقتاً؟ سيتم منع العميل من استخدام الرموز المرتبطة بها حتى تقوم باستئنافها.`
+                : `Are you sure you want to pause invoice #${invoiceToPause.invoiceNumber}? Associated tokens will be withheld until resumed.`)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {invoiceToPause && (
+            <div className="space-y-3 py-2 text-xs">
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/70 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground text-sm">
+                    {lang === "ar" ? invoiceToPause.titleAr : invoiceToPause.titleEn}
+                  </span>
+                  <span className="font-mono font-bold text-foreground text-sm">
+                    ${invoiceToPause.priceUsd} USD
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-800 dark:text-blue-300 space-y-1 text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Pause className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <span>
+                      {lang === "ar"
+                        ? `عند تأكيد الإيقاف المؤقت:`
+                        : `Upon confirmation:`}
+                    </span>
+                  </div>
+                  <ul className="list-disc list-inside text-[11px] font-normal space-y-0.5 text-blue-900 dark:text-blue-200 ps-1">
+                    {Boolean(invoiceToPause.tokenQuota && invoiceToPause.tokenQuota > 0) ? (
+                      <li>
+                        {lang === "ar"
+                          ? `حجب وتجميد ${invoiceToPause.tokenQuota?.toLocaleString()} رمز من حصة العميل مؤقتاً حتى لا يتمكن من استخدامها.`
+                          : `Withhold ${invoiceToPause.tokenQuota?.toLocaleString()} tokens from user quota so they cannot utilize them.`}
+                      </li>
+                    ) : (
+                      <li>
+                        {lang === "ar"
+                          ? "إيقاف العملية وحجب استخدام ميزاتها مؤقتاً."
+                          : "Temporarily pause transaction features."}
+                      </li>
+                    )}
+                    <li>
+                      {lang === "ar"
+                        ? "يمكنك استئناف العملية في أي وقت بنقرة واحدة وإعادة الرموز للعميل."
+                        : "You can resume at any time to restore tokens to the client."}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-foreground">
+                  {lang === "ar" ? "سبب الإيقاف المؤقت (اختياري):" : "Pause Reason (Optional):"}
+                </label>
+                <Input
+                  value={pauseReason}
+                  onChange={(e) => setPauseReason(e.target.value)}
+                  placeholder={lang === "ar" ? "مثال: مراجعة الدفع، تعليق الحساب مؤقتاً..." : "e.g., Payment verification, temporary account hold..."}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPauseDialogOpen(false)}
+              disabled={isPausing}
+              className="text-xs"
+            >
+              {lang === "ar" ? "تراجع" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmPause}
+              disabled={isPausing}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
+            >
+              {isPausing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pause className="w-3.5 h-3.5" />}
+              <span>{lang === "ar" ? "تأكيد الإيقاف المؤقت وتجميد الرموز" : "Confirm Pause & Freeze"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Resume Invoice & Token Quota Confirmation Dialog ── */}
+      <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
+        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
+              <Play className="w-6 h-6 fill-current" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">
+              {lang === "ar" ? "استئناف العملية وإعادة تفعيل الرموز" : "Resume Transaction & Restore Tokens"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {invoiceToResume && (lang === "ar"
+                ? `هل أنت متأكد من استئناف الفاتورة #${invoiceToResume.invoiceNumber}؟ سيتم إعادة تفعيل الرموز للعميل فوراً.`
+                : `Are you sure you want to resume invoice #${invoiceToResume.invoiceNumber}? Tokens will be restored immediately.`)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {invoiceToResume && (
+            <div className="space-y-3 py-2 text-xs">
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/70 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground text-sm">
+                    {lang === "ar" ? invoiceToResume.titleAr : invoiceToResume.titleEn}
+                  </span>
+                  <span className="font-mono font-bold text-foreground text-sm">
+                    ${invoiceToResume.priceUsd} USD
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 space-y-1 text-xs font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Play className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400 fill-current" />
+                    <span>
+                      {lang === "ar"
+                        ? `عند تأكيد الاستئناف:`
+                        : `Upon resuming:`}
+                    </span>
+                  </div>
+                  <ul className="list-disc list-inside text-[11px] font-normal space-y-0.5 text-emerald-900 dark:text-emerald-200 ps-1">
+                    {Boolean(invoiceToResume.tokenQuota && invoiceToResume.tokenQuota > 0) && (
+                      <li>
+                        {lang === "ar"
+                          ? `إعادة إضافة ${invoiceToResume.tokenQuota?.toLocaleString()} رمز لحصة العميل ليتمكن من استخدامها فوراً.`
+                          : `Restore ${invoiceToResume.tokenQuota?.toLocaleString()} tokens to user quota for immediate use.`}
+                      </li>
+                    )}
+                    <li>
+                      {lang === "ar"
+                        ? "إعادة الحالة إلى نشطة وإتاحة كافة الميزات."
+                        : "Return status to active and enable all features."}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setResumeDialogOpen(false)}
+              disabled={isResuming}
+              className="text-xs"
+            >
+              {lang === "ar" ? "تراجع" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmResume}
+              disabled={isResuming}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
+            >
+              {isResuming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>{lang === "ar" ? "تأكيد استئناف العملية والرموز" : "Confirm Resume & Restore"}</span>
             </Button>
           </DialogFooter>
         </DialogContent>

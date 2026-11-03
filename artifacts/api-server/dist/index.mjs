@@ -95671,19 +95671,35 @@ router4.get("/admin/invoices", async (req, res) => {
     }
     try {
       const invoiceStatusLogs = await db.select().from(companyActivityLogsTable).where(
-        inArray(companyActivityLogsTable.action, ["invoice_deleted", "invoice_void"])
+        inArray(companyActivityLogsTable.action, [
+          "invoice_deleted",
+          "invoice_void",
+          "invoice_pause",
+          "invoice_resume"
+        ])
       ).orderBy(desc(companyActivityLogsTable.createdAt));
       const deletedInvoicesSet = /* @__PURE__ */ new Set();
       const voidedInvoicesMap = /* @__PURE__ */ new Map();
+      const pausedInvoicesMap = /* @__PURE__ */ new Map();
       for (const logItem of invoiceStatusLogs) {
         try {
           const parsed = JSON.parse(logItem.note || "{}");
-          if (logItem.action === "invoice_deleted" && parsed.invoiceNumber) {
-            deletedInvoicesSet.add(parsed.invoiceNumber);
+          const invNum = parsed.invoiceNumber;
+          if (!invNum) continue;
+          if (logItem.action === "invoice_deleted") {
+            deletedInvoicesSet.add(invNum);
             if (parsed.ticketId) deletedInvoicesSet.add(`ticket-${parsed.ticketId}`);
-          } else if (logItem.action === "invoice_void" && parsed.invoiceNumber) {
-            if (!voidedInvoicesMap.has(parsed.invoiceNumber)) {
-              voidedInvoicesMap.set(parsed.invoiceNumber, parsed.reason || "Voided");
+          } else if (logItem.action === "invoice_void") {
+            if (!voidedInvoicesMap.has(invNum)) {
+              voidedInvoicesMap.set(invNum, parsed.reason || "Voided");
+            }
+          } else if (logItem.action === "invoice_pause" || logItem.action === "invoice_resume") {
+            if (!pausedInvoicesMap.has(invNum)) {
+              pausedInvoicesMap.set(invNum, {
+                isPaused: logItem.action === "invoice_pause",
+                reason: parsed.reason,
+                tokensWithheld: parsed.tokensWithheld
+              });
             }
           }
         } catch {
@@ -95699,10 +95715,16 @@ router4.get("/admin/invoices", async (req, res) => {
           item.status = "voided";
           item.isPaid = false;
           item.voidReason = voidedInvoicesMap.get(item.invoiceNumber);
+        } else if (pausedInvoicesMap.get(item.invoiceNumber)?.isPaused) {
+          const pauseInfo = pausedInvoicesMap.get(item.invoiceNumber);
+          item.isPaused = true;
+          item.state = "paused";
+          item.pauseReason = pauseInfo.reason;
+          item.tokensWithheld = pauseInfo.tokensWithheld;
         }
       }
     } catch (e) {
-      logger.warn({ err: e }, "Failed to process deleted/voided invoice logs");
+      logger.warn({ err: e }, "Failed to process deleted/voided/paused invoice logs");
     }
     try {
       const paymentOverrides = await db.select().from(companyActivityLogsTable).where(eq(companyActivityLogsTable.action, "invoice_payment_override")).orderBy(desc(companyActivityLogsTable.createdAt));
@@ -95724,6 +95746,15 @@ router4.get("/admin/invoices", async (req, res) => {
         if (inv.isVoided || inv.state === "voided" || inv.status === "voided") {
           inv.isPaid = false;
           inv.status = "voided";
+          continue;
+        }
+        if (inv.isPaused || inv.state === "paused") {
+          if (overrideMap.has(inv.invoiceNumber)) {
+            inv.isPaid = overrideMap.get(inv.invoiceNumber);
+          } else if (inv.ticketId && overrideTicketMap.has(Number(inv.ticketId))) {
+            inv.isPaid = overrideTicketMap.get(Number(inv.ticketId));
+          }
+          inv.status = "paused";
           continue;
         }
         if (overrideMap.has(inv.invoiceNumber)) {
@@ -95871,6 +95902,227 @@ router4.post("/admin/invoices/void", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Void invoice error");
     res.status(500).json({ error: err?.message || "Failed to void invoice" });
+  }
+});
+router4.post("/admin/invoices/pause", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId, tokensToPause, reason } = req.body;
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+    let effectiveCompanyId = companyId;
+    let associatedTicket = null;
+    if (ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      associatedTicket = ticket || null;
+      if (!effectiveCompanyId && ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
+    }
+    if (!effectiveCompanyId) {
+      const [logRow] = await db.select().from(companyActivityLogsTable).where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)).limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+    let tokensWithheld = 0;
+    if (typeof tokensToPause === "number" && tokensToPause > 0) {
+      tokensWithheld = tokensToPause;
+    } else if (associatedTicket) {
+      try {
+        const catalog2 = await getActivePackagesCatalog();
+        const parsed = parseTicketPlanDetails(associatedTicket, catalog2);
+        if (parsed.isTopup && parsed.tokens) {
+          tokensWithheld = parsed.tokens;
+        } else if (parsed.plan?.tokensMonthly) {
+          tokensWithheld = parsed.plan.tokensMonthly;
+        }
+      } catch (err) {
+        logger.warn({ err }, "Could not parse ticket details to calculate pause tokens");
+      }
+    }
+    let previousQuota = null;
+    let newQuota = null;
+    if (effectiveCompanyId && tokensWithheld > 0) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, effectiveCompanyId)).limit(1);
+      if (comp) {
+        previousQuota = comp.monthlyTokenQuota ?? 0;
+        newQuota = Math.max(0, previousQuota - tokensWithheld);
+        await db.update(companiesTable).set({
+          monthlyTokenQuota: newQuota,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(companiesTable.id, effectiveCompanyId));
+        logger.info(
+          { effectiveCompanyId, invoiceNumber, tokensWithheld, previousQuota, newQuota },
+          "Withheld tokens from company quota due to paused invoice"
+        );
+      }
+    }
+    if (ticketId) {
+      const pauseNote = `\u062A\u0645 \u0625\u064A\u0642\u0627\u0641 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (#${invoiceNumber}) \u0645\u0624\u0642\u062A\u0627\u064B \u0648\u062A\u062C\u0645\u064A\u062F ${tokensWithheld.toLocaleString()} \u0631\u0645\u0632 \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.${reason ? ` \u0627\u0644\u0633\u0628\u0628: ${reason}` : ""}`;
+      await db.update(ticketsTable).set({
+        adminNote: pauseNote,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(ticketsTable.id, ticketId)).catch(() => {
+      });
+      await db.update(chatLogsTable).set({
+        botResponse: `\u23F8\uFE0F [\u0625\u064A\u0642\u0627\u0641 \u0645\u0624\u0642\u062A] \u062A\u0645 \u0625\u064A\u0642\u0627\u0641 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber} \u0645\u0624\u0642\u062A\u0627\u064B \u0648\u062A\u062C\u0645\u064A\u062F ${tokensWithheld.toLocaleString()} \u0631\u0645\u0632 \u0645\u0646 \u0627\u0644\u0631\u0635\u064A\u062F.`
+      }).where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`)).catch(() => {
+      });
+    }
+    if (effectiveCompanyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId: effectiveCompanyId,
+        action: "invoice_pause",
+        performedBy: req.session?.userName || "Admin",
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          tokensWithheld,
+          previousQuota,
+          newQuota,
+          reason: reason || "Paused by Admin",
+          isPaused: true,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        })
+      });
+    }
+    await logAdminActivity(
+      req.session.userId,
+      "Pause Invoice",
+      `Admin paused invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${tokensWithheld > 0 ? `, froze ${tokensWithheld.toLocaleString()} tokens` : ""}`,
+      req.ip || null
+    );
+    res.json({
+      ok: true,
+      invoiceNumber,
+      paused: true,
+      tokensWithheld,
+      previousQuota,
+      newQuota
+    });
+  } catch (err) {
+    logger.error({ err }, "Pause invoice error");
+    res.status(500).json({ error: err?.message || "Failed to pause invoice" });
+  }
+});
+router4.post("/admin/invoices/resume", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId, tokensToResume } = req.body;
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+    let effectiveCompanyId = companyId;
+    let associatedTicket = null;
+    if (ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      associatedTicket = ticket || null;
+      if (!effectiveCompanyId && ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
+    }
+    if (!effectiveCompanyId) {
+      const [logRow] = await db.select().from(companyActivityLogsTable).where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)).limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+    let tokensToRestore = 0;
+    if (typeof tokensToResume === "number" && tokensToResume > 0) {
+      tokensToRestore = tokensToResume;
+    } else {
+      try {
+        const [pauseLog] = await db.select().from(companyActivityLogsTable).where(
+          and(
+            eq(companyActivityLogsTable.action, "invoice_pause"),
+            ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)
+          )
+        ).orderBy(desc(companyActivityLogsTable.createdAt)).limit(1);
+        if (pauseLog?.note) {
+          const parsed = JSON.parse(pauseLog.note);
+          if (parsed.tokensWithheld) tokensToRestore = Number(parsed.tokensWithheld);
+        }
+      } catch {
+      }
+      if (tokensToRestore === 0 && associatedTicket) {
+        try {
+          const catalog2 = await getActivePackagesCatalog();
+          const parsed = parseTicketPlanDetails(associatedTicket, catalog2);
+          if (parsed.isTopup && parsed.tokens) {
+            tokensToRestore = parsed.tokens;
+          } else if (parsed.plan?.tokensMonthly) {
+            tokensToRestore = parsed.plan.tokensMonthly;
+          }
+        } catch {
+        }
+      }
+    }
+    let previousQuota = null;
+    let newQuota = null;
+    if (effectiveCompanyId && tokensToRestore > 0) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, effectiveCompanyId)).limit(1);
+      if (comp) {
+        previousQuota = comp.monthlyTokenQuota ?? 0;
+        newQuota = previousQuota + tokensToRestore;
+        await db.update(companiesTable).set({
+          monthlyTokenQuota: newQuota,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq(companiesTable.id, effectiveCompanyId));
+        logger.info(
+          { effectiveCompanyId, invoiceNumber, tokensToRestore, previousQuota, newQuota },
+          "Restored tokens to company quota due to resumed invoice"
+        );
+      }
+    }
+    if (ticketId) {
+      const resumeNote = `\u062A\u0645 \u0627\u0633\u062A\u0626\u0646\u0627\u0641 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 (#${invoiceNumber}) \u0648\u0625\u0639\u0627\u062F\u0629 \u062A\u0641\u0639\u064A\u0644 ${tokensToRestore.toLocaleString()} \u0631\u0645\u0632 \u0644\u062D\u0633\u0627\u0628 \u0627\u0644\u0639\u0645\u064A\u0644 \u0628\u0648\u0627\u0633\u0637\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.`;
+      await db.update(ticketsTable).set({
+        adminNote: resumeNote,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(ticketsTable.id, ticketId)).catch(() => {
+      });
+      await db.update(chatLogsTable).set({
+        botResponse: `\u25B6\uFE0F [\u0627\u0633\u062A\u0626\u0646\u0627\u0641 \u0627\u0644\u0639\u0645\u0644\u064A\u0629] \u062A\u0645 \u0627\u0633\u062A\u0626\u0646\u0627\u0641 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber} \u0648\u0625\u0639\u0627\u062F\u0629 \u062A\u0641\u0639\u064A\u0644 ${tokensToRestore.toLocaleString()} \u0631\u0645\u0632 \u0641\u064A \u0627\u0644\u0631\u0635\u064A\u062F.`
+      }).where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`)).catch(() => {
+      });
+    }
+    if (effectiveCompanyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId: effectiveCompanyId,
+        action: "invoice_resume",
+        performedBy: req.session?.userName || "Admin",
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          tokensRestored: tokensToRestore,
+          previousQuota,
+          newQuota,
+          isPaused: false,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        })
+      });
+    }
+    await logAdminActivity(
+      req.session.userId,
+      "Resume Invoice",
+      `Admin resumed invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${tokensToRestore > 0 ? `, restored ${tokensToRestore.toLocaleString()} tokens` : ""}`,
+      req.ip || null
+    );
+    res.json({
+      ok: true,
+      invoiceNumber,
+      resumed: true,
+      tokensRestored: tokensToRestore,
+      previousQuota,
+      newQuota
+    });
+  } catch (err) {
+    logger.error({ err }, "Resume invoice error");
+    res.status(500).json({ error: err?.message || "Failed to resume invoice" });
   }
 });
 router4.post("/admin/invoices/delete", async (req, res) => {

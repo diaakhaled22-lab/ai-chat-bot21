@@ -3172,34 +3172,51 @@ router.get("/admin/invoices", async (req, res) => {
       });
     }
 
-    // 4a. Check for deleted invoices and voided transactions
+    // 4a. Check for deleted invoices, voided transactions, and paused invoices
     try {
       const invoiceStatusLogs = await db
         .select()
         .from(companyActivityLogsTable)
         .where(
-          inArray(companyActivityLogsTable.action, ["invoice_deleted", "invoice_void"])
+          inArray(companyActivityLogsTable.action, [
+            "invoice_deleted",
+            "invoice_void",
+            "invoice_pause",
+            "invoice_resume",
+          ])
         )
         .orderBy(desc(companyActivityLogsTable.createdAt));
 
       const deletedInvoicesSet = new Set<string>();
       const voidedInvoicesMap = new Map<string, string>();
+      const pausedInvoicesMap = new Map<string, { isPaused: boolean; reason?: string; tokensWithheld?: number }>();
 
       for (const logItem of invoiceStatusLogs) {
         try {
           const parsed = JSON.parse(logItem.note || "{}");
-          if (logItem.action === "invoice_deleted" && parsed.invoiceNumber) {
-            deletedInvoicesSet.add(parsed.invoiceNumber);
+          const invNum = parsed.invoiceNumber;
+          if (!invNum) continue;
+
+          if (logItem.action === "invoice_deleted") {
+            deletedInvoicesSet.add(invNum);
             if (parsed.ticketId) deletedInvoicesSet.add(`ticket-${parsed.ticketId}`);
-          } else if (logItem.action === "invoice_void" && parsed.invoiceNumber) {
-            if (!voidedInvoicesMap.has(parsed.invoiceNumber)) {
-              voidedInvoicesMap.set(parsed.invoiceNumber, parsed.reason || "Voided");
+          } else if (logItem.action === "invoice_void") {
+            if (!voidedInvoicesMap.has(invNum)) {
+              voidedInvoicesMap.set(invNum, parsed.reason || "Voided");
+            }
+          } else if (logItem.action === "invoice_pause" || logItem.action === "invoice_resume") {
+            if (!pausedInvoicesMap.has(invNum)) {
+              pausedInvoicesMap.set(invNum, {
+                isPaused: logItem.action === "invoice_pause",
+                reason: parsed.reason,
+                tokensWithheld: parsed.tokensWithheld,
+              });
             }
           }
         } catch {}
       }
 
-      // Filter out deleted invoices
+      // Filter out deleted invoices & apply void/pause states
       for (let i = invoiceList.length - 1; i >= 0; i--) {
         const item = invoiceList[i];
         if (deletedInvoicesSet.has(item.invoiceNumber) || (item.ticketId && deletedInvoicesSet.has(`ticket-${item.ticketId}`))) {
@@ -3210,10 +3227,16 @@ router.get("/admin/invoices", async (req, res) => {
           item.status = "voided";
           item.isPaid = false;
           item.voidReason = voidedInvoicesMap.get(item.invoiceNumber);
+        } else if (pausedInvoicesMap.get(item.invoiceNumber)?.isPaused) {
+          const pauseInfo = pausedInvoicesMap.get(item.invoiceNumber)!;
+          item.isPaused = true;
+          item.state = "paused";
+          item.pauseReason = pauseInfo.reason;
+          item.tokensWithheld = pauseInfo.tokensWithheld;
         }
       }
     } catch (e) {
-      logger.warn({ err: e }, "Failed to process deleted/voided invoice logs");
+      logger.warn({ err: e }, "Failed to process deleted/voided/paused invoice logs");
     }
 
     // 4b. Apply manual invoice payment status overrides (if recorded)
@@ -3242,6 +3265,15 @@ router.get("/admin/invoices", async (req, res) => {
         if (inv.isVoided || inv.state === "voided" || inv.status === "voided") {
           inv.isPaid = false;
           inv.status = "voided";
+          continue;
+        }
+        if (inv.isPaused || inv.state === "paused") {
+          if (overrideMap.has(inv.invoiceNumber)) {
+            inv.isPaid = overrideMap.get(inv.invoiceNumber)!;
+          } else if (inv.ticketId && overrideTicketMap.has(Number(inv.ticketId))) {
+            inv.isPaid = overrideTicketMap.get(Number(inv.ticketId))!;
+          }
+          inv.status = "paused";
           continue;
         }
         if (overrideMap.has(inv.invoiceNumber)) {
@@ -3443,6 +3475,313 @@ router.post("/admin/invoices/void", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "Void invoice error");
     res.status(500).json({ error: err?.message || "Failed to void invoice" });
+  }
+});
+
+// POST /admin/invoices/pause - Pause an invoice transaction and freeze/withhold its token quota
+router.post("/admin/invoices/pause", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId, tokensToPause, reason } = req.body as {
+      invoiceNumber: string;
+      ticketId?: number | null;
+      companyId?: number | null;
+      tokensToPause?: number | null;
+      reason?: string;
+    };
+
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+
+    let effectiveCompanyId = companyId;
+    let associatedTicket: any = null;
+
+    if (ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      associatedTicket = ticket || null;
+      if (!effectiveCompanyId && ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
+    }
+
+    if (!effectiveCompanyId) {
+      const [logRow] = await db
+        .select()
+        .from(companyActivityLogsTable)
+        .where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`))
+        .limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+
+    // Determine token amount to withhold/freeze
+    let tokensWithheld = 0;
+    if (typeof tokensToPause === "number" && tokensToPause > 0) {
+      tokensWithheld = tokensToPause;
+    } else if (associatedTicket) {
+      try {
+        const catalog = await getActivePackagesCatalog();
+        const parsed = parseTicketPlanDetails(associatedTicket, catalog);
+        if (parsed.isTopup && parsed.tokens) {
+          tokensWithheld = parsed.tokens;
+        } else if (parsed.plan?.tokensMonthly) {
+          tokensWithheld = parsed.plan.tokensMonthly;
+        }
+      } catch (err) {
+        logger.warn({ err }, "Could not parse ticket details to calculate pause tokens");
+      }
+    }
+
+    let previousQuota: number | null = null;
+    let newQuota: number | null = null;
+
+    if (effectiveCompanyId && tokensWithheld > 0) {
+      const [comp] = await db
+        .select()
+        .from(companiesTable)
+        .where(eq(companiesTable.id, effectiveCompanyId))
+        .limit(1);
+
+      if (comp) {
+        previousQuota = comp.monthlyTokenQuota ?? 0;
+        newQuota = Math.max(0, previousQuota - tokensWithheld);
+
+        await db
+          .update(companiesTable)
+          .set({
+            monthlyTokenQuota: newQuota,
+            updatedAt: new Date(),
+          })
+          .where(eq(companiesTable.id, effectiveCompanyId));
+
+        logger.info(
+          { effectiveCompanyId, invoiceNumber, tokensWithheld, previousQuota, newQuota },
+          "Withheld tokens from company quota due to paused invoice"
+        );
+      }
+    }
+
+    if (ticketId) {
+      const pauseNote = `تم إيقاف الفاتورة (#${invoiceNumber}) مؤقتاً وتجميد ${tokensWithheld.toLocaleString()} رمز بواسطة الإدارة.${reason ? ` السبب: ${reason}` : ""}`;
+      await db
+        .update(ticketsTable)
+        .set({
+          adminNote: pauseNote,
+          updatedAt: new Date(),
+        })
+        .where(eq(ticketsTable.id, ticketId))
+        .catch(() => {});
+
+      await db
+        .update(chatLogsTable)
+        .set({
+          botResponse: `⏸️ [إيقاف مؤقت] تم إيقاف الفاتورة رقم #${invoiceNumber} مؤقتاً وتجميد ${tokensWithheld.toLocaleString()} رمز من الرصيد.`,
+        })
+        .where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`))
+        .catch(() => {});
+    }
+
+    if (effectiveCompanyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId: effectiveCompanyId,
+        action: "invoice_pause",
+        performedBy: (req.session as any)?.userName || "Admin",
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          tokensWithheld,
+          previousQuota,
+          newQuota,
+          reason: reason || "Paused by Admin",
+          isPaused: true,
+          updatedAt: new Date().toISOString(),
+        }),
+      });
+    }
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Pause Invoice",
+      `Admin paused invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${tokensWithheld > 0 ? `, froze ${tokensWithheld.toLocaleString()} tokens` : ""}`,
+      req.ip || null
+    );
+
+    res.json({
+      ok: true,
+      invoiceNumber,
+      paused: true,
+      tokensWithheld,
+      previousQuota,
+      newQuota,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Pause invoice error");
+    res.status(500).json({ error: err?.message || "Failed to pause invoice" });
+  }
+});
+
+// POST /admin/invoices/resume - Resume a paused invoice and restore its token quota
+router.post("/admin/invoices/resume", async (req, res) => {
+  try {
+    const { invoiceNumber, ticketId, companyId, tokensToResume } = req.body as {
+      invoiceNumber: string;
+      ticketId?: number | null;
+      companyId?: number | null;
+      tokensToResume?: number | null;
+    };
+
+    if (!invoiceNumber) {
+      res.status(400).json({ error: "invoiceNumber is required" });
+      return;
+    }
+
+    let effectiveCompanyId = companyId;
+    let associatedTicket: any = null;
+
+    if (ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      associatedTicket = ticket || null;
+      if (!effectiveCompanyId && ticket) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, ticket.clientId)).limit(1);
+        if (comp) effectiveCompanyId = comp.id;
+      }
+    }
+
+    if (!effectiveCompanyId) {
+      const [logRow] = await db
+        .select()
+        .from(companyActivityLogsTable)
+        .where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`))
+        .limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+
+    // Determine token amount to restore
+    let tokensToRestore = 0;
+    if (typeof tokensToResume === "number" && tokensToResume > 0) {
+      tokensToRestore = tokensToResume;
+    } else {
+      try {
+        const [pauseLog] = await db
+          .select()
+          .from(companyActivityLogsTable)
+          .where(
+            and(
+              eq(companyActivityLogsTable.action, "invoice_pause"),
+              ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)
+            )
+          )
+          .orderBy(desc(companyActivityLogsTable.createdAt))
+          .limit(1);
+
+        if (pauseLog?.note) {
+          const parsed = JSON.parse(pauseLog.note);
+          if (parsed.tokensWithheld) tokensToRestore = Number(parsed.tokensWithheld);
+        }
+      } catch {}
+
+      if (tokensToRestore === 0 && associatedTicket) {
+        try {
+          const catalog = await getActivePackagesCatalog();
+          const parsed = parseTicketPlanDetails(associatedTicket, catalog);
+          if (parsed.isTopup && parsed.tokens) {
+            tokensToRestore = parsed.tokens;
+          } else if (parsed.plan?.tokensMonthly) {
+            tokensToRestore = parsed.plan.tokensMonthly;
+          }
+        } catch {}
+      }
+    }
+
+    let previousQuota: number | null = null;
+    let newQuota: number | null = null;
+
+    if (effectiveCompanyId && tokensToRestore > 0) {
+      const [comp] = await db
+        .select()
+        .from(companiesTable)
+        .where(eq(companiesTable.id, effectiveCompanyId))
+        .limit(1);
+
+      if (comp) {
+        previousQuota = comp.monthlyTokenQuota ?? 0;
+        newQuota = previousQuota + tokensToRestore;
+
+        await db
+          .update(companiesTable)
+          .set({
+            monthlyTokenQuota: newQuota,
+            updatedAt: new Date(),
+          })
+          .where(eq(companiesTable.id, effectiveCompanyId));
+
+        logger.info(
+          { effectiveCompanyId, invoiceNumber, tokensToRestore, previousQuota, newQuota },
+          "Restored tokens to company quota due to resumed invoice"
+        );
+      }
+    }
+
+    if (ticketId) {
+      const resumeNote = `تم استئناف الفاتورة (#${invoiceNumber}) وإعادة تفعيل ${tokensToRestore.toLocaleString()} رمز لحساب العميل بواسطة الإدارة.`;
+      await db
+        .update(ticketsTable)
+        .set({
+          adminNote: resumeNote,
+          updatedAt: new Date(),
+        })
+        .where(eq(ticketsTable.id, ticketId))
+        .catch(() => {});
+
+      await db
+        .update(chatLogsTable)
+        .set({
+          botResponse: `▶️ [استئناف العملية] تم استئناف الفاتورة رقم #${invoiceNumber} وإعادة تفعيل ${tokensToRestore.toLocaleString()} رمز في الرصيد.`,
+        })
+        .where(eq(chatLogsTable.sessionId, `ticket_${ticketId}`))
+        .catch(() => {});
+    }
+
+    if (effectiveCompanyId) {
+      await db.insert(companyActivityLogsTable).values({
+        companyId: effectiveCompanyId,
+        action: "invoice_resume",
+        performedBy: (req.session as any)?.userName || "Admin",
+        note: JSON.stringify({
+          invoiceNumber,
+          ticketId: ticketId || null,
+          tokensRestored: tokensToRestore,
+          previousQuota,
+          newQuota,
+          isPaused: false,
+          updatedAt: new Date().toISOString(),
+        }),
+      });
+    }
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Resume Invoice",
+      `Admin resumed invoice #${invoiceNumber} (ticket: #${ticketId || "none"})${tokensToRestore > 0 ? `, restored ${tokensToRestore.toLocaleString()} tokens` : ""}`,
+      req.ip || null
+    );
+
+    res.json({
+      ok: true,
+      invoiceNumber,
+      resumed: true,
+      tokensRestored: tokensToRestore,
+      previousQuota,
+      newQuota,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Resume invoice error");
+    res.status(500).json({ error: err?.message || "Failed to resume invoice" });
   }
 });
 
