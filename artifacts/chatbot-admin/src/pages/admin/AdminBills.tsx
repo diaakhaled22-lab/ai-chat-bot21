@@ -1821,6 +1821,122 @@ export default function AdminBills() {
       </Dialog>
 
       {/* ───────────────────────────────────────────────────────────────── */}
+      {/* ── Void / Cancel Booking Confirmation Dialog ── */}
+      <Dialog open={voidDialogOpen} onOpenChange={setVoidDialogOpen}>
+        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-2">
+              <Ban className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold">
+              {lang === "ar" ? "إلغاء حجز العملية وتجميد الفاتورة" : "Cancel Booking & Void Transaction"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {invoiceToVoid && (lang === "ar"
+                ? `هل أنت متأكد من إلغاء العملية للفاتورة #${invoiceToVoid.invoiceNumber} للعميل: ${invoiceToVoid.clientName}؟ سيتم وسم العملية كـ ملغاة (Voided).`
+                : `Are you sure you want to void invoice #${invoiceToVoid.invoiceNumber} for client ${invoiceToVoid.clientName}? The booking will be marked as Voided.`)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {invoiceToVoid && (
+            <div className="space-y-3 py-2 text-xs">
+              <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1">
+                <div className="font-semibold text-foreground">
+                  {lang === "ar" ? invoiceToVoid.titleAr : invoiceToVoid.titleEn}
+                </div>
+                <div className="text-muted-foreground">
+                  {lang === "ar" ? "المبلغ: " : "Amount: "}{invoiceToVoid.priceUsd}$ USD
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-foreground">
+                  {lang === "ar" ? "سبب الإلغاء (اختياري):" : "Void Reason (Optional):"}
+                </label>
+                <Input
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder={lang === "ar" ? "مثال: طلب العميل إلغاء الحجز، أو استرداد المبلغ..." : "e.g., Client requested cancellation, or refunded..."}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setVoidDialogOpen(false)}
+              disabled={isVoiding}
+              className="text-xs"
+            >
+              {lang === "ar" ? "تراجع" : "Dismiss"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmVoid}
+              disabled={isVoiding}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
+            >
+              {isVoiding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+              <span>{lang === "ar" ? "تأكيد إلغاء العملية" : "Confirm Void"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Invoice Confirmation Dialog ── */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-2">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold text-rose-600 dark:text-rose-400">
+              {lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice Permanently"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-muted-foreground">
+              {invoiceToDelete && (lang === "ar"
+                ? `هل أنت متأكد من حذف الفاتورة #${invoiceToDelete.invoiceNumber}؟ سيتم حذفها نهائياً من سجلات الفواتير والاشتراكات.`
+                : `Are you sure you want to permanently delete invoice #${invoiceToDelete.invoiceNumber}? It will be removed from all billing logs.`)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {invoiceToDelete && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs space-y-1">
+              <div className="font-bold text-foreground">
+                {lang === "ar" ? invoiceToDelete.titleAr : invoiceToDelete.titleEn}
+              </div>
+              <div className="text-muted-foreground">
+                {lang === "ar" ? "الشركة: " : "Company: "}{invoiceToDelete.companyName} • {invoiceToDelete.priceUsd}$ USD
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+              className="text-xs"
+            >
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
+            >
+              {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              <span>{lang === "ar" ? "نعم، حذف نهائي" : "Yes, Delete"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── MODAL: VIEW INVOICE FULL DETAILS ── */}
       {/* ───────────────────────────────────────────────────────────────── */}
       <Dialog open={viewInvoiceModalOpen} onOpenChange={setViewInvoiceModalOpen}>
