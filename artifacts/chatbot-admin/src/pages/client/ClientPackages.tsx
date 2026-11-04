@@ -190,16 +190,16 @@ const DEFAULT_PLANS: PlanDef[] = [
     nameEn: "Starter Plan",
     descriptionAr: "مثالية للمشاريع الناشئة والشركات الصغيرة لبدء أتمتة الردود وخدمة العملاء.",
     descriptionEn: "Perfect for startups and small businesses starting with AI automation.",
-    monthlyPriceUsd: 29,
-    tokensMonthly: 50_000,
-    tokensFormatted: "50,000",
+    monthlyPriceUsd: 20,
+    tokensMonthly: 500_000,
+    tokensFormatted: "500,000",
     color: "#3b82f6",
     gradient: "from-blue-600/20 to-cyan-600/10",
     channels: ["widget", "telegram"],
     tools: ["leads_crm"],
     dataSources: ["website", "files"],
     featuresAr: [
-      "50,000 رمز شهرياً (AI Tokens)",
+      "500,000 رمز شهرياً (AI Tokens)",
       "قناتين: ويدجت الموقع الإلكتروني + بوت تليجرام",
       "قاعدة معارف ذكية (حتى 5 مستندات/ملفات)",
       "سجلات المحادثة المباشرة",
@@ -207,7 +207,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "دعم فني عبر التذاكر (خلال 24 ساعة)",
     ],
     featuresEn: [
-      "50,000 monthly AI Tokens",
+      "500,000 monthly AI Tokens",
       "2 Channels: Website Widget + Telegram Bot",
       "Smart Knowledge Base (up to 5 documents)",
       "Real-time Chat Logs",
@@ -222,9 +222,9 @@ const DEFAULT_PLANS: PlanDef[] = [
     nameEn: "Professional Plan",
     descriptionAr: "الخيار الأفضل للعيادات والشركات المتنامية مع ربط كامل بالقنوات والتقويم.",
     descriptionEn: "Best for growing companies and clinics needing multi-channel CRM & booking.",
-    monthlyPriceUsd: 79,
-    tokensMonthly: 250_000,
-    tokensFormatted: "250,000",
+    monthlyPriceUsd: 25,
+    tokensMonthly: 1_000_000,
+    tokensFormatted: "1,000,000",
     popular: true,
     color: "#2D5BE3",
     gradient: "from-[#2D5BE3]/30 via-indigo-600/20 to-purple-600/10",
@@ -234,7 +234,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     tools: ["calendar", "sheets", "leads_crm", "handoff", "web_sync"],
     dataSources: ["website", "files", "wordpress"],
     featuresAr: [
-      "250,000 رمز شهرياً (AI Tokens)",
+      "1,000,000 رمز شهرياً (AI Tokens)",
       "جميع القنوات: موقع + تليجرام + واتساب + ماسنجر",
       "قاعدة معارف غير محدودة (مستندات، روابط، مواقع)",
       "تكامل تقويم Google وجداول Google للحجوزات",
@@ -243,7 +243,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "دعم فني أولوية عبر التذاكر والشات المباشر",
     ],
     featuresEn: [
-      "250,000 monthly AI Tokens",
+      "1,000,000 monthly AI Tokens",
       "All channels: Website + Telegram + WhatsApp + Messenger",
       "Unlimited Knowledge Base (docs, links, scrapers)",
       "Google Calendar & Google Sheets integration",
@@ -251,7 +251,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Universal Chat Inbox with Human Handoff",
       "Priority technical support & instant alerts",
     ],
-    retentionDays: 30,
+    retentionDays: 7,
   },
   {
     id: "enterprise",
@@ -259,9 +259,9 @@ const DEFAULT_PLANS: PlanDef[] = [
     nameEn: "Enterprise Plan",
     descriptionAr: "للمؤسسات والمنصات ذات الاستهلاك العالي التي تتطلب أداءً فائقاً وتخصيصاً كاملاً.",
     descriptionEn: "For enterprises requiring high throughput, custom integrations, and SLA.",
-    monthlyPriceUsd: 199,
-    tokensMonthly: 1_000_000,
-    tokensFormatted: "1,000,000",
+    monthlyPriceUsd: 30,
+    tokensMonthly: 1_500_000,
+    tokensFormatted: "1,500,000",
     color: "#8b5cf6",
     gradient: "from-purple-600/25 to-pink-600/10",
     badgeAr: "أعلى أداء",
@@ -270,7 +270,7 @@ const DEFAULT_PLANS: PlanDef[] = [
     tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
     dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],
     featuresAr: [
-      "1,000,000 رمز شهرياً (AI Tokens)",
+      "1,500,000 رمز شهرياً (AI Tokens)",
       "جميع ميزات الباقة الاحترافية بالكامل",
       "قنوات الويب هوك المخصصة (Custom Webhooks & REST API)",
       "تخصيص كامل للتوجيهات وأنظمة حماية البيانات (Prompt Security)",
@@ -279,7 +279,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "اتفاقية مستوى الخدمة SLA بنسبة جاهزية 99.9%",
     ],
     featuresEn: [
-      "1,000,000 monthly AI Tokens",
+      "1,500,000 monthly AI Tokens",
       "All Professional Plan features included",
       "Custom Webhooks & REST API channel integrations",
       "Custom prompt engineering & enterprise prompt security",
@@ -287,7 +287,7 @@ const DEFAULT_PLANS: PlanDef[] = [
       "Dedicated account manager & performance review",
       "99.9% uptime Service Level Agreement (SLA)",
     ],
-    retentionDays: 30,
+    retentionDays: 14,
   },
 ];
 
@@ -305,6 +305,17 @@ const DEFAULT_TOPUP_PACKS: TopupItemDef[] = [
   { id: "topup-100k", tokens: 100_000, formatted: "+100K", priceUsd: 18 },
   { id: "topup-250k", tokens: 250_000, formatted: "+250K", priceUsd: 40 },
 ];
+
+function formatPlanFeature(feat: string, plan: PackageItem, isAr: boolean): string {
+  if (!plan.tokensMonthly) return feat;
+  const formattedTokens = plan.tokensFormatted || Number(plan.tokensMonthly).toLocaleString();
+  const isTokenLine = /^[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?|رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(feat.trim())
+    || /[\d,kKmM.]+\s*(?:monthly AI Tokens|رمز شهرياً \(AI Tokens\))/i.test(feat);
+  if (isTokenLine) {
+    return isAr ? `${formattedTokens} رمز شهرياً (AI Tokens)` : `${formattedTokens} monthly AI Tokens`;
+  }
+  return feat;
+}
 
 export default function ClientPackages() {
   const { lang } = useLanguage();
@@ -369,19 +380,56 @@ export default function ClientPackages() {
   const storageKey = useMemo(() => `ai_plan_requests_${(company as any)?.id || "client"}`, [(company as any)?.id]);
   const activePlanStorageKey = useMemo(() => `active_selected_plan_${(company as any)?.id || "client"}`, [(company as any)?.id]);
 
-  // Load previously submitted plan requests and active selection from localStorage
+  // 1. Determine company active plan ID directly from server or dynamic catalog match
+  const companyActivePlanId = useMemo(() => {
+    if (!company) return null;
+    if ((company as any).activePlanId) {
+      return (company as any).activePlanId;
+    }
+    if (!(company as any).isActive) return null;
+    const quota = (company as any).monthlyTokenQuota;
+    if (!quota) return null;
+    const exact = plans.find((p) => p.tokensMonthly === quota);
+    if (exact) return exact.id;
+    let best = plans[0];
+    let minDiff = Infinity;
+    for (const p of plans) {
+      if (p.tokensMonthly) {
+        const diff = Math.abs(p.tokensMonthly - quota);
+        if (diff < minDiff) {
+          minDiff = diff;
+          best = p;
+        }
+      }
+    }
+    return best ? best.id : null;
+  }, [company, plans]);
+
+  // Keep activeSelectedPlanId in sync with companyActivePlanId (overrides stale localStorage)
+  useEffect(() => {
+    if (companyActivePlanId) {
+      setActiveSelectedPlanId(companyActivePlanId);
+      try {
+        localStorage.setItem(activePlanStorageKey, companyActivePlanId);
+      } catch {}
+    }
+  }, [companyActivePlanId, activePlanStorageKey]);
+
+  // Restore local storage state on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         setSubmittedPlans((prev) => ({ ...JSON.parse(saved), ...prev }));
       }
-      const savedActive = localStorage.getItem(activePlanStorageKey);
-      if (savedActive) {
-        setActiveSelectedPlanId(savedActive);
+      if (!companyActivePlanId) {
+        const savedActive = localStorage.getItem(activePlanStorageKey);
+        if (savedActive) {
+          setActiveSelectedPlanId(savedActive);
+        }
       }
     } catch {}
-  }, [storageKey, activePlanStorageKey]);
+  }, [storageKey, activePlanStorageKey, companyActivePlanId]);
 
   // Sync with remote tickets so requests on file persist across devices/sessions
   const { data: clientTickets } = useQuery<any[]>({
@@ -393,13 +441,12 @@ export default function ClientPackages() {
     if (!Array.isArray(clientTickets)) return;
     const ticketPlans: Record<string, { phone: string; submittedAt?: string }> = {};
     let latestPlanId: string | null = null;
+    let resolvedPlanId: string | null = null;
 
     for (const t of clientTickets) {
       if (!t.title) continue;
       const isSub = t.title.includes("طلب اشتراك") || t.title.includes("طلب تغيير باقة") || t.title.includes("باقة");
       if (!isSub) continue;
-      // Skip tickets that were superseded/cancelled or resolved
-      if (t.status === "resolved") continue;
 
       let planId: string | null = null;
       const matchId = t.description?.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
@@ -411,6 +458,8 @@ export default function ClientPackages() {
         planId = "pro";
       } else if (t.title.includes("المؤسسات") || t.title.toLowerCase().includes("enterprise")) {
         planId = "enterprise";
+      } else if (t.title.includes("تجريبية") || t.title.toLowerCase().includes("trial")) {
+        planId = "free_trial";
       }
 
       const matchPhone = t.description?.match(/رقم هاتف \/ واتساب للتواصل:\s*([^\n\r]+)/) || t.description?.match(/رقم الهاتف \/ واتساب للتواصل:\s*([^\n\r]+)/);
@@ -420,18 +469,21 @@ export default function ClientPackages() {
         latestPlanId = planId;
       }
 
+      if (planId && t.status === "resolved" && !resolvedPlanId) {
+        resolvedPlanId = planId;
+      }
+
       if (planId && phone && !ticketPlans[planId]) {
         ticketPlans[planId] = { phone, submittedAt: t.createdAt };
       }
     }
 
-    if (latestPlanId) {
-      setActiveSelectedPlanId((prev) => prev || latestPlanId);
-      if (!localStorage.getItem(activePlanStorageKey)) {
-        try {
-          localStorage.setItem(activePlanStorageKey, latestPlanId);
-        } catch {}
-      }
+    const effectiveTicketPlan = resolvedPlanId || latestPlanId;
+    if (effectiveTicketPlan && !companyActivePlanId) {
+      setActiveSelectedPlanId(effectiveTicketPlan);
+      try {
+        localStorage.setItem(activePlanStorageKey, effectiveTicketPlan);
+      } catch {}
     }
 
     if (Object.keys(ticketPlans).length > 0) {
@@ -443,24 +495,7 @@ export default function ClientPackages() {
         return merged;
       });
     }
-  }, [clientTickets, storageKey, activePlanStorageKey]);
-
-  // If company is already active with an assigned quota and no plan was explicitly selected, infer plan
-  useEffect(() => {
-    if (activeSelectedPlanId) return;
-    if (!company || !(company as any).isActive) return;
-    const quota = (company as any).monthlyTokenQuota;
-    if (quota) {
-      let matchedPlanId: string | null = null;
-      if (quota <= 100_000) matchedPlanId = "starter";
-      else if (quota <= 500_000) matchedPlanId = "pro";
-      else matchedPlanId = "enterprise";
-
-      if (matchedPlanId) {
-        setActiveSelectedPlanId(matchedPlanId);
-      }
-    }
-  }, [company, activeSelectedPlanId]);
+  }, [clientTickets, storageKey, activePlanStorageKey, companyActivePlanId]);
 
   const calcPrice = (priceUsd: number) => {
     let finalUsd = priceUsd;
@@ -1144,7 +1179,7 @@ export default function ClientPackages() {
                       <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
-                      <span>{feat}</span>
+                      <span>{formatPlanFeature(feat, plan, lang === "ar")}</span>
                     </li>
                   ))}
                 </ul>

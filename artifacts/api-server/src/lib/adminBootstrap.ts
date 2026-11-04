@@ -88,7 +88,7 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
         AND (value = 'nvidia/nemotron-nano-9b-v2:free' OR value LIKE '%nemotron-nano%');
     `);
 
-    // Ensure packages catalog in database includes the free_trial plan
+    // Ensure packages catalog in database includes the free_trial plan and synchronized token features
     try {
       const [catRow] = await db
         .select()
@@ -98,27 +98,76 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       if (catRow && catRow.value) {
         const parsed = JSON.parse(catRow.value);
         if (Array.isArray(parsed.packages)) {
+          let modified = false;
+
           const hasFreeTrial = parsed.packages.some((p: any) => p.id === "free_trial");
           if (!hasFreeTrial) {
             const freeTrialPkg = DEFAULT_PACKAGES_CATALOG.packages.find((p) => p.id === "free_trial");
             if (freeTrialPkg) {
               parsed.packages = [freeTrialPkg, ...parsed.packages];
-              // Normalize sortOrder
-              parsed.packages.forEach((pkg: any, idx: number) => {
-                pkg.sortOrder = idx + 1;
-              });
-              parsed.updatedAt = new Date().toISOString();
-              await db
-                .update(adminConfigTable)
-                .set({ value: JSON.stringify(parsed), updatedAt: new Date() })
-                .where(eq(adminConfigTable.key, "packages_catalog"));
-              logger.info("Auto-synced free_trial package into database admin_config table");
+              modified = true;
             }
+          }
+
+          // Ensure plan tokens and feature strings are synchronized
+          parsed.packages.forEach((pkg: any, idx: number) => {
+            pkg.sortOrder = idx + 1;
+            // Upgrade legacy default quotas to modern platform tiers if on old defaults
+            if (pkg.id === "starter" && (pkg.tokensMonthly === 50000 || !pkg.tokensMonthly)) {
+              pkg.tokensMonthly = 500000;
+              pkg.tokensFormatted = "500,000";
+              pkg.monthlyPriceUsd = 20;
+              modified = true;
+            } else if (pkg.id === "pro" && (pkg.tokensMonthly === 250000 || !pkg.tokensMonthly)) {
+              pkg.tokensMonthly = 1000000;
+              pkg.tokensFormatted = "1,000,000";
+              pkg.monthlyPriceUsd = 25;
+              pkg.retentionDays = 7;
+              modified = true;
+            } else if (pkg.id === "enterprise" && (pkg.tokensMonthly === 1000000 || !pkg.tokensMonthly)) {
+              pkg.tokensMonthly = 1500000;
+              pkg.tokensFormatted = "1,500,000";
+              pkg.monthlyPriceUsd = 30;
+              pkg.retentionDays = 14;
+              modified = true;
+            }
+
+            // Sync features to match current tokensMonthly
+            if (pkg.tokensMonthly) {
+              const formatted = pkg.tokensFormatted || Number(pkg.tokensMonthly).toLocaleString();
+              if (Array.isArray(pkg.featuresAr)) {
+                pkg.featuresAr = pkg.featuresAr.map((f: string) => {
+                  if (/[\d,kKmM.]+\s*(?:رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(f)) {
+                    modified = true;
+                    return f.replace(/[\d,kKmM.]+\s*(رمز شهرياً \(AI Tokens\)|رمز مجاني \(AI Tokens\)|رمز شهرياً|رمز)/i, `${formatted} $1`);
+                  }
+                  return f;
+                });
+              }
+              if (Array.isArray(pkg.featuresEn)) {
+                pkg.featuresEn = pkg.featuresEn.map((f: string) => {
+                  if (/[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?)/i.test(f)) {
+                    modified = true;
+                    return f.replace(/[\d,kKmM.]+\s*(monthly AI Tokens|tokens?)/i, `${formatted} $1`);
+                  }
+                  return f;
+                });
+              }
+            }
+          });
+
+          if (modified) {
+            parsed.updatedAt = new Date().toISOString();
+            await db
+              .update(adminConfigTable)
+              .set({ value: JSON.stringify(parsed), updatedAt: new Date() })
+              .where(eq(adminConfigTable.key, "packages_catalog"));
+            logger.info("Auto-synced and updated packages catalog in database admin_config table");
           }
         }
       }
     } catch (catErr) {
-      logger.warn({ err: catErr }, "Could not check or sync free_trial package into database catalog");
+      logger.warn({ err: catErr }, "Could not check or sync packages catalog into database");
     }
 
     logger.info("Data source permissions schema columns and model migrations ensured successfully");

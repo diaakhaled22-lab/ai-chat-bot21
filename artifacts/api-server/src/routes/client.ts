@@ -29,6 +29,7 @@ import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
+import { getActivePackagesCatalog } from "../lib/planApproval";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import crypto from 'crypto';
 
@@ -55,25 +56,102 @@ async function resolveEffectiveClientPages(company: typeof companiesTable.$infer
   const custom = explicitConfigPages ?? parseEnabledPages((company as any).enabledClientPages);
   if (custom && custom.length > 0) return custom;
   try {
-    const [catRow] = await db
-      .select({ value: adminConfigTable.value })
-      .from(adminConfigTable)
-      .where(eq(adminConfigTable.key, "packages_catalog"))
-      .limit(1);
-    const parsedCatalog = catRow?.value ? JSON.parse(catRow.value) : DEFAULT_PACKAGES_CATALOG;
-    const pkgs: any[] = Array.isArray(parsedCatalog?.packages) ? parsedCatalog.packages : DEFAULT_PACKAGES_CATALOG.packages;
+    const catalog = await getActivePackagesCatalog();
+    const pkgs = catalog.packages;
     const quota = company.monthlyTokenQuota;
     let matchedPlan = pkgs.find((p) => p.tokensMonthly === quota);
     if (!matchedPlan && quota) {
-      if (quota <= 100_000) matchedPlan = pkgs.find((p) => p.id === "starter");
-      else if (quota <= 500_000) matchedPlan = pkgs.find((p) => p.id === "pro");
-      else matchedPlan = pkgs.find((p) => p.id === "enterprise");
+      let minDiff = Infinity;
+      for (const p of pkgs) {
+        if (p.tokensMonthly) {
+          const diff = Math.abs(p.tokensMonthly - quota);
+          if (diff < minDiff) {
+            minDiff = diff;
+            matchedPlan = p;
+          }
+        }
+      }
     }
     if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
       return matchedPlan.allowedPages;
     }
   } catch {}
   return custom;
+}
+
+async function resolveCompanyActivePlanId(
+  company: typeof companiesTable.$inferSelect
+): Promise<string | null> {
+  if (!company.isActive && (!company.monthlyTokenQuota || company.monthlyTokenQuota <= 0)) {
+    return null;
+  }
+
+  const catalog = await getActivePackagesCatalog();
+  const pkgs = catalog.packages;
+
+  // 1. Try to find recent subscription / plan tickets for this client
+  try {
+    const tickets = await db
+      .select()
+      .from(ticketsTable)
+      .where(eq(ticketsTable.clientId, company.clientId))
+      .orderBy(desc(ticketsTable.createdAt));
+
+    // Prefer resolved (approved) tickets first
+    for (const t of tickets) {
+      if (t.status === "resolved") {
+        const titleLower = (t.title || "").toLowerCase();
+        const descText = t.description || "";
+        const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+        if (matchId && pkgs.some((p) => p.id === matchId[1])) {
+          return matchId[1];
+        }
+        if (titleLower.includes("starter") || t.title?.includes("الأساسية")) return "starter";
+        if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) return "pro";
+        if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) return "enterprise";
+        if (titleLower.includes("trial") || t.title?.includes("تجريبية")) return "free_trial";
+      }
+    }
+
+    // Then check any active/open subscription tickets
+    for (const t of tickets) {
+      const titleLower = (t.title || "").toLowerCase();
+      const descText = t.description || "";
+      const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+      if (matchId && pkgs.some((p) => p.id === matchId[1])) {
+        return matchId[1];
+      }
+      if (titleLower.includes("starter") || t.title?.includes("الأساسية")) return "starter";
+      if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) return "pro";
+      if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) return "enterprise";
+      if (titleLower.includes("trial") || t.title?.includes("تجريبية")) return "free_trial";
+    }
+  } catch (err) {
+    logger.warn({ err }, "Error resolving ticket for company active plan");
+  }
+
+  // 2. Exact match by monthlyTokenQuota against active catalog
+  const quota = company.monthlyTokenQuota;
+  if (quota) {
+    const exact = pkgs.find((p) => p.tokensMonthly === quota);
+    if (exact) return exact.id;
+
+    // 3. Closest match
+    let best = pkgs[0];
+    let minDiff = Infinity;
+    for (const p of pkgs) {
+      if (p.tokensMonthly) {
+        const diff = Math.abs(p.tokensMonthly - quota);
+        if (diff < minDiff) {
+          minDiff = diff;
+          best = p;
+        }
+      }
+    }
+    if (best) return best.id;
+  }
+
+  return "starter";
 }
 
 // Only enforce client auth on /client/* paths ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â other paths pass through unguarded
@@ -197,6 +275,7 @@ router.get("/client/company", async (req, res) => {
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
       freeTrialClaimed: Boolean((company as any).freeTrialClaimed),
+      activePlanId: await resolveCompanyActivePlanId(company),
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),

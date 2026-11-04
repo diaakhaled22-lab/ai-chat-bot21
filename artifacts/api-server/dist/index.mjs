@@ -55627,6 +55627,7 @@ var init_companies = __esm({
       allowSourceShopify: boolean("allow_source_shopify").notNull().default(true),
       businessType: text("business_type").notNull().default("general"),
       enabledClientPages: text("enabled_client_pages"),
+      freeTrialClaimed: boolean("free_trial_claimed").notNull().default(false),
       createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => /* @__PURE__ */ new Date())
     });
@@ -57132,20 +57133,70 @@ var init_packagesCatalog = __esm({
     DEFAULT_PACKAGES_CATALOG = {
       packages: [
         {
+          id: "free_trial",
+          nameAr: "\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 (7 \u0623\u064A\u0627\u0645)",
+          nameEn: "Free 7-Day Trial",
+          descriptionAr: "\u062A\u062C\u0631\u0628\u0629 \u0645\u062C\u0627\u0646\u064A\u0629 \u0643\u0627\u0645\u0644\u0629 \u0644\u062C\u0645\u064A\u0639 \u0645\u0645\u064A\u0632\u0627\u062A \u0627\u0644\u0645\u0646\u0635\u0629 \u0648\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0644\u0645\u062F\u0629 7 \u0623\u064A\u0627\u0645 \u062F\u0648\u0646 \u0623\u064A \u062A\u0643\u0644\u0641\u0629.",
+          descriptionEn: "Full 7-day free trial of all platform features and AI automation at zero cost.",
+          monthlyPriceUsd: 0,
+          tokensMonthly: 25e3,
+          tokensFormatted: "25,000",
+          popular: false,
+          color: "#10b981",
+          badgeAr: "\u062A\u062C\u0631\u0628\u0629 \u0645\u062C\u0627\u0646\u064A\u0629",
+          badgeEn: "Free Trial",
+          featuresAr: [
+            "25,000 \u0631\u0645\u0632 \u0645\u062C\u0627\u0646\u064A (AI Tokens)",
+            "\u0635\u0644\u0627\u062D\u064A\u0629 \u0643\u0627\u0645\u0644\u0629 \u0644\u0645\u062F\u0629 7 \u0623\u064A\u0627\u0645",
+            "\u0648\u064A\u062F\u062C\u062A \u0627\u0644\u0645\u0648\u0642\u0639 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0648\u0628\u0648\u062A \u062A\u0644\u064A\u062C\u0631\u0627\u0645",
+            "\u0642\u0627\u0639\u062F\u0629 \u0645\u0639\u0631\u0641\u064A\u0629 \u0630\u0643\u064A\u0629 \u0644\u062A\u062F\u0631\u064A\u0628 \u0627\u0644\u0634\u0627\u062A \u0628\u0648\u062A",
+            "\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0627\u062A \u0648\u0633\u062C\u0644\u0627\u062A \u0627\u0644\u0634\u0627\u062A",
+            "\u062F\u0639\u0645 \u0641\u0646\u064A \u0648\u0627\u0633\u062A\u0634\u0627\u0631\u0627\u062A \u0645\u062C\u0627\u0646\u064A\u0629"
+          ],
+          featuresEn: [
+            "25,000 Free AI Tokens",
+            "Valid for 7 full days",
+            "Website Widget + Telegram Bot",
+            "Smart Knowledge Base training",
+            "Real-time Chat Logs",
+            "Free technical support"
+          ],
+          allowedPages: [
+            "dashboard",
+            "notifications",
+            "company",
+            "packages",
+            "ai_model",
+            "usage",
+            "knowledge",
+            "channels",
+            "widget_preview",
+            "support",
+            "malfunctions",
+            "settings"
+          ],
+          retentionDays: 7,
+          channels: ["widget", "telegram"],
+          tools: ["leads_crm"],
+          dataSources: ["website", "files"],
+          isActive: true,
+          sortOrder: 1
+        },
+        {
           id: "starter",
           nameAr: "\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629 (Starter)",
           nameEn: "Starter Plan",
           descriptionAr: "\u0645\u062B\u0627\u0644\u064A\u0629 \u0644\u0644\u0645\u0634\u0627\u0631\u064A\u0639 \u0627\u0644\u0646\u0627\u0634\u0626\u0629 \u0648\u0627\u0644\u0634\u0631\u0643\u0627\u062A \u0627\u0644\u0635\u063A\u064A\u0631\u0629 \u0644\u0628\u062F\u0621 \u0623\u062A\u0645\u062A\u0629 \u0627\u0644\u0631\u062F\u0648\u062F \u0648\u062E\u062F\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621.",
           descriptionEn: "Perfect for startups and small businesses starting with AI automation.",
-          monthlyPriceUsd: 29,
-          tokensMonthly: 5e4,
-          tokensFormatted: "50,000",
+          monthlyPriceUsd: 20,
+          tokensMonthly: 5e5,
+          tokensFormatted: "500,000",
           popular: false,
           color: "#3b82f6",
           badgeAr: "",
           badgeEn: "",
           featuresAr: [
-            "50,000 \u0631\u0645\u0632 \u0634\u0647\u0631\u064A\u0627\u064B (AI Tokens)",
+            "500,000 \u0631\u0645\u0632 \u0634\u0647\u0631\u064A\u0627\u064B (AI Tokens)",
             "\u0642\u0646\u0627\u062A\u064A\u0646: \u0648\u064A\u062F\u062C\u062A \u0627\u0644\u0645\u0648\u0642\u0639 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A + \u0628\u0648\u062A \u062A\u0644\u064A\u062C\u0631\u0627\u0645",
             "\u0642\u0627\u0639\u062F\u0629 \u0645\u0639\u0627\u0631\u0641 \u0630\u0643\u064A\u0629 (\u062D\u062A\u0649 5 \u0645\u0633\u062A\u0646\u062F\u0627\u062A/\u0645\u0644\u0641\u0627\u062A)",
             "\u0633\u062C\u0644\u0627\u062A \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629 \u0627\u0644\u0645\u0628\u0627\u0634\u0631\u0629",
@@ -57153,7 +57204,7 @@ var init_packagesCatalog = __esm({
             "\u062F\u0639\u0645 \u0641\u0646\u064A \u0639\u0628\u0631 \u0627\u0644\u062A\u0630\u0627\u0643\u0631 (\u062E\u0644\u0627\u0644 24 \u0633\u0627\u0639\u0629)"
           ],
           featuresEn: [
-            "50,000 monthly AI Tokens",
+            "500,000 monthly AI Tokens",
             "2 Channels: Website Widget + Telegram Bot",
             "Smart Knowledge Base (up to 5 documents)",
             "Real-time Chat Logs",
@@ -57179,7 +57230,7 @@ var init_packagesCatalog = __esm({
           tools: ["leads_crm"],
           dataSources: ["website", "files"],
           isActive: true,
-          sortOrder: 1
+          sortOrder: 2
         },
         {
           id: "pro",
@@ -57187,15 +57238,15 @@ var init_packagesCatalog = __esm({
           nameEn: "Professional Plan",
           descriptionAr: "\u0627\u0644\u062E\u064A\u0627\u0631 \u0627\u0644\u0623\u0641\u0636\u0644 \u0644\u0644\u0639\u064A\u0627\u062F\u0627\u062A \u0648\u0627\u0644\u0634\u0631\u0643\u0627\u062A \u0627\u0644\u0645\u062A\u0646\u0627\u0645\u064A\u0629 \u0645\u0639 \u0631\u0628\u0637 \u0643\u0627\u0645\u0644 \u0628\u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0648\u0627\u0644\u062A\u0642\u0648\u064A\u0645.",
           descriptionEn: "Best for growing companies and clinics needing multi-channel CRM & booking.",
-          monthlyPriceUsd: 79,
-          tokensMonthly: 25e4,
-          tokensFormatted: "250,000",
+          monthlyPriceUsd: 25,
+          tokensMonthly: 1e6,
+          tokensFormatted: "1,000,000",
           popular: true,
           color: "#2D5BE3",
           badgeAr: "\u0627\u0644\u0623\u0643\u062B\u0631 \u0637\u0644\u0628\u0627\u064B",
           badgeEn: "Most Popular",
           featuresAr: [
-            "250,000 \u0631\u0645\u0632 \u0634\u0647\u0631\u064A\u0627\u064B (AI Tokens)",
+            "1,000,000 \u0631\u0645\u0632 \u0634\u0647\u0631\u064A\u0627\u064B (AI Tokens)",
             "\u062C\u0645\u064A\u0639 \u0627\u0644\u0642\u0646\u0648\u0627\u062A: \u0645\u0648\u0642\u0639 + \u062A\u0644\u064A\u062C\u0631\u0627\u0645 + \u0648\u0627\u062A\u0633\u0627\u0628 + \u0645\u0627\u0633\u0646\u062C\u0631",
             "\u0642\u0627\u0639\u062F\u0629 \u0645\u0639\u0627\u0631\u0641 \u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F\u0629 (\u0645\u0633\u062A\u0646\u062F\u0627\u062A\u060C \u0631\u0648\u0627\u0628\u0637\u060C \u0645\u0648\u0627\u0642\u0639)",
             "\u062A\u0643\u0627\u0645\u0644 \u062A\u0642\u0648\u064A\u0645 Google \u0648\u062C\u062F\u0627\u0648\u0644 Google \u0644\u0644\u062D\u062C\u0648\u0632\u0627\u062A",
@@ -57204,7 +57255,7 @@ var init_packagesCatalog = __esm({
             "\u062F\u0639\u0645 \u0641\u0646\u064A \u0623\u0648\u0644\u0648\u064A\u0629 \u0639\u0628\u0631 \u0627\u0644\u062A\u0630\u0627\u0643\u0631 \u0648\u0627\u0644\u0634\u0627\u062A \u0627\u0644\u0645\u0628\u0627\u0634\u0631"
           ],
           featuresEn: [
-            "250,000 monthly AI Tokens",
+            "1,000,000 monthly AI Tokens",
             "All channels: Website + Telegram + WhatsApp + Messenger",
             "Unlimited Knowledge Base (docs, links, scrapers)",
             "Google Calendar & Google Sheets integration",
@@ -57230,12 +57281,12 @@ var init_packagesCatalog = __esm({
             "malfunctions",
             "settings"
           ],
-          retentionDays: 30,
+          retentionDays: 7,
           channels: ["widget", "telegram", "whatsapp", "messenger"],
           tools: ["calendar", "sheets", "leads_crm", "handoff", "web_sync"],
           dataSources: ["website", "files", "wordpress"],
           isActive: true,
-          sortOrder: 2
+          sortOrder: 3
         },
         {
           id: "enterprise",
@@ -57243,15 +57294,15 @@ var init_packagesCatalog = __esm({
           nameEn: "Enterprise Plan",
           descriptionAr: "\u0644\u0644\u0645\u0624\u0633\u0633\u0627\u062A \u0648\u0627\u0644\u0645\u0646\u0635\u0627\u062A \u0630\u0627\u062A \u0627\u0644\u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u0639\u0627\u0644\u064A \u0627\u0644\u062A\u064A \u062A\u062A\u0637\u0644\u0628 \u0623\u062F\u0627\u0621\u064B \u0641\u0627\u0626\u0642\u0627\u064B \u0648\u062A\u062E\u0635\u064A\u0635\u0627\u064B \u0643\u0627\u0645\u0644\u0627\u064B.",
           descriptionEn: "For enterprises requiring high throughput, custom integrations, and SLA.",
-          monthlyPriceUsd: 199,
-          tokensMonthly: 1e6,
-          tokensFormatted: "1,000,000",
+          monthlyPriceUsd: 30,
+          tokensMonthly: 15e5,
+          tokensFormatted: "1,500,000",
           popular: false,
           color: "#8b5cf6",
           badgeAr: "\u0623\u0639\u0644\u0649 \u0623\u062F\u0627\u0621",
           badgeEn: "Top Performance",
           featuresAr: [
-            "1,000,000 \u0631\u0645\u0632 \u0634\u0647\u0631\u064A\u0627\u064B (AI Tokens)",
+            "1,500,000 \u0631\u0645\u0632 \u0634\u0647\u0631\u064A\u0627\u064B (AI Tokens)",
             "\u062C\u0645\u064A\u0639 \u0645\u064A\u0632\u0627\u062A \u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644",
             "\u0642\u0646\u0648\u0627\u062A \u0627\u0644\u0648\u064A\u0628 \u0647\u0648\u0643 \u0627\u0644\u0645\u062E\u0635\u0635\u0629 (Custom Webhooks & REST API)",
             "\u062A\u062E\u0635\u064A\u0635 \u0643\u0627\u0645\u0644 \u0644\u0644\u062A\u0648\u062C\u064A\u0647\u0627\u062A \u0648\u0623\u0646\u0638\u0645\u0629 \u062D\u0645\u0627\u064A\u0629 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A (Prompt Security)",
@@ -57260,7 +57311,7 @@ var init_packagesCatalog = __esm({
             "\u0627\u062A\u0641\u0627\u0642\u064A\u0629 \u0645\u0633\u062A\u0648\u0649 \u0627\u0644\u062E\u062F\u0645\u0629 SLA \u0628\u0646\u0633\u0628\u0629 \u062C\u0627\u0647\u0632\u064A\u0629 99.9%"
           ],
           featuresEn: [
-            "1,000,000 monthly AI Tokens",
+            "1,500,000 monthly AI Tokens",
             "All Professional Plan features included",
             "Custom Webhooks & REST API channel integrations",
             "Custom prompt engineering & enterprise prompt security",
@@ -57287,12 +57338,12 @@ var init_packagesCatalog = __esm({
             "webhook_history",
             "settings"
           ],
-          retentionDays: 30,
+          retentionDays: 14,
           channels: ["widget", "telegram", "whatsapp", "messenger", "webhook"],
           tools: ["calendar", "sheets", "leads_crm", "handoff", "voice", "web_sync"],
           dataSources: ["website", "files", "wordpress", "rest_api", "shopify"],
           isActive: true,
-          sortOrder: 3
+          sortOrder: 4
         }
       ],
       topupPacks: [
@@ -63256,15 +63307,16 @@ async function processApprovedPlanRequest(ticketId, options) {
     };
   } else {
     const plan = parsed.plan;
-    const isYearly = parsed.billingCycle === "yearly";
-    const durationDays = isYearly ? 365 : 30;
+    const isFreeTrial = plan.id === "free_trial";
+    const isYearly = !isFreeTrial && parsed.billingCycle === "yearly";
+    const durationDays = isFreeTrial ? 7 : isYearly ? 365 : 30;
     const rawPrice = isYearly ? plan.monthlyPriceUsd * 12 * 0.8 : plan.monthlyPriceUsd;
     const priceUsd = Math.round(rawPrice);
     const priceLocal = Math.round(priceUsd * exchangeRate);
     const activationStart = now;
     const activationEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1e3);
     const quotaStartDate = now;
-    const quotaEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1e3);
+    const quotaEndDate = new Date(now.getTime() + (isFreeTrial ? 7 : 30) * 24 * 60 * 60 * 1e3);
     const channels = parsed.channels || [];
     const tools = parsed.tools || [];
     const sources = parsed.dataSources || [];
@@ -63293,6 +63345,9 @@ async function processApprovedPlanRequest(ticketId, options) {
     };
     if (plan.allowedPages && plan.allowedPages.length > 0) {
       companyUpdates.enabledClientPages = JSON.stringify(plan.allowedPages);
+    }
+    if (isFreeTrial) {
+      companyUpdates.freeTrialClaimed = true;
     }
     if (parsed.phone && !company.whatsappNumber) {
       companyUpdates.whatsappNumber = parsed.phone;
@@ -98055,29 +98110,49 @@ async function handleUpdatePackages(req, res) {
       res.status(400).json({ error: "Packages list must be an array" });
       return;
     }
-    const cleanedPackages = packages.map((p, index2) => ({
-      id: p.id ? String(p.id).trim() : `plan-${index2 + 1}`,
-      nameAr: String(p.nameAr || "").trim() || "\u0628\u0627\u0642\u0629 \u062C\u062F\u064A\u062F\u0629",
-      nameEn: String(p.nameEn || "").trim() || "New Plan",
-      descriptionAr: String(p.descriptionAr || "").trim(),
-      descriptionEn: String(p.descriptionEn || "").trim(),
-      monthlyPriceUsd: Number(p.monthlyPriceUsd) >= 0 ? Number(p.monthlyPriceUsd) : 0,
-      tokensMonthly: Number(p.tokensMonthly) >= 0 ? Number(p.tokensMonthly) : 0,
-      tokensFormatted: p.tokensFormatted || Number(p.tokensMonthly || 0).toLocaleString(),
-      popular: Boolean(p.popular),
-      color: p.color || "#2D5BE3",
-      badgeAr: p.badgeAr ? String(p.badgeAr).trim() : void 0,
-      badgeEn: p.badgeEn ? String(p.badgeEn).trim() : void 0,
-      featuresAr: Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [],
-      featuresEn: Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [],
-      allowedPages: Array.isArray(p.allowedPages) ? p.allowedPages : void 0,
-      retentionDays: p.retentionDays !== void 0 ? p.retentionDays === null || p.retentionDays === 0 ? 0 : Number(p.retentionDays) : void 0,
-      channels: Array.isArray(p.channels) ? p.channels : void 0,
-      tools: Array.isArray(p.tools) ? p.tools : void 0,
-      dataSources: Array.isArray(p.dataSources) ? p.dataSources : void 0,
-      isActive: p.isActive !== false,
-      sortOrder: Number(p.sortOrder) || index2 + 1
-    }));
+    const cleanedPackages = packages.map((p, index2) => {
+      const tokensMonthly = Number(p.tokensMonthly) >= 0 ? Number(p.tokensMonthly) : 0;
+      const tokensFormatted = p.tokensFormatted || Number(tokensMonthly || 0).toLocaleString();
+      let featuresAr = Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [];
+      let featuresEn = Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [];
+      if (tokensMonthly > 0) {
+        featuresAr = featuresAr.map((f) => {
+          if (/[\d,kKmM.]+\s*(?:رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(f)) {
+            return f.replace(/[\d,kKmM.]+\s*(رمز شهرياً \(AI Tokens\)|رمز مجاني \(AI Tokens\)|رمز شهرياً|رمز)/i, `${tokensFormatted} $1`);
+          }
+          return f;
+        });
+        featuresEn = featuresEn.map((f) => {
+          if (/[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?)/i.test(f)) {
+            return f.replace(/[\d,kKmM.]+\s*(monthly AI Tokens|tokens?)/i, `${tokensFormatted} $1`);
+          }
+          return f;
+        });
+      }
+      return {
+        id: p.id ? String(p.id).trim() : `plan-${index2 + 1}`,
+        nameAr: String(p.nameAr || "").trim() || "\u0628\u0627\u0642\u0629 \u062C\u062F\u064A\u062F\u0629",
+        nameEn: String(p.nameEn || "").trim() || "New Plan",
+        descriptionAr: String(p.descriptionAr || "").trim(),
+        descriptionEn: String(p.descriptionEn || "").trim(),
+        monthlyPriceUsd: Number(p.monthlyPriceUsd) >= 0 ? Number(p.monthlyPriceUsd) : 0,
+        tokensMonthly,
+        tokensFormatted,
+        popular: Boolean(p.popular),
+        color: p.color || "#2D5BE3",
+        badgeAr: p.badgeAr ? String(p.badgeAr).trim() : void 0,
+        badgeEn: p.badgeEn ? String(p.badgeEn).trim() : void 0,
+        featuresAr,
+        featuresEn,
+        allowedPages: Array.isArray(p.allowedPages) ? p.allowedPages : void 0,
+        retentionDays: p.retentionDays !== void 0 ? p.retentionDays === null || p.retentionDays === 0 ? 0 : Number(p.retentionDays) : void 0,
+        channels: Array.isArray(p.channels) ? p.channels : void 0,
+        tools: Array.isArray(p.tools) ? p.tools : void 0,
+        dataSources: Array.isArray(p.dataSources) ? p.dataSources : void 0,
+        isActive: p.isActive !== false,
+        sortOrder: Number(p.sortOrder) || index2 + 1
+      };
+    });
     const cleanedTopups = Array.isArray(topupPacks) ? topupPacks.map((tp, idx) => ({
       id: tp.id ? String(tp.id).trim() : `topup-${idx + 1}`,
       tokens: Number(tp.tokens) >= 0 ? Number(tp.tokens) : 1e4,
@@ -99552,6 +99627,7 @@ init_security();
 init_supportAi();
 init_promptInstructions();
 init_packagesCatalog();
+init_planApproval();
 init_companyNotification();
 import crypto7 from "crypto";
 function telegramWebhookSecret2(token) {
@@ -99575,15 +99651,21 @@ async function resolveEffectiveClientPages(company, explicitConfigPages) {
   const custom2 = explicitConfigPages ?? parseEnabledPages2(company.enabledClientPages);
   if (custom2 && custom2.length > 0) return custom2;
   try {
-    const [catRow] = await db.select({ value: adminConfigTable.value }).from(adminConfigTable).where(eq(adminConfigTable.key, "packages_catalog")).limit(1);
-    const parsedCatalog = catRow?.value ? JSON.parse(catRow.value) : DEFAULT_PACKAGES_CATALOG;
-    const pkgs = Array.isArray(parsedCatalog?.packages) ? parsedCatalog.packages : DEFAULT_PACKAGES_CATALOG.packages;
+    const catalog2 = await getActivePackagesCatalog();
+    const pkgs = catalog2.packages;
     const quota = company.monthlyTokenQuota;
     let matchedPlan = pkgs.find((p) => p.tokensMonthly === quota);
     if (!matchedPlan && quota) {
-      if (quota <= 1e5) matchedPlan = pkgs.find((p) => p.id === "starter");
-      else if (quota <= 5e5) matchedPlan = pkgs.find((p) => p.id === "pro");
-      else matchedPlan = pkgs.find((p) => p.id === "enterprise");
+      let minDiff = Infinity;
+      for (const p of pkgs) {
+        if (p.tokensMonthly) {
+          const diff = Math.abs(p.tokensMonthly - quota);
+          if (diff < minDiff) {
+            minDiff = diff;
+            matchedPlan = p;
+          }
+        }
+      }
     }
     if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
       return matchedPlan.allowedPages;
@@ -99591,6 +99673,62 @@ async function resolveEffectiveClientPages(company, explicitConfigPages) {
   } catch {
   }
   return custom2;
+}
+async function resolveCompanyActivePlanId(company) {
+  if (!company.isActive && (!company.monthlyTokenQuota || company.monthlyTokenQuota <= 0)) {
+    return null;
+  }
+  const catalog2 = await getActivePackagesCatalog();
+  const pkgs = catalog2.packages;
+  try {
+    const tickets = await db.select().from(ticketsTable).where(eq(ticketsTable.clientId, company.clientId)).orderBy(desc(ticketsTable.createdAt));
+    for (const t of tickets) {
+      if (t.status === "resolved") {
+        const titleLower = (t.title || "").toLowerCase();
+        const descText = t.description || "";
+        const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+        if (matchId && pkgs.some((p) => p.id === matchId[1])) {
+          return matchId[1];
+        }
+        if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) return "starter";
+        if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) return "pro";
+        if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) return "enterprise";
+        if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) return "free_trial";
+      }
+    }
+    for (const t of tickets) {
+      const titleLower = (t.title || "").toLowerCase();
+      const descText = t.description || "";
+      const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+      if (matchId && pkgs.some((p) => p.id === matchId[1])) {
+        return matchId[1];
+      }
+      if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) return "starter";
+      if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) return "pro";
+      if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) return "enterprise";
+      if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) return "free_trial";
+    }
+  } catch (err) {
+    logger.warn({ err }, "Error resolving ticket for company active plan");
+  }
+  const quota = company.monthlyTokenQuota;
+  if (quota) {
+    const exact = pkgs.find((p) => p.tokensMonthly === quota);
+    if (exact) return exact.id;
+    let best = pkgs[0];
+    let minDiff = Infinity;
+    for (const p of pkgs) {
+      if (p.tokensMonthly) {
+        const diff = Math.abs(p.tokensMonthly - quota);
+        if (diff < minDiff) {
+          minDiff = diff;
+          best = p;
+        }
+      }
+    }
+    if (best) return best.id;
+  }
+  return "starter";
 }
 router7.use("/client", requireClient);
 router7.get("/client/ai-models", async (req, res) => {
@@ -99689,6 +99827,8 @@ router7.get("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      freeTrialClaimed: Boolean(company.freeTrialClaimed),
+      activePlanId: await resolveCompanyActivePlanId(company),
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString()
@@ -101120,6 +101260,13 @@ router7.post("/client/tickets", async (req, res) => {
     }
     const titleLower = (title || "").toLowerCase();
     const descLower = (description || "").toLowerCase();
+    const isRequestingFreeTrial = (description || "").includes("[\u0645\u0639\u0631\u0641 \u0627\u0644\u0628\u0627\u0642\u0629: free_trial]") || (description || "").includes("free_trial") || (title || "").includes("\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629") || (title || "").includes("Free 7-Day Trial");
+    if (isRequestingFreeTrial && company && company.freeTrialClaimed) {
+      res.status(400).json({
+        error: "\u0644\u0642\u062F \u0627\u0633\u062A\u0641\u062F\u062A \u0645\u0633\u0628\u0642\u0627\u064B \u0645\u0646 \u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0627\u0644\u0645\u062C\u0627\u0646\u064A\u0629 (7 \u0623\u064A\u0627\u0645). \u0647\u0630\u0647 \u0627\u0644\u0628\u0627\u0642\u0629 \u0645\u062A\u0627\u062D\u0629 \u0644\u0644\u0639\u0645\u0644\u0627\u0621 \u0627\u0644\u062C\u062F\u062F \u0641\u0642\u0637 \u0648\u0644\u0645\u0631\u0629 \u0648\u0627\u062D\u062F\u0629. \u064A\u0645\u0643\u0646\u0643 \u0627\u062E\u062A\u064A\u0627\u0631 \u0625\u062D\u062F\u0649 \u0628\u0627\u0642\u0627\u062A\u0646\u0627 \u0627\u0644\u0645\u062A\u0627\u062D\u0629."
+      });
+      return;
+    }
     const isPlanSwitch = title.includes("\u0637\u0644\u0628 \u062A\u063A\u064A\u064A\u0631 \u0628\u0627\u0642\u0629") || title.includes("\u0637\u0644\u0628 \u0627\u0634\u062A\u0631\u0627\u0643") || title.includes("\u0637\u0644\u0628 \u0628\u0627\u0642\u0629") || title.includes("\u0628\u0627\u0642\u0629") || titleLower.includes("plan") || titleLower.includes("upgrade") || titleLower.includes("switch") || descLower.includes("\u0628\u0627\u0642\u0629") || descLower.includes("plan") || descLower.includes("upgrade") || descLower.includes("\u0645\u0639\u0631\u0641 \u0627\u0644\u0628\u0627\u0642\u0629");
     if (isPlanSwitch) {
       const existingClientPlanNotifs = await db.select({ id: notificationsTable.id, title: notificationsTable.title, message: notificationsTable.message, type: notificationsTable.type }).from(notificationsTable).where(eq(notificationsTable.userId, req.session.userId));
@@ -104886,6 +105033,7 @@ import crypto9 from "crypto";
 init_src();
 init_drizzle_orm();
 init_logger();
+init_packagesCatalog();
 async function ensureAdminExists(database = db) {
   try {
     const [existingAdmin] = await database.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, "admin")).limit(1);
@@ -104929,6 +105077,7 @@ async function ensureDataSourcePermissionsSchema() {
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS google_calendar_booking_rules TEXT;
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS business_type TEXT NOT NULL DEFAULT 'general';
       ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_client_pages TEXT;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS free_trial_claimed BOOLEAN NOT NULL DEFAULT false;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_date TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS doctor TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
@@ -104943,6 +105092,12 @@ async function ensureDataSourcePermissionsSchema() {
       SET monthly_token_quota = 500000
       WHERE monthly_token_quota IS NULL OR monthly_token_quota = 0;
 
+      -- Mark existing companies that already have active subscriptions or custom quotas as having claimed free trial
+      UPDATE companies
+      SET free_trial_claimed = true
+      WHERE (is_active = true OR monthly_token_quota > 25000 OR activation_end IS NOT NULL)
+        AND free_trial_claimed = false;
+
       UPDATE companies
       SET ai_model = 'nvidia/nemotron-3.5-lightning:free'
       WHERE ai_model = 'nvidia/nemotron-nano-9b-v2:free' OR ai_model LIKE '%nemotron-nano%';
@@ -104952,6 +105107,72 @@ async function ensureDataSourcePermissionsSchema() {
       WHERE (key = 'quota_ai_model' OR key = 'support_ai_model')
         AND (value = 'nvidia/nemotron-nano-9b-v2:free' OR value LIKE '%nemotron-nano%');
     `);
+    try {
+      const [catRow] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "packages_catalog"));
+      if (catRow && catRow.value) {
+        const parsed = JSON.parse(catRow.value);
+        if (Array.isArray(parsed.packages)) {
+          let modified = false;
+          const hasFreeTrial = parsed.packages.some((p) => p.id === "free_trial");
+          if (!hasFreeTrial) {
+            const freeTrialPkg = DEFAULT_PACKAGES_CATALOG.packages.find((p) => p.id === "free_trial");
+            if (freeTrialPkg) {
+              parsed.packages = [freeTrialPkg, ...parsed.packages];
+              modified = true;
+            }
+          }
+          parsed.packages.forEach((pkg, idx) => {
+            pkg.sortOrder = idx + 1;
+            if (pkg.id === "starter" && (pkg.tokensMonthly === 5e4 || !pkg.tokensMonthly)) {
+              pkg.tokensMonthly = 5e5;
+              pkg.tokensFormatted = "500,000";
+              pkg.monthlyPriceUsd = 20;
+              modified = true;
+            } else if (pkg.id === "pro" && (pkg.tokensMonthly === 25e4 || !pkg.tokensMonthly)) {
+              pkg.tokensMonthly = 1e6;
+              pkg.tokensFormatted = "1,000,000";
+              pkg.monthlyPriceUsd = 25;
+              pkg.retentionDays = 7;
+              modified = true;
+            } else if (pkg.id === "enterprise" && (pkg.tokensMonthly === 1e6 || !pkg.tokensMonthly)) {
+              pkg.tokensMonthly = 15e5;
+              pkg.tokensFormatted = "1,500,000";
+              pkg.monthlyPriceUsd = 30;
+              pkg.retentionDays = 14;
+              modified = true;
+            }
+            if (pkg.tokensMonthly) {
+              const formatted = pkg.tokensFormatted || Number(pkg.tokensMonthly).toLocaleString();
+              if (Array.isArray(pkg.featuresAr)) {
+                pkg.featuresAr = pkg.featuresAr.map((f) => {
+                  if (/[\d,kKmM.]+\s*(?:رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(f)) {
+                    modified = true;
+                    return f.replace(/[\d,kKmM.]+\s*(رمز شهرياً \(AI Tokens\)|رمز مجاني \(AI Tokens\)|رمز شهرياً|رمز)/i, `${formatted} $1`);
+                  }
+                  return f;
+                });
+              }
+              if (Array.isArray(pkg.featuresEn)) {
+                pkg.featuresEn = pkg.featuresEn.map((f) => {
+                  if (/[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?)/i.test(f)) {
+                    modified = true;
+                    return f.replace(/[\d,kKmM.]+\s*(monthly AI Tokens|tokens?)/i, `${formatted} $1`);
+                  }
+                  return f;
+                });
+              }
+            }
+          });
+          if (modified) {
+            parsed.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+            await db.update(adminConfigTable).set({ value: JSON.stringify(parsed), updatedAt: /* @__PURE__ */ new Date() }).where(eq(adminConfigTable.key, "packages_catalog"));
+            logger.info("Auto-synced and updated packages catalog in database admin_config table");
+          }
+        }
+      }
+    } catch (catErr) {
+      logger.warn({ err: catErr }, "Could not check or sync packages catalog into database");
+    }
     logger.info("Data source permissions schema columns and model migrations ensured successfully");
   } catch (err) {
     logger.error({ err }, "Failed to ensure data source permissions schema columns");

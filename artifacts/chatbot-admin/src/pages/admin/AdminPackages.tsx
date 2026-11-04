@@ -404,11 +404,33 @@ export default function AdminPackages() {
       return;
     }
 
+    const tokens = Number(editingPlan.tokensMonthly);
+    let planToSave = { ...editingPlan };
+    if (tokens > 0) {
+      const formatted = planToSave.tokensFormatted || tokens.toLocaleString();
+      if (Array.isArray(planToSave.featuresAr)) {
+        planToSave.featuresAr = planToSave.featuresAr.map((f) => {
+          if (/[\d,kKmM.]+\s*(?:رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(f)) {
+            return f.replace(/[\d,kKmM.]+\s*(رمز شهرياً \(AI Tokens\)|رمز مجاني \(AI Tokens\)|رمز شهرياً|رمز)/i, `${formatted} $1`);
+          }
+          return f;
+        });
+      }
+      if (Array.isArray(planToSave.featuresEn)) {
+        planToSave.featuresEn = planToSave.featuresEn.map((f) => {
+          if (/[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?)/i.test(f)) {
+            return f.replace(/[\d,kKmM.]+\s*(monthly AI Tokens|tokens?)/i, `${formatted} $1`);
+          }
+          return f;
+        });
+      }
+    }
+
     let updatedPackages = [...packages];
     if (isNewPlan) {
-      updatedPackages.push(editingPlan);
+      updatedPackages.push(planToSave);
     } else {
-      updatedPackages = updatedPackages.map((p) => (p.id === editingPlan.id ? editingPlan : p));
+      updatedPackages = updatedPackages.map((p) => (p.id === planToSave.id ? planToSave : p));
     }
 
     updateMutation.mutate({ packages: updatedPackages, topupPacks });

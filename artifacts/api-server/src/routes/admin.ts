@@ -6269,29 +6269,52 @@ async function handleUpdatePackages(req: any, res: any) {
       return;
     }
 
-    const cleanedPackages: PackageItem[] = packages.map((p, index) => ({
-      id: p.id ? String(p.id).trim() : `plan-${index + 1}`,
-      nameAr: String(p.nameAr || "").trim() || "باقة جديدة",
-      nameEn: String(p.nameEn || "").trim() || "New Plan",
-      descriptionAr: String(p.descriptionAr || "").trim(),
-      descriptionEn: String(p.descriptionEn || "").trim(),
-      monthlyPriceUsd: Number(p.monthlyPriceUsd) >= 0 ? Number(p.monthlyPriceUsd) : 0,
-      tokensMonthly: Number(p.tokensMonthly) >= 0 ? Number(p.tokensMonthly) : 0,
-      tokensFormatted: p.tokensFormatted || Number(p.tokensMonthly || 0).toLocaleString(),
-      popular: Boolean(p.popular),
-      color: p.color || "#2D5BE3",
-      badgeAr: p.badgeAr ? String(p.badgeAr).trim() : undefined,
-      badgeEn: p.badgeEn ? String(p.badgeEn).trim() : undefined,
-      featuresAr: Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [],
-      featuresEn: Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [],
-      allowedPages: Array.isArray((p as any).allowedPages) ? (p as any).allowedPages : undefined,
-      retentionDays: (p as any).retentionDays !== undefined ? ((p as any).retentionDays === null || (p as any).retentionDays === 0 ? 0 : Number((p as any).retentionDays)) : undefined,
-      channels: Array.isArray((p as any).channels) ? (p as any).channels : undefined,
-      tools: Array.isArray((p as any).tools) ? (p as any).tools : undefined,
-      dataSources: Array.isArray((p as any).dataSources) ? (p as any).dataSources : undefined,
-      isActive: p.isActive !== false,
-      sortOrder: Number(p.sortOrder) || index + 1,
-    }));
+    const cleanedPackages: PackageItem[] = packages.map((p, index) => {
+      const tokensMonthly = Number(p.tokensMonthly) >= 0 ? Number(p.tokensMonthly) : 0;
+      const tokensFormatted = p.tokensFormatted || Number(tokensMonthly || 0).toLocaleString();
+
+      let featuresAr = Array.isArray(p.featuresAr) ? p.featuresAr.filter(Boolean) : [];
+      let featuresEn = Array.isArray(p.featuresEn) ? p.featuresEn.filter(Boolean) : [];
+
+      if (tokensMonthly > 0) {
+        featuresAr = featuresAr.map((f: string) => {
+          if (/[\d,kKmM.]+\s*(?:رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(f)) {
+            return f.replace(/[\d,kKmM.]+\s*(رمز شهرياً \(AI Tokens\)|رمز مجاني \(AI Tokens\)|رمز شهرياً|رمز)/i, `${tokensFormatted} $1`);
+          }
+          return f;
+        });
+        featuresEn = featuresEn.map((f: string) => {
+          if (/[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?)/i.test(f)) {
+            return f.replace(/[\d,kKmM.]+\s*(monthly AI Tokens|tokens?)/i, `${tokensFormatted} $1`);
+          }
+          return f;
+        });
+      }
+
+      return {
+        id: p.id ? String(p.id).trim() : `plan-${index + 1}`,
+        nameAr: String(p.nameAr || "").trim() || "باقة جديدة",
+        nameEn: String(p.nameEn || "").trim() || "New Plan",
+        descriptionAr: String(p.descriptionAr || "").trim(),
+        descriptionEn: String(p.descriptionEn || "").trim(),
+        monthlyPriceUsd: Number(p.monthlyPriceUsd) >= 0 ? Number(p.monthlyPriceUsd) : 0,
+        tokensMonthly,
+        tokensFormatted,
+        popular: Boolean(p.popular),
+        color: p.color || "#2D5BE3",
+        badgeAr: p.badgeAr ? String(p.badgeAr).trim() : undefined,
+        badgeEn: p.badgeEn ? String(p.badgeEn).trim() : undefined,
+        featuresAr,
+        featuresEn,
+        allowedPages: Array.isArray((p as any).allowedPages) ? (p as any).allowedPages : undefined,
+        retentionDays: (p as any).retentionDays !== undefined ? ((p as any).retentionDays === null || (p as any).retentionDays === 0 ? 0 : Number((p as any).retentionDays)) : undefined,
+        channels: Array.isArray((p as any).channels) ? (p as any).channels : undefined,
+        tools: Array.isArray((p as any).tools) ? (p as any).tools : undefined,
+        dataSources: Array.isArray((p as any).dataSources) ? (p as any).dataSources : undefined,
+        isActive: p.isActive !== false,
+        sortOrder: Number(p.sortOrder) || index + 1,
+      };
+    });
 
     const cleanedTopups: TopupPackItem[] = Array.isArray(topupPacks)
       ? topupPacks.map((tp, idx) => ({
