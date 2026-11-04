@@ -379,18 +379,21 @@ export default function ClientPackages() {
 
   const storageKey = useMemo(() => `ai_plan_requests_${(company as any)?.id || "client"}`, [(company as any)?.id]);
   const activePlanStorageKey = useMemo(() => `active_selected_plan_${(company as any)?.id || "client"}`, [(company as any)?.id]);
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   // 1. Determine company active plan ID directly from server or dynamic catalog match
   const companyActivePlanId = useMemo(() => {
     if (!company) return null;
+    const quota = (company as any).monthlyTokenQuota;
+    if (quota && quota > 0) {
+      const exact = plans.find((p) => p.tokensMonthly === quota);
+      if (exact) return exact.id;
+    }
     if ((company as any).activePlanId) {
       return (company as any).activePlanId;
     }
     if (!(company as any).isActive) return null;
-    const quota = (company as any).monthlyTokenQuota;
     if (!quota) return null;
-    const exact = plans.find((p) => p.tokensMonthly === quota);
-    if (exact) return exact.id;
     let best = plans[0];
     let minDiff = Infinity;
     for (const p of plans) {
@@ -405,7 +408,7 @@ export default function ClientPackages() {
     return best ? best.id : null;
   }, [company, plans]);
 
-  // Keep activeSelectedPlanId in sync with companyActivePlanId (overrides stale localStorage)
+  // Keep activeSelectedPlanId strictly in sync with companyActivePlanId (overrides stale localStorage)
   useEffect(() => {
     if (companyActivePlanId) {
       setActiveSelectedPlanId(companyActivePlanId);
@@ -414,6 +417,16 @@ export default function ClientPackages() {
       } catch {}
     }
   }, [companyActivePlanId, activePlanStorageKey]);
+
+  // Sync pendingPlanId from server response
+  useEffect(() => {
+    const sPending = (company as any)?.pendingPlanId;
+    if (sPending && sPending !== companyActivePlanId) {
+      setPendingPlanId(sPending);
+    } else if (companyActivePlanId && sPending === companyActivePlanId) {
+      setPendingPlanId(null);
+    }
+  }, [company, companyActivePlanId]);
 
   // Restore local storage state on mount
   useEffect(() => {
@@ -441,6 +454,7 @@ export default function ClientPackages() {
     if (!Array.isArray(clientTickets)) return;
     const ticketPlans: Record<string, { phone: string; submittedAt?: string }> = {};
     let latestPlanId: string | null = null;
+    let latestOpenPlanId: string | null = null;
     let resolvedPlanId: string | null = null;
 
     for (const t of clientTickets) {
@@ -469,6 +483,10 @@ export default function ClientPackages() {
         latestPlanId = planId;
       }
 
+      if (planId && (t.status === "open" || t.status === "pending" || t.status === "in_progress") && !latestOpenPlanId) {
+        latestOpenPlanId = planId;
+      }
+
       if (planId && t.status === "resolved" && !resolvedPlanId) {
         resolvedPlanId = planId;
       }
@@ -478,12 +496,16 @@ export default function ClientPackages() {
       }
     }
 
-    const effectiveTicketPlan = resolvedPlanId || latestPlanId;
-    if (effectiveTicketPlan && !companyActivePlanId) {
-      setActiveSelectedPlanId(effectiveTicketPlan);
+    if (resolvedPlanId && !companyActivePlanId) {
+      setActiveSelectedPlanId(resolvedPlanId);
       try {
-        localStorage.setItem(activePlanStorageKey, effectiveTicketPlan);
+        localStorage.setItem(activePlanStorageKey, resolvedPlanId);
       } catch {}
+    }
+
+    // Set pending request if there is an active/open ticket differing from current active plan
+    if (latestOpenPlanId && latestOpenPlanId !== companyActivePlanId) {
+      setPendingPlanId(latestOpenPlanId);
     }
 
     if (Object.keys(ticketPlans).length > 0) {
@@ -747,11 +769,27 @@ export default function ClientPackages() {
             queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
           }).catch(() => {});
 
-          // Set active selected plan with prominent blue border
-          setActiveSelectedPlanId(selectedPlan.id);
-          try {
-            localStorage.setItem(activePlanStorageKey, selectedPlan.id);
-          } catch {}
+          // If the company already has an active plan different from chosen plan, treat as pending upgrade request
+          if (companyActivePlanId && companyActivePlanId !== selectedPlan.id) {
+            setPendingPlanId(selectedPlan.id);
+            toast({
+              title: lang === "ar" ? "تم إرسال طلب الترقية بنجاح ⏳" : "Plan Upgrade Request Submitted ⏳",
+              description: lang === "ar"
+                ? `طلبك للانتقال إلى [${selectedPlan.nameAr}] قيد المراجعة حالياً من قبل الإدارة وسيتم تفعيل الباقة فور الاعتماد.`
+                : `Your request to switch to [${selectedPlan.nameEn}] has been submitted and is pending admin approval.`,
+            });
+          } else {
+            setActiveSelectedPlanId(selectedPlan.id);
+            try {
+              localStorage.setItem(activePlanStorageKey, selectedPlan.id);
+            } catch {}
+            toast({
+              title: lang === "ar" ? "تم إرسال الطلب بنجاح ✓" : "Request Submitted Successfully ✓",
+              description: lang === "ar"
+                ? `تم إرسال طلب الاشتراك في [${selectedPlan.nameAr}] وسيتم تفعيل الباقة فور الاعتماد.`
+                : `Your subscription request for [${selectedPlan.nameEn}] has been submitted.`,
+            });
+          }
 
           // Record accepted/submitted request for the latest chosen plan only
           const updated = {
@@ -1059,6 +1097,40 @@ export default function ClientPackages() {
         </div>
       </div>
 
+      {/* ── Pending Upgrade Notification Banner ── */}
+      {pendingPlanId && pendingPlanId !== activeSelectedPlanId && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground">
+                {lang === "ar"
+                  ? `لديك طلب تغيير / ترقية باقة قيد المراجعة إلى [${plans.find((p) => p.id === pendingPlanId)?.nameAr || pendingPlanId}] ⏳`
+                  : `You have a pending upgrade request to [${plans.find((p) => p.id === pendingPlanId)?.nameEn || pendingPlanId}] ⏳`}
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-[11px]">
+                {lang === "ar"
+                  ? `باقتك الحالية المفعلة هي [${plans.find((p) => p.id === activeSelectedPlanId)?.nameAr || "الأساسية"}] وتعمل بكامل مميزاتها ورصيدها حتى اعتماد الترقية من الإدارة.`
+                  : `Your active plan is [${plans.find((p) => p.id === activeSelectedPlanId)?.nameEn || "Starter"}] and continues running until approved.`}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs shrink-0 border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15 cursor-pointer"
+            onClick={() => {
+              const target = plans.find((p) => p.id === pendingPlanId);
+              if (target) handleOpenSubscribe(target);
+            }}
+          >
+            {lang === "ar" ? "تعديل الطلب المعلق" : "Edit Pending Request"}
+          </Button>
+        </div>
+      )}
+
       {/* ── Main Plans Cards Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {plans
@@ -1071,7 +1143,8 @@ export default function ClientPackages() {
           })
           .map((plan) => {
           const price = calcPrice(plan.monthlyPriceUsd);
-          const isSelected = activeSelectedPlanId === plan.id;
+          const isActivePlan = activeSelectedPlanId === plan.id;
+          const isPendingPlan = !isActivePlan && pendingPlanId === plan.id;
           const isPop = plan.popular;
           const isTrial = plan.id === "free_trial";
 
@@ -1079,18 +1152,27 @@ export default function ClientPackages() {
             <div
               key={plan.id}
               className={`relative flex flex-col rounded-3xl transition-all duration-300 ${
-                isSelected
+                isActivePlan
                   ? "border-[2.5px] border-blue-600 dark:border-blue-500 shadow-2xl shadow-blue-500/25 ring-4 ring-blue-500/20 bg-gradient-to-b from-blue-500/10 via-card to-card lg:-translate-y-2.5 z-20"
+                  : isPendingPlan
+                  ? "border-[2.5px] border-amber-500 dark:border-amber-400 shadow-xl shadow-amber-500/20 ring-4 ring-amber-500/20 bg-gradient-to-b from-amber-500/10 via-card to-card lg:-translate-y-1.5 z-10"
                   : isPop
                   ? "border-2 border-border/80 hover:border-[#2D5BE3]/60 shadow-md hover:shadow-xl lg:-translate-y-1 bg-gradient-to-b from-blue-500/5 via-card to-card"
                   : "border border-border/70 hover:border-blue-500/40 shadow-md hover:shadow-lg bg-card"
               }`}
             >
-              {isSelected ? (
+              {isActivePlan ? (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30">
                   <span className="px-4 py-1 rounded-full text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/35 flex items-center gap-1.5 whitespace-nowrap border border-white/20">
                     <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                    {lang === "ar" ? "الباقة المختارة حالياً" : "Currently Selected Package"}
+                    {lang === "ar" ? "باقتك المفعلة حالياً ✓" : "Currently Active Plan ✓"}
+                  </span>
+                </div>
+              ) : isPendingPlan ? (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30">
+                  <span className="px-4 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/35 flex items-center gap-1.5 whitespace-nowrap border border-white/20 animate-pulse">
+                    <Clock className="w-3.5 h-3.5 text-white" />
+                    {lang === "ar" ? "طلب ترقية قيد المراجعة ⏳" : "Upgrade Request Pending ⏳"}
                   </span>
                 </div>
               ) : isPop ? (
@@ -1107,8 +1189,11 @@ export default function ClientPackages() {
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
                     <span>{lang === "ar" ? plan.nameAr : plan.nameEn}</span>
-                    {isSelected && (
+                    {isActivePlan && (
                       <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    )}
+                    {isPendingPlan && (
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     )}
                   </h3>
                   {!isPop && plan.badgeAr && (
@@ -1143,7 +1228,7 @@ export default function ClientPackages() {
 
                 {/* Quota Highlights */}
                 <div className={`mt-4 p-2.5 rounded-xl border flex items-center justify-between ${
-                  isSelected ? "bg-blue-500/15 border-blue-500/30" : "bg-primary/5 border-primary/15"
+                  isActivePlan ? "bg-blue-500/15 border-blue-500/30" : isPendingPlan ? "bg-amber-500/15 border-amber-500/30" : "bg-primary/5 border-primary/15"
                 }`}>
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-primary" />
@@ -1186,22 +1271,31 @@ export default function ClientPackages() {
 
                 <Button
                   onClick={() => handleOpenSubscribe(plan)}
-                  disabled={isTrial && isFreeTrialClaimed && !isSelected}
-                  className={`w-full py-5 rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all gap-2 cursor-pointer ${
-                    isSelected
-                      ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40"
+                  disabled={(isTrial && isFreeTrialClaimed && !isActivePlan) || isActivePlan}
+                  className={`w-full py-5 rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all gap-2 ${
+                    isActivePlan
+                      ? "bg-blue-600 hover:bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40 cursor-default opacity-95"
+                      : isPendingPlan
+                      ? "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/30 ring-2 ring-amber-400/40 cursor-pointer"
                       : isTrial
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 cursor-pointer"
                       : isPop
-                      ? "bg-[#2D5BE3] hover:bg-[#254ec2] text-white shadow-blue-500/25"
-                      : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900"
+                      ? "bg-[#2D5BE3] hover:bg-[#254ec2] text-white shadow-blue-500/25 cursor-pointer"
+                      : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 cursor-pointer"
                   }`}
                 >
-                  {isSelected ? (
+                  {isActivePlan ? (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-white" />
                       <span>
-                        {lang === "ar" ? "الباقة المختارة (تعديل الطلب)" : "Selected Package (Edit Request)"}
+                        {lang === "ar" ? "باقتك المفعلة حالياً ✓" : "Currently Active Plan ✓"}
+                      </span>
+                    </>
+                  ) : isPendingPlan ? (
+                    <>
+                      <Clock className="w-4 h-4 text-white" />
+                      <span>
+                        {lang === "ar" ? "طلب معلق (تعديل الطلب)" : "Pending Request (Edit)"}
                       </span>
                     </>
                   ) : isTrial ? (

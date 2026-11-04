@@ -99869,39 +99869,8 @@ async function resolveCompanyActivePlanId(company) {
   }
   const catalog2 = await getActivePackagesCatalog();
   const pkgs = catalog2.packages;
-  try {
-    const tickets = await db.select().from(ticketsTable).where(eq(ticketsTable.clientId, company.clientId)).orderBy(desc(ticketsTable.createdAt));
-    for (const t of tickets) {
-      if (t.status === "resolved") {
-        const titleLower = (t.title || "").toLowerCase();
-        const descText = t.description || "";
-        const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
-        if (matchId && pkgs.some((p) => p.id === matchId[1])) {
-          return matchId[1];
-        }
-        if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) return "starter";
-        if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) return "pro";
-        if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) return "enterprise";
-        if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) return "free_trial";
-      }
-    }
-    for (const t of tickets) {
-      const titleLower = (t.title || "").toLowerCase();
-      const descText = t.description || "";
-      const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
-      if (matchId && pkgs.some((p) => p.id === matchId[1])) {
-        return matchId[1];
-      }
-      if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) return "starter";
-      if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) return "pro";
-      if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) return "enterprise";
-      if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) return "free_trial";
-    }
-  } catch (err) {
-    logger.warn({ err }, "Error resolving ticket for company active plan");
-  }
   const quota = company.monthlyTokenQuota;
-  if (quota) {
+  if (quota && quota > 0) {
     const exact = pkgs.find((p) => p.tokensMonthly === quota);
     if (exact) return exact.id;
     let best = pkgs[0];
@@ -99917,7 +99886,24 @@ async function resolveCompanyActivePlanId(company) {
     }
     if (best) return best.id;
   }
-  return "starter";
+  try {
+    const tickets = await db.select().from(ticketsTable).where(and(eq(ticketsTable.clientId, company.clientId), eq(ticketsTable.status, "resolved"))).orderBy(desc(ticketsTable.createdAt));
+    for (const t of tickets) {
+      const titleLower = (t.title || "").toLowerCase();
+      const descText = t.description || "";
+      const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+      if (matchId && pkgs.some((p) => p.id === matchId[1])) {
+        return matchId[1];
+      }
+      if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) return "starter";
+      if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) return "pro";
+      if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) return "enterprise";
+      if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) return "free_trial";
+    }
+  } catch (err) {
+    logger.warn({ err }, "Error resolving resolved ticket for company active plan");
+  }
+  return company.isActive ? "starter" : null;
 }
 router7.use("/client", requireClient);
 router7.get("/client/ai-models", async (req, res) => {
@@ -99962,6 +99948,49 @@ router7.get("/client/company", async (req, res) => {
         if (Array.isArray(p)) configPages = p;
       }
     } catch {
+    }
+    let pendingPlanId = null;
+    let pendingPlanTicket = null;
+    try {
+      const pendingTickets = await db.select().from(ticketsTable).where(
+        and(
+          eq(ticketsTable.clientId, company.clientId),
+          or(eq(ticketsTable.status, "open"), eq(ticketsTable.status, "pending"), eq(ticketsTable.status, "in_progress"))
+        )
+      ).orderBy(desc(ticketsTable.createdAt));
+      const catalog2 = await getActivePackagesCatalog();
+      for (const t of pendingTickets) {
+        const titleLower = (t.title || "").toLowerCase();
+        const descText = t.description || "";
+        const isPlanTicket = titleLower.includes("\u0628\u0627\u0642\u0629") || titleLower.includes("plan") || titleLower.includes("\u0627\u0634\u062A\u0631\u0627\u0643") || titleLower.includes("\u062A\u063A\u064A\u064A\u0631") || titleLower.includes("\u062A\u0631\u0642\u064A\u0629") || descText.includes("\u0645\u0639\u0631\u0641 \u0627\u0644\u0628\u0627\u0642\u0629");
+        if (isPlanTicket) {
+          const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+          let pId = null;
+          if (matchId && catalog2.packages.some((p) => p.id === matchId[1])) {
+            pId = matchId[1];
+          } else if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) {
+            pId = "pro";
+          } else if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) {
+            pId = "starter";
+          } else if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) {
+            pId = "enterprise";
+          } else if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) {
+            pId = "free_trial";
+          }
+          if (pId) {
+            pendingPlanId = pId;
+            pendingPlanTicket = {
+              id: t.id,
+              planId: pId,
+              title: t.title,
+              createdAt: t.createdAt.toISOString()
+            };
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to resolve pending plan ticket");
     }
     res.json({
       id: company.id,
@@ -100018,6 +100047,8 @@ router7.get("/client/company", async (req, res) => {
       businessType: company.businessType || "general",
       freeTrialClaimed: Boolean(company.freeTrialClaimed),
       activePlanId: await resolveCompanyActivePlanId(company),
+      pendingPlanId,
+      pendingPlanTicket,
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString()
@@ -100408,6 +100439,49 @@ router7.put("/client/company", async (req, res) => {
       }
     } catch {
     }
+    let pendingPlanId = null;
+    let pendingPlanTicket = null;
+    try {
+      const pendingTickets = await db.select().from(ticketsTable).where(
+        and(
+          eq(ticketsTable.clientId, company.clientId),
+          or(eq(ticketsTable.status, "open"), eq(ticketsTable.status, "pending"), eq(ticketsTable.status, "in_progress"))
+        )
+      ).orderBy(desc(ticketsTable.createdAt));
+      const catalog2 = await getActivePackagesCatalog();
+      for (const t of pendingTickets) {
+        const titleLower = (t.title || "").toLowerCase();
+        const descText = t.description || "";
+        const isPlanTicket = titleLower.includes("\u0628\u0627\u0642\u0629") || titleLower.includes("plan") || titleLower.includes("\u0627\u0634\u062A\u0631\u0627\u0643") || titleLower.includes("\u062A\u063A\u064A\u064A\u0631") || titleLower.includes("\u062A\u0631\u0642\u064A\u0629") || descText.includes("\u0645\u0639\u0631\u0641 \u0627\u0644\u0628\u0627\u0642\u0629");
+        if (isPlanTicket) {
+          const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+          let pId = null;
+          if (matchId && catalog2.packages.some((p) => p.id === matchId[1])) {
+            pId = matchId[1];
+          } else if (titleLower.includes("pro") || t.title?.includes("\u0627\u0644\u0627\u062D\u062A\u0631\u0627\u0641\u064A\u0629")) {
+            pId = "pro";
+          } else if (titleLower.includes("starter") || t.title?.includes("\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629")) {
+            pId = "starter";
+          } else if (titleLower.includes("enterprise") || t.title?.includes("\u0627\u0644\u0645\u0624\u0633\u0633\u0627\u062A")) {
+            pId = "enterprise";
+          } else if (titleLower.includes("trial") || t.title?.includes("\u062A\u062C\u0631\u064A\u0628\u064A\u0629")) {
+            pId = "free_trial";
+          }
+          if (pId) {
+            pendingPlanId = pId;
+            pendingPlanTicket = {
+              id: t.id,
+              planId: pId,
+              title: t.title,
+              createdAt: t.createdAt.toISOString()
+            };
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to resolve pending plan ticket");
+    }
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -100454,6 +100528,10 @@ router7.put("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      freeTrialClaimed: Boolean(company.freeTrialClaimed),
+      activePlanId: await resolveCompanyActivePlanId(company),
+      pendingPlanId,
+      pendingPlanTicket,
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString()

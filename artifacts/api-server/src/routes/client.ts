@@ -89,54 +89,13 @@ async function resolveCompanyActivePlanId(
   const catalog = await getActivePackagesCatalog();
   const pkgs = catalog.packages;
 
-  // 1. Try to find recent subscription / plan tickets for this client
-  try {
-    const tickets = await db
-      .select()
-      .from(ticketsTable)
-      .where(eq(ticketsTable.clientId, company.clientId))
-      .orderBy(desc(ticketsTable.createdAt));
-
-    // Prefer resolved (approved) tickets first
-    for (const t of tickets) {
-      if (t.status === "resolved") {
-        const titleLower = (t.title || "").toLowerCase();
-        const descText = t.description || "";
-        const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
-        if (matchId && pkgs.some((p) => p.id === matchId[1])) {
-          return matchId[1];
-        }
-        if (titleLower.includes("starter") || t.title?.includes("الأساسية")) return "starter";
-        if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) return "pro";
-        if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) return "enterprise";
-        if (titleLower.includes("trial") || t.title?.includes("تجريبية")) return "free_trial";
-      }
-    }
-
-    // Then check any active/open subscription tickets
-    for (const t of tickets) {
-      const titleLower = (t.title || "").toLowerCase();
-      const descText = t.description || "";
-      const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
-      if (matchId && pkgs.some((p) => p.id === matchId[1])) {
-        return matchId[1];
-      }
-      if (titleLower.includes("starter") || t.title?.includes("الأساسية")) return "starter";
-      if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) return "pro";
-      if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) return "enterprise";
-      if (titleLower.includes("trial") || t.title?.includes("تجريبية")) return "free_trial";
-    }
-  } catch (err) {
-    logger.warn({ err }, "Error resolving ticket for company active plan");
-  }
-
-  // 2. Exact match by monthlyTokenQuota against active catalog
+  // 1. PRIMARY SOURCE OF TRUTH: Match company's active monthlyTokenQuota directly against packages catalog
   const quota = company.monthlyTokenQuota;
-  if (quota) {
+  if (quota && quota > 0) {
     const exact = pkgs.find((p) => p.tokensMonthly === quota);
     if (exact) return exact.id;
 
-    // 3. Closest match
+    // Closest match by token quota
     let best = pkgs[0];
     let minDiff = Infinity;
     for (const p of pkgs) {
@@ -151,7 +110,32 @@ async function resolveCompanyActivePlanId(
     if (best) return best.id;
   }
 
-  return "starter";
+  // 2. FALLBACK ONLY: Check APPROVED (status === "resolved") plan tickets
+  // NEVER treat an open/pending ticket as the active plan!
+  try {
+    const tickets = await db
+      .select()
+      .from(ticketsTable)
+      .where(and(eq(ticketsTable.clientId, company.clientId), eq(ticketsTable.status, "resolved")))
+      .orderBy(desc(ticketsTable.createdAt));
+
+    for (const t of tickets) {
+      const titleLower = (t.title || "").toLowerCase();
+      const descText = t.description || "";
+      const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+      if (matchId && pkgs.some((p) => p.id === matchId[1])) {
+        return matchId[1];
+      }
+      if (titleLower.includes("starter") || t.title?.includes("الأساسية")) return "starter";
+      if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) return "pro";
+      if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) return "enterprise";
+      if (titleLower.includes("trial") || t.title?.includes("تجريبية")) return "free_trial";
+    }
+  } catch (err) {
+    logger.warn({ err }, "Error resolving resolved ticket for company active plan");
+  }
+
+  return company.isActive ? "starter" : null;
 }
 
 // Only enforce client auth on /client/* paths ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â other paths pass through unguarded
@@ -215,6 +199,63 @@ router.get("/client/company", async (req, res) => {
       }
     } catch {}
 
+    // Resolve any pending (unapproved) plan ticket request
+    let pendingPlanId: string | null = null;
+    let pendingPlanTicket: { id: number; planId: string; title: string; createdAt: string } | null = null;
+    try {
+      const pendingTickets = await db
+        .select()
+        .from(ticketsTable)
+        .where(
+          and(
+            eq(ticketsTable.clientId, company.clientId),
+            or(eq(ticketsTable.status, "open"), eq(ticketsTable.status, "pending"), eq(ticketsTable.status, "in_progress"))
+          )
+        )
+        .orderBy(desc(ticketsTable.createdAt));
+
+      const catalog = await getActivePackagesCatalog();
+      for (const t of pendingTickets) {
+        const titleLower = (t.title || "").toLowerCase();
+        const descText = t.description || "";
+        const isPlanTicket =
+          titleLower.includes("باقة") ||
+          titleLower.includes("plan") ||
+          titleLower.includes("اشتراك") ||
+          titleLower.includes("تغيير") ||
+          titleLower.includes("ترقية") ||
+          descText.includes("معرف الباقة");
+
+        if (isPlanTicket) {
+          const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+          let pId: string | null = null;
+          if (matchId && catalog.packages.some((p) => p.id === matchId[1])) {
+            pId = matchId[1];
+          } else if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) {
+            pId = "pro";
+          } else if (titleLower.includes("starter") || t.title?.includes("الأساسية")) {
+            pId = "starter";
+          } else if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) {
+            pId = "enterprise";
+          } else if (titleLower.includes("trial") || t.title?.includes("تجريبية")) {
+            pId = "free_trial";
+          }
+          if (pId) {
+            pendingPlanId = pId;
+            pendingPlanTicket = {
+              id: t.id,
+              planId: pId,
+              title: t.title,
+              createdAt: t.createdAt.toISOString(),
+            };
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to resolve pending plan ticket");
+    }
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -276,6 +317,8 @@ router.get("/client/company", async (req, res) => {
       businessType: company.businessType || "general",
       freeTrialClaimed: Boolean((company as any).freeTrialClaimed),
       activePlanId: await resolveCompanyActivePlanId(company),
+      pendingPlanId,
+      pendingPlanTicket,
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
@@ -768,6 +811,63 @@ router.put("/client/company", async (req, res) => {
       }
     } catch {}
 
+    // Resolve any pending (unapproved) plan ticket request
+    let pendingPlanId: string | null = null;
+    let pendingPlanTicket: { id: number; planId: string; title: string; createdAt: string } | null = null;
+    try {
+      const pendingTickets = await db
+        .select()
+        .from(ticketsTable)
+        .where(
+          and(
+            eq(ticketsTable.clientId, company.clientId),
+            or(eq(ticketsTable.status, "open"), eq(ticketsTable.status, "pending"), eq(ticketsTable.status, "in_progress"))
+          )
+        )
+        .orderBy(desc(ticketsTable.createdAt));
+
+      const catalog = await getActivePackagesCatalog();
+      for (const t of pendingTickets) {
+        const titleLower = (t.title || "").toLowerCase();
+        const descText = t.description || "";
+        const isPlanTicket =
+          titleLower.includes("باقة") ||
+          titleLower.includes("plan") ||
+          titleLower.includes("اشتراك") ||
+          titleLower.includes("تغيير") ||
+          titleLower.includes("ترقية") ||
+          descText.includes("معرف الباقة");
+
+        if (isPlanTicket) {
+          const matchId = descText.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
+          let pId: string | null = null;
+          if (matchId && catalog.packages.some((p) => p.id === matchId[1])) {
+            pId = matchId[1];
+          } else if (titleLower.includes("pro") || t.title?.includes("الاحترافية")) {
+            pId = "pro";
+          } else if (titleLower.includes("starter") || t.title?.includes("الأساسية")) {
+            pId = "starter";
+          } else if (titleLower.includes("enterprise") || t.title?.includes("المؤسسات")) {
+            pId = "enterprise";
+          } else if (titleLower.includes("trial") || t.title?.includes("تجريبية")) {
+            pId = "free_trial";
+          }
+          if (pId) {
+            pendingPlanId = pId;
+            pendingPlanTicket = {
+              id: t.id,
+              planId: pId,
+              title: t.title,
+              createdAt: t.createdAt.toISOString(),
+            };
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to resolve pending plan ticket");
+    }
+
     res.json({
       id: company.id,
       clientId: company.clientId,
@@ -814,6 +914,10 @@ router.put("/client/company", async (req, res) => {
       allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
       allowSourceShopify: company.allowSourceShopify === false ? false : true,
       businessType: company.businessType || "general",
+      freeTrialClaimed: Boolean((company as any).freeTrialClaimed),
+      activePlanId: await resolveCompanyActivePlanId(company),
+      pendingPlanId,
+      pendingPlanTicket,
       enabledClientPages: await resolveEffectiveClientPages(company, configPages),
       createdAt: company.createdAt.toISOString(),
       updatedAt: company.updatedAt.toISOString(),
