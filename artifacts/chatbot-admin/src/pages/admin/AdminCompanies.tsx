@@ -647,13 +647,35 @@ export default function AdminCompanies() {
       }
     } catch {}
 
-    const resolvedPages = cachedPages !== null
-      ? cachedPages
-      : (Array.isArray(freshCompany.enabledClientPages)
-          ? [...freshCompany.enabledClientPages]
-          : (freshCompany.isActive === false
-              ? ["company", "packages", "support", "settings", "notifications"]
-              : CLIENT_PAGES_META.map((p) => p.id)));
+    // Priority 1: Direct server pages from DB / adminConfigTable
+    const serverPages = Array.isArray(freshCompany.enabledClientPages) && freshCompany.enabledClientPages.length > 0
+      ? freshCompany.enabledClientPages
+      : null;
+
+    // Priority 2: Synchronize with the company's active plan tier allowedPages
+    let fallbackPlanPages: string[] | null = null;
+    if (!serverPages && packagesCatalog?.packages && freshCompany.monthlyTokenQuota) {
+      const matched = packagesCatalog.packages.find((p) => p.tokensMonthly === freshCompany.monthlyTokenQuota);
+      if (matched?.allowedPages && matched.allowedPages.length > 0) {
+        fallbackPlanPages = matched.allowedPages;
+      }
+    }
+
+    // Priority 3: Local cache or inactive / active defaults
+    const resolvedPages = serverPages !== null
+      ? [...serverPages]
+      : (fallbackPlanPages !== null
+          ? [...fallbackPlanPages]
+          : (cachedPages !== null
+              ? cachedPages
+              : (freshCompany.isActive === false
+                  ? ["company", "packages", "support", "settings", "notifications"]
+                  : CLIENT_PAGES_META.map((p) => p.id))));
+
+    // Keep localStorage in sync with authoritative resolved pages
+    try {
+      localStorage.setItem(`admin_company_pages_${freshCompany.id}`, JSON.stringify(resolvedPages));
+    } catch {}
 
     setManageForm({
       enabledClientPages: resolvedPages,

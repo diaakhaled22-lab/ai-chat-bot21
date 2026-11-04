@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, getListCompaniesQueryKey } from "@workspace/api-client-react";
 import {
   AlertCircle, CheckCircle2, Clock, Bot, ChevronDown, ChevronUp,
   Sparkles, Loader2, User, Calendar, Search, X, PenLine, RotateCcw,
@@ -773,10 +773,21 @@ export default function AdminTickets() {
             ? `تم تفعيل الباقة وتحديث الكوتا، وإصدار الفاتورة رقم #${res?.result?.invoice?.invoiceNumber || approvalTicket.id} وحالتها (${isPaid ? "مسددة Paid" : "غير مسددة Unpaid"}) وإرسالها للعميل.`
             : `Plan activated, quota updated, and invoice #${res?.result?.invoice?.invoiceNumber || approvalTicket.id} (${isPaid ? "Paid" : "Unpaid"}) dispatched.`,
       });
+      // Clear stale localStorage for this company so AdminCompanies gets fresh server data
+      try {
+        if (res?.result?.company?.id) {
+          localStorage.removeItem(`admin_company_pages_${res.result.company.id}`);
+        }
+      } catch {}
+
       queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/companies"] });
+      queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/company"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-packages"] });
       queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
       queryClient.invalidateQueries({ queryKey: ["chat-logs"] });
     } catch (err: any) {
