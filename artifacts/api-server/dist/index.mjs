@@ -63129,12 +63129,14 @@ function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
   }
   const isYearly = descLower.includes("\u0633\u0646\u0648\u064A") || titleLower.includes("\u0633\u0646\u0648\u064A") || descLower.includes("yearly");
   const billingCycle = isYearly ? "yearly" : "monthly";
-  let retentionDays = 30;
-  const retMatch = desc2.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|retention)[:\s]+(\d+)\s*يوم/i);
-  if (retMatch && retMatch[1]) {
-    retentionDays = parseInt(retMatch[1], 10);
-  } else if (desc2.includes("\u062F\u0627\u0626\u0645") || desc2.includes("permanent")) {
-    retentionDays = null;
+  let explicitRetention = void 0;
+  if (desc2.includes("\u062F\u0627\u0626\u0645") || desc2.includes("permanent") || desc2.includes("\u0628\u062F\u0648\u0646 \u062D\u0630\u0641")) {
+    explicitRetention = null;
+  } else {
+    const retMatch = desc2.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|سياسة الحذف|الحذف التلقائي|retention)[^:\d\n\r]*[:\s]+(\d+)/i);
+    if (retMatch && retMatch[1]) {
+      explicitRetention = parseInt(retMatch[1], 10);
+    }
   }
   let explicitPrice = null;
   const priceMatch = desc2.match(/(?:السعر التقديري|السعر|price)[:\s]+(?:[\$€£]|USD\s*)?(\d+(?:\.\d+)?)/i);
@@ -63225,7 +63227,7 @@ function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
     clientEmail,
     parsedCompanyName,
     billingCycle,
-    retentionDays: retentionDays !== void 0 ? retentionDays : plan.retentionDays,
+    retentionDays: explicitRetention !== void 0 ? explicitRetention : plan.retentionDays !== void 0 && plan.retentionDays !== null && plan.retentionDays !== 30 ? plan.retentionDays : plan.id === "pro" ? 7 : plan.id === "starter" ? 3 : plan.id === "enterprise" ? 14 : plan.id === "free_trial" ? 7 : plan.retentionDays ?? 7,
     channels,
     tools,
     dataSources
@@ -105098,6 +105100,12 @@ async function ensureDataSourcePermissionsSchema() {
       WHERE (is_active = true OR monthly_token_quota > 25000 OR activation_end IS NOT NULL)
         AND free_trial_claimed = false;
 
+      -- Sync Auto-Delete retention for companies on Professional Plan or Fairouz if set to legacy 30 days
+      UPDATE companies
+      SET chat_log_retention_days = 7
+      WHERE (monthly_token_quota = 1000000 OR name ILIKE '%فيروز%' OR name ILIKE '%fairouz%')
+        AND chat_log_retention_days = 30;
+
       UPDATE companies
       SET ai_model = 'nvidia/nemotron-3.5-lightning:free'
       WHERE ai_model = 'nvidia/nemotron-nano-9b-v2:free' OR ai_model LIKE '%nemotron-nano%';
@@ -105128,12 +105136,17 @@ async function ensureDataSourcePermissionsSchema() {
               pkg.tokensFormatted = "500,000";
               pkg.monthlyPriceUsd = 20;
               modified = true;
-            } else if (pkg.id === "pro" && (pkg.tokensMonthly === 25e4 || !pkg.tokensMonthly)) {
-              pkg.tokensMonthly = 1e6;
-              pkg.tokensFormatted = "1,000,000";
-              pkg.monthlyPriceUsd = 25;
-              pkg.retentionDays = 7;
-              modified = true;
+            } else if (pkg.id === "pro") {
+              if (pkg.tokensMonthly === 25e4 || !pkg.tokensMonthly) {
+                pkg.tokensMonthly = 1e6;
+                pkg.tokensFormatted = "1,000,000";
+                pkg.monthlyPriceUsd = 25;
+                modified = true;
+              }
+              if (pkg.retentionDays === 30 || pkg.retentionDays === void 0) {
+                pkg.retentionDays = 7;
+                modified = true;
+              }
             } else if (pkg.id === "enterprise" && (pkg.tokensMonthly === 1e6 || !pkg.tokensMonthly)) {
               pkg.tokensMonthly = 15e5;
               pkg.tokensFormatted = "1,500,000";

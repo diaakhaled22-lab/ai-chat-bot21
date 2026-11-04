@@ -1310,11 +1310,45 @@ export default function AdminTickets() {
           {approvalTicket && (
             <div className="space-y-4 my-2">
               {/* Request Summary Box */}
-              <div className="p-3 bg-muted/40 rounded-xl border border-border/70 text-xs space-y-1">
+              <div className="p-3 bg-muted/40 rounded-xl border border-border/70 text-xs space-y-2">
                 <div className="font-bold text-foreground text-sm">{approvalTicket.title}</div>
                 <p className="text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line">
                   {approvalTicket.description}
                 </p>
+                {(() => {
+                  const desc = approvalTicket.description || "";
+                  let retentionDisplay = "";
+                  if (desc.includes("دائم") || desc.includes("permanent") || desc.includes("بدون حذف")) {
+                    retentionDisplay = lang === "ar" ? "دائم (بدون حذف تلقائي)" : "Permanent";
+                  } else {
+                    const m = desc.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|سياسة الحذف|الحذف التلقائي|retention)[^:\d\n\r]*[:\s]+(\d+)/i);
+                    if (m && m[1]) {
+                      const days = parseInt(m[1], 10);
+                      retentionDisplay = `${days} ${lang === "ar" ? (days === 3 || days === 7 ? "أيام" : "يوم") : "Days"}`;
+                    } else {
+                      const tLower = (approvalTicket.title || "").toLowerCase();
+                      if (tLower.includes("pro") || approvalTicket.title?.includes("الاحترافية")) {
+                        retentionDisplay = lang === "ar" ? "7 أيام" : "7 Days";
+                      } else if (tLower.includes("starter") || approvalTicket.title?.includes("الأساسية")) {
+                        retentionDisplay = lang === "ar" ? "3 أيام" : "3 Days";
+                      } else if (tLower.includes("enterprise") || approvalTicket.title?.includes("المؤسسات")) {
+                        retentionDisplay = lang === "ar" ? "14 يوم" : "14 Days";
+                      } else {
+                        retentionDisplay = lang === "ar" ? "7 أيام" : "7 Days";
+                      }
+                    }
+                  }
+
+                  return (
+                    <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground border-t border-border/50">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>{lang === "ar" ? "مدة الحذف التلقائي المعتمدة:" : "Applied Auto-Delete:"}</span>
+                      <span className="font-bold text-foreground bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        {retentionDisplay}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Selection Prompt */}

@@ -98,13 +98,20 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
   const isYearly = descLower.includes("سنوي") || titleLower.includes("سنوي") || descLower.includes("yearly");
   const billingCycle: "monthly" | "yearly" = isYearly ? "yearly" : "monthly";
 
-  // Extract retention days
-  let retentionDays: number | null = 30;
-  const retMatch = desc.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|retention)[:\s]+(\d+)\s*يوم/i);
-  if (retMatch && retMatch[1]) {
-    retentionDays = parseInt(retMatch[1], 10);
-  } else if (desc.includes("دائم") || desc.includes("permanent")) {
-    retentionDays = null;
+  // Extract retention days from ticket description if explicitly chosen by client
+  let explicitRetention: number | null | undefined = undefined;
+  if (desc.includes("دائم") || desc.includes("permanent") || desc.includes("بدون حذف")) {
+    explicitRetention = null;
+  } else {
+    // Matches patterns like:
+    // "سياسة الحذف التلقائي للاحتفاظ بالسجلات: 7 يوم"
+    // "سياسة الحذف التلقائي للاحتفاظ بالسجلات: 7 أيام"
+    // "الاحتفاظ بالسجلات: 7"
+    // "retention: 7 Days"
+    const retMatch = desc.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|سياسة الحذف|الحذف التلقائي|retention)[^:\d\n\r]*[:\s]+(\d+)/i);
+    if (retMatch && retMatch[1]) {
+      explicitRetention = parseInt(retMatch[1], 10);
+    }
   }
 
   // Extract explicit price from ticket description if client ordered with a specific price
@@ -233,7 +240,11 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
     clientEmail,
     parsedCompanyName,
     billingCycle,
-    retentionDays: retentionDays !== undefined ? retentionDays : plan.retentionDays,
+    retentionDays: explicitRetention !== undefined
+      ? explicitRetention
+      : (plan.retentionDays !== undefined && plan.retentionDays !== null && plan.retentionDays !== 30
+          ? plan.retentionDays
+          : (plan.id === "pro" ? 7 : (plan.id === "starter" ? 3 : (plan.id === "enterprise" ? 14 : (plan.id === "free_trial" ? 7 : (plan.retentionDays ?? 7)))))),
     channels,
     tools,
     dataSources,
