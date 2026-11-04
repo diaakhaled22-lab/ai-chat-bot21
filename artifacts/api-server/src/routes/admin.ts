@@ -29,7 +29,7 @@ import { getExchangeRates, saveExchangeRates, type CurrencyRatesData } from "../
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
-import { processApprovedPlanRequest, parseTicketPlanDetails, getActivePackagesCatalog } from "../lib/planApproval";
+import { processApprovedPlanRequest, parseTicketPlanDetails, getActivePackagesCatalog, applyPlanTierToCompany } from "../lib/planApproval";
 import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, type InvoiceData } from "../lib/invoice";
 import { sendWhatsAppMessage } from "./whatsapp";
 
@@ -2363,6 +2363,66 @@ router.put("/admin/companies/:id/retention", async (req, res) => {
   }
 });
 
+// POST /admin/companies/:id/apply-plan-tier - Unified 1-click plan tier switcher (Direct DB sync)
+router.post("/admin/companies/:id/apply-plan-tier", async (req, res) => {
+  try {
+    const companyId = Number(req.params.id);
+    if (!companyId || isNaN(companyId)) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+
+    const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
+    const adminName = adminUser[0]?.name || "Admin";
+
+    const {
+      planId,
+      plan: passedPlan,
+      durationDays,
+      isYearly,
+      explicitRetentionDays,
+      allowedPages,
+      customChannels,
+      customTools,
+      customSources,
+    } = req.body || {};
+
+    const catalog = await getActivePackagesCatalog();
+    const activePackages = Array.isArray(catalog?.packages) && catalog.packages.length > 0
+      ? catalog.packages
+      : DEFAULT_PACKAGES_CATALOG.packages;
+
+    const matchedPlan = passedPlan || activePackages.find((p) => p.id === planId) || activePackages[1];
+    if (!matchedPlan) {
+      res.status(404).json({ error: "Plan tier definition not found" });
+      return;
+    }
+
+    const updatedCompany = await applyPlanTierToCompany(companyId, matchedPlan, {
+      durationDays,
+      isYearly,
+      explicitRetentionDays,
+      allowedPages,
+      customChannels,
+      customTools,
+      customSources,
+      approvedBy: adminName,
+    });
+
+    await logAdminActivity(
+      req.session.userId!,
+      "Apply Plan Tier",
+      `Admin applied plan tier [${matchedPlan.nameEn || matchedPlan.nameAr}] to company #${companyId}`,
+      req.ip || null
+    );
+
+    res.json({ ok: true, company: updatedCompany, plan: matchedPlan });
+  } catch (err: any) {
+    logger.error({ err }, "Admin apply plan tier error");
+    res.status(500).json({ error: err?.message || "Failed to apply plan tier" });
+  }
+});
+
 // PUT /admin/companies/:id/data-source-permissions
 router.put("/admin/companies/:id/data-source-permissions", async (req, res) => {
   try {
@@ -3057,7 +3117,9 @@ router.get("/admin/invoices", async (req, res) => {
         priceUsd,
         priceLocal,
         currencySymbol,
-        retentionDays: parsed.retentionDays,
+        retentionDays: (parsed.retentionDays !== undefined && parsed.retentionDays !== null && parsed.retentionDays !== 30)
+          ? parsed.retentionDays
+          : (company?.chatLogRetentionDays ?? parsed.retentionDays ?? null),
         channels: parsed.channels || [],
         tools: parsed.tools || [],
         state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
@@ -4208,13 +4270,15 @@ router.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
     const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
     const adminName = adminUser[0]?.name || "Admin";
 
-    const { isPaid } = req.body || {};
+    const { isPaid, planId, retentionDays } = req.body || {};
     const effectiveIsPaid = isPaid !== undefined ? Boolean(isPaid) : true;
 
     const result = await processApprovedPlanRequest(ticketId, {
       approvedBy: adminName,
       channel: "admin_ui",
       isPaid: effectiveIsPaid,
+      overridePlanId: planId,
+      overrideRetentionDays: retentionDays,
     });
 
     await logAdminActivity(

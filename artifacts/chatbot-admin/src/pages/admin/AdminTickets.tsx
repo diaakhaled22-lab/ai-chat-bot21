@@ -5,7 +5,7 @@ import {
   AlertCircle, CheckCircle2, Clock, Bot, ChevronDown, ChevronUp,
   Sparkles, Loader2, User, Calendar, Search, X, PenLine, RotateCcw,
   Trash2, Copy, Check, Download, RefreshCw, Edit3, ShieldAlert,
-  UserCheck, TrendingUp, LifeBuoy,
+  UserCheck, TrendingUp, LifeBuoy, Package, Zap,
 } from "lucide-react";
 import SupportAICard from "@/components/SupportAICard";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,29 @@ interface Ticket {
   adminNote: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface PackageItem {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  monthlyPriceUsd: number;
+  tokensMonthly: number;
+  tokensFormatted?: string;
+  popular?: boolean;
+  color?: string;
+  badgeAr?: string;
+  badgeEn?: string;
+  featuresAr: string[];
+  featuresEn: string[];
+  allowedPages?: string[];
+  retentionDays?: number | null;
+  channels?: string[];
+  tools?: string[];
+  dataSources?: string[];
+  isActive?: boolean;
 }
 
 const PROVIDER_LABELS: Record<string, { label: string; color: string }> = {
@@ -620,11 +643,107 @@ export default function AdminTickets() {
   const [approvalTicket,  setApprovalTicket]  = useState<Ticket | null>(null);
   const [approvalIsPaid,  setApprovalIsPaid]  = useState<boolean>(true);
   const [isApprovingPlan, setIsApprovingPlan] = useState<boolean>(false);
+  const [approvalSelectedPlanId, setApprovalSelectedPlanId] = useState<string | null>(null);
+  const [approvalRetentionDays, setApprovalRetentionDays] = useState<number | null | undefined>(undefined);
+
+  const { data: packagesCatalog } = useQuery<{ packages: PackageItem[]; topupPacks: any[] }>({
+    queryKey: ["admin-packages"],
+    queryFn: () => customFetch("/api/admin/packages"),
+    staleTime: 30_000,
+  });
 
   const handleOpenApproveModal = (ticket: Ticket) => {
     setApprovalTicket(ticket);
     setApprovalIsPaid(true);
+
+    const desc = ticket.description || "";
+    const title = ticket.title || "";
+    const descLower = desc.toLowerCase();
+    const titleLower = title.toLowerCase();
+
+    const packages = packagesCatalog?.packages || [];
+
+    // 1. Explicit bracketed tag like [معرف الباقة: pro]
+    let detectedPlanId = "";
+    const planIdMatch = desc.match(/(?:\[معرف الباقة|معرف الباقة|معرف الخطة|plan_id|planId)[:\s]+([a-zA-Z0-9_-]+)/i);
+    if (planIdMatch && planIdMatch[1]) {
+      detectedPlanId = planIdMatch[1].trim().toLowerCase();
+    }
+
+    // 2. Target plan in change/upgrade requests: "من ... إلى [الباقة الجديدة]"
+    if (!detectedPlanId) {
+      const toMatch = desc.match(/(?:إلى|to)\s*\[?([^\]\n\r]+)\]?/i) || title.match(/(?:إلى|to)\s*\[?([^\]\n\r]+)\]?/i);
+      if (toMatch && toMatch[1]) {
+        const targetText = toMatch[1].toLowerCase();
+        for (const p of packages) {
+          if (
+            targetText.includes(p.id) ||
+            targetText.includes(p.nameAr.toLowerCase()) ||
+            targetText.includes(p.nameEn.toLowerCase())
+          ) {
+            detectedPlanId = p.id;
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. Match by token count in description (e.g. 1,000,000 => pro, 500,000 => starter, 25,000 => free_trial)
+    if (!detectedPlanId) {
+      const tokenMatch =
+        desc.match(/(?:رصيد الرموز المرفق|رموز|tokens?)[:\s]+(\d+[\d,]*)/i) ||
+        desc.match(/(\d+[\d,]*)\s*tokens?/i);
+      if (tokenMatch && tokenMatch[1]) {
+        const parsedTokens = parseInt(tokenMatch[1].replace(/,/g, ""), 10);
+        const match = packages.find((p) => p.tokensMonthly === parsedTokens);
+        if (match) detectedPlanId = match.id;
+      }
+    }
+
+    // 4. Fallback search in title and description excluding previous plan
+    if (!detectedPlanId) {
+      const cleanedDesc = desc.replace(/\[الباقة السابقة:[^\]]+\]/gi, "").replace(/من\s+\[?[^\]\n\r]+\]?\s+إلى/gi, "");
+      const cleanedTitle = title.replace(/من\s+\[?[^\]\n\r]+\]?\s+إلى/gi, "");
+      const cleanedDescLower = cleanedDesc.toLowerCase();
+      const cleanedTitleLower = cleanedTitle.toLowerCase();
+
+      for (const p of packages) {
+        if (
+          cleanedDescLower.includes(p.id) ||
+          cleanedTitleLower.includes(p.id) ||
+          cleanedDesc.includes(p.nameAr) ||
+          cleanedTitle.includes(p.nameAr) ||
+          cleanedDescLower.includes(p.nameEn.toLowerCase()) ||
+          cleanedTitleLower.includes(p.nameEn.toLowerCase())
+        ) {
+          detectedPlanId = p.id;
+          break;
+        }
+      }
+    }
+
+    const matchedPlan = packages.find((p) => p.id === detectedPlanId) || packages[1] || packages[0];
+    setApprovalSelectedPlanId(matchedPlan?.id || "pro");
+
+    // Extract retention days
+    let detectedRetention: number | null | undefined = undefined;
+    if (desc.includes("دائم") || desc.includes("permanent") || desc.includes("بدون حذف")) {
+      detectedRetention = null;
+    } else {
+      const retMatch = desc.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|سياسة الحذف|الحذف التلقائي|retention)[^:\d\n\r]*[:\s]+(\d+)/i);
+      if (retMatch && retMatch[1]) {
+        detectedRetention = parseInt(retMatch[1], 10);
+      } else {
+        detectedRetention = matchedPlan?.retentionDays ?? (matchedPlan?.id === "pro" ? 7 : (matchedPlan?.id === "starter" ? 3 : 14));
+      }
+    }
+    setApprovalRetentionDays(detectedRetention);
   };
+
+  const activeModalPlan = useMemo(() => {
+    const pkgs = packagesCatalog?.packages || [];
+    return pkgs.find((p) => p.id === approvalSelectedPlanId) || pkgs[1] || pkgs[0];
+  }, [packagesCatalog, approvalSelectedPlanId]);
 
   const handleConfirmApproval = async (isPaid: boolean) => {
     if (!approvalTicket) return;
@@ -633,7 +752,11 @@ export default function AdminTickets() {
       const res: any = await customFetch(`/api/admin/plan-requests/${approvalTicket.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPaid }),
+        body: JSON.stringify({
+          isPaid,
+          planId: approvalSelectedPlanId,
+          retentionDays: approvalRetentionDays,
+        }),
       });
       setApprovalTicket(null);
       toast({
@@ -1290,9 +1413,9 @@ export default function AdminTickets() {
         </div>
       )}
 
-      {/* ── Hoisted Approve & Activate Modal (Paid vs Unpaid Selection) ── */}
+      {/* ── Hoisted Approve & Activate Modal (Paid vs Unpaid Selection & Direct Sync) ── */}
       <Dialog open={Boolean(approvalTicket)} onOpenChange={(open) => !open && setApprovalTicket(null)}>
-        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-lg p-6 max-h-[90vh] overflow-y-auto" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
               <CheckCircle2 className="w-6 h-6" />
@@ -1308,47 +1431,104 @@ export default function AdminTickets() {
           </DialogHeader>
 
           {approvalTicket && (
-            <div className="space-y-4 my-2">
-              {/* Request Summary Box */}
-              <div className="p-3 bg-muted/40 rounded-xl border border-border/70 text-xs space-y-2">
-                <div className="font-bold text-foreground text-sm">{approvalTicket.title}</div>
-                <p className="text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line">
-                  {approvalTicket.description}
-                </p>
-                {(() => {
-                  const desc = approvalTicket.description || "";
-                  let retentionDisplay = "";
-                  if (desc.includes("دائم") || desc.includes("permanent") || desc.includes("بدون حذف")) {
-                    retentionDisplay = lang === "ar" ? "دائم (بدون حذف تلقائي)" : "Permanent";
-                  } else {
-                    const m = desc.match(/(?:سياسة الحذف التلقائي|الاحتفاظ بالسجلات|سياسة الحذف|الحذف التلقائي|retention)[^:\d\n\r]*[:\s]+(\d+)/i);
-                    if (m && m[1]) {
-                      const days = parseInt(m[1], 10);
-                      retentionDisplay = `${days} ${lang === "ar" ? (days === 3 || days === 7 ? "أيام" : "يوم") : "Days"}`;
-                    } else {
-                      const tLower = (approvalTicket.title || "").toLowerCase();
-                      if (tLower.includes("pro") || approvalTicket.title?.includes("الاحترافية")) {
-                        retentionDisplay = lang === "ar" ? "7 أيام" : "7 Days";
-                      } else if (tLower.includes("starter") || approvalTicket.title?.includes("الأساسية")) {
-                        retentionDisplay = lang === "ar" ? "3 أيام" : "3 Days";
-                      } else if (tLower.includes("enterprise") || approvalTicket.title?.includes("المؤسسات")) {
-                        retentionDisplay = lang === "ar" ? "14 يوم" : "14 Days";
-                      } else {
-                        retentionDisplay = lang === "ar" ? "7 أيام" : "7 Days";
-                      }
-                    }
-                  }
+            <div className="space-y-3.5 my-2">
+              {/* Direct Sync Banner with One-Click Plan Tier Switcher */}
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-700 dark:text-blue-300 text-xs">
+                <Zap className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="font-semibold text-[11px]">
+                  {lang === "ar"
+                    ? "⚡ متزامن بالكامل مع «اعتماد وتبديل باقة الشركة بنقرة واحدة» (One-Click Plan Tier Switcher)"
+                    : "⚡ 100% Direct Sync with «One-Click Plan Tier Switcher» (Quota, Retention, Channels, Tools)"}
+                </span>
+              </div>
 
-                  return (
-                    <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground border-t border-border/50">
-                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <span>{lang === "ar" ? "مدة الحذف التلقائي المعتمدة:" : "Applied Auto-Delete:"}</span>
-                      <span className="font-bold text-foreground bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
-                        {retentionDisplay}
+              {/* Matched Plan Tier Card (Same design as One-Click Plan Tier Switcher) */}
+              {activeModalPlan && (
+                <div className="p-3.5 rounded-xl border border-blue-500/30 bg-card shadow-sm space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-blue-600" />
+                        <h5 className="text-xs font-bold text-foreground">
+                          {lang === "ar" ? activeModalPlan.nameAr : activeModalPlan.nameEn}
+                        </h5>
+                        {activeModalPlan.badgeAr && (
+                          <span className="text-[9px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 px-1.5 py-0.5 rounded-full font-semibold">
+                            {lang === "ar" ? activeModalPlan.badgeAr : activeModalPlan.badgeEn}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-bold text-primary block mt-0.5">
+                        {activeModalPlan.tokensFormatted || activeModalPlan.tokensMonthly?.toLocaleString()} Tokens · ${activeModalPlan.monthlyPriceUsd}/mo
                       </span>
                     </div>
-                  );
-                })()}
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0">
+                      {lang === "ar" ? "الباقة المطابقة للطلب ✓" : "Matched Plan Tier ✓"}
+                    </Badge>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                    {lang === "ar" ? activeModalPlan.descriptionAr : activeModalPlan.descriptionEn}
+                  </p>
+
+                  {/* Synchronized features pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border/50">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-muted text-muted-foreground">
+                      {(activeModalPlan.channels?.length || 2)} {lang === "ar" ? "قنوات" : "channels"}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-muted text-muted-foreground">
+                      {(activeModalPlan.tools?.length || 4)} {lang === "ar" ? "أدوات" : "tools"}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-muted text-muted-foreground">
+                      {(activeModalPlan.dataSources?.length || 2)} {lang === "ar" ? "مصادر" : "sources"}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                      <Clock className="w-3 h-3" />
+                      {approvalRetentionDays && approvalRetentionDays > 0
+                        ? `${approvalRetentionDays} ${lang === "ar" ? (approvalRetentionDays === 3 || approvalRetentionDays === 7 ? "أيام" : "يوم") : "d"}`
+                        : (lang === "ar" ? "حفظ دائم" : "Permanent")}
+                    </span>
+                  </div>
+
+                  {/* Quick Tier Switcher Pill Selector if Admin wishes to adjust tier before approving */}
+                  {packagesCatalog?.packages && packagesCatalog.packages.length > 1 && (
+                    <div className="pt-2 border-t border-border/50">
+                      <span className="text-[10px] text-muted-foreground block mb-1 font-medium">
+                        {lang === "ar" ? "تبديل أو تعديل الباقة المعتمدة بنقرة واحدة:" : "Switch tier before activating:"}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {packagesCatalog.packages.map((pkg) => {
+                          const isSelected = approvalSelectedPlanId === pkg.id;
+                          return (
+                            <button
+                              key={pkg.id}
+                              type="button"
+                              onClick={() => {
+                                setApprovalSelectedPlanId(pkg.id);
+                                setApprovalRetentionDays(pkg.retentionDays ?? (pkg.id === "pro" ? 7 : (pkg.id === "starter" ? 3 : 14)));
+                              }}
+                              className={`text-[10px] px-2 py-0.5 rounded-lg border font-semibold transition-all cursor-pointer ${
+                                isSelected
+                                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                                  : "bg-muted/40 border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                              }`}
+                            >
+                              {lang === "ar" ? pkg.nameAr : pkg.nameEn}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Request Summary Box */}
+              <div className="p-3 bg-muted/40 rounded-xl border border-border/70 text-xs space-y-1.5">
+                <div className="font-bold text-foreground text-xs">{approvalTicket.title}</div>
+                <p className="text-muted-foreground line-clamp-3 leading-relaxed whitespace-pre-line text-[11px]">
+                  {approvalTicket.description}
+                </p>
               </div>
 
               {/* Selection Prompt */}

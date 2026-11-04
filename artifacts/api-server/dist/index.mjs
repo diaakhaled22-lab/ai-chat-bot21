@@ -63193,12 +63193,39 @@ function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
     };
   }
   let planId = "";
-  const planIdMatch = desc2.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/i);
+  const planIdMatch = desc2.match(/(?:\[معرف الباقة|معرف الباقة|معرف الخطة|plan_id|planId)[:\s]+([a-zA-Z0-9_-]+)/i);
   if (planIdMatch && planIdMatch[1]) {
     planId = planIdMatch[1].trim().toLowerCase();
-  } else {
+  }
+  if (!planId) {
+    const toMatch = desc2.match(/(?:إلى|to)\s*\[?([^\]\n\r]+)\]?/i) || title.match(/(?:إلى|to)\s*\[?([^\]\n\r]+)\]?/i);
+    if (toMatch && toMatch[1]) {
+      const targetText = toMatch[1].toLowerCase();
+      for (const p of activePackages) {
+        if (targetText.includes(p.id) || targetText.includes(p.nameAr.toLowerCase()) || targetText.includes(p.nameEn.toLowerCase())) {
+          planId = p.id;
+          break;
+        }
+      }
+    }
+  }
+  if (!planId) {
+    const tokenMatch = desc2.match(/(?:رصيد الرموز المرفق|رموز|tokens?)[:\s]+(\d+[\d,]*)/i) || desc2.match(/(\d+[\d,]*)\s*tokens?/i);
+    if (tokenMatch && tokenMatch[1]) {
+      const parsedTokens = parseInt(tokenMatch[1].replace(/,/g, ""), 10);
+      const matchedByTokens = activePackages.find((p) => p.tokensMonthly === parsedTokens);
+      if (matchedByTokens) {
+        planId = matchedByTokens.id;
+      }
+    }
+  }
+  if (!planId) {
+    const cleanedDesc = desc2.replace(/\[الباقة السابقة:[^\]]+\]/gi, "").replace(/من\s+\[?[^\]\n\r]+\]?\s+إلى/gi, "");
+    const cleanedTitle = title.replace(/من\s+\[?[^\]\n\r]+\]?\s+إلى/gi, "");
+    const cleanedDescLower = cleanedDesc.toLowerCase();
+    const cleanedTitleLower = cleanedTitle.toLowerCase();
     for (const p of activePackages) {
-      if (descLower.includes(p.id) || titleLower.includes(p.id) || desc2.includes(p.nameAr) || title.includes(p.nameAr)) {
+      if (cleanedDescLower.includes(p.id) || cleanedTitleLower.includes(p.id) || cleanedDesc.includes(p.nameAr) || cleanedTitle.includes(p.nameAr) || cleanedDescLower.includes(p.nameEn.toLowerCase()) || cleanedTitleLower.includes(p.nameEn.toLowerCase())) {
         planId = p.id;
         break;
       }
@@ -63209,15 +63236,42 @@ function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
     ...basePlan,
     monthlyPriceUsd: explicitPrice !== null ? explicitPrice : basePlan.monthlyPriceUsd
   };
-  const channels = plan.channels || ["widget", "telegram"];
-  if (desc2.includes("\u0648\u0627\u062A\u0633\u0627\u0628") && !channels.includes("whatsapp")) channels.push("whatsapp");
-  if (desc2.includes("\u0645\u0627\u0633\u0646\u062C\u0631") && !channels.includes("messenger")) channels.push("messenger");
-  const tools = plan.tools || ["calendar", "sheets", "leads_crm"];
-  if (desc2.includes("\u0635\u0648\u062A") && !tools.includes("voice")) tools.push("voice");
-  const dataSources = plan.dataSources || ["website", "files"];
-  if (desc2.includes("\u0648\u0648\u0631\u062F\u0628\u0631\u064A\u0633") && !dataSources.includes("wordpress")) dataSources.push("wordpress");
-  if (desc2.includes("api") && !dataSources.includes("rest_api")) dataSources.push("rest_api");
-  if (desc2.includes("\u0634\u0648\u0628\u064A\u0641\u0627\u064A") && !dataSources.includes("shopify")) dataSources.push("shopify");
+  const channelsMatch = desc2.match(/قنوات التواصل المطلوب تفعيلها[:\s]+([^\n\r]+)/i);
+  let channels = [...plan.channels || ["widget", "telegram"]];
+  if (channelsMatch && channelsMatch[1]) {
+    const chansText = channelsMatch[1].toLowerCase();
+    const parsedChans = [];
+    if (chansText.includes("\u0645\u0648\u0642\u0639") || chansText.includes("widget")) parsedChans.push("widget");
+    if (chansText.includes("\u062A\u0644\u064A\u062C\u0631\u0627\u0645") || chansText.includes("telegram")) parsedChans.push("telegram");
+    if (chansText.includes("\u0648\u0627\u062A\u0633\u0627\u0628") || chansText.includes("whatsapp")) parsedChans.push("whatsapp");
+    if (chansText.includes("\u0645\u0627\u0633\u0646\u062C\u0631") || chansText.includes("messenger")) parsedChans.push("messenger");
+    if (parsedChans.length > 0) channels = parsedChans;
+  }
+  const toolsMatch = desc2.match(/الأدوات والتكاملات المطلوب تفعيلها[:\s]+([^\n\r]+)/i);
+  let tools = [...plan.tools || ["leads_crm"]];
+  if (toolsMatch && toolsMatch[1]) {
+    const toolsText = toolsMatch[1].toLowerCase();
+    const parsedTools = [];
+    if (toolsText.includes("\u062A\u0642\u0648\u064A\u0645") || toolsText.includes("calendar")) parsedTools.push("calendar");
+    if (toolsText.includes("\u062C\u062F\u0627\u0648\u0644") || toolsText.includes("sheets")) parsedTools.push("sheets");
+    if (toolsText.includes("\u0635\u0648\u062A") || toolsText.includes("voice")) parsedTools.push("voice");
+    if (toolsText.includes("\u0645\u0632\u0627\u0645\u0646\u0629") || toolsText.includes("web_sync")) parsedTools.push("web_sync");
+    if (toolsText.includes("\u0639\u0645\u0644\u0627\u0621") || toolsText.includes("leads")) parsedTools.push("leads_crm");
+    if (toolsText.includes("\u0628\u0634\u0631\u064A") || toolsText.includes("handoff")) parsedTools.push("handoff");
+    if (parsedTools.length > 0) tools = parsedTools;
+  }
+  const sourcesMatch = desc2.match(/صلاحيات مصادر البيانات المطلوب تفعيلها[:\s]+([^\n\r]+)/i);
+  let dataSources = [...plan.dataSources || ["website", "files"]];
+  if (sourcesMatch && sourcesMatch[1]) {
+    const srcText = sourcesMatch[1].toLowerCase();
+    const parsedSrc = [];
+    if (srcText.includes("\u0645\u0648\u0642\u0639") || srcText.includes("website")) parsedSrc.push("website");
+    if (srcText.includes("\u0645\u0644\u0641\u0627\u062A") || srcText.includes("\u0645\u0633\u062A\u0646\u062F\u0627\u062A") || srcText.includes("files")) parsedSrc.push("files");
+    if (srcText.includes("\u0648\u0648\u0631\u062F\u0628\u0631\u064A\u0633") || srcText.includes("wordpress")) parsedSrc.push("wordpress");
+    if (srcText.includes("api") || srcText.includes("rest_api")) parsedSrc.push("rest_api");
+    if (srcText.includes("\u0634\u0648\u0628\u064A\u0641\u0627\u064A") || srcText.includes("shopify")) parsedSrc.push("shopify");
+    if (parsedSrc.length > 0) dataSources = parsedSrc;
+  }
   return {
     isTopup: false,
     plan,
@@ -63232,6 +63286,119 @@ function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
     tools,
     dataSources
   };
+}
+async function applyPlanTierToCompany(companyId, plan, options = {}) {
+  const [existingCompany] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+  if (!existingCompany) {
+    throw new Error(`Company #${companyId} not found`);
+  }
+  const isFreeTrial = plan.id === "free_trial";
+  const durationDays = options.durationDays ?? (isFreeTrial ? 7 : options.isYearly ? 365 : 30);
+  const now = /* @__PURE__ */ new Date();
+  const activationStart = now;
+  const activationEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1e3);
+  const quotaStartDate = now;
+  const quotaEndDate = new Date(now.getTime() + (isFreeTrial ? 7 : 30) * 24 * 60 * 60 * 1e3);
+  const quota = Number(plan.tokensMonthly) || 5e4;
+  let retention = 7;
+  if (options.explicitRetentionDays !== void 0) {
+    retention = options.explicitRetentionDays;
+  } else if (plan.retentionDays !== void 0 && plan.retentionDays !== null) {
+    retention = plan.retentionDays;
+  } else {
+    if (plan.id === "pro") retention = 7;
+    else if (plan.id === "starter") retention = 3;
+    else if (plan.id === "enterprise") retention = 14;
+    else if (plan.id === "free_trial") retention = 7;
+    else retention = 7;
+  }
+  const channels = options.customChannels || plan.channels || ["widget", "telegram"];
+  const widgetEnabled = channels.includes("widget");
+  const telegramEnabled = channels.includes("telegram");
+  const whatsappEnabled = channels.includes("whatsapp");
+  const messengerEnabled = channels.includes("messenger");
+  const tools = options.customTools || plan.tools || ["leads_crm"];
+  const googleSheetsEnabled = tools.includes("sheets");
+  const googleCalendarEnabled = tools.includes("calendar");
+  const voiceReplyEnabled = tools.includes("voice");
+  const websiteAutoSync = tools.includes("web_sync");
+  const sources = options.customSources || plan.dataSources || ["website", "files"];
+  const allowSourceWebsite = sources.includes("website");
+  const allowSourceFiles = sources.includes("files");
+  const allowSourceWordpress = sources.includes("wordpress");
+  const allowSourceRestApi = sources.includes("rest_api");
+  const allowSourceShopify = sources.includes("shopify");
+  const pages = options.allowedPages || plan.allowedPages || [];
+  const companyUpdates = {
+    isActive: true,
+    aiExecutionMode: "quota",
+    monthlyTokenQuota: quota,
+    chatLogRetentionDays: retention,
+    activationStart,
+    activationEnd,
+    quotaStartDate,
+    quotaEndDate,
+    widgetEnabled,
+    telegramEnabled,
+    whatsappEnabled,
+    messengerEnabled,
+    googleSheetsEnabled,
+    googleCalendarEnabled,
+    voiceReplyEnabled,
+    websiteAutoSync,
+    allowSourceWebsite,
+    allowSourceFiles,
+    allowSourceWordpress,
+    allowSourceRestApi,
+    allowSourceShopify,
+    updatedAt: now
+  };
+  if (pages.length > 0) {
+    companyUpdates.enabledClientPages = JSON.stringify(pages);
+  }
+  if (isFreeTrial) {
+    companyUpdates.freeTrialClaimed = true;
+  }
+  if (options.phone && !existingCompany.whatsappNumber) {
+    companyUpdates.whatsappNumber = options.phone;
+  }
+  await db.update(companiesTable).set(companyUpdates).where(eq(companiesTable.id, companyId));
+  if (pages.length > 0) {
+    const pagesKey = `enabled_client_pages_${companyId}`;
+    try {
+      await db.insert(adminConfigTable).values({
+        key: pagesKey,
+        value: JSON.stringify(pages),
+        updatedAt: now
+      }).onConflictDoUpdate({
+        target: adminConfigTable.key,
+        set: {
+          value: JSON.stringify(pages),
+          updatedAt: now
+        }
+      });
+    } catch (e) {
+      logger.warn({ err: e }, "Could not dual-persist enabled client pages in adminConfigTable");
+    }
+  }
+  await db.insert(companyActivityLogsTable).values({
+    companyId,
+    action: "plan_tier_applied",
+    performedBy: options.approvedBy || "Admin",
+    note: JSON.stringify({
+      planId: plan.id,
+      planNameAr: plan.nameAr,
+      planNameEn: plan.nameEn,
+      quota,
+      retention,
+      channels,
+      tools,
+      dataSources: sources,
+      activationEnd: activationEnd.toISOString()
+    })
+  }).catch((e) => logger.warn({ err: e }, "Could not log plan tier application in activity logs"));
+  const [updatedCompany] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+  return updatedCompany || existingCompany;
 }
 async function processApprovedPlanRequest(ticketId, options) {
   logger.info({ ticketId, options }, "Processing approved plan request");
@@ -63308,55 +63475,24 @@ async function processApprovedPlanRequest(ticketId, options) {
       isPaid: options.isPaid !== void 0 ? Boolean(options.isPaid) : true
     };
   } else {
-    const plan = parsed.plan;
+    const plan = (options.overridePlanId ? catalog2.packages.find((p) => p.id === options.overridePlanId) : null) || parsed.plan;
     const isFreeTrial = plan.id === "free_trial";
     const isYearly = !isFreeTrial && parsed.billingCycle === "yearly";
     const durationDays = isFreeTrial ? 7 : isYearly ? 365 : 30;
     const rawPrice = isYearly ? plan.monthlyPriceUsd * 12 * 0.8 : plan.monthlyPriceUsd;
     const priceUsd = Math.round(rawPrice);
     const priceLocal = Math.round(priceUsd * exchangeRate);
-    const activationStart = now;
-    const activationEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1e3);
-    const quotaStartDate = now;
-    const quotaEndDate = new Date(now.getTime() + (isFreeTrial ? 7 : 30) * 24 * 60 * 60 * 1e3);
-    const channels = parsed.channels || [];
-    const tools = parsed.tools || [];
-    const sources = parsed.dataSources || [];
-    const companyUpdates = {
-      isActive: true,
-      activationStart,
-      activationEnd,
-      quotaStartDate,
-      quotaEndDate,
-      aiExecutionMode: "quota",
-      monthlyTokenQuota: plan.tokensMonthly,
-      chatLogRetentionDays: parsed.retentionDays !== void 0 ? parsed.retentionDays : plan.retentionDays,
-      widgetEnabled: channels.includes("widget"),
-      telegramEnabled: channels.includes("telegram"),
-      whatsappEnabled: channels.includes("whatsapp"),
-      messengerEnabled: channels.includes("messenger"),
-      googleSheetsEnabled: tools.includes("sheets"),
-      googleCalendarEnabled: tools.includes("calendar"),
-      voiceReplyEnabled: tools.includes("voice"),
-      allowSourceWebsite: sources.includes("website"),
-      allowSourceFiles: sources.includes("files"),
-      allowSourceWordpress: sources.includes("wordpress"),
-      allowSourceRestApi: sources.includes("rest_api"),
-      allowSourceShopify: sources.includes("shopify"),
-      updatedAt: now
-    };
-    if (plan.allowedPages && plan.allowedPages.length > 0) {
-      companyUpdates.enabledClientPages = JSON.stringify(plan.allowedPages);
-    }
-    if (isFreeTrial) {
-      companyUpdates.freeTrialClaimed = true;
-    }
-    if (parsed.phone && !company.whatsappNumber) {
-      companyUpdates.whatsappNumber = parsed.phone;
-    }
-    await db.update(companiesTable).set(companyUpdates).where(eq(companiesTable.id, company.id));
-    const [updatedComp] = await db.select().from(companiesTable).where(eq(companiesTable.id, company.id)).limit(1);
-    if (updatedComp) company = updatedComp;
+    const explicitRetention = options.overrideRetentionDays !== void 0 ? options.overrideRetentionDays : parsed.retentionDays;
+    company = await applyPlanTierToCompany(company.id, plan, {
+      durationDays,
+      isYearly,
+      phone: parsed.phone,
+      explicitRetentionDays: explicitRetention,
+      customChannels: parsed.channels,
+      customTools: parsed.tools,
+      customSources: parsed.dataSources,
+      approvedBy: options.approvedBy
+    });
     invoice = {
       invoiceNumber,
       ticketId: ticket.id,
@@ -63374,10 +63510,10 @@ async function processApprovedPlanRequest(ticketId, options) {
       priceUsd,
       priceLocal,
       currencySymbol,
-      retentionDays: parsed.retentionDays,
-      channels,
-      tools,
-      dataSources: sources,
+      retentionDays: company.chatLogRetentionDays ?? explicitRetention,
+      channels: parsed.channels,
+      tools: parsed.tools,
+      dataSources: parsed.dataSources,
       status: "activated",
       isPaid: options.isPaid !== void 0 ? Boolean(options.isPaid) : true
     };
@@ -95132,6 +95268,55 @@ router4.put("/admin/companies/:id/retention", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+router4.post("/admin/companies/:id/apply-plan-tier", async (req, res) => {
+  try {
+    const companyId = Number(req.params.id);
+    if (!companyId || isNaN(companyId)) {
+      res.status(400).json({ error: "Invalid company id" });
+      return;
+    }
+    const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+    const adminName = adminUser[0]?.name || "Admin";
+    const {
+      planId,
+      plan: passedPlan,
+      durationDays,
+      isYearly,
+      explicitRetentionDays,
+      allowedPages,
+      customChannels,
+      customTools,
+      customSources
+    } = req.body || {};
+    const catalog2 = await getActivePackagesCatalog();
+    const activePackages = Array.isArray(catalog2?.packages) && catalog2.packages.length > 0 ? catalog2.packages : DEFAULT_PACKAGES_CATALOG.packages;
+    const matchedPlan = passedPlan || activePackages.find((p) => p.id === planId) || activePackages[1];
+    if (!matchedPlan) {
+      res.status(404).json({ error: "Plan tier definition not found" });
+      return;
+    }
+    const updatedCompany = await applyPlanTierToCompany(companyId, matchedPlan, {
+      durationDays,
+      isYearly,
+      explicitRetentionDays,
+      allowedPages,
+      customChannels,
+      customTools,
+      customSources,
+      approvedBy: adminName
+    });
+    await logAdminActivity(
+      req.session.userId,
+      "Apply Plan Tier",
+      `Admin applied plan tier [${matchedPlan.nameEn || matchedPlan.nameAr}] to company #${companyId}`,
+      req.ip || null
+    );
+    res.json({ ok: true, company: updatedCompany, plan: matchedPlan });
+  } catch (err) {
+    logger.error({ err }, "Admin apply plan tier error");
+    res.status(500).json({ error: err?.message || "Failed to apply plan tier" });
+  }
+});
 router4.put("/admin/companies/:id/data-source-permissions", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -95629,7 +95814,7 @@ router4.get("/admin/invoices", async (req, res) => {
         priceUsd,
         priceLocal,
         currencySymbol,
-        retentionDays: parsed.retentionDays,
+        retentionDays: parsed.retentionDays !== void 0 && parsed.retentionDays !== null && parsed.retentionDays !== 30 ? parsed.retentionDays : company?.chatLogRetentionDays ?? parsed.retentionDays ?? null,
         channels: parsed.channels || [],
         tools: parsed.tools || [],
         state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
@@ -96516,12 +96701,14 @@ router4.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
     }
     const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
     const adminName = adminUser[0]?.name || "Admin";
-    const { isPaid } = req.body || {};
+    const { isPaid, planId, retentionDays } = req.body || {};
     const effectiveIsPaid = isPaid !== void 0 ? Boolean(isPaid) : true;
     const result = await processApprovedPlanRequest(ticketId, {
       approvedBy: adminName,
       channel: "admin_ui",
-      isPaid: effectiveIsPaid
+      isPaid: effectiveIsPaid,
+      overridePlanId: planId,
+      overrideRetentionDays: retentionDays
     });
     await logAdminActivity(
       req.session.userId,

@@ -982,6 +982,20 @@ export default function AdminCompanies() {
     });
 
     try {
+      // Execute unified server-side apply-plan-tier endpoint (Direct DB sync)
+      await customFetch(`/api/admin/companies/${manageCompanyTarget.id}/apply-plan-tier`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: plan.id,
+          plan,
+          explicitRetentionDays: retention,
+          allowedPages: pages,
+        }),
+      }).catch((e) => {
+        console.warn("Server apply-plan-tier failed, falling back to PATCH:", e);
+      });
+
       await customFetch(`/api/admin/companies/${manageCompanyTarget.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
