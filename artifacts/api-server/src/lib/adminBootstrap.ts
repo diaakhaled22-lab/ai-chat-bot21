@@ -72,6 +72,12 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       SET monthly_token_quota = 500000
       WHERE monthly_token_quota IS NULL OR monthly_token_quota = 0;
 
+      -- Mark existing companies that already have active subscriptions or custom quotas as having claimed free trial
+      UPDATE companies
+      SET free_trial_claimed = true
+      WHERE (is_active = true OR monthly_token_quota > 25000 OR activation_end IS NOT NULL)
+        AND free_trial_claimed = false;
+
       UPDATE companies
       SET ai_model = 'nvidia/nemotron-3.5-lightning:free'
       WHERE ai_model = 'nvidia/nemotron-nano-9b-v2:free' OR ai_model LIKE '%nemotron-nano%';

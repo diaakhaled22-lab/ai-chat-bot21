@@ -510,15 +510,20 @@ export default function ClientPackages() {
     },
   });
 
-  const isFreeTrialClaimed = Boolean((company as any)?.freeTrialClaimed);
+  const hasActiveQuotaOrPlan = Boolean(
+    (company as any)?.isActive ||
+    ((company as any)?.monthlyTokenQuota && (company as any).monthlyTokenQuota > 25_000) ||
+    (company as any)?.activationEnd
+  );
+  const isFreeTrialClaimed = Boolean((company as any)?.freeTrialClaimed) || hasActiveQuotaOrPlan;
 
   const handleOpenSubscribe = (plan: PlanDef) => {
     if (plan.id === "free_trial" && isFreeTrialClaimed) {
       toast({
-        title: lang === "ar" ? "الباقة التجريبية مستنفذة" : "Trial Already Used",
+        title: lang === "ar" ? "الباقة التجريبية غير متاحة" : "Trial Not Available",
         description: lang === "ar"
-          ? "لقد استفدت مسبقاً من الباقة التجريبية المجانية. هذه الباقة متاحة للعملاء الجدد فقط ولمرة واحدة."
-          : "You have already used your 7-day free trial. This offer is available for new clients only.",
+          ? "الباقة التجريبية المجانية (7 أيام) متاحة للعملاء الجدد فقط ولمرة واحدة. يمكنك اختيار إحدى باقاتنا الشهرية أو السنوية للترقية."
+          : "The 7-day free trial is strictly for new clients only. Please select one of our active plans.",
         variant: "destructive",
       });
       return;
@@ -1023,7 +1028,7 @@ export default function ClientPackages() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {plans
           .filter((plan) => {
-            // If free_trial and already claimed, hide it from active choices so customer only sees regular plans
+            // Free trial plan is strictly for new clients. If client is an existing customer or has already claimed a trial, hide it.
             if (plan.id === "free_trial" && isFreeTrialClaimed && activeSelectedPlanId !== "free_trial") {
               return false;
             }
