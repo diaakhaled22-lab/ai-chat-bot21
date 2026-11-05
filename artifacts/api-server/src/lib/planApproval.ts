@@ -586,10 +586,10 @@ export async function processApprovedPlanRequest(
   }
 
   const effectiveClientEmail =
+    company.notificationEmail ||
     parsed.clientEmail ||
     client.notificationEmail ||
     client.email ||
-    company.notificationEmail ||
     "";
 
   if (parsed.clientEmail) {

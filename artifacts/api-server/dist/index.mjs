@@ -62966,30 +62966,46 @@ async function sendInvoiceToClient(invoice, client, company) {
   let whatsappSent = false;
   let emailMethod;
   let emailError;
-  const targetEmail = (invoice.clientEmail || client?.notificationEmail || client?.email || company?.notificationEmail || "").trim();
+  const recipients = [];
+  const addEmail = (e) => {
+    if (e && typeof e === "string" && e.includes("@")) {
+      const trimmed = e.trim();
+      if (trimmed && !recipients.includes(trimmed)) {
+        recipients.push(trimmed);
+      }
+    }
+  };
+  addEmail(company?.notificationEmail);
+  addEmail(invoice.clientEmail);
+  addEmail(client?.notificationEmail);
+  addEmail(client?.email);
+  const targetEmail = recipients.join(", ");
   const targetPhone = normalizePhoneNumber(invoice.clientPhone || company?.whatsappNumber || "");
   const waText = generateInvoiceWhatsAppText(invoice);
   const waUrl = targetPhone ? `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(waText)}` : "";
-  if (targetEmail) {
+  if (recipients.length > 0) {
     const html = generateInvoiceHtml(invoice);
-    const subject = `\u{1F9FE} \u0641\u0627\u062A\u0648\u0631\u0629 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 #${invoice.invoiceNumber} - ${invoice.itemNameAr}`;
+    const isUnpaid = invoice.isPaid === false;
+    const statusLabel = isUnpaid ? "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629 (\u0645\u0639\u0644\u0651\u0642\u0629)" : "\u0645\u0633\u062F\u062F\u0629";
+    const itemLabel = invoice.itemType === "topup" ? "\u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0625\u0636\u0627\u0641\u064A" : "\u0627\u0634\u062A\u0631\u0627\u0643";
+    const subject = `\u{1F9FE} \u0641\u0627\u062A\u0648\u0631\u0629 ${itemLabel} #${invoice.invoiceNumber} [${statusLabel}] - ${invoice.itemNameAr}`;
     try {
       const cfg = await getEmailConfig();
       if (isSmtpConfigured(cfg)) {
         const transporter = buildTransporter(cfg);
         await transporter.sendMail({
-          from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
-          to: targetEmail,
+          from: `"Bot Manager Billing" <${cfg.smtpUser.trim()}>`,
+          to: recipients.join(", "),
           subject,
           html
         });
         emailSent = true;
         emailMethod = "smtp";
-        logger.info({ targetEmail, invoiceNumber: invoice.invoiceNumber }, "Invoice email dispatched to client via SMTP");
+        logger.info({ recipients, invoiceNumber: invoice.invoiceNumber }, "Invoice email dispatched to client via SMTP");
       }
     } catch (smtpErr) {
       emailError = smtpErr?.message ?? "SMTP dispatch failed";
-      logger.warn({ err: smtpErr, targetEmail, invoiceNumber: invoice.invoiceNumber }, "SMTP invoice email attempt failed; checking Resend fallback");
+      logger.warn({ err: smtpErr, recipients, invoiceNumber: invoice.invoiceNumber }, "SMTP invoice email attempt failed; checking Resend fallback");
     }
     if (!emailSent) {
       try {
@@ -63004,7 +63020,7 @@ async function sendInvoiceToClient(invoice, client, company) {
             },
             body: JSON.stringify({
               from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-              to: [targetEmail],
+              to: recipients,
               subject,
               html
             })
@@ -63014,25 +63030,25 @@ async function sendInvoiceToClient(invoice, client, company) {
             emailSent = true;
             emailMethod = "resend";
             emailError = void 0;
-            logger.info({ targetEmail, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
+            logger.info({ recipients, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
           } else {
             const errBody = await resendRes.text();
             emailError = `Resend error: ${errBody}`;
-            logger.warn({ targetEmail, errBody }, "Resend invoice email attempt failed");
+            logger.warn({ recipients, errBody }, "Resend invoice email attempt failed");
           }
         } else if (!emailError) {
           emailError = "Neither SMTP nor Resend API is configured";
-          logger.warn({ targetEmail }, "Neither SMTP nor Resend API is configured for client invoice email");
+          logger.warn({ recipients }, "Neither SMTP nor Resend API is configured for client invoice email");
         }
       } catch (resendErr) {
         emailError = (emailError ? emailError + " | " : "") + (resendErr?.message ?? "Resend dispatch failed");
-        logger.error({ err: resendErr, targetEmail }, "Resend invoice email execution error");
+        logger.error({ err: resendErr, recipients }, "Resend invoice email execution error");
       }
     }
     if (company) {
       await db.insert(emailLogsTable).values({
         companyId: company.id,
-        recipientEmail: targetEmail,
+        recipientEmail: recipients.join(", "),
         subject,
         eventType: "invoice",
         status: emailSent ? "sent" : "failed",
@@ -63440,7 +63456,7 @@ async function processApprovedPlanRequest(ticketId, options) {
     }).returning();
     company = newComp;
   }
-  const effectiveClientEmail = parsed.clientEmail || client.notificationEmail || client.email || company.notificationEmail || "";
+  const effectiveClientEmail = company.notificationEmail || parsed.clientEmail || client.notificationEmail || client.email || "";
   if (parsed.clientEmail) {
     if (!client.email && !client.notificationEmail) {
       await db.update(usersTable).set({ notificationEmail: parsed.clientEmail }).where(eq(usersTable.id, client.id)).catch(() => {
@@ -63719,23 +63735,46 @@ async function getEmailConfig() {
   };
 }
 function isSmtpConfigured(cfg) {
-  return !!(cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
+  const host = (cfg.smtpHost || "").trim().toLowerCase();
+  const user = (cfg.smtpUser || "").trim().toLowerCase();
+  const isGmail = host.includes("gmail") || host.includes("googlemail") || user.endsWith("@gmail.com");
+  return !!((host || isGmail) && cfg.smtpUser && cfg.smtpPass);
 }
 function isEmailConfigured(cfg) {
-  return !!(cfg.recipientEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
+  return !!(cfg.recipientEmail && isSmtpConfigured(cfg));
 }
 function buildTransporter(cfg) {
   const enc = cfg.smtpEncryption;
+  const cleanHost = (cfg.smtpHost || "").trim().toLowerCase();
+  const cleanUser = (cfg.smtpUser || "").trim();
+  const isGmail = cleanHost.includes("gmail") || cleanHost.includes("googlemail") || cleanUser.toLowerCase().endsWith("@gmail.com");
+  const cleanPass = isGmail ? (cfg.smtpPass || "").replace(/\s+/g, "") : (cfg.smtpPass || "").trim();
+  if (isGmail) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: cleanUser,
+        pass: cleanPass
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+  const port2 = Number(cfg.smtpPort) || 587;
+  const isSsl = enc === "ssl" || port2 === 465;
   return nodemailer.createTransport({
-    host: cfg.smtpHost,
-    port: cfg.smtpPort,
-    // ssl → TLS-wrapped from the start (port 465)
-    // tls → STARTTLS upgrade (port 587, nodemailer default when secure=false)
-    // none → plain, no encryption
-    secure: enc === "ssl",
+    host: cfg.smtpHost.trim(),
+    port: port2,
+    secure: isSsl,
     ignoreTLS: enc === "none",
-    tls: enc === "none" ? { rejectUnauthorized: false } : void 0,
-    auth: { user: cfg.smtpUser, pass: cfg.smtpPass }
+    tls: {
+      rejectUnauthorized: false
+    },
+    auth: {
+      user: cleanUser,
+      pass: cleanPass
+    }
   });
 }
 async function sendNewTicketNotification(ticket) {

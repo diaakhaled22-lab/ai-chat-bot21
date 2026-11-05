@@ -335,42 +335,58 @@ export async function sendInvoiceToClient(
   let emailMethod: string | undefined;
   let emailError: string | undefined;
 
-  const targetEmail = (
-    invoice.clientEmail ||
-    client?.notificationEmail ||
-    client?.email ||
-    company?.notificationEmail ||
-    ""
-  ).trim();
+  const recipients: string[] = [];
+  const addEmail = (e?: string | null) => {
+    if (e && typeof e === "string" && e.includes("@")) {
+      const trimmed = e.trim();
+      if (trimmed && !recipients.includes(trimmed)) {
+        recipients.push(trimmed);
+      }
+    }
+  };
+
+  // 1. Company notification email (e.g. Al-Hamad Company's configured Gmail)
+  addEmail(company?.notificationEmail);
+  // 2. Invoice client email
+  addEmail(invoice.clientEmail);
+  // 3. Client notification email
+  addEmail(client?.notificationEmail);
+  // 4. Client account email
+  addEmail(client?.email);
+
+  const targetEmail = recipients.join(", ");
 
   const targetPhone = normalizePhoneNumber(invoice.clientPhone || company?.whatsappNumber || "");
   const waText = generateInvoiceWhatsAppText(invoice);
   const waUrl = targetPhone ? `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(waText)}` : "";
 
   // 1. Dispatch Email Invoice (with dual engine: SMTP + Resend fallback)
-  if (targetEmail) {
+  if (recipients.length > 0) {
     const html = generateInvoiceHtml(invoice);
-    const subject = `🧾 فاتورة تفعيل الاشتراك #${invoice.invoiceNumber} - ${invoice.itemNameAr}`;
+    const isUnpaid = invoice.isPaid === false;
+    const statusLabel = isUnpaid ? "غير مسددة (معلّقة)" : "مسددة";
+    const itemLabel = invoice.itemType === "topup" ? "شحن رصيد إضافي" : "اشتراك";
+    const subject = `🧾 فاتورة ${itemLabel} #${invoice.invoiceNumber} [${statusLabel}] - ${invoice.itemNameAr}`;
 
-    // Attempt 1: Try SMTP
+    // Attempt 1: Try SMTP (with specialized Gmail engine support)
     try {
       const cfg = await getEmailConfig();
       if (isSmtpConfigured(cfg)) {
         const transporter = buildTransporter(cfg);
         await transporter.sendMail({
-          from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
-          to: targetEmail,
+          from: `"Bot Manager Billing" <${cfg.smtpUser.trim()}>`,
+          to: recipients.join(", "),
           subject,
           html,
         });
 
         emailSent = true;
         emailMethod = "smtp";
-        logger.info({ targetEmail, invoiceNumber: invoice.invoiceNumber }, "Invoice email dispatched to client via SMTP");
+        logger.info({ recipients, invoiceNumber: invoice.invoiceNumber }, "Invoice email dispatched to client via SMTP");
       }
     } catch (smtpErr: any) {
       emailError = smtpErr?.message ?? "SMTP dispatch failed";
-      logger.warn({ err: smtpErr, targetEmail, invoiceNumber: invoice.invoiceNumber }, "SMTP invoice email attempt failed; checking Resend fallback");
+      logger.warn({ err: smtpErr, recipients, invoiceNumber: invoice.invoiceNumber }, "SMTP invoice email attempt failed; checking Resend fallback");
     }
 
     // Attempt 2: If SMTP did not succeed, try Resend API
@@ -388,7 +404,7 @@ export async function sendInvoiceToClient(
             },
             body: JSON.stringify({
               from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-              to: [targetEmail],
+              to: recipients,
               subject,
               html,
             }),
@@ -399,19 +415,19 @@ export async function sendInvoiceToClient(
             emailSent = true;
             emailMethod = "resend";
             emailError = undefined;
-            logger.info({ targetEmail, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
+            logger.info({ recipients, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
           } else {
             const errBody = await resendRes.text();
             emailError = `Resend error: ${errBody}`;
-            logger.warn({ targetEmail, errBody }, "Resend invoice email attempt failed");
+            logger.warn({ recipients, errBody }, "Resend invoice email attempt failed");
           }
         } else if (!emailError) {
           emailError = "Neither SMTP nor Resend API is configured";
-          logger.warn({ targetEmail }, "Neither SMTP nor Resend API is configured for client invoice email");
+          logger.warn({ recipients }, "Neither SMTP nor Resend API is configured for client invoice email");
         }
       } catch (resendErr: any) {
         emailError = (emailError ? emailError + " | " : "") + (resendErr?.message ?? "Resend dispatch failed");
-        logger.error({ err: resendErr, targetEmail }, "Resend invoice email execution error");
+        logger.error({ err: resendErr, recipients }, "Resend invoice email execution error");
       }
     }
 
@@ -419,7 +435,7 @@ export async function sendInvoiceToClient(
     if (company) {
       await db.insert(emailLogsTable).values({
         companyId: company.id,
-        recipientEmail: targetEmail,
+        recipientEmail: recipients.join(", "),
         subject,
         eventType: "invoice",
         status: emailSent ? "sent" : "failed",

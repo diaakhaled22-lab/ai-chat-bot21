@@ -30,25 +30,52 @@ export async function getEmailConfig() {
 }
 
 export function isSmtpConfigured(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
-  return !!(cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
+  const host = (cfg.smtpHost || "").trim().toLowerCase();
+  const user = (cfg.smtpUser || "").trim().toLowerCase();
+  const isGmail = host.includes("gmail") || host.includes("googlemail") || user.endsWith("@gmail.com");
+  return !!((host || isGmail) && cfg.smtpUser && cfg.smtpPass);
 }
 
 export function isEmailConfigured(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
-  return !!(cfg.recipientEmail && cfg.smtpHost && cfg.smtpUser && cfg.smtpPass);
+  return !!(cfg.recipientEmail && isSmtpConfigured(cfg));
 }
 
 export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
   const enc = cfg.smtpEncryption;
+  const cleanHost = (cfg.smtpHost || "").trim().toLowerCase();
+  const cleanUser = (cfg.smtpUser || "").trim();
+  const isGmail = cleanHost.includes("gmail") || cleanHost.includes("googlemail") || cleanUser.toLowerCase().endsWith("@gmail.com");
+  // Clean password: strip spaces (critical for Google App Passwords copied as "xxxx xxxx xxxx xxxx")
+  const cleanPass = isGmail ? (cfg.smtpPass || "").replace(/\s+/g, "") : (cfg.smtpPass || "").trim();
+
+  if (isGmail) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: cleanUser,
+        pass: cleanPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+  }
+
+  const port = Number(cfg.smtpPort) || 587;
+  const isSsl = enc === "ssl" || port === 465;
+
   return nodemailer.createTransport({
-    host: cfg.smtpHost,
-    port: cfg.smtpPort,
-    // ssl → TLS-wrapped from the start (port 465)
-    // tls → STARTTLS upgrade (port 587, nodemailer default when secure=false)
-    // none → plain, no encryption
-    secure: enc === "ssl",
+    host: cfg.smtpHost.trim(),
+    port,
+    secure: isSsl,
     ignoreTLS: enc === "none",
-    tls: enc === "none" ? { rejectUnauthorized: false } : undefined,
-    auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    auth: {
+      user: cleanUser,
+      pass: cleanPass,
+    },
   });
 }
 
