@@ -53,14 +53,14 @@ function parseEnabledPages(val: any): string[] | null {
 }
 
 async function resolveEffectiveClientPages(company: typeof companiesTable.$inferSelect, explicitConfigPages: string[] | null): Promise<string[] | null> {
-  const custom = explicitConfigPages ?? parseEnabledPages((company as any).enabledClientPages);
-  if (custom && custom.length > 0) return custom;
+  // 1. PRIMARY CONTROL POINT: The company's active subscription plan definition
   try {
     const catalog = await getActivePackagesCatalog();
     const pkgs = catalog.packages;
     const quota = company.monthlyTokenQuota;
+
     let matchedPlan = pkgs.find((p) => p.tokensMonthly === quota);
-    if (!matchedPlan && quota) {
+    if (!matchedPlan && quota && quota > 0) {
       let minDiff = Infinity;
       for (const p of pkgs) {
         if (p.tokensMonthly) {
@@ -72,11 +72,21 @@ async function resolveEffectiveClientPages(company: typeof companiesTable.$infer
         }
       }
     }
+
     if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
       return matchedPlan.allowedPages;
     }
-  } catch {}
-  return custom;
+  } catch (err) {
+    logger.warn({ err }, "Error resolving plan allowed pages in resolveEffectiveClientPages");
+  }
+
+  // 2. Fallback only if no subscription plan or plan has no allowedPages
+  const custom = explicitConfigPages ?? parseEnabledPages((company as any).enabledClientPages);
+  if (custom && custom.length > 0) return custom;
+
+  return company.isActive === false
+    ? ["company", "packages", "support", "settings", "notifications"]
+    : null;
 }
 
 async function resolveCompanyActivePlanId(

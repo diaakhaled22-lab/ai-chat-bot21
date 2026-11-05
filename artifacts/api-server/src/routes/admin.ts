@@ -815,6 +815,8 @@ router.get("/admin/companies", async (req, res) => {
       }
     }
 
+    const packagesCatalog = await getActivePackagesCatalog();
+
     res.json(
       rows.map(({ company, clientName, clientUsername, clientNotificationEmail }) => ({
         id: company.id,
@@ -874,7 +876,15 @@ router.get("/admin/companies", async (req, res) => {
         allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
         allowSourceShopify: company.allowSourceShopify === false ? false : true,
         businessType: company.businessType || "general",
-        enabledClientPages: configPagesMap.has(company.id) ? (configPagesMap.get(company.id) ?? []) : (parseEnabledPages((company as any).enabledClientPages) ?? null),
+        enabledClientPages: (() => {
+          const matchedPlan = packagesCatalog.packages.find((p) => p.tokensMonthly === company.monthlyTokenQuota);
+          if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
+            return matchedPlan.allowedPages;
+          }
+          return configPagesMap.has(company.id)
+            ? (configPagesMap.get(company.id) ?? [])
+            : (parseEnabledPages((company as any).enabledClientPages) ?? null);
+        })(),
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString(),
       }))
@@ -6413,6 +6423,50 @@ async function handleUpdatePackages(req: any, res: any) {
       });
     }
 
+    // Cascade updated allowedPages to all companies subscribed to each plan
+    try {
+      const allCompanies = await db.select().from(companiesTable);
+      for (const p of payload.packages) {
+        if (!p.allowedPages || !Array.isArray(p.allowedPages)) continue;
+
+        const matched = allCompanies.filter((c) => {
+          if (c.monthlyTokenQuota && c.monthlyTokenQuota === p.tokensMonthly) return true;
+          return false;
+        });
+
+        for (const comp of matched) {
+          await db
+            .update(companiesTable)
+            .set({
+              enabledClientPages: JSON.stringify(p.allowedPages),
+              updatedAt: new Date(),
+            })
+            .where(eq(companiesTable.id, comp.id));
+
+          const configKey = `enabled_client_pages_${comp.id}`;
+          const [existingConfig] = await db
+            .select()
+            .from(adminConfigTable)
+            .where(eq(adminConfigTable.key, configKey))
+            .limit(1);
+
+          if (existingConfig) {
+            await db
+              .update(adminConfigTable)
+              .set({ value: JSON.stringify(p.allowedPages) })
+              .where(eq(adminConfigTable.key, configKey));
+          } else {
+            await db.insert(adminConfigTable).values({
+              key: configKey,
+              value: JSON.stringify(p.allowedPages),
+            });
+          }
+        }
+      }
+    } catch (cascadeErr) {
+      logger.warn({ err: cascadeErr }, "Error cascading updated plan allowed pages to companies");
+    }
+
     await logAdminActivity(
       req.session.userId!,
       "Update Packages Catalog",
@@ -6449,6 +6503,50 @@ async function handleResetPackages(req: any, res: any) {
         key: "packages_catalog",
         value: JSON.stringify(payload),
       });
+    }
+
+    // Cascade updated allowedPages to all companies subscribed to each plan
+    try {
+      const allCompanies = await db.select().from(companiesTable);
+      for (const p of payload.packages) {
+        if (!p.allowedPages || !Array.isArray(p.allowedPages)) continue;
+
+        const matched = allCompanies.filter((c) => {
+          if (c.monthlyTokenQuota && c.monthlyTokenQuota === p.tokensMonthly) return true;
+          return false;
+        });
+
+        for (const comp of matched) {
+          await db
+            .update(companiesTable)
+            .set({
+              enabledClientPages: JSON.stringify(p.allowedPages),
+              updatedAt: new Date(),
+            })
+            .where(eq(companiesTable.id, comp.id));
+
+          const configKey = `enabled_client_pages_${comp.id}`;
+          const [existingConfig] = await db
+            .select()
+            .from(adminConfigTable)
+            .where(eq(adminConfigTable.key, configKey))
+            .limit(1);
+
+          if (existingConfig) {
+            await db
+              .update(adminConfigTable)
+              .set({ value: JSON.stringify(p.allowedPages) })
+              .where(eq(adminConfigTable.key, configKey));
+          } else {
+            await db.insert(adminConfigTable).values({
+              key: configKey,
+              value: JSON.stringify(p.allowedPages),
+            });
+          }
+        }
+      }
+    } catch (cascadeErr) {
+      logger.warn({ err: cascadeErr }, "Error cascading updated plan allowed pages to companies");
     }
 
     await logAdminActivity(

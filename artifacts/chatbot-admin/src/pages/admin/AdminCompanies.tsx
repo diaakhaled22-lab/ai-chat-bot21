@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, useMemo } from "react";
 import {
   useListCompanies,
@@ -612,6 +612,7 @@ const FALLBACK_PLANS: PackageItem[] = [
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AdminCompanies() {
   const { t, lang } = useLanguage();
+  const [, setLocation] = useLocation();
   const { data: companies, isLoading } = useListCompanies();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -647,25 +648,25 @@ export default function AdminCompanies() {
       }
     } catch {}
 
-    // Priority 1: Direct server pages from DB / adminConfigTable
+    // Priority 1: Synchronize with the company's active plan tier allowedPages (Primary Authority)
+    let planPages: string[] | null = null;
+    if (packagesCatalog?.packages && freshCompany.monthlyTokenQuota) {
+      const matched = packagesCatalog.packages.find((p) => p.tokensMonthly === freshCompany.monthlyTokenQuota);
+      if (matched?.allowedPages && Array.isArray(matched.allowedPages) && matched.allowedPages.length > 0) {
+        planPages = matched.allowedPages;
+      }
+    }
+
+    // Direct server pages from DB / adminConfigTable
     const serverPages = Array.isArray(freshCompany.enabledClientPages) && freshCompany.enabledClientPages.length > 0
       ? freshCompany.enabledClientPages
       : null;
 
-    // Priority 2: Synchronize with the company's active plan tier allowedPages
-    let fallbackPlanPages: string[] | null = null;
-    if (!serverPages && packagesCatalog?.packages && freshCompany.monthlyTokenQuota) {
-      const matched = packagesCatalog.packages.find((p) => p.tokensMonthly === freshCompany.monthlyTokenQuota);
-      if (matched?.allowedPages && matched.allowedPages.length > 0) {
-        fallbackPlanPages = matched.allowedPages;
-      }
-    }
-
-    // Priority 3: Local cache or inactive / active defaults
-    const resolvedPages = serverPages !== null
-      ? [...serverPages]
-      : (fallbackPlanPages !== null
-          ? [...fallbackPlanPages]
+    // Resolve: Plan pages are the PRIMARY AUTHORITY
+    const resolvedPages = planPages !== null
+      ? [...planPages]
+      : (serverPages !== null
+          ? [...serverPages]
           : (cachedPages !== null
               ? cachedPages
               : (freshCompany.isActive === false
@@ -1922,114 +1923,196 @@ export default function AdminCompanies() {
             {manageCompanyTarget && (
               <>
                 {/* ── TAB 1: SIDEBAR PAGES CONTROL ── */}
-                {manageActiveTab === "pages" && (
-                  <div className="space-y-5">
-                    {/* Header bar with counter & presets */}
-                    <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <SlidersHorizontal className="w-4 h-4 text-primary" />
-                          <h4 className="text-sm font-bold">
-                            {lang === "ar" ? "الصفحات المتاحة في قائمة العميل" : "Pages in Client Menu"}
-                          </h4>
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold px-2">
-                            {Array.isArray(manageForm.enabledClientPages) ? manageForm.enabledClientPages.length : 17} / {CLIENT_PAGES_META.length}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {lang === "ar"
-                            ? "حدد الصفحات التي تود ظهورها في القائمة الجانبية للعميل. الصفحات المعطلة سيتم إخفاؤها وحظر زيارتها."
-                            : "Select pages that will appear in the client's sidebar. Disabled pages will be hidden and blocked."}
-                        </p>
-                      </div>
+                {manageActiveTab === "pages" && (() => {
+                  const quotaVal = parseTokenQuota(manageForm.monthlyTokenQuota);
+                  const activePlanForCompany = packagesCatalog?.packages?.find(
+                    (p) => quotaVal !== null && p.tokensMonthly === quotaVal
+                  );
+                  const planAllowedList = activePlanForCompany?.allowedPages ?? null;
 
-                      {/* Quick Presets */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPresetPages("all")}
-                          className="text-xs h-7 px-2.5"
-                        >
-                          {lang === "ar" ? "تفعيل الكل" : "Enable All"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPresetPages("core")}
-                          className="text-xs h-7 px-2.5"
-                        >
-                          {lang === "ar" ? "الوضع الأساسي" : "Core"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPresetPages("onboarding")}
-                          className="text-xs h-7 px-2.5 text-amber-600 dark:text-amber-400 border-amber-500/30"
-                        >
-                          {lang === "ar" ? "الوضع المبدئي (Onboarding)" : "Onboarding"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setPresetPages("none")}
-                          className="text-xs h-7 px-2 text-destructive hover:text-destructive"
-                        >
-                          {lang === "ar" ? "إلغاء الكل" : "None"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Pages Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {CLIENT_PAGES_META.map((page) => {
-                        const Icon = page.icon;
-                        const isEnabled = Array.isArray(manageForm.enabledClientPages)
-                          ? manageForm.enabledClientPages.includes(page.id)
-                          : true;
-
-                        return (
-                          <div
-                            key={page.id}
-                            onClick={() => handlePageCheckChange(page.id, !isEnabled)}
-                            className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                              isEnabled
-                                ? "bg-primary/5 border-primary/30 shadow-sm"
-                                : "bg-card border-border/70 opacity-60 hover:opacity-90"
-                            }`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                isEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                              }`}>
-                                <Icon className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold truncate">
-                                  {lang === "ar" ? page.titleAr : page.titleEn}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground truncate">
-                                  {lang === "ar" ? page.titleEn : page.titleAr}
-                                </p>
-                              </div>
-                            </div>
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <Switch
-                                checked={isEnabled}
-                                onCheckedChange={(checked) => handlePageCheckChange(page.id, checked)}
-                                className="shrink-0 scale-90"
-                              />
-                            </div>
+                  return (
+                    <div className="space-y-4">
+                      {/* Subscription Plan Authority Banner */}
+                      <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                            <Package className="w-5 h-5" />
                           </div>
-                        );
-                      })}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-foreground text-sm">
+                                {lang === "ar"
+                                  ? `الباقة المفعلة للشركة: ${activePlanForCompany ? activePlanForCompany.nameAr : "باقة مخصصة"}`
+                                  : `Active Plan: ${activePlanForCompany ? activePlanForCompany.nameEn : "Custom Plan"}`}
+                              </span>
+                              {activePlanForCompany && (
+                                <Badge variant="outline" className="text-[11px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 font-bold px-2 py-0.5">
+                                  {planAllowedList?.length ?? CLIENT_PAGES_META.length} / {CLIENT_PAGES_META.length} {lang === "ar" ? "صفحات مسموحة" : "allowed"}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground mt-0.5 text-[11px]">
+                              {lang === "ar"
+                                ? "يتم التحكم بصفحات قائمة العميل تلقائياً ومركزياً من قسم «باقات الاشتراك». أي تعديل على صفحات الباقة ينعكس هنا وفي قائمة العميل فوراً."
+                                : "Client menu pages are automatically controlled via 'Edit Subscription Plan' in Packages & Plans. Changes made there apply immediately."}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          {activePlanForCompany && planAllowedList && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setManageForm({ ...manageForm, enabledClientPages: [...planAllowedList] });
+                                toast({
+                                  title: lang === "ar" ? "تمت المزامنة بنجاح" : "Synchronized",
+                                  description: lang === "ar" ? "تم تطبيق الصفحات المعتمدة في باقة الاشتراك" : "Applied allowed pages from subscription plan",
+                                });
+                              }}
+                              className="text-xs h-8 px-2.5 gap-1.5 border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/15 cursor-pointer font-semibold"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>{lang === "ar" ? "مزامنة مع الباقة" : "Sync with Plan"}</span>
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setManageCompanyModalOpen(false);
+                              setLocation("/admin/packages");
+                            }}
+                            className="text-xs h-8 px-3 gap-1.5 bg-[#2D5BE3] hover:bg-[#254ec2] text-white cursor-pointer font-bold shadow-sm"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>{lang === "ar" ? "تعديل باقة الاشتراك" : "Edit Subscription Plan"}</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Header bar with counter & presets */}
+                      <div className="bg-muted/30 border border-border rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <SlidersHorizontal className="w-4 h-4 text-primary" />
+                            <h4 className="text-sm font-bold">
+                              {lang === "ar" ? "الصفحات المتاحة في قائمة العميل" : "Pages in Client Menu"}
+                            </h4>
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold px-2">
+                              {Array.isArray(manageForm.enabledClientPages) ? manageForm.enabledClientPages.length : 17} / {CLIENT_PAGES_META.length}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {lang === "ar"
+                              ? "الصفحات المفعلة تظهر في قائمة العميل. الصفحات المعطلة يتم حجبها ومنع الوصول إليها."
+                              : "Enabled pages appear in the client's sidebar navigation. Disabled pages are hidden and blocked."}
+                          </p>
+                        </div>
+
+                        {/* Quick Presets */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPresetPages("all")}
+                            className="text-xs h-7 px-2.5"
+                          >
+                            {lang === "ar" ? "تفعيل الكل" : "Enable All"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPresetPages("core")}
+                            className="text-xs h-7 px-2.5"
+                          >
+                            {lang === "ar" ? "الوضع الأساسي" : "Core"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPresetPages("onboarding")}
+                            className="text-xs h-7 px-2.5 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                          >
+                            {lang === "ar" ? "الوضع المبدئي (Onboarding)" : "Onboarding"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPresetPages("none")}
+                            className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+                          >
+                            {lang === "ar" ? "إلغاء الكل" : "None"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Pages Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {CLIENT_PAGES_META.map((page) => {
+                          const Icon = page.icon;
+                          const isEnabled = Array.isArray(manageForm.enabledClientPages)
+                            ? manageForm.enabledClientPages.includes(page.id)
+                            : true;
+                          const isInPlan = planAllowedList ? planAllowedList.includes(page.id) : true;
+
+                          return (
+                            <div
+                              key={page.id}
+                              onClick={() => handlePageCheckChange(page.id, !isEnabled)}
+                              className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                                isEnabled
+                                  ? "bg-primary/5 border-primary/30 shadow-sm"
+                                  : "bg-card border-border/70 opacity-60 hover:opacity-90"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                  isEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                }`}>
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-xs font-bold truncate">
+                                      {lang === "ar" ? page.titleAr : page.titleEn}
+                                    </p>
+                                    {planAllowedList && (
+                                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                                        isInPlan
+                                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
+                                          : "bg-muted text-muted-foreground border border-border/40"
+                                      }`}>
+                                        {isInPlan ? (lang === "ar" ? "مع الباقة ✓" : "In Plan ✓") : (lang === "ar" ? "غير مفعلة 🔒" : "Locked 🔒")}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground truncate">
+                                    {lang === "ar" ? page.titleEn : page.titleAr}
+                                  </p>
+                                </div>
+                              </div>
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Switch
+                                  checked={isEnabled}
+                                  onCheckedChange={(checked) => handlePageCheckChange(page.id, checked)}
+                                  className="shrink-0 scale-90"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* ── TAB 2: DATA SOURCE PERMISSIONS CONTENT ── */}
                 {manageActiveTab === "data_sources" && (

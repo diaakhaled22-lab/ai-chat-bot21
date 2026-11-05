@@ -299,9 +299,18 @@ export default function AdminPackages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-packages"] });
       queryClient.invalidateQueries({ queryKey: ["packages-catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/packages/catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/company"] });
+      queryClient.invalidateQueries({ queryKey: ["client-company"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["client-tickets"] });
       toast({
-        title: lang === "ar" ? "تم الحفظ بنجاح" : "Changes Saved",
-        description: lang === "ar" ? "تم تحديث كتالوج الباقات وحزم الشحن بنجاح" : "Packages catalog updated successfully",
+        title: lang === "ar" ? "تم الحفظ وتحديث صفحات العملاء بنجاح" : "Plan Saved & Client Pages Updated",
+        description: lang === "ar"
+          ? "تم تحديث كتالوج الباقات وانعكست الصفحات المتاحة فوراً في قائمة العميل ولجميع الشركات المشتركة!"
+          : "Packages catalog updated and client menu pages immediately synchronized for all companies!",
       });
       setIsPlanModalOpen(false);
       setIsTopupModalOpen(false);

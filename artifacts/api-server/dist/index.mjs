@@ -94013,6 +94013,7 @@ router4.get("/admin/companies", async (req, res) => {
         }
       }
     }
+    const packagesCatalog = await getActivePackagesCatalog();
     res.json(
       rows.map(({ company, clientName, clientUsername, clientNotificationEmail }) => ({
         id: company.id,
@@ -94072,7 +94073,13 @@ router4.get("/admin/companies", async (req, res) => {
         allowSourceRestApi: company.allowSourceRestApi === false ? false : true,
         allowSourceShopify: company.allowSourceShopify === false ? false : true,
         businessType: company.businessType || "general",
-        enabledClientPages: configPagesMap.has(company.id) ? configPagesMap.get(company.id) ?? [] : parseEnabledPages(company.enabledClientPages) ?? null,
+        enabledClientPages: (() => {
+          const matchedPlan = packagesCatalog.packages.find((p) => p.tokensMonthly === company.monthlyTokenQuota);
+          if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
+            return matchedPlan.allowedPages;
+          }
+          return configPagesMap.has(company.id) ? configPagesMap.get(company.id) ?? [] : parseEnabledPages(company.enabledClientPages) ?? null;
+        })(),
         createdAt: company.createdAt.toISOString(),
         updatedAt: company.updatedAt.toISOString()
       }))
@@ -98363,6 +98370,34 @@ async function handleUpdatePackages(req, res) {
         value: JSON.stringify(payload)
       });
     }
+    try {
+      const allCompanies = await db.select().from(companiesTable);
+      for (const p of payload.packages) {
+        if (!p.allowedPages || !Array.isArray(p.allowedPages)) continue;
+        const matched = allCompanies.filter((c) => {
+          if (c.monthlyTokenQuota && c.monthlyTokenQuota === p.tokensMonthly) return true;
+          return false;
+        });
+        for (const comp of matched) {
+          await db.update(companiesTable).set({
+            enabledClientPages: JSON.stringify(p.allowedPages),
+            updatedAt: /* @__PURE__ */ new Date()
+          }).where(eq(companiesTable.id, comp.id));
+          const configKey = `enabled_client_pages_${comp.id}`;
+          const [existingConfig] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, configKey)).limit(1);
+          if (existingConfig) {
+            await db.update(adminConfigTable).set({ value: JSON.stringify(p.allowedPages) }).where(eq(adminConfigTable.key, configKey));
+          } else {
+            await db.insert(adminConfigTable).values({
+              key: configKey,
+              value: JSON.stringify(p.allowedPages)
+            });
+          }
+        }
+      }
+    } catch (cascadeErr) {
+      logger.warn({ err: cascadeErr }, "Error cascading updated plan allowed pages to companies");
+    }
     await logAdminActivity(
       req.session.userId,
       "Update Packages Catalog",
@@ -98389,6 +98424,34 @@ async function handleResetPackages(req, res) {
         key: "packages_catalog",
         value: JSON.stringify(payload)
       });
+    }
+    try {
+      const allCompanies = await db.select().from(companiesTable);
+      for (const p of payload.packages) {
+        if (!p.allowedPages || !Array.isArray(p.allowedPages)) continue;
+        const matched = allCompanies.filter((c) => {
+          if (c.monthlyTokenQuota && c.monthlyTokenQuota === p.tokensMonthly) return true;
+          return false;
+        });
+        for (const comp of matched) {
+          await db.update(companiesTable).set({
+            enabledClientPages: JSON.stringify(p.allowedPages),
+            updatedAt: /* @__PURE__ */ new Date()
+          }).where(eq(companiesTable.id, comp.id));
+          const configKey = `enabled_client_pages_${comp.id}`;
+          const [existingConfig] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, configKey)).limit(1);
+          if (existingConfig) {
+            await db.update(adminConfigTable).set({ value: JSON.stringify(p.allowedPages) }).where(eq(adminConfigTable.key, configKey));
+          } else {
+            await db.insert(adminConfigTable).values({
+              key: configKey,
+              value: JSON.stringify(p.allowedPages)
+            });
+          }
+        }
+      }
+    } catch (cascadeErr) {
+      logger.warn({ err: cascadeErr }, "Error cascading updated plan allowed pages to companies");
     }
     await logAdminActivity(
       req.session.userId,
@@ -99837,14 +99900,12 @@ function parseEnabledPages2(val) {
   return null;
 }
 async function resolveEffectiveClientPages(company, explicitConfigPages) {
-  const custom2 = explicitConfigPages ?? parseEnabledPages2(company.enabledClientPages);
-  if (custom2 && custom2.length > 0) return custom2;
   try {
     const catalog2 = await getActivePackagesCatalog();
     const pkgs = catalog2.packages;
     const quota = company.monthlyTokenQuota;
     let matchedPlan = pkgs.find((p) => p.tokensMonthly === quota);
-    if (!matchedPlan && quota) {
+    if (!matchedPlan && quota && quota > 0) {
       let minDiff = Infinity;
       for (const p of pkgs) {
         if (p.tokensMonthly) {
@@ -99859,9 +99920,12 @@ async function resolveEffectiveClientPages(company, explicitConfigPages) {
     if (matchedPlan?.allowedPages && Array.isArray(matchedPlan.allowedPages)) {
       return matchedPlan.allowedPages;
     }
-  } catch {
+  } catch (err) {
+    logger.warn({ err }, "Error resolving plan allowed pages in resolveEffectiveClientPages");
   }
-  return custom2;
+  const custom2 = explicitConfigPages ?? parseEnabledPages2(company.enabledClientPages);
+  if (custom2 && custom2.length > 0) return custom2;
+  return company.isActive === false ? ["company", "packages", "support", "settings", "notifications"] : null;
 }
 async function resolveCompanyActivePlanId(company) {
   if (!company.isActive && (!company.monthlyTokenQuota || company.monthlyTokenQuota <= 0)) {
