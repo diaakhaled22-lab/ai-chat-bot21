@@ -4289,7 +4289,7 @@ router.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
     const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
     const adminName = adminUser[0]?.name || "Admin";
 
-    const { isPaid, planId, retentionDays } = req.body || {};
+    const { isPaid, planId, retentionDays, overrideEndDate, endDate } = req.body || {};
     const effectiveIsPaid = isPaid !== undefined ? Boolean(isPaid) : true;
 
     const result = await processApprovedPlanRequest(ticketId, {
@@ -4298,6 +4298,7 @@ router.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
       isPaid: effectiveIsPaid,
       overridePlanId: planId,
       overrideRetentionDays: retentionDays,
+      overrideEndDate: overrideEndDate || endDate || null,
     });
 
     await logAdminActivity(

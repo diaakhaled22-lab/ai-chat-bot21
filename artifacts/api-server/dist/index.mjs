@@ -63454,13 +63454,21 @@ async function processApprovedPlanRequest(ticketId, options) {
     const pack = parsed.topupPack;
     const priceUsd = pack.priceUsd;
     const priceLocal = Math.round(priceUsd * exchangeRate);
-    let subEndDate;
-    if (company.activationEnd && new Date(company.activationEnd).getTime() > now.getTime()) {
-      subEndDate = new Date(company.activationEnd);
-    } else if (company.quotaEndDate && new Date(company.quotaEndDate).getTime() > now.getTime()) {
-      subEndDate = new Date(company.quotaEndDate);
-    } else {
-      subEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1e3);
+    let subEndDate = null;
+    if (options.overrideEndDate) {
+      const parsedOverride = new Date(options.overrideEndDate);
+      if (!isNaN(parsedOverride.getTime())) {
+        subEndDate = parsedOverride;
+      }
+    }
+    if (!subEndDate) {
+      if (company.activationEnd && new Date(company.activationEnd).getTime() > now.getTime()) {
+        subEndDate = new Date(company.activationEnd);
+      } else if (company.quotaEndDate && new Date(company.quotaEndDate).getTime() > now.getTime()) {
+        subEndDate = new Date(company.quotaEndDate);
+      } else {
+        subEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1e3);
+      }
     }
     const formattedEndDate = subEndDate.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const currentQuota = company.monthlyTokenQuota || 0;
@@ -63512,6 +63520,18 @@ async function processApprovedPlanRequest(ticketId, options) {
       customSources: parsed.dataSources,
       approvedBy: options.approvedBy
     });
+    if (options.overrideEndDate) {
+      const parsedOverride = new Date(options.overrideEndDate);
+      if (!isNaN(parsedOverride.getTime())) {
+        await db.update(companiesTable).set({
+          activationEnd: parsedOverride,
+          quotaEndDate: parsedOverride,
+          updatedAt: now
+        }).where(eq(companiesTable.id, company.id));
+        company.activationEnd = parsedOverride;
+        company.quotaEndDate = parsedOverride;
+      }
+    }
     const planEndDate = company.activationEnd ? new Date(company.activationEnd).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : void 0;
     invoice = {
       invoiceNumber,
@@ -96747,14 +96767,15 @@ router4.post("/admin/plan-requests/:ticketId/approve", async (req, res) => {
     }
     const adminUser = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
     const adminName = adminUser[0]?.name || "Admin";
-    const { isPaid, planId, retentionDays } = req.body || {};
+    const { isPaid, planId, retentionDays, overrideEndDate, endDate } = req.body || {};
     const effectiveIsPaid = isPaid !== void 0 ? Boolean(isPaid) : true;
     const result = await processApprovedPlanRequest(ticketId, {
       approvedBy: adminName,
       channel: "admin_ui",
       isPaid: effectiveIsPaid,
       overridePlanId: planId,
-      overrideRetentionDays: retentionDays
+      overrideRetentionDays: retentionDays,
+      overrideEndDate: overrideEndDate || endDate || null
     });
     await logAdminActivity(
       req.session.userId,

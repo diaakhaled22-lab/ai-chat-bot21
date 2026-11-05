@@ -674,6 +674,8 @@ export default function AdminTickets() {
   const [isApprovingPlan, setIsApprovingPlan] = useState<boolean>(false);
   const [approvalSelectedPlanId, setApprovalSelectedPlanId] = useState<string | null>(null);
   const [approvalRetentionDays, setApprovalRetentionDays] = useState<number | null | undefined>(undefined);
+  const [approvalEndDateMode, setApprovalEndDateMode] = useState<"auto" | "custom">("auto");
+  const [approvalCustomEndDate, setApprovalCustomEndDate] = useState<string>("");
 
   const { data: packagesCatalog } = useQuery<{ packages: PackageItem[]; topupPacks: any[] }>({
     queryKey: ["admin-packages"],
@@ -766,6 +768,8 @@ export default function AdminTickets() {
   const handleOpenApproveModal = (ticket: Ticket) => {
     setApprovalTicket(ticket);
     setApprovalIsPaid(true);
+    setApprovalEndDateMode("auto");
+    setApprovalCustomEndDate("");
 
     const desc = ticket.description || "";
     const title = ticket.title || "";
@@ -860,6 +864,11 @@ export default function AdminTickets() {
     if (!approvalTicket) return;
     try {
       setIsApprovingPlan(true);
+      const effectiveEndDate =
+        approvalEndDateMode === "custom" && approvalCustomEndDate.trim()
+          ? new Date(`${approvalCustomEndDate.trim()}T23:59:59.999Z`).toISOString()
+          : undefined;
+
       const res: any = await customFetch(`/api/admin/plan-requests/${approvalTicket.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -867,6 +876,7 @@ export default function AdminTickets() {
           isPaid,
           planId: approvalSelectedPlanId,
           retentionDays: approvalRetentionDays,
+          overrideEndDate: effectiveEndDate,
         }),
       });
       setApprovalTicket(null);
@@ -1592,28 +1602,102 @@ export default function AdminTickets() {
                     </Badge>
                   </div>
 
-                  {/* Prominently Highlighted Expiration End Date strictly matching subscription */}
-                  <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 space-y-1.5">
+                  {/* End Date Selection & Custom Override Section for Topup */}
+                  <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/5 space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-bold text-xs">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300">
                         <Calendar className="w-4 h-4 shrink-0 text-blue-600" />
-                        <span>{lang === "ar" ? "تاريخ انتهاء صلاحية الرصيد الإضافي:" : "Top-up Quota Expiration Date:"}</span>
+                        <span>{lang === "ar" ? "تاريخ انتهاء صلاحية الرصيد الإضافي (End Date):" : "Top-up Expiration End Date:"}</span>
                       </div>
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-blue-600 text-white">
-                        {targetCompanySubEndDate
-                          ? targetCompanySubEndDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })
-                          : (lang === "ar" ? "مطابق لنهاية دورة الاشتراك (30 يوماً)" : "Matches Subscription Cycle (30 days)")}
-                      </span>
+                      <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/30">
+                        {approvalEndDateMode === "auto"
+                          ? (lang === "ar" ? "تلقائي (مطابق للاشتراك)" : "Auto (Matches Sub)")
+                          : (lang === "ar" ? "مخصص ✏️" : "Custom ✏️")}
+                      </Badge>
                     </div>
-                    <p className="text-[10px] text-blue-800/80 dark:text-blue-200/80 leading-relaxed">
-                      {lang === "ar"
-                        ? "✓ تاريخ انتهاء صلاحية هذا الرصيد الإضافي يتطابق تلقائياً مع تاريخ انتهاء دورة الاشتراك الحالية لحساب الشركة."
-                        : "✓ The expiration date for this extra allowance automatically matches the company's active subscription expiration date."}
-                    </p>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setApprovalEndDateMode("auto")}
+                        className={`p-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          approvalEndDateMode === "auto"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{lang === "ar" ? "مطابق للاشتراك (تلقائي)" : "Match Sub (Auto)"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApprovalEndDateMode("custom");
+                          if (!approvalCustomEndDate) {
+                            const baseDate = targetCompanySubEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                            setApprovalCustomEndDate(baseDate.toISOString().slice(0, 10));
+                          }
+                        }}
+                        className={`p-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          approvalEndDateMode === "custom"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                            : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>{lang === "ar" ? "تحديد تاريخ مخصص" : "Custom Date"}</span>
+                      </button>
+                    </div>
+
+                    {approvalEndDateMode === "auto" ? (
+                      <div className="text-[11px] text-muted-foreground bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5 flex items-center justify-between">
+                        <span>{lang === "ar" ? "تاريخ انتهاء الاشتراك المعتمد:" : "Subscription End Date:"}</span>
+                        <strong className="text-blue-700 dark:text-blue-300 font-mono text-xs">
+                          {targetCompanySubEndDate
+                            ? targetCompanySubEndDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })
+                            : (lang === "ar" ? "مطابق لنهاية دورة الاشتراك (30 يوماً)" : "Matches Subscription Cycle (30 days)")}
+                        </strong>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 pt-1">
+                        <Input
+                          type="date"
+                          value={approvalCustomEndDate}
+                          onChange={(e) => setApprovalCustomEndDate(e.target.value)}
+                          className="h-9 text-xs font-mono bg-card border-blue-500/40"
+                        />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            {lang === "ar" ? "إضافة سريعة:" : "Quick set:"}
+                          </span>
+                          {[
+                            { label: "+30 يوم", days: 30 },
+                            { label: "+60 يوم", days: 60 },
+                            { label: "+90 يوم", days: 90 },
+                            { label: "+180 يوم", days: 180 },
+                            { label: "+سنة (365)", days: 365 },
+                          ].map((item) => (
+                            <button
+                              key={item.label}
+                              type="button"
+                              onClick={() => {
+                                const d = new Date();
+                                d.setDate(d.getDate() + item.days);
+                                setApprovalCustomEndDate(d.toISOString().slice(0, 10));
+                              }}
+                              className="text-[10px] px-2 py-0.5 rounded-md border border-border bg-card text-foreground hover:bg-muted transition-colors font-mono cursor-pointer"
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : activeModalPlan && (
@@ -1690,6 +1774,93 @@ export default function AdminTickets() {
                             </button>
                           );
                         })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* End Date Option for Regular Plan Approval (when not topup) */}
+              {!isApprovalTicketTopup && (
+                <div className="p-3 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      <span>{lang === "ar" ? "تاريخ انتهاء صلاحية الاشتراك (End Date):" : "Subscription Expiration End Date:"}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">
+                      {approvalEndDateMode === "auto"
+                        ? (lang === "ar" ? "تلقائي (حسب دورة الباقة)" : "Auto (Per Cycle)")
+                        : (lang === "ar" ? "مخصص ✏️" : "Custom ✏️")}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setApprovalEndDateMode("auto")}
+                      className={`p-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        approvalEndDateMode === "auto"
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{lang === "ar" ? "تلقائي (حسب الباقة)" : "Auto (Default)"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApprovalEndDateMode("custom");
+                        if (!approvalCustomEndDate) {
+                          const baseDate = targetCompanySubEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                          setApprovalCustomEndDate(baseDate.toISOString().slice(0, 10));
+                        }
+                      }}
+                      className={`p-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        approvalEndDateMode === "custom"
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>{lang === "ar" ? "تحديد تاريخ مخصص" : "Custom End Date"}</span>
+                    </button>
+                  </div>
+
+                  {approvalEndDateMode === "custom" && (
+                    <div className="space-y-2 pt-1">
+                      <Input
+                        type="date"
+                        value={approvalCustomEndDate}
+                        onChange={(e) => setApprovalCustomEndDate(e.target.value)}
+                        className="h-9 text-xs font-mono bg-card"
+                      />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {lang === "ar" ? "إضافة سريعة:" : "Quick set:"}
+                        </span>
+                        {[
+                          { label: "+30 يوم", days: 30 },
+                          { label: "+60 يوم", days: 60 },
+                          { label: "+90 يوم", days: 90 },
+                          { label: "+180 يوم", days: 180 },
+                          { label: "+سنة (365)", days: 365 },
+                        ].map((item) => (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => {
+                              const d = new Date();
+                              d.setDate(d.getDate() + item.days);
+                              setApprovalCustomEndDate(d.toISOString().slice(0, 10));
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded-md border border-border bg-card text-foreground hover:bg-muted transition-colors font-mono cursor-pointer"
+                          >
+                            {item.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}

@@ -505,6 +505,7 @@ export interface ProcessApprovalOptions {
   isPaid?: boolean;
   overridePlanId?: string;
   overrideRetentionDays?: number | null;
+  overrideEndDate?: string | null;
 }
 
 /**
@@ -607,15 +608,23 @@ export async function processApprovedPlanRequest(
     const priceUsd = pack.priceUsd;
     const priceLocal = Math.round(priceUsd * exchangeRate);
 
-    // Synchronize Top-Up Expiration with the company's active subscription expiration date
-    let subEndDate: Date;
-    if (company.activationEnd && new Date(company.activationEnd).getTime() > now.getTime()) {
-      subEndDate = new Date(company.activationEnd);
-    } else if (company.quotaEndDate && new Date(company.quotaEndDate).getTime() > now.getTime()) {
-      subEndDate = new Date(company.quotaEndDate);
-    } else {
-      // Fallback if missing or already expired: 30 days from now
-      subEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    // Determine Top-Up Expiration: Custom override date if specified by admin, otherwise match subscription end date
+    let subEndDate: Date | null = null;
+    if (options.overrideEndDate) {
+      const parsedOverride = new Date(options.overrideEndDate);
+      if (!isNaN(parsedOverride.getTime())) {
+        subEndDate = parsedOverride;
+      }
+    }
+    if (!subEndDate) {
+      if (company.activationEnd && new Date(company.activationEnd).getTime() > now.getTime()) {
+        subEndDate = new Date(company.activationEnd);
+      } else if (company.quotaEndDate && new Date(company.quotaEndDate).getTime() > now.getTime()) {
+        subEndDate = new Date(company.quotaEndDate);
+      } else {
+        // Fallback if missing or already expired: 30 days from now
+        subEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
     }
 
     const formattedEndDate = subEndDate.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
@@ -679,6 +688,22 @@ export async function processApprovedPlanRequest(
       customSources: parsed.dataSources,
       approvedBy: options.approvedBy,
     });
+
+    if (options.overrideEndDate) {
+      const parsedOverride = new Date(options.overrideEndDate);
+      if (!isNaN(parsedOverride.getTime())) {
+        await db
+          .update(companiesTable)
+          .set({
+            activationEnd: parsedOverride,
+            quotaEndDate: parsedOverride,
+            updatedAt: now,
+          })
+          .where(eq(companiesTable.id, company.id));
+        company.activationEnd = parsedOverride;
+        company.quotaEndDate = parsedOverride;
+      }
+    }
 
     const planEndDate = company.activationEnd ? new Date(company.activationEnd).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : undefined;
 
