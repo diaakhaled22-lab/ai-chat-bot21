@@ -1,4 +1,5 @@
 import { db, adminConfigTable, emailLogsTable, chatLogsTable, type Company, type User } from "@workspace/db";
+import { inArray } from "drizzle-orm";
 import { getEmailConfig, isSmtpConfigured, buildTransporter } from "./email";
 import { getResendConfig } from "./companyNotification";
 import { getExchangeRates } from "./currencyRates";
@@ -27,9 +28,37 @@ export interface InvoiceData {
   channels?: string[];
   tools?: string[];
   dataSources?: string[];
-  status: "paid" | "activated";
+  status: "paid" | "activated" | "pending";
   isPaid?: boolean;
   endDate?: string | null;
+  paymentPhone?: string | null;
+  paymentInstaPay?: string | null;
+}
+
+/**
+ * Fetch platform-configured payment phone number and InstaPay address (IPA)
+ */
+export async function getInvoicePaymentConfig(): Promise<{ paymentPhone: string; paymentInstaPay: string }> {
+  try {
+    const rows = await db
+      .select()
+      .from(adminConfigTable)
+      .where(
+        inArray(adminConfigTable.key, [
+          "invoice_payment_phone",
+          "invoice_payment_instapay",
+          "payment_phone_number",
+          "payment_instapay_ipa",
+          "whatsapp_number",
+        ])
+      );
+    const map = new Map(rows.map((r) => [r.key, r.value ?? ""]));
+    const paymentPhone = map.get("invoice_payment_phone") || map.get("payment_phone_number") || map.get("whatsapp_number") || "";
+    const paymentInstaPay = map.get("invoice_payment_instapay") || map.get("payment_instapay_ipa") || "";
+    return { paymentPhone, paymentInstaPay };
+  } catch {
+    return { paymentPhone: "", paymentInstaPay: "" };
+  }
 }
 
 /**
@@ -245,6 +274,59 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
       </table>
     </div>
 
+    ${
+      inv.isPaid === false
+        ? `
+    <!-- Payment Details Section (Phone Number & InstaPay IPA) -->
+    <div style="background:#fffbeb;border-top:1px dashed #fde68a;border-bottom:1px dashed #fde68a;padding:24px 32px;margin-top:20px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">💳</span>
+        <h4 style="margin:0;font-size:14px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;">
+          بيانات وطرق السداد المعتمدة / Payment Details
+        </h4>
+      </div>
+      <p style="margin:0 0 16px;font-size:12px;color:#78350f;line-height:1.6;">
+        يرجى تحويل قيمة الفاتورة عبر إحدى الوسائل المعتمدة التالية، ثم إرسال إشعار التحويل لتفعيل وشحن الرصيد فوراً:
+      </p>
+
+      <table style="width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border-radius:12px;border:1px solid #fef3c7;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <tr style="border-bottom:1px solid #fef3c7;">
+          <td style="padding:14px 18px;width:45%;vertical-align:middle;border-bottom:1px solid #fef3c7;">
+            <div style="font-size:11px;font-weight:700;color:#b45309;margin-bottom:3px;text-transform:uppercase;">
+              📱 رقم الهاتف / المحفظة الإلكترونية (Phone Number):
+            </div>
+            <div style="font-size:11px;color:#78350f;">(فودافون كاش / أورنج / اتصالات / وي / Mobile Wallet)</div>
+          </td>
+          <td style="padding:14px 18px;vertical-align:middle;direction:ltr;text-align:right;border-bottom:1px solid #fef3c7;">
+            <span style="font-family:'Courier New',Courier,monospace;font-size:16px;font-weight:800;color:#0f172a;letter-spacing:1px;background:#f8fafc;padding:6px 14px;border-radius:8px;border:1px solid #cbd5e1;display:inline-block;">
+              ${escapeHtml(inv.paymentPhone || "01000000000")}
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:14px 18px;width:45%;vertical-align:middle;">
+            <div style="font-size:11px;font-weight:700;color:#b45309;margin-bottom:3px;text-transform:uppercase;">
+              ⚡ عنوان إنستاباي / InstaPay Address (IPA):
+            </div>
+            <div style="font-size:11px;color:#78350f;">(تحويل فوري لحظي بدون رسوم / Instant IPA Transfer)</div>
+          </td>
+          <td style="padding:14px 18px;vertical-align:middle;direction:ltr;text-align:right;">
+            <span style="font-family:'Courier New',Courier,monospace;font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;background:#eff6ff;padding:6px 14px;border-radius:8px;border:1px solid #bfdbfe;display:inline-block;">
+              ${escapeHtml(inv.paymentInstaPay || "username@instapay")}
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <div style="margin-top:12px;font-size:11px;color:#a16207;display:flex;align-items:center;gap:6px;">
+        <span>ℹ️</span>
+        <span>بمجرد إتمام التحويل، يُرجى إرسال لقطة شاشة أو رقم عملية التحويل لتأكيد السداد وشحن الرصيد تلقائياً.</span>
+      </div>
+    </div>
+    `
+        : ""
+    }
+
     <!-- Footer -->
     <div style="background:#0f172a;color:#94a3b8;padding:24px 32px;font-size:12px;text-align:center;line-height:1.6;">
       <p style="margin:0 0 6px;color:#ffffff;font-weight:600;">شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي</p>
@@ -296,6 +378,15 @@ export function generateInvoiceWhatsAppText(inv: InvoiceData): string {
       : (inv.isPaid === false
           ? `⚡ *الحالة:* ⏳ *غير مسددة (بانتظار السداد)*`
           : `⚡ *الحالة:* ✅ *تمت الموافقة والتفعيل - مسددة بالكامل*\nتم تفعيل الباقة وتحديث إعدادات الذكاء الاصطناعي الخاصة بكم.`),
+    ...(inv.isPaid === false
+      ? [
+          `━━━━━━━━━━━━━━━━━━━━━━`,
+          `💳 *بيانات وطرق السداد المعتمدة / Payment Details:*`,
+          `• 📱 رقم الهاتف / المحفظة (Vodafone/Orange/Wallet): *${inv.paymentPhone || "01000000000"}*`,
+          `• ⚡ عنوان إنستاباي / InstaPay IPA: *${inv.paymentInstaPay || "username@instapay"}*`,
+          `• ℹ️ يُرجى إرسال إشعار التحويل لتأكيد السداد وشحن الرصيد فوراً.`,
+        ]
+      : []),
     `شكراً لثقتكم بنا! في حال وجود أي استفسار، يسعدنا دائماً خدمتكم.`,
   ]
     .filter(Boolean)
@@ -334,6 +425,13 @@ export async function sendInvoiceToClient(
   let whatsappSent = false;
   let emailMethod: string | undefined;
   let emailError: string | undefined;
+
+  // Ensure payment details are populated for unpaid invoices
+  if (invoice.isPaid === false && (!invoice.paymentPhone || !invoice.paymentInstaPay)) {
+    const payCfg = await getInvoicePaymentConfig();
+    if (!invoice.paymentPhone) invoice.paymentPhone = payCfg.paymentPhone;
+    if (!invoice.paymentInstaPay) invoice.paymentInstaPay = payCfg.paymentInstaPay;
+  }
 
   const recipients: string[] = [];
   const addEmail = (e?: string | null) => {

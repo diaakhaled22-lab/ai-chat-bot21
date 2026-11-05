@@ -30,7 +30,7 @@ import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { processApprovedPlanRequest, parseTicketPlanDetails, getActivePackagesCatalog, applyPlanTierToCompany } from "../lib/planApproval";
-import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, type InvoiceData } from "../lib/invoice";
+import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, getInvoicePaymentConfig, type InvoiceData } from "../lib/invoice";
 import { sendWhatsAppMessage } from "./whatsapp";
 
 const router = Router();
@@ -3044,6 +3044,7 @@ router.get("/admin/invoices", async (req, res) => {
     const ratesData = await getExchangeRates();
     const exchangeRate = ratesData.rates.EGP || 50.0;
     const currencySymbol = "EGP";
+    const paymentConfig = await getInvoicePaymentConfig();
 
     // 1. Fetch all companies with client user info
     const companies = await db
@@ -3148,6 +3149,8 @@ router.get("/admin/invoices", async (req, res) => {
         status: t.status === "resolved" ? "paid" : "pending",
         issueDate: t.createdAt.toISOString(),
         notes: t.adminNote || t.aiResponse || undefined,
+        paymentPhone: paymentConfig.paymentPhone || "01000000000",
+        paymentInstaPay: paymentConfig.paymentInstaPay || "username@instapay",
       });
     }
 
@@ -3219,6 +3222,8 @@ router.get("/admin/invoices", async (req, res) => {
               tokensCredited: inv.tokensCredited !== undefined ? Boolean(inv.tokensCredited) : (inv.isPaid !== false),
               issueDate: tl.log.createdAt.toISOString(),
               notes: `تم الشحن والاعتماد بواسطة ${tl.log.performedBy}`,
+              paymentPhone: inv.paymentPhone || paymentConfig.paymentPhone || "01000000000",
+              paymentInstaPay: inv.paymentInstaPay || paymentConfig.paymentInstaPay || "username@instapay",
             });
           }
         } catch {}
@@ -3267,6 +3272,8 @@ router.get("/admin/invoices", async (req, res) => {
         isPaid: Boolean(comp.isActive),
         status: comp.isActive ? "activated" : "pending",
         issueDate: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : comp.createdAt.toISOString(),
+        paymentPhone: paymentConfig.paymentPhone || "01000000000",
+        paymentInstaPay: paymentConfig.paymentInstaPay || "username@instapay",
       });
     }
 
@@ -5181,6 +5188,45 @@ router.post("/admin/email-settings/test", async (req, res) => {
   } catch (err: any) {
     logger.error({ err }, "Test email error");
     res.status(400).json({ error: err?.message ?? "Failed to send test email" });
+  }
+});
+
+// GET /admin/payment-settings - Get payment details for invoices (phone & InstaPay IPA)
+router.get("/admin/payment-settings", async (req, res) => {
+  try {
+    const { getInvoicePaymentConfig } = await import("../lib/invoice");
+    const cfg = await getInvoicePaymentConfig();
+    res.json(cfg);
+  } catch (err: any) {
+    logger.error({ err }, "Get payment settings error");
+    res.status(500).json({ error: "Failed to get payment settings" });
+  }
+});
+
+// PUT /admin/payment-settings - Update payment details for invoices
+router.put("/admin/payment-settings", async (req, res) => {
+  try {
+    const { paymentPhone, paymentInstaPay } = req.body as {
+      paymentPhone?: string;
+      paymentInstaPay?: string;
+    };
+
+    const updates = [
+      { key: "invoice_payment_phone", value: paymentPhone?.trim() || "" },
+      { key: "invoice_payment_instapay", value: paymentInstaPay?.trim() || "" },
+    ];
+
+    for (const { key, value } of updates) {
+      await db
+        .insert(adminConfigTable)
+        .values({ key, value })
+        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value } });
+    }
+
+    res.json({ ok: true, paymentPhone: paymentPhone?.trim() || "", paymentInstaPay: paymentInstaPay?.trim() || "" });
+  } catch (err: any) {
+    logger.error({ err }, "Update payment settings error");
+    res.status(500).json({ error: "Failed to update payment settings" });
   }
 });
 

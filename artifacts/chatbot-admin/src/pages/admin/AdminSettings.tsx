@@ -1,5 +1,6 @@
 import { useGetAdminSettings, useUpdateAdminSettings, getGetAdminSettingsQueryKey } from "@workspace/api-client-react";
 import AdminEmailSettings from "./AdminEmailSettings";
+import AdminPaymentSettings from "./AdminPaymentSettings";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/use-language";
 import { useForm } from "react-hook-form";
@@ -297,6 +298,8 @@ export default function AdminSettings() {
       </div>
 
       <AdminEmailSettings />
+
+      <AdminPaymentSettings />
 
       {/* Language */}
       <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">

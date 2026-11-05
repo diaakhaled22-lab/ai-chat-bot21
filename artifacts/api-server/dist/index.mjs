@@ -62734,6 +62734,33 @@ var init_whatsapp = __esm({
 });
 
 // artifacts/api-server/src/lib/invoice.ts
+var invoice_exports = {};
+__export(invoice_exports, {
+  generateInvoiceHtml: () => generateInvoiceHtml,
+  generateInvoiceWhatsAppText: () => generateInvoiceWhatsAppText,
+  getInvoicePaymentConfig: () => getInvoicePaymentConfig,
+  normalizePhoneNumber: () => normalizePhoneNumber,
+  sendInvoiceToClient: () => sendInvoiceToClient
+});
+async function getInvoicePaymentConfig() {
+  try {
+    const rows = await db.select().from(adminConfigTable).where(
+      inArray(adminConfigTable.key, [
+        "invoice_payment_phone",
+        "invoice_payment_instapay",
+        "payment_phone_number",
+        "payment_instapay_ipa",
+        "whatsapp_number"
+      ])
+    );
+    const map2 = new Map(rows.map((r) => [r.key, r.value ?? ""]));
+    const paymentPhone = map2.get("invoice_payment_phone") || map2.get("payment_phone_number") || map2.get("whatsapp_number") || "";
+    const paymentInstaPay = map2.get("invoice_payment_instapay") || map2.get("payment_instapay_ipa") || "";
+    return { paymentPhone, paymentInstaPay };
+  } catch {
+    return { paymentPhone: "", paymentInstaPay: "" };
+  }
+}
 function generateInvoiceHtml(inv) {
   const retentionText = inv.retentionDays && inv.retentionDays > 0 ? `${inv.retentionDays} \u064A\u0648\u0645 / Days` : "\u062F\u0627\u0626\u0645 (\u0628\u062F\u0648\u0646 \u062D\u0630\u0641 \u062A\u0644\u0642\u0627\u0626\u064A) / Permanent";
   const channelsList = inv.channels && inv.channels.length > 0 ? inv.channels.join(" \u2022 ") : "\u0627\u0644\u0623\u0633\u0627\u0633\u064A\u0629 / Default";
@@ -62907,6 +62934,55 @@ function generateInvoiceHtml(inv) {
       </table>
     </div>
 
+    ${inv.isPaid === false ? `
+    <!-- Payment Details Section (Phone Number & InstaPay IPA) -->
+    <div style="background:#fffbeb;border-top:1px dashed #fde68a;border-bottom:1px dashed #fde68a;padding:24px 32px;margin-top:20px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">\u{1F4B3}</span>
+        <h4 style="margin:0;font-size:14px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;">
+          \u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0637\u0631\u0642 \u0627\u0644\u0633\u062F\u0627\u062F \u0627\u0644\u0645\u0639\u062A\u0645\u062F\u0629 / Payment Details
+        </h4>
+      </div>
+      <p style="margin:0 0 16px;font-size:12px;color:#78350f;line-height:1.6;">
+        \u064A\u0631\u062C\u0649 \u062A\u062D\u0648\u064A\u0644 \u0642\u064A\u0645\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0639\u0628\u0631 \u0625\u062D\u062F\u0649 \u0627\u0644\u0648\u0633\u0627\u0626\u0644 \u0627\u0644\u0645\u0639\u062A\u0645\u062F\u0629 \u0627\u0644\u062A\u0627\u0644\u064A\u0629\u060C \u062B\u0645 \u0625\u0631\u0633\u0627\u0644 \u0625\u0634\u0639\u0627\u0631 \u0627\u0644\u062A\u062D\u0648\u064A\u0644 \u0644\u062A\u0641\u0639\u064A\u0644 \u0648\u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0641\u0648\u0631\u0627\u064B:
+      </p>
+
+      <table style="width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border-radius:12px;border:1px solid #fef3c7;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <tr style="border-bottom:1px solid #fef3c7;">
+          <td style="padding:14px 18px;width:45%;vertical-align:middle;border-bottom:1px solid #fef3c7;">
+            <div style="font-size:11px;font-weight:700;color:#b45309;margin-bottom:3px;text-transform:uppercase;">
+              \u{1F4F1} \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 / \u0627\u0644\u0645\u062D\u0641\u0638\u0629 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A\u0629 (Phone Number):
+            </div>
+            <div style="font-size:11px;color:#78350f;">(\u0641\u0648\u062F\u0627\u0641\u0648\u0646 \u0643\u0627\u0634 / \u0623\u0648\u0631\u0646\u062C / \u0627\u062A\u0635\u0627\u0644\u0627\u062A / \u0648\u064A / Mobile Wallet)</div>
+          </td>
+          <td style="padding:14px 18px;vertical-align:middle;direction:ltr;text-align:right;border-bottom:1px solid #fef3c7;">
+            <span style="font-family:'Courier New',Courier,monospace;font-size:16px;font-weight:800;color:#0f172a;letter-spacing:1px;background:#f8fafc;padding:6px 14px;border-radius:8px;border:1px solid #cbd5e1;display:inline-block;">
+              ${escapeHtml(inv.paymentPhone || "01000000000")}
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:14px 18px;width:45%;vertical-align:middle;">
+            <div style="font-size:11px;font-weight:700;color:#b45309;margin-bottom:3px;text-transform:uppercase;">
+              \u26A1 \u0639\u0646\u0648\u0627\u0646 \u0625\u0646\u0633\u062A\u0627\u0628\u0627\u064A / InstaPay Address (IPA):
+            </div>
+            <div style="font-size:11px;color:#78350f;">(\u062A\u062D\u0648\u064A\u0644 \u0641\u0648\u0631\u064A \u0644\u062D\u0638\u064A \u0628\u062F\u0648\u0646 \u0631\u0633\u0648\u0645 / Instant IPA Transfer)</div>
+          </td>
+          <td style="padding:14px 18px;vertical-align:middle;direction:ltr;text-align:right;">
+            <span style="font-family:'Courier New',Courier,monospace;font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;background:#eff6ff;padding:6px 14px;border-radius:8px;border:1px solid #bfdbfe;display:inline-block;">
+              ${escapeHtml(inv.paymentInstaPay || "username@instapay")}
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <div style="margin-top:12px;font-size:11px;color:#a16207;display:flex;align-items:center;gap:6px;">
+        <span>\u2139\uFE0F</span>
+        <span>\u0628\u0645\u062C\u0631\u062F \u0625\u062A\u0645\u0627\u0645 \u0627\u0644\u062A\u062D\u0648\u064A\u0644\u060C \u064A\u064F\u0631\u062C\u0649 \u0625\u0631\u0633\u0627\u0644 \u0644\u0642\u0637\u0629 \u0634\u0627\u0634\u0629 \u0623\u0648 \u0631\u0642\u0645 \u0639\u0645\u0644\u064A\u0629 \u0627\u0644\u062A\u062D\u0648\u064A\u0644 \u0644\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0633\u062F\u0627\u062F \u0648\u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B.</span>
+      </div>
+    </div>
+    ` : ""}
+
     <!-- Footer -->
     <div style="background:#0f172a;color:#94a3b8;padding:24px 32px;font-size:12px;text-align:center;line-height:1.6;">
       <p style="margin:0 0 6px;color:#ffffff;font-weight:600;">\u0634\u0643\u0631\u0627\u064B \u0644\u0627\u062E\u062A\u064A\u0627\u0631\u0643\u0645 Bot Manager \u0644\u0623\u0646\u0638\u0645\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A</p>
@@ -62944,6 +63020,13 @@ function generateInvoiceWhatsAppText(inv) {
 \u26A0\uFE0F *\u0645\u0644\u0627\u062D\u0638\u0629:* \u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0627\u0644\u0637\u0644\u0628 \u0648\u0625\u0635\u062F\u0627\u0631 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629\u060C \u0648\u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0625\u0636\u0627\u0641\u064A (+${inv.tokenQuota.toLocaleString()} \u0631\u0645\u0632) \u0645\u0639\u0644\u0642 \u062D\u0627\u0644\u064A\u0627\u064B \u0648\u0633\u064A\u062A\u0645 \u0634\u062D\u0646\u0647 \u0641\u064A \u062D\u0633\u0627\u0628\u0643\u0645 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0641\u0648\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0633\u062A\u0644\u0627\u0645 \u0627\u0644\u0633\u062F\u0627\u062F.` : `\u26A1 *\u0627\u0644\u062D\u0627\u0644\u0629:* \u2705 *\u062A\u0645\u062A \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0648\u0627\u0644\u0634\u062D\u0646 - \u0645\u0633\u062F\u062F\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644*
 \u062A\u0645 \u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0625\u0636\u0627\u0641\u064A (+${inv.tokenQuota.toLocaleString()} \u0631\u0645\u0632) \u0625\u0644\u0649 \u062D\u0633\u0627\u0628\u0643\u0645 \u0628\u0646\u062C\u0627\u062D.` : inv.isPaid === false ? `\u26A1 *\u0627\u0644\u062D\u0627\u0644\u0629:* \u23F3 *\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629 (\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u0633\u062F\u0627\u062F)*` : `\u26A1 *\u0627\u0644\u062D\u0627\u0644\u0629:* \u2705 *\u062A\u0645\u062A \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0648\u0627\u0644\u062A\u0641\u0639\u064A\u0644 - \u0645\u0633\u062F\u062F\u0629 \u0628\u0627\u0644\u0643\u0627\u0645\u0644*
 \u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629 \u0648\u062A\u062D\u062F\u064A\u062B \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0627\u0644\u062E\u0627\u0635\u0629 \u0628\u0643\u0645.`,
+    ...inv.isPaid === false ? [
+      `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
+      `\u{1F4B3} *\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0637\u0631\u0642 \u0627\u0644\u0633\u062F\u0627\u062F \u0627\u0644\u0645\u0639\u062A\u0645\u062F\u0629 / Payment Details:*`,
+      `\u2022 \u{1F4F1} \u0631\u0642\u0645 \u0627\u0644\u0647\u0627\u062A\u0641 / \u0627\u0644\u0645\u062D\u0641\u0638\u0629 (Vodafone/Orange/Wallet): *${inv.paymentPhone || "01000000000"}*`,
+      `\u2022 \u26A1 \u0639\u0646\u0648\u0627\u0646 \u0625\u0646\u0633\u062A\u0627\u0628\u0627\u064A / InstaPay IPA: *${inv.paymentInstaPay || "username@instapay"}*`,
+      `\u2022 \u2139\uFE0F \u064A\u064F\u0631\u062C\u0649 \u0625\u0631\u0633\u0627\u0644 \u0625\u0634\u0639\u0627\u0631 \u0627\u0644\u062A\u062D\u0648\u064A\u0644 \u0644\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0633\u062F\u0627\u062F \u0648\u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0641\u0648\u0631\u0627\u064B.`
+    ] : [],
     `\u0634\u0643\u0631\u0627\u064B \u0644\u062B\u0642\u062A\u0643\u0645 \u0628\u0646\u0627! \u0641\u064A \u062D\u0627\u0644 \u0648\u062C\u0648\u062F \u0623\u064A \u0627\u0633\u062A\u0641\u0633\u0627\u0631\u060C \u064A\u0633\u0639\u062F\u0646\u0627 \u062F\u0627\u0626\u0645\u0627\u064B \u062E\u062F\u0645\u062A\u0643\u0645.`
   ].filter(Boolean).join("\n");
 }
@@ -62966,6 +63049,11 @@ async function sendInvoiceToClient(invoice, client, company) {
   let whatsappSent = false;
   let emailMethod;
   let emailError;
+  if (invoice.isPaid === false && (!invoice.paymentPhone || !invoice.paymentInstaPay)) {
+    const payCfg = await getInvoicePaymentConfig();
+    if (!invoice.paymentPhone) invoice.paymentPhone = payCfg.paymentPhone;
+    if (!invoice.paymentInstaPay) invoice.paymentInstaPay = payCfg.paymentInstaPay;
+  }
   const recipients = [];
   const addEmail = (e) => {
     if (e && typeof e === "string" && e.includes("@")) {
@@ -63099,6 +63187,7 @@ var init_invoice = __esm({
   "artifacts/api-server/src/lib/invoice.ts"() {
     "use strict";
     init_src();
+    init_drizzle_orm();
     init_email();
     init_companyNotification();
     init_whatsapp();
@@ -63470,6 +63559,7 @@ async function processApprovedPlanRequest(ticketId, options) {
   const ratesData = await getExchangeRates();
   const exchangeRate = ratesData.rates.EGP || 50;
   const currencySymbol = "EGP";
+  const paymentConfig = await getInvoicePaymentConfig();
   const now = /* @__PURE__ */ new Date();
   const invoiceNumber = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${ticket.id}`;
   const issueDate = now.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
@@ -63526,7 +63616,9 @@ async function processApprovedPlanRequest(ticketId, options) {
       priceLocal,
       currencySymbol,
       status: isPaid2 ? "activated" : "pending",
-      isPaid: isPaid2
+      isPaid: isPaid2,
+      paymentPhone: paymentConfig.paymentPhone,
+      paymentInstaPay: paymentConfig.paymentInstaPay
     };
   } else {
     const plan = (options.overridePlanId ? catalog2.packages.find((p) => p.id === options.overridePlanId) : null) || parsed.plan;
@@ -63583,7 +63675,9 @@ async function processApprovedPlanRequest(ticketId, options) {
       tools: parsed.tools,
       dataSources: parsed.dataSources,
       status: "activated",
-      isPaid: options.isPaid !== void 0 ? Boolean(options.isPaid) : true
+      isPaid: options.isPaid !== void 0 ? Boolean(options.isPaid) : true,
+      paymentPhone: paymentConfig.paymentPhone,
+      paymentInstaPay: paymentConfig.paymentInstaPay
     };
   }
   const dispatchResult = await sendInvoiceToClient(invoice, client, company);
@@ -95903,6 +95997,7 @@ router4.get("/admin/invoices", async (req, res) => {
     const ratesData = await getExchangeRates();
     const exchangeRate = ratesData.rates.EGP || 50;
     const currencySymbol = "EGP";
+    const paymentConfig = await getInvoicePaymentConfig();
     const companies = await db.select({
       company: companiesTable,
       client: usersTable
@@ -95966,7 +96061,9 @@ router4.get("/admin/invoices", async (req, res) => {
         isPaid: t.status === "resolved",
         status: t.status === "resolved" ? "paid" : "pending",
         issueDate: t.createdAt.toISOString(),
-        notes: t.adminNote || t.aiResponse || void 0
+        notes: t.adminNote || t.aiResponse || void 0,
+        paymentPhone: paymentConfig.paymentPhone || "01000000000",
+        paymentInstaPay: paymentConfig.paymentInstaPay || "username@instapay"
       });
     }
     try {
@@ -96023,7 +96120,9 @@ router4.get("/admin/invoices", async (req, res) => {
               status: inv.isPaid === false ? "pending" : "paid",
               tokensCredited: inv.tokensCredited !== void 0 ? Boolean(inv.tokensCredited) : inv.isPaid !== false,
               issueDate: tl.log.createdAt.toISOString(),
-              notes: `\u062A\u0645 \u0627\u0644\u0634\u062D\u0646 \u0648\u0627\u0644\u0627\u0639\u062A\u0645\u0627\u062F \u0628\u0648\u0627\u0633\u0637\u0629 ${tl.log.performedBy}`
+              notes: `\u062A\u0645 \u0627\u0644\u0634\u062D\u0646 \u0648\u0627\u0644\u0627\u0639\u062A\u0645\u0627\u062F \u0628\u0648\u0627\u0633\u0637\u0629 ${tl.log.performedBy}`,
+              paymentPhone: inv.paymentPhone || paymentConfig.paymentPhone || "01000000000",
+              paymentInstaPay: inv.paymentInstaPay || paymentConfig.paymentInstaPay || "username@instapay"
             });
           }
         } catch {
@@ -96068,7 +96167,9 @@ router4.get("/admin/invoices", async (req, res) => {
         state: comp.isActive ? "active" : "pending",
         isPaid: Boolean(comp.isActive),
         status: comp.isActive ? "activated" : "pending",
-        issueDate: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : comp.createdAt.toISOString()
+        issueDate: comp.quotaStartDate ? comp.quotaStartDate.toISOString() : comp.createdAt.toISOString(),
+        paymentPhone: paymentConfig.paymentPhone || "01000000000",
+        paymentInstaPay: paymentConfig.paymentInstaPay || "username@instapay"
       });
     }
     try {
@@ -97538,6 +97639,32 @@ router4.post("/admin/email-settings/test", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Test email error");
     res.status(400).json({ error: err?.message ?? "Failed to send test email" });
+  }
+});
+router4.get("/admin/payment-settings", async (req, res) => {
+  try {
+    const { getInvoicePaymentConfig: getInvoicePaymentConfig2 } = await Promise.resolve().then(() => (init_invoice(), invoice_exports));
+    const cfg = await getInvoicePaymentConfig2();
+    res.json(cfg);
+  } catch (err) {
+    logger.error({ err }, "Get payment settings error");
+    res.status(500).json({ error: "Failed to get payment settings" });
+  }
+});
+router4.put("/admin/payment-settings", async (req, res) => {
+  try {
+    const { paymentPhone, paymentInstaPay } = req.body;
+    const updates = [
+      { key: "invoice_payment_phone", value: paymentPhone?.trim() || "" },
+      { key: "invoice_payment_instapay", value: paymentInstaPay?.trim() || "" }
+    ];
+    for (const { key, value } of updates) {
+      await db.insert(adminConfigTable).values({ key, value }).onConflictDoUpdate({ target: adminConfigTable.key, set: { value } });
+    }
+    res.json({ ok: true, paymentPhone: paymentPhone?.trim() || "", paymentInstaPay: paymentInstaPay?.trim() || "" });
+  } catch (err) {
+    logger.error({ err }, "Update payment settings error");
+    res.status(500).json({ error: "Failed to update payment settings" });
   }
 });
 router4.get("/admin/settings", async (req, res) => {

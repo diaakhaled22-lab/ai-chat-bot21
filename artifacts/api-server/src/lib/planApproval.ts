@@ -3,7 +3,7 @@ import { db, ticketsTable, companiesTable, usersTable, notificationsTable, chatL
 import { eq, and, ilike } from "drizzle-orm";
 import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem, type PackagesCatalog } from "./packagesCatalog";
 import { getExchangeRates } from "./currencyRates";
-import { sendInvoiceToClient, type InvoiceData } from "./invoice";
+import { sendInvoiceToClient, getInvoicePaymentConfig, type InvoiceData } from "./invoice";
 import { logger } from "./logger";
 
 const APPROVAL_SALT = process.env.SESSION_SECRET || "bot-manager-plan-approval-secret-salt-2026";
@@ -604,6 +604,7 @@ export async function processApprovedPlanRequest(
   const ratesData = await getExchangeRates();
   const exchangeRate = ratesData.rates.EGP || 50.0;
   const currencySymbol = "EGP";
+  const paymentConfig = await getInvoicePaymentConfig();
 
   const now = new Date();
   const invoiceNumber = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${ticket.id}`;
@@ -680,6 +681,8 @@ export async function processApprovedPlanRequest(
       currencySymbol,
       status: isPaid ? "activated" : "pending",
       isPaid,
+      paymentPhone: paymentConfig.paymentPhone,
+      paymentInstaPay: paymentConfig.paymentInstaPay,
     };
   } else {
     // ── SUBSCRIPTION PLAN APPROVAL ──
@@ -747,6 +750,8 @@ export async function processApprovedPlanRequest(
       dataSources: parsed.dataSources,
       status: "activated",
       isPaid: options.isPaid !== undefined ? Boolean(options.isPaid) : true,
+      paymentPhone: paymentConfig.paymentPhone,
+      paymentInstaPay: paymentConfig.paymentInstaPay,
     };
   }
 

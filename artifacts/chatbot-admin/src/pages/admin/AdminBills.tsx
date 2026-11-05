@@ -59,6 +59,8 @@ import {
   Trash2,
   Pause,
   Play,
+  CreditCard,
+  Smartphone,
 } from "lucide-react";
 
 export interface InvoiceItem {
@@ -97,6 +99,8 @@ export interface InvoiceItem {
   status: "paid" | "activated" | "pending" | "paused";
   issueDate: string;
   notes?: string;
+  paymentPhone?: string | null;
+  paymentInstaPay?: string | null;
 }
 
 export interface CompanyInvoiceGroup {
@@ -215,6 +219,17 @@ export default function AdminBills() {
   const [viewInvoiceModalOpen, setViewInvoiceModalOpen] = useState(false);
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedPayment, setCopiedPayment] = useState<string | null>(null);
+
+  const handleCopyPayment = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPayment(label);
+    toast({
+      title: lang === "ar" ? "تم النسخ بنجاح" : "Copied successfully",
+      description: text,
+    });
+    setTimeout(() => setCopiedPayment(null), 2000);
+  };
 
   // Fetch Invoices
   const { data, isLoading, refetch, isRefetching } = useQuery<InvoicesApiResponse>({
@@ -841,6 +856,8 @@ export default function AdminBills() {
       `المبلغ: $${inv.priceUsd} USD (~ ${converted.toLocaleString()} ${currencyInfo.symbol})`,
       `الحالة (State): ${inv.state === "active" ? (lang === "ar" ? "نشطة" : "Active") : (lang === "ar" ? "معلقة" : "Pending")}`,
       `السداد (Paid): ${inv.isPaid ? (lang === "ar" ? "مسددة ✅" : "Paid ✅") : (lang === "ar" ? "غير مسددة ⏳" : "Unpaid ⏳")}`,
+      !inv.isPaid && inv.paymentPhone ? (lang === "ar" ? `رقم تحويل المحفظة / كاش: ${inv.paymentPhone}` : `Phone / Cash Wallet: ${inv.paymentPhone}`) : "",
+      !inv.isPaid && inv.paymentInstaPay ? (lang === "ar" ? `عنوان إنستاباي (IPA): ${inv.paymentInstaPay}` : `InstaPay Address (IPA): ${inv.paymentInstaPay}`) : "",
       `تاريخ الإصدار: ${new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}`,
       resolveInvoiceEndDate(inv) ? `تاريخ انتهاء الصلاحية: ${resolveInvoiceEndDate(inv)}${inv.itemType === "topup" ? " (مطابق لنهاية الاشتراك)" : ""}` : "",
     ].filter(Boolean).join("\n");
@@ -2642,6 +2659,81 @@ export default function AdminBills() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Payment Details for Unpaid Invoice */}
+                {viewingInvoice.isPaid === false && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                          {lang === "ar" ? "بيانات وطرق السداد للعميل" : "Payment Transfer Details"}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40">
+                        {lang === "ar" ? "غير مسددة" : "Unpaid"}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Phone / Wallet */}
+                      <div className="bg-card/90 border border-border/70 rounded-lg p-3 flex flex-col justify-between gap-2 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
+                            <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
+                            {lang === "ar" ? "رقم الهاتف / كاش:" : "Phone / Cash Wallet:"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPayment(viewingInvoice.paymentPhone || "01000000000", "phone")}
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                          >
+                            {copiedPayment === "phone" ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            <span>{copiedPayment === "phone" ? (lang === "ar" ? "تم النسخ" : "Copied") : (lang === "ar" ? "نسخ" : "Copy")}</span>
+                          </button>
+                        </div>
+                        <div className="font-mono font-bold text-sm text-foreground bg-muted/50 px-2.5 py-1.5 rounded-md select-all" dir="ltr">
+                          {viewingInvoice.paymentPhone || "01000000000"}
+                        </div>
+                      </div>
+
+                      {/* InstaPay IPA */}
+                      <div className="bg-card/90 border border-border/70 rounded-lg p-3 flex flex-col justify-between gap-2 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
+                            <CreditCard className="w-3.5 h-3.5 text-purple-500" />
+                            {lang === "ar" ? "عنوان إنستاباي (IPA):" : "InstaPay Address (IPA):"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPayment(viewingInvoice.paymentInstaPay || "username@instapay", "instapay")}
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                          >
+                            {copiedPayment === "instapay" ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            <span>{copiedPayment === "instapay" ? (lang === "ar" ? "تم النسخ" : "Copied") : (lang === "ar" ? "نسخ" : "Copy")}</span>
+                          </button>
+                        </div>
+                        <div className="font-mono font-bold text-sm text-foreground bg-muted/50 px-2.5 py-1.5 rounded-md select-all" dir="ltr">
+                          {viewingInvoice.paymentInstaPay || "username@instapay"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {lang === "ar"
+                        ? "يتم تزويد العميل بهاتين الوسيلتين لسداد المبلغ المستحق عبر الإيميل والواتساب."
+                        : "These payment details are automatically included in the client's invoice email and WhatsApp notice."}
+                    </p>
+                  </div>
+                )}
 
                 {/* Footer Actions */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/60">
