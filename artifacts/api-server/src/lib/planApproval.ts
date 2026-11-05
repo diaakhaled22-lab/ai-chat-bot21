@@ -629,9 +629,13 @@ export async function processApprovedPlanRequest(
 
     const formattedEndDate = subEndDate.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
 
+    const isPaid = options.isPaid !== undefined ? Boolean(options.isPaid) : true;
+
     // Update Company Quota and synchronize quota expiration date with subscription
+    // IF PAID: Credit tokens immediately to company balance.
+    // IF UNPAID: Do NOT credit tokens immediately; keep currentQuota. Tokens will be automatically credited once marked Paid.
     const currentQuota = company.monthlyTokenQuota || 0;
-    const updatedQuota = currentQuota + pack.tokens;
+    const updatedQuota = isPaid ? currentQuota + pack.tokens : currentQuota;
 
     await db
       .update(companiesTable)
@@ -643,6 +647,9 @@ export async function processApprovedPlanRequest(
         updatedAt: now,
       })
       .where(eq(companiesTable.id, company.id));
+
+    company.monthlyTokenQuota = updatedQuota;
+    company.quotaEndDate = subEndDate;
 
     invoice = {
       invoiceNumber,
@@ -662,8 +669,8 @@ export async function processApprovedPlanRequest(
       priceUsd,
       priceLocal,
       currencySymbol,
-      status: "activated",
-      isPaid: options.isPaid !== undefined ? Boolean(options.isPaid) : true,
+      status: isPaid ? "activated" : "pending",
+      isPaid,
     };
   } else {
     // ── SUBSCRIPTION PLAN APPROVAL ──
@@ -750,19 +757,27 @@ export async function processApprovedPlanRequest(
         ticketId: ticket.id,
         isPaid,
         endDate: invoice.endDate,
+        itemType: parsed.isTopup ? "topup" : "plan",
+        tokens: parsed.isTopup ? parsed.topupPack?.tokens : undefined,
+        tokensCredited: parsed.isTopup ? isPaid : true,
         updatedAt: now.toISOString(),
       }),
     })
     .catch((err) => logger.warn({ err }, "Failed to record invoice payment override in company activity logs"));
 
-  if (parsed.isTopup) {
+  if (parsed.isTopup && parsed.topupPack) {
     await db
       .insert(companyActivityLogsTable)
       .values({
         companyId: company.id,
         action: "topup_invoice",
         performedBy: options.approvedBy || "Admin",
-        note: JSON.stringify(invoice),
+        note: JSON.stringify({
+          ...invoice,
+          tokensCredited: isPaid,
+          pendingTokens: isPaid ? 0 : parsed.topupPack.tokens,
+          overrideEndDate: options.overrideEndDate || null,
+        }),
       })
       .catch((err) => logger.warn({ err }, "Failed to record topup invoice in company activity logs"));
   }
@@ -776,14 +791,33 @@ export async function processApprovedPlanRequest(
 
   const paymentBadge = isPaid ? "مسددة (Paid)" : "غير مسددة (Unpaid)";
   const endDateText = invoice.endDate ? `\nتاريخ انتهاء صلاحية الرصيد: ${invoice.endDate} (مطابق لنهاية دورة الاشتراك)` : "";
-  const resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل عبر البريد الإلكتروني والواتساب.${endDateText}`;
+
+  let resolutionNote = "";
+  let aiResponseText = "";
+  let botChatText = "";
+  let clientNotifTitle = "";
+  let clientNotifMsg = "";
+
+  if (parsed.isTopup && !isPaid) {
+    resolutionNote = `تم اعتماد طلب شحن الرصيد الإضافي (${parsed.topupPack?.formatted}) بناءً على ${approvalSourceText}.\nتم إصدار فاتورة برقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل.\n⚠️ تنبيه: رصيد الرموز الإضافي (+${(parsed.topupPack?.tokens || 0).toLocaleString()} رمز) معلق وبانتظار تأكيد استلام السداد ليتم شحنه وتفعيله في الحساب تلقائياً.${endDateText}`;
+    aiResponseText = `تم اعتماد طلب شحن الرصيد الإضافي! تم إصدار الفاتورة #${invoiceNumber} (${paymentBadge})${invoice.endDate ? ` بصلاحية تنتهي في ${invoice.endDate}` : ""} وإرسالها إليكم عبر البريد والواتساب.\n⚠️ رصيد الرموز الإضافي (+${(parsed.topupPack?.tokens || 0).toLocaleString()} رمز) معلق حالياً وبانتظار تأكيد استلام السداد ليتم شحنه في حسابكم فوراً.`;
+    botChatText = `📋 [طلب شحن معتمد - بانتظار السداد] تمت مراجعة طلبكم #${ticket.id} وإصدار الفاتورة رقم #${invoiceNumber} (${paymentBadge}). الرصيد الإضافي (+${(parsed.topupPack?.tokens || 0).toLocaleString()} رمز) معلق وسيُشحن تلقائياً بمجرد تأكيد السداد.`;
+    clientNotifTitle = `📋 [فاتورة شحن رصيد إضافي] ${invoice.itemNameAr}`;
+    clientNotifMsg = `تم إصدار فاتورة شحن الرصيد #${invoiceNumber} (غير مسددة). رصيد الرموز الإضافي معلق وسيتم إضافته إلى حسابك فور تأكيد السداد.`;
+  } else {
+    resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل عبر البريد الإلكتروني والواتساب.${endDateText}`;
+    aiResponseText = `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} (${isPaid ? "مسددة" : "غير مسددة"})${invoice.endDate ? ` بصلاحية تنتهي في ${invoice.endDate} (مطابقة لنهاية اشتراككم)` : ""} وإرسالها إليكم عبر البريد والواتساب.`;
+    botChatText = `✅ [تم التفعيل بنجاح] تمت مراجعة واعتماد طلبكم #${ticket.id} من قبل الإدارة. تم إصدار وإرسال الفاتورة رقم #${invoiceNumber}${invoice.endDate ? ` (تاريخ الانتهاء: ${invoice.endDate})` : ""}.`;
+    clientNotifTitle = `🎉 [تم تفعيل طلبك بنجاح] ${invoice.itemNameAr}`;
+    clientNotifMsg = `تم اعتماد طلبك وتفعيل الباقة/الرصيد بنجاح! تم إرسال فاتورة الاشتراك رقم #${invoiceNumber} إلى بريدك والواتساب.`;
+  }
 
   await db
     .update(ticketsTable)
     .set({
       status: "resolved",
       adminNote: resolutionNote,
-      aiResponse: `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} (${isPaid ? "مسددة" : "غير مسددة"})${invoice.endDate ? ` بصلاحية تنتهي في ${invoice.endDate} (مطابقة لنهاية اشتراككم)` : ""} وإرسالها إليكم عبر البريد والواتساب.`,
+      aiResponse: aiResponseText,
       updatedAt: now,
     })
     .where(eq(ticketsTable.id, ticket.id));
@@ -792,7 +826,7 @@ export async function processApprovedPlanRequest(
   await db
     .update(chatLogsTable)
     .set({
-      botResponse: `✅ [تم التفعيل بنجاح] تمت مراجعة واعتماد طلبكم #${ticket.id} من قبل الإدارة. تم إصدار وإرسال الفاتورة رقم #${invoiceNumber}${invoice.endDate ? ` (تاريخ الانتهاء: ${invoice.endDate})` : ""}.`,
+      botResponse: botChatText,
       isHandoff: false,
       isRead: false,
     })
@@ -804,8 +838,8 @@ export async function processApprovedPlanRequest(
     userId: client.id,
     companyId: company.id,
     type: "plan_request",
-    title: `🎉 [تم تفعيل طلبك بنجاح] ${invoice.itemNameAr}`,
-    message: `تم اعتماد طلبك وتفعيل الباقة/الرصيد بنجاح! تم إرسال فاتورة الاشتراك رقم #${invoiceNumber} إلى بريدك والواتساب.`,
+    title: clientNotifTitle,
+    message: clientNotifMsg,
     isRead: false,
   }).catch(() => {});
 
@@ -816,13 +850,20 @@ export async function processApprovedPlanRequest(
     .where(eq(usersTable.role, "admin"));
 
   if (admins.length > 0) {
+    const adminTitle = parsed.isTopup && !isPaid
+      ? `⏳ [طلب شحن معتمد - غير مسدد #${ticket.id}] ${client.name}`
+      : `✅ [تم اعتماد وتفعيل طلب #${ticket.id}] ${client.name}`;
+    const adminMsg = parsed.isTopup && !isPaid
+      ? `تم اعتماد طلب الشحن وإصدار الفاتورة #${invoiceNumber} كـ غير مسددة (الرموز معلقة حتى تأكيد السداد).`
+      : `تمت معالجة الطلب تلقائياً بناءً على موافقة الإدارة (OK). تم تفعيل "${invoice.itemNameAr}" وإرسال الفاتورة #${invoiceNumber} للعميل.`;
+
     await db.insert(notificationsTable).values(
       admins.map((a) => ({
         userId: a.id,
         companyId: company.id,
         type: "plan_request",
-        title: `✅ [تم اعتماد وتفعيل طلب #${ticket.id}] ${client.name}`,
-        message: `تمت معالجة الطلب تلقائياً بناءً على موافقة الإدارة (OK). تم تفعيل "${invoice.itemNameAr}" وإرسال الفاتورة #${invoiceNumber} للعميل.`,
+        title: adminTitle,
+        message: adminMsg,
         isRead: false,
       }))
     ).catch(() => {});

@@ -327,7 +327,7 @@ export default function AdminBills() {
         };
       });
 
-      await customFetch("/api/admin/invoices/toggle-paid", {
+      const res: any = await customFetch("/api/admin/invoices/toggle-paid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -338,17 +338,29 @@ export default function AdminBills() {
         }),
       });
 
+      let extraDesc = "";
+      if (res?.tokensCredited) {
+        extraDesc = lang === "ar"
+          ? ` 🎉 وتم شحن +${res.tokensCredited.toLocaleString()} رمز إضافي إلى رصيد الشركة تلقائياً بنجاح!`
+          : ` 🎉 Credited +${res.tokensCredited.toLocaleString()} extra tokens to company quota!`;
+      } else if (res?.tokensWithheld) {
+        extraDesc = lang === "ar"
+          ? ` ⏳ وتم تعليق/خصم ${res.tokensWithheld.toLocaleString()} رمز من رصيد الشركة لعدم السداد.`
+          : ` ⏳ Withheld ${res.tokensWithheld.toLocaleString()} tokens from company quota.`;
+      }
+
       toast({
         title: newPaid
           ? (lang === "ar" ? "✅ تم تحديد الفاتورة كـ مسددة" : "Invoice marked as Paid ✅")
           : (lang === "ar" ? "⏳ تم إلغاء سداد الفاتورة" : "Invoice marked as Unpaid ⏳"),
         description:
-          lang === "ar"
+          (lang === "ar"
             ? `الفاتورة #${inv.invoiceNumber} أصبحت ${newPaid ? "مسددة (Paid)" : "غير مسددة (Unpaid)"}.`
-            : `Invoice #${inv.invoiceNumber} is now ${newPaid ? "Paid" : "Unpaid"}.`,
+            : `Invoice #${inv.invoiceNumber} is now ${newPaid ? "Paid" : "Unpaid"}.`) + extraDesc,
       });
 
       queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
     } catch (err: any) {
       queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
       toast({

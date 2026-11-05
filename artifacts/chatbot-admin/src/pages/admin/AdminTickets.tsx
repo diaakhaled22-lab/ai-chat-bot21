@@ -1907,7 +1907,13 @@ export default function AdminTickets() {
                         {lang === "ar" ? "✅ مسددة (Paid)" : "✅ Paid"}
                       </span>
                       <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
-                        {lang === "ar" ? "تم استلام المبلغ، وتظهر مسددة في الفواتير." : "Payment received, marked as Paid in Bills."}
+                        {lang === "ar"
+                          ? isApprovalTicketTopup
+                            ? "شحن الرموز فوراً لحساب العميل وإصدار فاتورة مسددة."
+                            : "تم استلام المبلغ، وتفعيل الباقة، وتظهر مسددة في الفواتير."
+                          : isApprovalTicketTopup
+                          ? "Credit tokens immediately to balance and mark invoice Paid."
+                          : "Payment received, marked as Paid in Bills."}
                       </span>
                     </div>
                   </div>
@@ -1935,7 +1941,13 @@ export default function AdminTickets() {
                         {lang === "ar" ? "⏳ غير مسددة (Unpaid)" : "⏳ Unpaid"}
                       </span>
                       <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
-                        {lang === "ar" ? "آجل أو بانتظار الدفع، وتظهر غير مسددة." : "Awaiting payment, marked as Unpaid in Bills."}
+                        {lang === "ar"
+                          ? isApprovalTicketTopup
+                            ? "إصدار فاتورة غير مسددة، ويبقى رصيد الرموز معلقاً حتى تأكيد السداد من صفحة الفواتير."
+                            : "تفعيل آجل أو تجريبي، وتصدر الفاتورة كـ غير مسددة."
+                          : isApprovalTicketTopup
+                          ? "Issue invoice as Unpaid; tokens remain pending until payment is confirmed in Bills."
+                          : "Awaiting payment, marked as Unpaid in Bills."}
                       </span>
                     </div>
                   </div>
@@ -1974,14 +1986,14 @@ export default function AdminTickets() {
                       ? "تأكيد شحن الرصيد كـ مسددة ⚡"
                       : "تأكيد التفعيل كـ مسددة 🧾"
                     : isApprovalTicketTopup
-                    ? "تأكيد شحن الرصيد كـ غير مسددة ⚡"
+                    ? "اعتماد وإصدار فاتورة (الرصيد معلق) ⏳"
                     : "تأكيد التفعيل كـ غير مسددة 🧾"
                   : approvalIsPaid
                   ? isApprovalTicketTopup
                     ? "Confirm Top-Up (Paid) ⚡"
                     : "Confirm as Paid 🧾"
                   : isApprovalTicketTopup
-                  ? "Confirm Top-Up (Unpaid) ⚡"
+                  ? "Confirm (Tokens Pending) ⏳"
                   : "Confirm as Unpaid 🧾"}
               </span>
             </Button>

@@ -3170,7 +3170,17 @@ router.get("/admin/invoices", async (req, res) => {
               (i) => i.invoiceNumber === inv.invoiceNumber || (inv.ticketId && i.ticketId === inv.ticketId)
             );
             if (existing) {
-              existing.status = "paid";
+              if (inv.isPaid !== undefined) {
+                existing.isPaid = Boolean(inv.isPaid);
+                existing.status = existing.isPaid ? "paid" : "pending";
+              }
+              if (inv.endDate) {
+                existing.endDate = inv.endDate;
+                existing.periodEnd = inv.endDate;
+              }
+              if (inv.tokensCredited !== undefined) {
+                existing.tokensCredited = Boolean(inv.tokensCredited);
+              }
               continue;
             }
             invoiceList.push({
@@ -3200,9 +3210,10 @@ router.get("/admin/invoices", async (req, res) => {
               periodStart: tl.company.quotaStartDate ? tl.company.quotaStartDate.toISOString() : undefined,
               periodEnd: inv.endDate ? (isNaN(new Date(inv.endDate).getTime()) ? inv.endDate : new Date(inv.endDate).toISOString()) : (tl.company.quotaEndDate ? tl.company.quotaEndDate.toISOString() : (tl.company.activationEnd ? tl.company.activationEnd.toISOString() : undefined)),
               endDate: inv.endDate || (tl.company.quotaEndDate ? tl.company.quotaEndDate.toISOString() : (tl.company.activationEnd ? tl.company.activationEnd.toISOString() : undefined)),
-              state: "active",
-              isPaid: true,
-              status: "paid",
+              state: inv.isPaid === false ? "pending" : "active",
+              isPaid: inv.isPaid !== false,
+              status: inv.isPaid === false ? "pending" : "paid",
+              tokensCredited: inv.tokensCredited !== undefined ? Boolean(inv.tokensCredited) : (inv.isPaid !== false),
               issueDate: tl.log.createdAt.toISOString(),
               notes: `تم الشحن والاعتماد بواسطة ${tl.log.performedBy}`,
             });
@@ -3974,6 +3985,179 @@ router.post("/admin/invoices/toggle-paid", async (req, res) => {
       }
     }
 
+    if (!effectiveCompanyId) {
+      const [logRow] = await db
+        .select()
+        .from(companyActivityLogsTable)
+        .where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`))
+        .limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+
+    // Check if this invoice is for an Extra Token Top-Up
+    const topupLogs = await db
+      .select()
+      .from(companyActivityLogsTable)
+      .where(
+        and(
+          eq(companyActivityLogsTable.action, "topup_invoice"),
+          ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)
+        )
+      )
+      .orderBy(desc(companyActivityLogsTable.createdAt))
+      .limit(1);
+
+    let topupLog = topupLogs[0] || null;
+    let topupData: any = null;
+    let tokensAmount = 0;
+    let tokensCredited = false;
+
+    if (topupLog) {
+      try {
+        topupData = JSON.parse(topupLog.note || "{}");
+        tokensAmount = Number(topupData.tokenQuota || topupData.pendingTokens || 0);
+        tokensCredited = Boolean(topupData.tokensCredited);
+      } catch {}
+    }
+
+    // Fallback: Check ticket if ticketId exists and we couldn't find topupLog or tokensAmount
+    if (tokensAmount === 0 && ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      if (ticket) {
+        const catalog = await getActivePackagesCatalog();
+        const parsed = parseTicketPlanDetails(ticket, catalog);
+        if (parsed.isTopup && parsed.topupPack?.tokens) {
+          tokensAmount = parsed.topupPack.tokens;
+          const [paidOverride] = await db
+            .select()
+            .from(companyActivityLogsTable)
+            .where(
+              and(
+                eq(companyActivityLogsTable.action, "invoice_payment_override"),
+                ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)
+              )
+            )
+            .orderBy(desc(companyActivityLogsTable.createdAt))
+            .limit(1);
+          if (paidOverride) {
+            try {
+              const pNote = JSON.parse(paidOverride.note || "{}");
+              if (pNote.tokensCredited !== undefined) {
+                tokensCredited = Boolean(pNote.tokensCredited);
+              }
+            } catch {}
+          }
+        }
+      }
+    }
+
+    let tokensCreditedNow = 0;
+    let tokensWithheldNow = 0;
+    const now = new Date();
+    const newPaid = Boolean(isPaid);
+
+    if (effectiveCompanyId && tokensAmount > 0) {
+      const [comp] = await db
+        .select()
+        .from(companiesTable)
+        .where(eq(companiesTable.id, effectiveCompanyId))
+        .limit(1);
+
+      if (comp) {
+        if (newPaid && !tokensCredited) {
+          // Transition: Unpaid -> Paid => Credit the top-up tokens now!
+          const prevQuota = comp.monthlyTokenQuota || 0;
+          const newQuota = prevQuota + tokensAmount;
+
+          await db
+            .update(companiesTable)
+            .set({
+              monthlyTokenQuota: newQuota,
+              isActive: true,
+              updatedAt: now,
+            })
+            .where(eq(companiesTable.id, effectiveCompanyId));
+
+          tokensCreditedNow = tokensAmount;
+
+          if (topupLog && topupData) {
+            topupData.tokensCredited = true;
+            topupData.isPaid = true;
+            topupData.pendingTokens = 0;
+            await db
+              .update(companyActivityLogsTable)
+              .set({ note: JSON.stringify(topupData) })
+              .where(eq(companyActivityLogsTable.id, topupLog.id));
+          }
+
+          await db.insert(companyActivityLogsTable).values({
+            companyId: effectiveCompanyId,
+            action: "topup_tokens_credited",
+            performedBy: (req.session as any)?.userName || "Admin",
+            note: JSON.stringify({
+              invoiceNumber,
+              ticketId: ticketId || null,
+              tokensCredited: tokensAmount,
+              previousQuota: prevQuota,
+              newQuota,
+              creditedAt: now.toISOString(),
+            }),
+          });
+
+          if (comp.clientId) {
+            await db.insert(notificationsTable).values({
+              userId: comp.clientId,
+              companyId: comp.id,
+              type: "plan_request",
+              title: "🎉 [تم تأكيد السداد وشحن رصيدك الإضافي]",
+              message: `تم تأكيد استلام سداد الفاتورة رقم #${invoiceNumber}، وشحن +${tokensAmount.toLocaleString()} رمز إضافي إلى رصيد حسابكم بنجاح!`,
+              isRead: false,
+            }).catch(() => {});
+          }
+        } else if (!newPaid && tokensCredited) {
+          // Transition: Paid -> Unpaid => Withhold/deduct the top-up tokens!
+          const prevQuota = comp.monthlyTokenQuota || 0;
+          const newQuota = Math.max(0, prevQuota - tokensAmount);
+
+          await db
+            .update(companiesTable)
+            .set({
+              monthlyTokenQuota: newQuota,
+              updatedAt: now,
+            })
+            .where(eq(companiesTable.id, effectiveCompanyId));
+
+          tokensWithheldNow = tokensAmount;
+
+          if (topupLog && topupData) {
+            topupData.tokensCredited = false;
+            topupData.isPaid = false;
+            topupData.pendingTokens = tokensAmount;
+            await db
+              .update(companyActivityLogsTable)
+              .set({ note: JSON.stringify(topupData) })
+              .where(eq(companyActivityLogsTable.id, topupLog.id));
+          }
+
+          await db.insert(companyActivityLogsTable).values({
+            companyId: effectiveCompanyId,
+            action: "topup_tokens_withheld",
+            performedBy: (req.session as any)?.userName || "Admin",
+            note: JSON.stringify({
+              invoiceNumber,
+              ticketId: ticketId || null,
+              tokensWithheld: tokensAmount,
+              previousQuota: prevQuota,
+              newQuota,
+              withheldAt: now.toISOString(),
+            }),
+          });
+        }
+      }
+    }
+
     // Always log the payment override in companyActivityLogsTable if companyId is available
     if (effectiveCompanyId) {
       await db.insert(companyActivityLogsTable).values({
@@ -3983,13 +4167,20 @@ router.post("/admin/invoices/toggle-paid", async (req, res) => {
         note: JSON.stringify({
           invoiceNumber,
           ticketId: ticketId || null,
-          isPaid: Boolean(isPaid),
-          updatedAt: new Date().toISOString(),
+          isPaid: newPaid,
+          tokensCredited: newPaid ? (tokensAmount > 0 ? true : undefined) : false,
+          updatedAt: now.toISOString(),
         }),
       });
     }
 
-    res.json({ ok: true, invoiceNumber, isPaid: Boolean(isPaid) });
+    res.json({
+      ok: true,
+      invoiceNumber,
+      isPaid: newPaid,
+      tokensCredited: tokensCreditedNow > 0 ? tokensCreditedNow : undefined,
+      tokensWithheld: tokensWithheldNow > 0 ? tokensWithheldNow : undefined,
+    });
   } catch (err: any) {
     logger.error({ err }, "Toggle invoice paid error");
     res.status(500).json({ error: err?.message || "Failed to toggle invoice payment" });

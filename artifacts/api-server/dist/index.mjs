@@ -63471,8 +63471,9 @@ async function processApprovedPlanRequest(ticketId, options) {
       }
     }
     const formattedEndDate = subEndDate.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const isPaid2 = options.isPaid !== void 0 ? Boolean(options.isPaid) : true;
     const currentQuota = company.monthlyTokenQuota || 0;
-    const updatedQuota = currentQuota + pack.tokens;
+    const updatedQuota = isPaid2 ? currentQuota + pack.tokens : currentQuota;
     await db.update(companiesTable).set({
       isActive: true,
       monthlyTokenQuota: updatedQuota,
@@ -63480,6 +63481,8 @@ async function processApprovedPlanRequest(ticketId, options) {
       activationEnd: !company.activationEnd || new Date(company.activationEnd).getTime() < now.getTime() ? subEndDate : company.activationEnd,
       updatedAt: now
     }).where(eq(companiesTable.id, company.id));
+    company.monthlyTokenQuota = updatedQuota;
+    company.quotaEndDate = subEndDate;
     invoice = {
       invoiceNumber,
       ticketId: ticket.id,
@@ -63498,8 +63501,8 @@ async function processApprovedPlanRequest(ticketId, options) {
       priceUsd,
       priceLocal,
       currencySymbol,
-      status: "activated",
-      isPaid: options.isPaid !== void 0 ? Boolean(options.isPaid) : true
+      status: isPaid2 ? "activated" : "pending",
+      isPaid: isPaid2
     };
   } else {
     const plan = (options.overridePlanId ? catalog2.packages.find((p) => p.id === options.overridePlanId) : null) || parsed.plan;
@@ -63570,31 +63573,59 @@ async function processApprovedPlanRequest(ticketId, options) {
       ticketId: ticket.id,
       isPaid,
       endDate: invoice.endDate,
+      itemType: parsed.isTopup ? "topup" : "plan",
+      tokens: parsed.isTopup ? parsed.topupPack?.tokens : void 0,
+      tokensCredited: parsed.isTopup ? isPaid : true,
       updatedAt: now.toISOString()
     })
   }).catch((err) => logger.warn({ err }, "Failed to record invoice payment override in company activity logs"));
-  if (parsed.isTopup) {
+  if (parsed.isTopup && parsed.topupPack) {
     await db.insert(companyActivityLogsTable).values({
       companyId: company.id,
       action: "topup_invoice",
       performedBy: options.approvedBy || "Admin",
-      note: JSON.stringify(invoice)
+      note: JSON.stringify({
+        ...invoice,
+        tokensCredited: isPaid,
+        pendingTokens: isPaid ? 0 : parsed.topupPack.tokens,
+        overrideEndDate: options.overrideEndDate || null
+      })
     }).catch((err) => logger.warn({ err }, "Failed to record topup invoice in company activity logs"));
   }
   const approvalSourceText = options.channel === "email_reply" ? `\u0631\u062F \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A ("OK") \u0628\u0648\u0627\u0633\u0637\u0629 [${options.approvedBy}]` : options.channel === "email_button" ? `\u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0627\u0644\u0641\u0648\u0631\u064A \u0641\u064A \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A (1-Click Approve)` : `\u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0628\u0648\u0627\u0633\u0637\u0629 [${options.approvedBy}]`;
   const paymentBadge = isPaid ? "\u0645\u0633\u062F\u062F\u0629 (Paid)" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629 (Unpaid)";
   const endDateText = invoice.endDate ? `
 \u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u0631\u0635\u064A\u062F: ${invoice.endDate} (\u0645\u0637\u0627\u0628\u0642 \u0644\u0646\u0647\u0627\u064A\u0629 \u062F\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643)` : "";
-  const resolutionNote = `\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A \u0628\u0646\u062C\u0627\u062D \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 ${approvalSourceText}.
+  let resolutionNote = "";
+  let aiResponseText = "";
+  let botChatText = "";
+  let clientNotifTitle = "";
+  let clientNotifMsg = "";
+  if (parsed.isTopup && !isPaid) {
+    resolutionNote = `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628 \u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0625\u0636\u0627\u0641\u064A (${parsed.topupPack?.formatted}) \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 ${approvalSourceText}.
+\u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0628\u0631\u0642\u0645 #${invoiceNumber} (\u0627\u0644\u062D\u0627\u0644\u0629: ${paymentBadge}) \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0644\u0644\u0639\u0645\u064A\u0644.
+\u26A0\uFE0F \u062A\u0646\u0628\u064A\u0647: \u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0625\u0636\u0627\u0641\u064A (+${(parsed.topupPack?.tokens || 0).toLocaleString()} \u0631\u0645\u0632) \u0645\u0639\u0644\u0642 \u0648\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0633\u062A\u0644\u0627\u0645 \u0627\u0644\u0633\u062F\u0627\u062F \u0644\u064A\u062A\u0645 \u0634\u062D\u0646\u0647 \u0648\u062A\u0641\u0639\u064A\u0644\u0647 \u0641\u064A \u0627\u0644\u062D\u0633\u0627\u0628 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B.${endDateText}`;
+    aiResponseText = `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628 \u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0625\u0636\u0627\u0641\u064A! \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} (${paymentBadge})${invoice.endDate ? ` \u0628\u0635\u0644\u0627\u062D\u064A\u0629 \u062A\u0646\u062A\u0647\u064A \u0641\u064A ${invoice.endDate}` : ""} \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0625\u0644\u064A\u0643\u0645 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.
+\u26A0\uFE0F \u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0625\u0636\u0627\u0641\u064A (+${(parsed.topupPack?.tokens || 0).toLocaleString()} \u0631\u0645\u0632) \u0645\u0639\u0644\u0642 \u062D\u0627\u0644\u064A\u0627\u064B \u0648\u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0633\u062A\u0644\u0627\u0645 \u0627\u0644\u0633\u062F\u0627\u062F \u0644\u064A\u062A\u0645 \u0634\u062D\u0646\u0647 \u0641\u064A \u062D\u0633\u0627\u0628\u0643\u0645 \u0641\u0648\u0631\u0627\u064B.`;
+    botChatText = `\u{1F4CB} [\u0637\u0644\u0628 \u0634\u062D\u0646 \u0645\u0639\u062A\u0645\u062F - \u0628\u0627\u0646\u062A\u0638\u0627\u0631 \u0627\u0644\u0633\u062F\u0627\u062F] \u062A\u0645\u062A \u0645\u0631\u0627\u062C\u0639\u0629 \u0637\u0644\u0628\u0643\u0645 #${ticket.id} \u0648\u0625\u0635\u062F\u0627\u0631 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber} (${paymentBadge}). \u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0625\u0636\u0627\u0641\u064A (+${(parsed.topupPack?.tokens || 0).toLocaleString()} \u0631\u0645\u0632) \u0645\u0639\u0644\u0642 \u0648\u0633\u064A\u064F\u0634\u062D\u0646 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0628\u0645\u062C\u0631\u062F \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0633\u062F\u0627\u062F.`;
+    clientNotifTitle = `\u{1F4CB} [\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0625\u0636\u0627\u0641\u064A] ${invoice.itemNameAr}`;
+    clientNotifMsg = `\u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F #${invoiceNumber} (\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629). \u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0625\u0636\u0627\u0641\u064A \u0645\u0639\u0644\u0642 \u0648\u0633\u064A\u062A\u0645 \u0625\u0636\u0627\u0641\u062A\u0647 \u0625\u0644\u0649 \u062D\u0633\u0627\u0628\u0643 \u0641\u0648\u0631 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0633\u062F\u0627\u062F.`;
+  } else {
+    resolutionNote = `\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A \u0628\u0646\u062C\u0627\u062D \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 ${approvalSourceText}.
 \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0631\u0642\u0645 #${invoiceNumber} (\u0627\u0644\u062D\u0627\u0644\u0629: ${paymentBadge}) \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0644\u0644\u0639\u0645\u064A\u0644 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.${endDateText}`;
+    aiResponseText = `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628\u0643\u0645 \u0628\u0646\u062C\u0627\u062D! \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 #${invoiceNumber} (${isPaid ? "\u0645\u0633\u062F\u062F\u0629" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629"})${invoice.endDate ? ` \u0628\u0635\u0644\u0627\u062D\u064A\u0629 \u062A\u0646\u062A\u0647\u064A \u0641\u064A ${invoice.endDate} (\u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0634\u062A\u0631\u0627\u0643\u0643\u0645)` : ""} \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0625\u0644\u064A\u0643\u0645 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`;
+    botChatText = `\u2705 [\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0628\u0646\u062C\u0627\u062D] \u062A\u0645\u062A \u0645\u0631\u0627\u062C\u0639\u0629 \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628\u0643\u0645 #${ticket.id} \u0645\u0646 \u0642\u0628\u0644 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0648\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}${invoice.endDate ? ` (\u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0627\u0646\u062A\u0647\u0627\u0621: ${invoice.endDate})` : ""}.`;
+    clientNotifTitle = `\u{1F389} [\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628\u0643 \u0628\u0646\u062C\u0627\u062D] ${invoice.itemNameAr}`;
+    clientNotifMsg = `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628\u0643 \u0648\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629/\u0627\u0644\u0631\u0635\u064A\u062F \u0628\u0646\u062C\u0627\u062D! \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0631\u0642\u0645 #${invoiceNumber} \u0625\u0644\u0649 \u0628\u0631\u064A\u062F\u0643 \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`;
+  }
   await db.update(ticketsTable).set({
     status: "resolved",
     adminNote: resolutionNote,
-    aiResponse: `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628\u0643\u0645 \u0628\u0646\u062C\u0627\u062D! \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 #${invoiceNumber} (${isPaid ? "\u0645\u0633\u062F\u062F\u0629" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629"})${invoice.endDate ? ` \u0628\u0635\u0644\u0627\u062D\u064A\u0629 \u062A\u0646\u062A\u0647\u064A \u0641\u064A ${invoice.endDate} (\u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0634\u062A\u0631\u0627\u0643\u0643\u0645)` : ""} \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0625\u0644\u064A\u0643\u0645 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`,
+    aiResponse: aiResponseText,
     updatedAt: now
   }).where(eq(ticketsTable.id, ticket.id));
   await db.update(chatLogsTable).set({
-    botResponse: `\u2705 [\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0628\u0646\u062C\u0627\u062D] \u062A\u0645\u062A \u0645\u0631\u0627\u062C\u0639\u0629 \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628\u0643\u0645 #${ticket.id} \u0645\u0646 \u0642\u0628\u0644 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0648\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}${invoice.endDate ? ` (\u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0627\u0646\u062A\u0647\u0627\u0621: ${invoice.endDate})` : ""}.`,
+    botResponse: botChatText,
     isHandoff: false,
     isRead: false
   }).where(eq(chatLogsTable.sessionId, `ticket_${ticket.id}`)).catch(() => {
@@ -63603,20 +63634,22 @@ async function processApprovedPlanRequest(ticketId, options) {
     userId: client.id,
     companyId: company.id,
     type: "plan_request",
-    title: `\u{1F389} [\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628\u0643 \u0628\u0646\u062C\u0627\u062D] ${invoice.itemNameAr}`,
-    message: `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628\u0643 \u0648\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629/\u0627\u0644\u0631\u0635\u064A\u062F \u0628\u0646\u062C\u0627\u062D! \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0631\u0642\u0645 #${invoiceNumber} \u0625\u0644\u0649 \u0628\u0631\u064A\u062F\u0643 \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`,
+    title: clientNotifTitle,
+    message: clientNotifMsg,
     isRead: false
   }).catch(() => {
   });
   const admins = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "admin"));
   if (admins.length > 0) {
+    const adminTitle = parsed.isTopup && !isPaid ? `\u23F3 [\u0637\u0644\u0628 \u0634\u062D\u0646 \u0645\u0639\u062A\u0645\u062F - \u063A\u064A\u0631 \u0645\u0633\u062F\u062F #${ticket.id}] ${client.name}` : `\u2705 [\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628 #${ticket.id}] ${client.name}`;
+    const adminMsg = parsed.isTopup && !isPaid ? `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628 \u0627\u0644\u0634\u062D\u0646 \u0648\u0625\u0635\u062F\u0627\u0631 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} \u0643\u0640 \u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629 (\u0627\u0644\u0631\u0645\u0648\u0632 \u0645\u0639\u0644\u0642\u0629 \u062D\u062A\u0649 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0633\u062F\u0627\u062F).` : `\u062A\u0645\u062A \u0645\u0639\u0627\u0644\u062C\u0629 \u0627\u0644\u0637\u0644\u0628 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 \u0645\u0648\u0627\u0641\u0642\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 (OK). \u062A\u0645 \u062A\u0641\u0639\u064A\u0644 "${invoice.itemNameAr}" \u0648\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} \u0644\u0644\u0639\u0645\u064A\u0644.`;
     await db.insert(notificationsTable).values(
       admins.map((a) => ({
         userId: a.id,
         companyId: company.id,
         type: "plan_request",
-        title: `\u2705 [\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628 #${ticket.id}] ${client.name}`,
-        message: `\u062A\u0645\u062A \u0645\u0639\u0627\u0644\u062C\u0629 \u0627\u0644\u0637\u0644\u0628 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 \u0645\u0648\u0627\u0641\u0642\u0629 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 (OK). \u062A\u0645 \u062A\u0641\u0639\u064A\u0644 "${invoice.itemNameAr}" \u0648\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} \u0644\u0644\u0639\u0645\u064A\u0644.`,
+        title: adminTitle,
+        message: adminMsg,
         isRead: false
       }))
     ).catch(() => {
@@ -95903,7 +95936,17 @@ router4.get("/admin/invoices", async (req, res) => {
               (i) => i.invoiceNumber === inv.invoiceNumber || inv.ticketId && i.ticketId === inv.ticketId
             );
             if (existing) {
-              existing.status = "paid";
+              if (inv.isPaid !== void 0) {
+                existing.isPaid = Boolean(inv.isPaid);
+                existing.status = existing.isPaid ? "paid" : "pending";
+              }
+              if (inv.endDate) {
+                existing.endDate = inv.endDate;
+                existing.periodEnd = inv.endDate;
+              }
+              if (inv.tokensCredited !== void 0) {
+                existing.tokensCredited = Boolean(inv.tokensCredited);
+              }
               continue;
             }
             invoiceList.push({
@@ -95928,9 +95971,10 @@ router4.get("/admin/invoices", async (req, res) => {
               periodStart: tl.company.quotaStartDate ? tl.company.quotaStartDate.toISOString() : void 0,
               periodEnd: inv.endDate ? isNaN(new Date(inv.endDate).getTime()) ? inv.endDate : new Date(inv.endDate).toISOString() : tl.company.quotaEndDate ? tl.company.quotaEndDate.toISOString() : tl.company.activationEnd ? tl.company.activationEnd.toISOString() : void 0,
               endDate: inv.endDate || (tl.company.quotaEndDate ? tl.company.quotaEndDate.toISOString() : tl.company.activationEnd ? tl.company.activationEnd.toISOString() : void 0),
-              state: "active",
-              isPaid: true,
-              status: "paid",
+              state: inv.isPaid === false ? "pending" : "active",
+              isPaid: inv.isPaid !== false,
+              status: inv.isPaid === false ? "pending" : "paid",
+              tokensCredited: inv.tokensCredited !== void 0 ? Boolean(inv.tokensCredited) : inv.isPaid !== false,
               issueDate: tl.log.createdAt.toISOString(),
               notes: `\u062A\u0645 \u0627\u0644\u0634\u062D\u0646 \u0648\u0627\u0644\u0627\u0639\u062A\u0645\u0627\u062F \u0628\u0648\u0627\u0633\u0637\u0629 ${tl.log.performedBy}`
             });
@@ -96516,6 +96560,131 @@ router4.post("/admin/invoices/toggle-paid", async (req, res) => {
         if (comp) effectiveCompanyId = comp.id;
       }
     }
+    if (!effectiveCompanyId) {
+      const [logRow] = await db.select().from(companyActivityLogsTable).where(ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)).limit(1);
+      if (logRow && logRow.companyId) {
+        effectiveCompanyId = logRow.companyId;
+      }
+    }
+    const topupLogs = await db.select().from(companyActivityLogsTable).where(
+      and(
+        eq(companyActivityLogsTable.action, "topup_invoice"),
+        ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)
+      )
+    ).orderBy(desc(companyActivityLogsTable.createdAt)).limit(1);
+    let topupLog = topupLogs[0] || null;
+    let topupData = null;
+    let tokensAmount = 0;
+    let tokensCredited = false;
+    if (topupLog) {
+      try {
+        topupData = JSON.parse(topupLog.note || "{}");
+        tokensAmount = Number(topupData.tokenQuota || topupData.pendingTokens || 0);
+        tokensCredited = Boolean(topupData.tokensCredited);
+      } catch {
+      }
+    }
+    if (tokensAmount === 0 && ticketId) {
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+      if (ticket) {
+        const catalog2 = await getActivePackagesCatalog();
+        const parsed = parseTicketPlanDetails(ticket, catalog2);
+        if (parsed.isTopup && parsed.topupPack?.tokens) {
+          tokensAmount = parsed.topupPack.tokens;
+          const [paidOverride] = await db.select().from(companyActivityLogsTable).where(
+            and(
+              eq(companyActivityLogsTable.action, "invoice_payment_override"),
+              ilike(companyActivityLogsTable.note, `%${invoiceNumber}%`)
+            )
+          ).orderBy(desc(companyActivityLogsTable.createdAt)).limit(1);
+          if (paidOverride) {
+            try {
+              const pNote = JSON.parse(paidOverride.note || "{}");
+              if (pNote.tokensCredited !== void 0) {
+                tokensCredited = Boolean(pNote.tokensCredited);
+              }
+            } catch {
+            }
+          }
+        }
+      }
+    }
+    let tokensCreditedNow = 0;
+    let tokensWithheldNow = 0;
+    const now = /* @__PURE__ */ new Date();
+    const newPaid = Boolean(isPaid);
+    if (effectiveCompanyId && tokensAmount > 0) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, effectiveCompanyId)).limit(1);
+      if (comp) {
+        if (newPaid && !tokensCredited) {
+          const prevQuota = comp.monthlyTokenQuota || 0;
+          const newQuota = prevQuota + tokensAmount;
+          await db.update(companiesTable).set({
+            monthlyTokenQuota: newQuota,
+            isActive: true,
+            updatedAt: now
+          }).where(eq(companiesTable.id, effectiveCompanyId));
+          tokensCreditedNow = tokensAmount;
+          if (topupLog && topupData) {
+            topupData.tokensCredited = true;
+            topupData.isPaid = true;
+            topupData.pendingTokens = 0;
+            await db.update(companyActivityLogsTable).set({ note: JSON.stringify(topupData) }).where(eq(companyActivityLogsTable.id, topupLog.id));
+          }
+          await db.insert(companyActivityLogsTable).values({
+            companyId: effectiveCompanyId,
+            action: "topup_tokens_credited",
+            performedBy: req.session?.userName || "Admin",
+            note: JSON.stringify({
+              invoiceNumber,
+              ticketId: ticketId || null,
+              tokensCredited: tokensAmount,
+              previousQuota: prevQuota,
+              newQuota,
+              creditedAt: now.toISOString()
+            })
+          });
+          if (comp.clientId) {
+            await db.insert(notificationsTable).values({
+              userId: comp.clientId,
+              companyId: comp.id,
+              type: "plan_request",
+              title: "\u{1F389} [\u062A\u0645 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0633\u062F\u0627\u062F \u0648\u0634\u062D\u0646 \u0631\u0635\u064A\u062F\u0643 \u0627\u0644\u0625\u0636\u0627\u0641\u064A]",
+              message: `\u062A\u0645 \u062A\u0623\u0643\u064A\u062F \u0627\u0633\u062A\u0644\u0627\u0645 \u0633\u062F\u0627\u062F \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}\u060C \u0648\u0634\u062D\u0646 +${tokensAmount.toLocaleString()} \u0631\u0645\u0632 \u0625\u0636\u0627\u0641\u064A \u0625\u0644\u0649 \u0631\u0635\u064A\u062F \u062D\u0633\u0627\u0628\u0643\u0645 \u0628\u0646\u062C\u0627\u062D!`,
+              isRead: false
+            }).catch(() => {
+            });
+          }
+        } else if (!newPaid && tokensCredited) {
+          const prevQuota = comp.monthlyTokenQuota || 0;
+          const newQuota = Math.max(0, prevQuota - tokensAmount);
+          await db.update(companiesTable).set({
+            monthlyTokenQuota: newQuota,
+            updatedAt: now
+          }).where(eq(companiesTable.id, effectiveCompanyId));
+          tokensWithheldNow = tokensAmount;
+          if (topupLog && topupData) {
+            topupData.tokensCredited = false;
+            topupData.isPaid = false;
+            topupData.pendingTokens = tokensAmount;
+            await db.update(companyActivityLogsTable).set({ note: JSON.stringify(topupData) }).where(eq(companyActivityLogsTable.id, topupLog.id));
+          }
+          await db.insert(companyActivityLogsTable).values({
+            companyId: effectiveCompanyId,
+            action: "topup_tokens_withheld",
+            performedBy: req.session?.userName || "Admin",
+            note: JSON.stringify({
+              invoiceNumber,
+              ticketId: ticketId || null,
+              tokensWithheld: tokensAmount,
+              previousQuota: prevQuota,
+              newQuota,
+              withheldAt: now.toISOString()
+            })
+          });
+        }
+      }
+    }
     if (effectiveCompanyId) {
       await db.insert(companyActivityLogsTable).values({
         companyId: effectiveCompanyId,
@@ -96524,12 +96693,19 @@ router4.post("/admin/invoices/toggle-paid", async (req, res) => {
         note: JSON.stringify({
           invoiceNumber,
           ticketId: ticketId || null,
-          isPaid: Boolean(isPaid),
-          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+          isPaid: newPaid,
+          tokensCredited: newPaid ? tokensAmount > 0 ? true : void 0 : false,
+          updatedAt: now.toISOString()
         })
       });
     }
-    res.json({ ok: true, invoiceNumber, isPaid: Boolean(isPaid) });
+    res.json({
+      ok: true,
+      invoiceNumber,
+      isPaid: newPaid,
+      tokensCredited: tokensCreditedNow > 0 ? tokensCreditedNow : void 0,
+      tokensWithheld: tokensWithheldNow > 0 ? tokensWithheldNow : void 0
+    });
   } catch (err) {
     logger.error({ err }, "Toggle invoice paid error");
     res.status(500).json({ error: err?.message || "Failed to toggle invoice payment" });
