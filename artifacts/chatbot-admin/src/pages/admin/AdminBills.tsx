@@ -148,12 +148,22 @@ export default function AdminBills() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [selectedCurrency, setSelectedCurrency] = useState("EGP");
 
+  const { data: companies = [] } = useQuery<any[]>({
+    queryKey: ["admin-companies"],
+    queryFn: () => customFetch("/api/admin/companies"),
+    staleTime: 30_000,
+  });
+
   const resolveInvoiceEndDate = (inv: InvoiceItem | null | undefined): string | null => {
     if (!inv) return null;
-    const raw = inv.periodEnd || inv.endDate || (() => {
-      const comp = companies.find((c) => c.id === inv.companyId);
-      return comp?.quotaEndDate || comp?.activationEnd || null;
-    })();
+    const raw =
+      inv.periodEnd ||
+      inv.endDate ||
+      (() => {
+        if (!companies || !Array.isArray(companies)) return null;
+        const comp = companies.find((c: any) => c.id === inv.companyId);
+        return comp?.quotaEndDate || comp?.activationEnd || null;
+      })();
 
     if (!raw) return null;
     const d = new Date(raw);
