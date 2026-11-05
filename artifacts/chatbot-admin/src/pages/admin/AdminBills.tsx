@@ -800,7 +800,8 @@ export default function AdminBills() {
       `الحالة (State): ${inv.state === "active" ? (lang === "ar" ? "نشطة" : "Active") : (lang === "ar" ? "معلقة" : "Pending")}`,
       `السداد (Paid): ${inv.isPaid ? (lang === "ar" ? "مسددة ✅" : "Paid ✅") : (lang === "ar" ? "غير مسددة ⏳" : "Unpaid ⏳")}`,
       `تاريخ الإصدار: ${new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}`,
-    ].join("\n");
+      inv.periodEnd ? `تاريخ انتهاء الصلاحية: ${new Date(inv.periodEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}${inv.itemType === "topup" ? " (مطابق لنهاية الاشتراك)" : ""}` : "",
+    ].filter(Boolean).join("\n");
 
     navigator.clipboard.writeText(summary);
     setCopiedId(inv.id);
@@ -1414,13 +1415,31 @@ export default function AdminBills() {
                                   )}
                                 </td>
 
-                                {/* Issue Date */}
+                                {/* Issue Date & Expiration Date */}
                                 <td className="p-3 text-center font-mono text-muted-foreground">
-                                  {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })}
+                                  <div>
+                                    {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
+                                    })}
+                                  </div>
+                                  {inv.periodEnd && (
+                                    <div
+                                      className="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center justify-center gap-1 mt-1"
+                                      title={lang === "ar" ? "تاريخ انتهاء الصلاحية" : "Expiration Date"}
+                                    >
+                                      <Clock className="w-2.5 h-2.5 shrink-0" />
+                                      <span>
+                                        {lang === "ar" ? "ينتهي:" : "Exp:"}{" "}
+                                        {new Date(inv.periodEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
                                 </td>
 
                                 {/* Price */}
@@ -1771,13 +1790,31 @@ export default function AdminBills() {
                           )}
                         </td>
 
-                        {/* Issue Date */}
+                        {/* Issue Date & Expiration Date */}
                         <td className="p-3.5 text-center font-mono text-muted-foreground">
-                          {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          <div>
+                            {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </div>
+                          {inv.periodEnd && (
+                            <div
+                              className="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex items-center justify-center gap-1 mt-1"
+                              title={lang === "ar" ? "تاريخ انتهاء الصلاحية" : "Expiration Date"}
+                            >
+                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                              <span>
+                                {lang === "ar" ? "ينتهي:" : "Exp:"}{" "}
+                                {new Date(inv.periodEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         {/* Amount */}
@@ -2482,6 +2519,17 @@ export default function AdminBills() {
                     <span className="block text-muted-foreground mt-1">
                       {lang === "ar" ? "تاريخ الإصدار:" : "Date:"} {new Date(viewingInvoice.issueDate).toLocaleDateString()}
                     </span>
+                    {viewingInvoice.periodEnd && (
+                      <span className="block font-semibold text-blue-600 dark:text-blue-400 mt-1">
+                        {lang === "ar" ? "📅 تاريخ انتهاء الصلاحية:" : "📅 Expiration Date:"}{" "}
+                        {new Date(viewingInvoice.periodEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                        {viewingInvoice.itemType === "topup" ? (lang === "ar" ? " (مطابق لنهاية الاشتراك)" : " (Matches Subscription)") : ""}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -2502,6 +2550,17 @@ export default function AdminBills() {
                           <strong className="block text-foreground text-sm">
                             {lang === "ar" ? viewingInvoice.titleAr : viewingInvoice.titleEn}
                           </strong>
+                          {viewingInvoice.itemType === "topup" && viewingInvoice.periodEnd && (
+                            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold block mt-1">
+                              ⚡ {lang === "ar" ? "تاريخ انتهاء صلاحية الرصيد:" : "Top-up Expiration:"}{" "}
+                              {new Date(viewingInvoice.periodEnd).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })}{" "}
+                              {lang === "ar" ? "(مطابق لنهاية دورة الاشتراك)" : "(Matches active subscription)"}
+                            </span>
+                          )}
                           {viewingInvoice.retentionDays && (
                             <span className="text-[11px] text-muted-foreground block mt-0.5">
                               سياسة الحفظ: {viewingInvoice.retentionDays} يوم

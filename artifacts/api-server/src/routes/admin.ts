@@ -1779,6 +1779,10 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
         const now = new Date();
         const invoiceNumber = `INV-TOPUP-${id}-${Date.now().toString().slice(-6)}`;
         const issueDate = now.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+        const subEndDate = updated.quotaEndDate || updated.activationEnd;
+        const formattedEndDate = subEndDate
+          ? new Date(subEndDate).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" })
+          : undefined;
 
         const targetEmail =
           overrideEmail?.trim() ||
@@ -1793,6 +1797,7 @@ router.put("/admin/companies/:id/quota", async (req, res) => {
           invoiceNumber,
           ticketId: 0,
           issueDate,
+          endDate: formattedEndDate,
           clientName: clientUser?.name || updated.name,
           clientEmail: targetEmail,
           clientPhone: targetPhone,
@@ -3132,6 +3137,8 @@ router.get("/admin/invoices", async (req, res) => {
           : (company?.chatLogRetentionDays ?? parsed.retentionDays ?? null),
         channels: parsed.channels || [],
         tools: parsed.tools || [],
+        periodStart: company?.quotaStartDate ? company.quotaStartDate.toISOString() : undefined,
+        periodEnd: (company?.quotaEndDate ? company.quotaEndDate.toISOString() : (company?.activationEnd ? company.activationEnd.toISOString() : undefined)),
         state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
         isPaid: t.status === "resolved",
         status: t.status === "resolved" ? "paid" : "pending",
@@ -3189,6 +3196,8 @@ router.get("/admin/invoices", async (req, res) => {
               priceUsd: inv.priceUsd || 10,
               priceLocal: inv.priceLocal || Math.round((inv.priceUsd || 10) * exchangeRate),
               currencySymbol: inv.currencySymbol || currencySymbol,
+              periodStart: tl.company.quotaStartDate ? tl.company.quotaStartDate.toISOString() : undefined,
+              periodEnd: inv.endDate ? (isNaN(new Date(inv.endDate).getTime()) ? undefined : new Date(inv.endDate).toISOString()) : (tl.company.quotaEndDate ? tl.company.quotaEndDate.toISOString() : (tl.company.activationEnd ? tl.company.activationEnd.toISOString() : undefined)),
               state: "active",
               isPaid: true,
               status: "paid",

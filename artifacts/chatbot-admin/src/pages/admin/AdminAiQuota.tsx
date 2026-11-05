@@ -1207,7 +1207,9 @@ export default function AdminAiQuota() {
     const newQuota = currentQuota + topupTokens;
 
     const today = new Date();
-    let newEndDateStr = quotaTarget.quotaEndDate ? quotaTarget.quotaEndDate.slice(0, 10) : "";
+    let newEndDateStr = quotaTarget.quotaEndDate
+      ? quotaTarget.quotaEndDate.slice(0, 10)
+      : (quotaTarget.activationEnd ? quotaTarget.activationEnd.slice(0, 10) : "");
     const currentEnd = quotaTarget.quotaEndDate ? new Date(quotaTarget.quotaEndDate) : null;
     const baseForExt = currentEnd && currentEnd.getTime() > today.getTime() ? currentEnd : today;
 
@@ -3509,7 +3511,10 @@ export default function AdminAiQuota() {
                       const currentEnd = quotaTarget?.quotaEndDate ? new Date(quotaTarget.quotaEndDate) : null;
                       const base = currentEnd && currentEnd.getTime() > today.getTime() ? currentEnd : today;
                       if (topupValidityChoice === "keep") {
-                        return quotaTarget?.quotaEndDate ? quotaTarget.quotaEndDate.slice(0, 10) : (lang === "ar" ? "غير محدد" : "None");
+                        const targetEnd = quotaTarget?.quotaEndDate || quotaTarget?.activationEnd;
+                        return targetEnd
+                          ? `${targetEnd.slice(0, 10)} ${lang === "ar" ? "(مطابق للاشتراك)" : "(Matches sub)"}`
+                          : (lang === "ar" ? "غير محدد" : "None");
                       }
                       if (topupValidityChoice === "extend30") {
                         const d = new Date(base);

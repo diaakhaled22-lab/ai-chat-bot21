@@ -62785,6 +62785,9 @@ function generateInvoiceHtml(inv) {
           </td>
           <td style="text-align:left;color:#64748b;">
             \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0625\u0635\u062F\u0627\u0631: <strong style="color:#0f172a;">${escapeHtml(inv.issueDate)}</strong>
+            ${inv.endDate ? `<div style="margin-top:4px;color:#2563eb;font-weight:700;">
+                    \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0627\u0646\u062A\u0647\u0627\u0621: <strong style="color:#1d4ed8;">${escapeHtml(inv.endDate)}</strong>
+                  </div>` : ""}
           </td>
         </tr>
       </table>
@@ -62840,6 +62843,9 @@ function generateInvoiceHtml(inv) {
                 <div>\u2022 \u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u0627\u062D\u062A\u0641\u0627\u0638 \u0628\u0627\u0644\u0633\u062C\u0644\u0627\u062A: <strong>${escapeHtml(retentionText)}</strong></div>
                 <div>\u2022 \u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0627\u0644\u0646\u0634\u0637\u0629: <span>${escapeHtml(channelsList)}</span></div>
                 <div>\u2022 \u0627\u0644\u0623\u062F\u0648\u0627\u062A \u0648\u0627\u0644\u062A\u0643\u0627\u0645\u0644\u0627\u062A: <span>${escapeHtml(toolsList)}</span></div>
+                ${inv.endDate ? `<div style="margin-top:6px;padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;color:#1e40af;font-weight:600;">
+                        \u{1F4C5} \u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629: <strong>${escapeHtml(inv.endDate)}</strong> ${inv.itemType === "topup" ? "(\u0645\u0637\u0627\u0628\u0642 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643)" : ""}
+                      </div>` : ""}
               </div>
             </td>
             <td style="padding:16px 14px;text-align:center;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#334155;">
@@ -62915,6 +62921,7 @@ function generateInvoiceWhatsAppText(inv) {
     `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501`,
     `\u{1F539} *\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629:* #${inv.invoiceNumber}`,
     `\u{1F539} *\u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0625\u0635\u062F\u0627\u0631:* ${inv.issueDate}`,
+    inv.endDate ? `\u23F3 *\u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629:* ${inv.endDate}${inv.itemType === "topup" ? " (\u0645\u0637\u0627\u0628\u0642 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643)" : ""}` : null,
     `\u{1F464} *\u0627\u0644\u0639\u0645\u064A\u0644:* ${inv.clientName}`,
     `\u{1F3E2} *\u0627\u0644\u0634\u0631\u0643\u0629:* ${inv.companyName}`,
     inv.clientPhone ? `\u{1F4F1} *\u0631\u0642\u0645 \u0627\u0644\u062A\u0648\u0627\u0635\u0644:* ${inv.clientPhone}` : null,
@@ -63447,17 +63454,29 @@ async function processApprovedPlanRequest(ticketId, options) {
     const pack = parsed.topupPack;
     const priceUsd = pack.priceUsd;
     const priceLocal = Math.round(priceUsd * exchangeRate);
+    let subEndDate;
+    if (company.activationEnd && new Date(company.activationEnd).getTime() > now.getTime()) {
+      subEndDate = new Date(company.activationEnd);
+    } else if (company.quotaEndDate && new Date(company.quotaEndDate).getTime() > now.getTime()) {
+      subEndDate = new Date(company.quotaEndDate);
+    } else {
+      subEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1e3);
+    }
+    const formattedEndDate = subEndDate.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const currentQuota = company.monthlyTokenQuota || 0;
     const updatedQuota = currentQuota + pack.tokens;
     await db.update(companiesTable).set({
       isActive: true,
       monthlyTokenQuota: updatedQuota,
+      quotaEndDate: subEndDate,
+      activationEnd: !company.activationEnd || new Date(company.activationEnd).getTime() < now.getTime() ? subEndDate : company.activationEnd,
       updatedAt: now
     }).where(eq(companiesTable.id, company.id));
     invoice = {
       invoiceNumber,
       ticketId: ticket.id,
       issueDate,
+      endDate: formattedEndDate,
       clientName: client.name || "\u0627\u0644\u0639\u0645\u064A\u0644",
       clientEmail: effectiveClientEmail,
       clientPhone: parsed.phone || company.whatsappNumber || "",
@@ -63493,10 +63512,12 @@ async function processApprovedPlanRequest(ticketId, options) {
       customSources: parsed.dataSources,
       approvedBy: options.approvedBy
     });
+    const planEndDate = company.activationEnd ? new Date(company.activationEnd).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : void 0;
     invoice = {
       invoiceNumber,
       ticketId: ticket.id,
       issueDate,
+      endDate: planEndDate,
       clientName: client.name || "\u0627\u0644\u0639\u0645\u064A\u0644",
       clientEmail: effectiveClientEmail,
       clientPhone: parsed.phone || company.whatsappNumber || "",
@@ -63528,21 +63549,32 @@ async function processApprovedPlanRequest(ticketId, options) {
       invoiceNumber,
       ticketId: ticket.id,
       isPaid,
+      endDate: invoice.endDate,
       updatedAt: now.toISOString()
     })
   }).catch((err) => logger.warn({ err }, "Failed to record invoice payment override in company activity logs"));
+  if (parsed.isTopup) {
+    await db.insert(companyActivityLogsTable).values({
+      companyId: company.id,
+      action: "topup_invoice",
+      performedBy: options.approvedBy || "Admin",
+      note: JSON.stringify(invoice)
+    }).catch((err) => logger.warn({ err }, "Failed to record topup invoice in company activity logs"));
+  }
   const approvalSourceText = options.channel === "email_reply" ? `\u0631\u062F \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A ("OK") \u0628\u0648\u0627\u0633\u0637\u0629 [${options.approvedBy}]` : options.channel === "email_button" ? `\u0631\u0627\u0628\u0637 \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0627\u0644\u0641\u0648\u0631\u064A \u0641\u064A \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A (1-Click Approve)` : `\u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0628\u0648\u0627\u0633\u0637\u0629 [${options.approvedBy}]`;
   const paymentBadge = isPaid ? "\u0645\u0633\u062F\u062F\u0629 (Paid)" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629 (Unpaid)";
+  const endDateText = invoice.endDate ? `
+\u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u0631\u0635\u064A\u062F: ${invoice.endDate} (\u0645\u0637\u0627\u0628\u0642 \u0644\u0646\u0647\u0627\u064A\u0629 \u062F\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643)` : "";
   const resolutionNote = `\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A \u0628\u0646\u062C\u0627\u062D \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 ${approvalSourceText}.
-\u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0631\u0642\u0645 #${invoiceNumber} (\u0627\u0644\u062D\u0627\u0644\u0629: ${paymentBadge}) \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0644\u0644\u0639\u0645\u064A\u0644 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`;
+\u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 \u0631\u0642\u0645 #${invoiceNumber} (\u0627\u0644\u062D\u0627\u0644\u0629: ${paymentBadge}) \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0644\u0644\u0639\u0645\u064A\u0644 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.${endDateText}`;
   await db.update(ticketsTable).set({
     status: "resolved",
     adminNote: resolutionNote,
-    aiResponse: `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628\u0643\u0645 \u0628\u0646\u062C\u0627\u062D! \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 #${invoiceNumber} (${isPaid ? "\u0645\u0633\u062F\u062F\u0629" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629"}) \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0625\u0644\u064A\u0643\u0645 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`,
+    aiResponse: `\u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0637\u0644\u0628\u0643\u0645 \u0628\u0646\u062C\u0627\u062D! \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643 #${invoiceNumber} (${isPaid ? "\u0645\u0633\u062F\u062F\u0629" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629"})${invoice.endDate ? ` \u0628\u0635\u0644\u0627\u062D\u064A\u0629 \u062A\u0646\u062A\u0647\u064A \u0641\u064A ${invoice.endDate} (\u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0634\u062A\u0631\u0627\u0643\u0643\u0645)` : ""} \u0648\u0625\u0631\u0633\u0627\u0644\u0647\u0627 \u0625\u0644\u064A\u0643\u0645 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0648\u0627\u0644\u0648\u0627\u062A\u0633\u0627\u0628.`,
     updatedAt: now
   }).where(eq(ticketsTable.id, ticket.id));
   await db.update(chatLogsTable).set({
-    botResponse: `\u2705 [\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0628\u0646\u062C\u0627\u062D] \u062A\u0645\u062A \u0645\u0631\u0627\u062C\u0639\u0629 \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628\u0643\u0645 #${ticket.id} \u0645\u0646 \u0642\u0628\u0644 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0648\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}.`,
+    botResponse: `\u2705 [\u062A\u0645 \u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0628\u0646\u062C\u0627\u062D] \u062A\u0645\u062A \u0645\u0631\u0627\u062C\u0639\u0629 \u0648\u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628\u0643\u0645 #${ticket.id} \u0645\u0646 \u0642\u0628\u0644 \u0627\u0644\u0625\u062F\u0627\u0631\u0629. \u062A\u0645 \u0625\u0635\u062F\u0627\u0631 \u0648\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0642\u0645 #${invoiceNumber}${invoice.endDate ? ` (\u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0627\u0646\u062A\u0647\u0627\u0621: ${invoice.endDate})` : ""}.`,
     isHandoff: false,
     isRead: false
   }).where(eq(chatLogsTable.sessionId, `ticket_${ticket.id}`)).catch(() => {
@@ -94804,12 +94836,15 @@ router4.put("/admin/companies/:id/quota", async (req, res) => {
         const now = /* @__PURE__ */ new Date();
         const invoiceNumber = `INV-TOPUP-${id}-${Date.now().toString().slice(-6)}`;
         const issueDate = now.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+        const subEndDate = updated.quotaEndDate || updated.activationEnd;
+        const formattedEndDate = subEndDate ? new Date(subEndDate).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : void 0;
         const targetEmail = overrideEmail?.trim() || clientUser?.notificationEmail || clientUser?.email || updated.notificationEmail || "";
         const targetPhone = overridePhone?.trim() || updated.whatsappNumber || "";
         const invoice = {
           invoiceNumber,
           ticketId: 0,
           issueDate,
+          endDate: formattedEndDate,
           clientName: clientUser?.name || updated.name,
           clientEmail: targetEmail,
           clientPhone: targetPhone,
@@ -95824,6 +95859,8 @@ router4.get("/admin/invoices", async (req, res) => {
         retentionDays: parsed.retentionDays !== void 0 && parsed.retentionDays !== null && parsed.retentionDays !== 30 ? parsed.retentionDays : company?.chatLogRetentionDays ?? parsed.retentionDays ?? null,
         channels: parsed.channels || [],
         tools: parsed.tools || [],
+        periodStart: company?.quotaStartDate ? company.quotaStartDate.toISOString() : void 0,
+        periodEnd: company?.quotaEndDate ? company.quotaEndDate.toISOString() : company?.activationEnd ? company.activationEnd.toISOString() : void 0,
         state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
         isPaid: t.status === "resolved",
         status: t.status === "resolved" ? "paid" : "pending",
@@ -95867,6 +95904,8 @@ router4.get("/admin/invoices", async (req, res) => {
               priceUsd: inv.priceUsd || 10,
               priceLocal: inv.priceLocal || Math.round((inv.priceUsd || 10) * exchangeRate),
               currencySymbol: inv.currencySymbol || currencySymbol,
+              periodStart: tl.company.quotaStartDate ? tl.company.quotaStartDate.toISOString() : void 0,
+              periodEnd: inv.endDate ? isNaN(new Date(inv.endDate).getTime()) ? void 0 : new Date(inv.endDate).toISOString() : tl.company.quotaEndDate ? tl.company.quotaEndDate.toISOString() : tl.company.activationEnd ? tl.company.activationEnd.toISOString() : void 0,
               state: "active",
               isPaid: true,
               status: "paid",

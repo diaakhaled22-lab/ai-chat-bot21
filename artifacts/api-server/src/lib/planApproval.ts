@@ -607,7 +607,20 @@ export async function processApprovedPlanRequest(
     const priceUsd = pack.priceUsd;
     const priceLocal = Math.round(priceUsd * exchangeRate);
 
-    // Update Company Quota
+    // Synchronize Top-Up Expiration with the company's active subscription expiration date
+    let subEndDate: Date;
+    if (company.activationEnd && new Date(company.activationEnd).getTime() > now.getTime()) {
+      subEndDate = new Date(company.activationEnd);
+    } else if (company.quotaEndDate && new Date(company.quotaEndDate).getTime() > now.getTime()) {
+      subEndDate = new Date(company.quotaEndDate);
+    } else {
+      // Fallback if missing or already expired: 30 days from now
+      subEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const formattedEndDate = subEndDate.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+
+    // Update Company Quota and synchronize quota expiration date with subscription
     const currentQuota = company.monthlyTokenQuota || 0;
     const updatedQuota = currentQuota + pack.tokens;
 
@@ -616,6 +629,8 @@ export async function processApprovedPlanRequest(
       .set({
         isActive: true,
         monthlyTokenQuota: updatedQuota,
+        quotaEndDate: subEndDate,
+        activationEnd: (!company.activationEnd || new Date(company.activationEnd).getTime() < now.getTime()) ? subEndDate : company.activationEnd,
         updatedAt: now,
       })
       .where(eq(companiesTable.id, company.id));
@@ -624,6 +639,7 @@ export async function processApprovedPlanRequest(
       invoiceNumber,
       ticketId: ticket.id,
       issueDate,
+      endDate: formattedEndDate,
       clientName: client.name || "العميل",
       clientEmail: effectiveClientEmail,
       clientPhone: parsed.phone || company.whatsappNumber || "",
@@ -664,10 +680,13 @@ export async function processApprovedPlanRequest(
       approvedBy: options.approvedBy,
     });
 
+    const planEndDate = company.activationEnd ? new Date(company.activationEnd).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : undefined;
+
     invoice = {
       invoiceNumber,
       ticketId: ticket.id,
       issueDate,
+      endDate: planEndDate,
       clientName: client.name || "العميل",
       clientEmail: effectiveClientEmail,
       clientPhone: parsed.phone || company.whatsappNumber || "",
@@ -705,10 +724,23 @@ export async function processApprovedPlanRequest(
         invoiceNumber,
         ticketId: ticket.id,
         isPaid,
+        endDate: invoice.endDate,
         updatedAt: now.toISOString(),
       }),
     })
     .catch((err) => logger.warn({ err }, "Failed to record invoice payment override in company activity logs"));
+
+  if (parsed.isTopup) {
+    await db
+      .insert(companyActivityLogsTable)
+      .values({
+        companyId: company.id,
+        action: "topup_invoice",
+        performedBy: options.approvedBy || "Admin",
+        note: JSON.stringify(invoice),
+      })
+      .catch((err) => logger.warn({ err }, "Failed to record topup invoice in company activity logs"));
+  }
 
   const approvalSourceText =
     options.channel === "email_reply"
@@ -718,14 +750,15 @@ export async function processApprovedPlanRequest(
       : `لوحة تحكم الإدارة بواسطة [${options.approvedBy}]`;
 
   const paymentBadge = isPaid ? "مسددة (Paid)" : "غير مسددة (Unpaid)";
-  const resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل عبر البريد الإلكتروني والواتساب.`;
+  const endDateText = invoice.endDate ? `\nتاريخ انتهاء صلاحية الرصيد: ${invoice.endDate} (مطابق لنهاية دورة الاشتراك)` : "";
+  const resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل عبر البريد الإلكتروني والواتساب.${endDateText}`;
 
   await db
     .update(ticketsTable)
     .set({
       status: "resolved",
       adminNote: resolutionNote,
-      aiResponse: `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} (${isPaid ? "مسددة" : "غير مسددة"}) وإرسالها إليكم عبر البريد والواتساب.`,
+      aiResponse: `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} (${isPaid ? "مسددة" : "غير مسددة"})${invoice.endDate ? ` بصلاحية تنتهي في ${invoice.endDate} (مطابقة لنهاية اشتراككم)` : ""} وإرسالها إليكم عبر البريد والواتساب.`,
       updatedAt: now,
     })
     .where(eq(ticketsTable.id, ticket.id));
@@ -734,7 +767,7 @@ export async function processApprovedPlanRequest(
   await db
     .update(chatLogsTable)
     .set({
-      botResponse: `✅ [تم التفعيل بنجاح] تمت مراجعة واعتماد طلبكم #${ticket.id} من قبل الإدارة. تم إصدار وإرسال الفاتورة رقم #${invoiceNumber}.`,
+      botResponse: `✅ [تم التفعيل بنجاح] تمت مراجعة واعتماد طلبكم #${ticket.id} من قبل الإدارة. تم إصدار وإرسال الفاتورة رقم #${invoiceNumber}${invoice.endDate ? ` (تاريخ الانتهاء: ${invoice.endDate})` : ""}.`,
       isHandoff: false,
       isRead: false,
     })

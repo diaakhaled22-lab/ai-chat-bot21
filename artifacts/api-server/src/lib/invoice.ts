@@ -29,6 +29,7 @@ export interface InvoiceData {
   dataSources?: string[];
   status: "paid" | "activated";
   isPaid?: boolean;
+  endDate?: string | null;
 }
 
 /**
@@ -94,6 +95,13 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
           </td>
           <td style="text-align:left;color:#64748b;">
             تاريخ الإصدار: <strong style="color:#0f172a;">${escapeHtml(inv.issueDate)}</strong>
+            ${
+              inv.endDate
+                ? `<div style="margin-top:4px;color:#2563eb;font-weight:700;">
+                    تاريخ الانتهاء: <strong style="color:#1d4ed8;">${escapeHtml(inv.endDate)}</strong>
+                  </div>`
+                : ""
+            }
           </td>
         </tr>
       </table>
@@ -149,6 +157,13 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
                 <div>• سياسة الاحتفاظ بالسجلات: <strong>${escapeHtml(retentionText)}</strong></div>
                 <div>• القنوات النشطة: <span>${escapeHtml(channelsList)}</span></div>
                 <div>• الأدوات والتكاملات: <span>${escapeHtml(toolsList)}</span></div>
+                ${
+                  inv.endDate
+                    ? `<div style="margin-top:6px;padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;color:#1e40af;font-weight:600;">
+                        📅 تاريخ انتهاء الصلاحية: <strong>${escapeHtml(inv.endDate)}</strong> ${inv.itemType === "topup" ? "(مطابق لنهاية الاشتراك)" : ""}
+                      </div>`
+                    : ""
+                }
               </div>
             </td>
             <td style="padding:16px 14px;text-align:center;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#334155;">
@@ -243,6 +258,7 @@ export function generateInvoiceWhatsAppText(inv: InvoiceData): string {
     `━━━━━━━━━━━━━━━━━━━━━━`,
     `🔹 *رقم الفاتورة:* #${inv.invoiceNumber}`,
     `🔹 *تاريخ الإصدار:* ${inv.issueDate}`,
+    inv.endDate ? `⏳ *تاريخ انتهاء الصلاحية:* ${inv.endDate}${inv.itemType === "topup" ? " (مطابق لنهاية الاشتراك)" : ""}` : null,
     `👤 *العميل:* ${inv.clientName}`,
     `🏢 *الشركة:* ${inv.companyName}`,
     inv.clientPhone ? `📱 *رقم التواصل:* ${inv.clientPhone}` : null,

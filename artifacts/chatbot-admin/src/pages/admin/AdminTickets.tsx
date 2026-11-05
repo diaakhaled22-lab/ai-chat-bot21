@@ -170,6 +170,19 @@ function TicketCard({
     setTimeout(() => setCopiedType(null), 2000);
   }
 
+  const isTopup = useMemo(() => {
+    const tL = (ticket.title || "").toLowerCase();
+    const dL = (ticket.description || "").toLowerCase();
+    return (
+      tL.includes("شحن") ||
+      tL.includes("topup") ||
+      tL.includes("حزمة") ||
+      dL.includes("طلب شحن") ||
+      dL.includes("رصيد إضافي") ||
+      dL.includes("حزمة شحن")
+    );
+  }, [ticket.title, ticket.description]);
+
   const isPlanRequest = useMemo(() => {
     const tL = (ticket.title || "").toLowerCase();
     const dL = (ticket.description || "").toLowerCase();
@@ -250,6 +263,14 @@ function TicketCard({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs text-muted-foreground/80 font-bold">#{ticket.id}</span>
               <h3 className="font-semibold text-sm truncate">{ticket.title}</h3>
+              {isTopup && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] shrink-0 font-semibold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
+                >
+                  {lang === "ar" ? "شحن رصيد إضافي ⚡" : "Extra Top-Up ⚡"}
+                </Badge>
+              )}
               {ticket.adminNote?.includes("تم إلغاء هذا الطلب") || ticket.adminNote?.includes("Auto-cancelled") ? (
                 <Badge
                   variant="outline"
@@ -318,7 +339,15 @@ function TicketCard({
               className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs h-8 px-3 shadow-sm font-semibold cursor-pointer"
             >
               {isApprovingThisTicket ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              <span>{lang === "ar" ? "اعتماد وتفعيل الباقة 🧾" : "Approve & Activate 🧾"}</span>
+              <span>
+                {lang === "ar"
+                  ? isTopup
+                    ? "اعتماد وشحن الرصيد ⚡"
+                    : "اعتماد وتفعيل الباقة 🧾"
+                  : isTopup
+                  ? "Approve & Top-up ⚡"
+                  : "Approve & Activate 🧾"}
+              </span>
             </Button>
           )}
 
@@ -651,6 +680,88 @@ export default function AdminTickets() {
     queryFn: () => customFetch("/api/admin/packages"),
     staleTime: 30_000,
   });
+
+  const { data: companies = [] } = useQuery<any[]>({
+    queryKey: ["admin-companies"],
+    queryFn: () => customFetch("/api/admin/companies"),
+    staleTime: 30_000,
+  });
+
+  const isApprovalTicketTopup = useMemo(() => {
+    if (!approvalTicket) return false;
+    const tL = (approvalTicket.title || "").toLowerCase();
+    const dL = (approvalTicket.description || "").toLowerCase();
+    return (
+      tL.includes("شحن") ||
+      tL.includes("topup") ||
+      tL.includes("حزمة") ||
+      dL.includes("طلب شحن") ||
+      dL.includes("رصيد إضافي") ||
+      dL.includes("حزمة شحن")
+    );
+  }, [approvalTicket]);
+
+  const targetCompany = useMemo(() => {
+    if (!approvalTicket || !companies.length) return null;
+    return (
+      companies.find(
+        (c: any) =>
+          c.clientId === approvalTicket.clientId ||
+          (c.name && approvalTicket.description && approvalTicket.description.toLowerCase().includes(c.name.toLowerCase()))
+      ) || null
+    );
+  }, [approvalTicket, companies]);
+
+  const targetCompanySubEndDate = useMemo(() => {
+    if (!targetCompany) return null;
+    const raw = targetCompany.activationEnd || targetCompany.quotaEndDate;
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  }, [targetCompany]);
+
+  const parsedTopupInfo = useMemo(() => {
+    if (!approvalTicket || !isApprovalTicketTopup) return null;
+    const desc = approvalTicket.description || "";
+    const title = approvalTicket.title || "";
+    const descLower = desc.toLowerCase();
+    const titleLower = title.toLowerCase();
+
+    let tokens = 50_000;
+    const tokenMatch =
+      desc.match(/(\d+[\d,]*)\s*tokens?/i) ||
+      title.match(/(\d+[\d,]*)\s*رموز/i) ||
+      desc.match(/(\d+[\d,]*)\s*رموز/i);
+    const kMatch = titleLower.match(/(\d+)\s*k\b/) || descLower.match(/(\d+)\s*k\b/);
+    const mMatch = titleLower.match(/(\d+)\s*m\b/) || descLower.match(/(\d+)\s*m\b/);
+
+    if (tokenMatch && tokenMatch[1]) {
+      tokens = parseInt(tokenMatch[1].replace(/,/g, ""), 10);
+    } else if (kMatch && kMatch[1]) {
+      tokens = parseInt(kMatch[1], 10) * 1000;
+    } else if (mMatch && mMatch[1]) {
+      tokens = parseInt(mMatch[1], 10) * 1_000_000;
+    } else if (titleLower.includes("25k") || descLower.includes("25k")) {
+      tokens = 25_000;
+    } else if (titleLower.includes("50k") || descLower.includes("50k")) {
+      tokens = 50_000;
+    } else if (titleLower.includes("100k") || descLower.includes("100k")) {
+      tokens = 100_000;
+    } else if (titleLower.includes("250k") || descLower.includes("250k")) {
+      tokens = 250_000;
+    } else if (titleLower.includes("500k") || descLower.includes("500k")) {
+      tokens = 500_000;
+    } else if (titleLower.includes("1m") || descLower.includes("1m")) {
+      tokens = 1_000_000;
+    }
+
+    const topups = packagesCatalog?.topupPacks || [];
+    const matched = topups.find((p: any) => p.tokens === tokens);
+    const formatted = matched?.formatted || (tokens >= 1_000_000 ? `${tokens / 1_000_000}M+` : `${tokens / 1000}K+`);
+    const priceUsd = matched?.priceUsd || Math.max(5, Math.round((tokens / 25000) * 5));
+
+    return { tokens, formatted, priceUsd };
+  }, [approvalTicket, isApprovalTicketTopup, packagesCatalog]);
 
   const handleOpenApproveModal = (ticket: Ticket) => {
     setApprovalTicket(ticket);
@@ -1432,7 +1543,9 @@ export default function AdminTickets() {
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <DialogTitle className="text-center text-lg font-bold">
-              {lang === "ar" ? "اعتماد وتفعيل الباقة وإصدار الفاتورة" : "Approve & Activate Plan & Send Invoice"}
+              {isApprovalTicketTopup
+                ? (lang === "ar" ? "اعتماد وشحن الرصيد الإضافي وإصدار الفاتورة" : "Approve & Activate Extra Top-Up & Invoice")
+                : (lang === "ar" ? "اعتماد وتفعيل الباقة وإصدار الفاتورة" : "Approve & Activate Plan & Send Invoice")}
             </DialogTitle>
             <DialogDescription className="text-center text-xs text-muted-foreground">
               {approvalTicket && (lang === "ar"
@@ -1447,14 +1560,63 @@ export default function AdminTickets() {
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-700 dark:text-blue-300 text-xs">
                 <Zap className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="font-semibold text-[11px]">
-                  {lang === "ar"
-                    ? "⚡ متزامن بالكامل مع «اعتماد وتبديل باقة الشركة بنقرة واحدة» (One-Click Plan Tier Switcher)"
-                    : "⚡ 100% Direct Sync with «One-Click Plan Tier Switcher» (Quota, Retention, Channels, Tools)"}
+                  {isApprovalTicketTopup
+                    ? (lang === "ar"
+                        ? "⚡ يتطابق تاريخ انتهاء صلاحية هذا الرصيد الإضافي تلقائياً مع موعد نهاية الاشتراك الحالي."
+                        : "⚡ This extra allowance end date automatically synchronizes with active subscription expiration.")
+                    : (lang === "ar"
+                        ? "⚡ متزامن بالكامل مع «اعتماد وتبديل باقة الشركة بنقرة واحدة» (One-Click Plan Tier Switcher)"
+                        : "⚡ 100% Direct Sync with «One-Click Plan Tier Switcher» (Quota, Retention, Channels, Tools)")}
                 </span>
               </div>
 
-              {/* Matched Plan Tier Card (Same design as One-Click Plan Tier Switcher) */}
-              {activeModalPlan && (
+              {/* Matched Plan or Top-Up Tier Card */}
+              {isApprovalTicketTopup && parsedTopupInfo ? (
+                <div className="p-3.5 rounded-xl border border-amber-500/30 bg-card shadow-sm space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        <h5 className="text-xs font-bold text-foreground">
+                          {lang === "ar"
+                            ? `حزمة شحن رصيد إضافي (${parsedTopupInfo.formatted})`
+                            : `Top-up Tokens Pack (${parsedTopupInfo.formatted})`}
+                        </h5>
+                      </div>
+                      <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 block mt-0.5">
+                        +{parsedTopupInfo.tokens.toLocaleString()} Tokens · ${parsedTopupInfo.priceUsd} (دفعة واحدة / One-Time)
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30 shrink-0">
+                      {lang === "ar" ? "شحن رصيد إضافي ⚡" : "Extra Top-Up ⚡"}
+                    </Badge>
+                  </div>
+
+                  {/* Prominently Highlighted Expiration End Date strictly matching subscription */}
+                  <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-bold text-xs">
+                        <Calendar className="w-4 h-4 shrink-0 text-blue-600" />
+                        <span>{lang === "ar" ? "تاريخ انتهاء صلاحية الرصيد الإضافي:" : "Top-up Quota Expiration Date:"}</span>
+                      </div>
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-blue-600 text-white">
+                        {targetCompanySubEndDate
+                          ? targetCompanySubEndDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })
+                          : (lang === "ar" ? "مطابق لنهاية دورة الاشتراك (30 يوماً)" : "Matches Subscription Cycle (30 days)")}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-blue-800/80 dark:text-blue-200/80 leading-relaxed">
+                      {lang === "ar"
+                        ? "✓ تاريخ انتهاء صلاحية هذا الرصيد الإضافي يتطابق تلقائياً مع تاريخ انتهاء دورة الاشتراك الحالية لحساب الشركة."
+                        : "✓ The expiration date for this extra allowance automatically matches the company's active subscription expiration date."}
+                    </p>
+                  </div>
+                </div>
+              ) : activeModalPlan && (
                 <div className="p-3.5 rounded-xl border border-blue-500/30 bg-card shadow-sm space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -1637,10 +1799,18 @@ export default function AdminTickets() {
               <span>
                 {lang === "ar"
                   ? approvalIsPaid
-                    ? "تأكيد التفعيل كـ مسددة 🧾"
+                    ? isApprovalTicketTopup
+                      ? "تأكيد شحن الرصيد كـ مسددة ⚡"
+                      : "تأكيد التفعيل كـ مسددة 🧾"
+                    : isApprovalTicketTopup
+                    ? "تأكيد شحن الرصيد كـ غير مسددة ⚡"
                     : "تأكيد التفعيل كـ غير مسددة 🧾"
                   : approvalIsPaid
-                  ? "Confirm as Paid 🧾"
+                  ? isApprovalTicketTopup
+                    ? "Confirm Top-Up (Paid) ⚡"
+                    : "Confirm as Paid 🧾"
+                  : isApprovalTicketTopup
+                  ? "Confirm Top-Up (Unpaid) ⚡"
                   : "Confirm as Unpaid 🧾"}
               </span>
             </Button>
