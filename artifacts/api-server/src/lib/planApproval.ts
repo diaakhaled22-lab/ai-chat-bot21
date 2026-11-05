@@ -70,7 +70,16 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
     titleLower.includes("شحن") ||
     titleLower.includes("topup") ||
     titleLower.includes("حزمة") ||
-    descLower.includes("طلب شحن");
+    titleLower.includes("رصيد إضافي") ||
+    titleLower.includes("رموز إضافية") ||
+    titleLower.includes("extra token") ||
+    titleLower.includes("top-up") ||
+    descLower.includes("طلب شحن") ||
+    descLower.includes("رصيد إضافي") ||
+    descLower.includes("حزمة شحن") ||
+    descLower.includes("رموز إضافية") ||
+    descLower.includes("extra token") ||
+    descLower.includes("top-up");
 
   // Extract phone / WhatsApp
   let phone = "";

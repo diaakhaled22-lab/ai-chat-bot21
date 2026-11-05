@@ -63,15 +63,25 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
             <div style="display:inline-block;padding:6px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:30px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#bfdbfe;margin-bottom:12px;">
               BOT MANAGER • INVOICE & RECEIPT
             </div>
-            <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;">فاتورة تفعيل الاشتراك الرسمية</h1>
-            <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">تمت الموافقة وتفعيل الباقة بنجاح من قبل إدارة المنصة</p>
+            <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;">
+              ${inv.itemType === "topup" ? "فاتورة شحن رصيد إضافي" : "فاتورة تفعيل الاشتراك الرسمية"}
+            </h1>
+            <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">
+              ${
+                inv.isPaid === false
+                  ? (inv.itemType === "topup"
+                      ? "تم إصدار الفاتورة - رصيد الرموز معلّق بانتظار تأكيد استلام السداد"
+                      : "تم إصدار الفاتورة بحالة غير مسددة (آجل)")
+                  : "تمت الموافقة وتفعيل الباقة بنجاح من قبل إدارة المنصة"
+              }
+            </p>
           </td>
           <td style="vertical-align:middle;text-align:left;">
             ${
               inv.isPaid === false
                 ? `<div style="background:rgba(245,158,11,0.18);border:1px solid rgba(251,191,36,0.4);border-radius:12px;padding:8px 16px;display:inline-block;text-align:center;">
                     <span style="display:block;font-size:11px;color:#fde68a;font-weight:600;text-transform:uppercase;">الحالة / STATUS</span>
-                    <strong style="font-size:14px;color:#fbbf24;">⏳ نشط ومفعّل (غير مسددة)</strong>
+                    <strong style="font-size:14px;color:#fbbf24;">⏳ غير مسددة (${inv.itemType === "topup" ? "الرصيد معلّق" : "آجل"})</strong>
                   </div>`
                 : `<div style="background:rgba(34,197,94,0.18);border:1px solid rgba(74,222,128,0.4);border-radius:12px;padding:8px 16px;display:inline-block;text-align:center;">
                     <span style="display:block;font-size:11px;color:#86efac;font-weight:600;text-transform:uppercase;">الحالة / STATUS</span>
@@ -190,8 +200,16 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
         <tr>
           <td style="width:55%;vertical-align:top;padding-left:16px;">
             <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:14px;font-size:12px;color:#475569;line-height:1.6;">
-              <strong style="color:#0f172a;display:block;margin-bottom:4px;">ملاحظة التفعيل:</strong>
-              تم اعتماد هذا الطلب تلقائياً بواسطة الإدارة عبر البريد الإلكتروني. حساب الذكاء الاصطناعي وكافة القنوات المحددة تعمل الآن بأقصى كفاءة.
+              <strong style="color:#0f172a;display:block;margin-bottom:4px;">
+                ${inv.itemType === "topup" ? "ملاحظة شحن الرصيد:" : "ملاحظة التفعيل:"}
+              </strong>
+              ${
+                inv.itemType === "topup" && inv.isPaid === false
+                  ? `تم اعتماد طلب الشحن وإصدار الفاتورة. رصيد الرموز الإضافي (+${inv.tokenQuota.toLocaleString()} رمز) معلق حالياً، وسيتم شحنه في حسابكم تلقائياً بمجرد تأكيد استلام السداد.`
+                  : inv.isPaid === false
+                  ? "تم اعتماد الطلب وإصدار الفاتورة بحالة غير مسددة (آجل). سيتم التفعيل الكامل وتأكيد السداد فور الدفع."
+                  : "تم اعتماد هذا الطلب بنجاح بواسطة الإدارة. حساب الذكاء الاصطناعي وكافة القنوات المحددة تعمل الآن بأقصى كفاءة."
+              }
             </div>
           </td>
           <td style="width:45%;vertical-align:top;">
@@ -254,7 +272,7 @@ export function generateInvoiceWhatsAppText(inv: InvoiceData): string {
       : "";
 
   return [
-    `🧾 *فاتورة تفعيل اشتراك معتمدة - Bot Manager*`,
+    `🧾 *${inv.itemType === "topup" ? "فاتورة شحن رصيد إضافي" : "فاتورة تفعيل اشتراك معتمدة"} - Bot Manager*`,
     `━━━━━━━━━━━━━━━━━━━━━━`,
     `🔹 *رقم الفاتورة:* #${inv.invoiceNumber}`,
     `🔹 *تاريخ الإصدار:* ${inv.issueDate}`,
@@ -263,16 +281,21 @@ export function generateInvoiceWhatsAppText(inv: InvoiceData): string {
     `🏢 *الشركة:* ${inv.companyName}`,
     inv.clientPhone ? `📱 *رقم التواصل:* ${inv.clientPhone}` : null,
     `━━━━━━━━━━━━━━━━━━━━━━`,
-    `📦 *تفاصيل الاشتراك:*`,
-    `• الباقة: *${inv.itemNameAr} (${inv.itemNameEn})*`,
-    `• دورة الفوترة: *${inv.billingCycleAr}*`,
+    `📦 *تفاصيل الطلب:*`,
+    `• البند: *${inv.itemNameAr} (${inv.itemNameEn})*`,
+    `• نوع العملية: *${inv.billingCycleAr}*`,
     `• رصيد الرموز: *${inv.tokenQuota.toLocaleString()} Tokens*`,
-    `• سياسة حفظ السجلات: *${retentionText}*`,
-    `• القنوات المتاحة: *${channelsText}*`,
+    inv.itemType !== "topup" ? `• سياسة حفظ السجلات: *${retentionText}*` : null,
+    inv.itemType !== "topup" ? `• القنوات المتاحة: *${channelsText}*` : null,
     `• الإجمالي: *$${inv.priceUsd} USD*${localPriceText}`,
     `━━━━━━━━━━━━━━━━━━━━━━`,
-    `⚡ *الحالة:* ${inv.isPaid === false ? "⏳ *مفعّلة - غير مسددة (بانتظار السداد)*" : "✅ *تمت الموافقة والتفعيل - مسددة بالكامل*"}`,
-    `تم شحن الرصيد وتحديث إعدادات الذكاء الاصطناعي الخاصة بكم.`,
+    inv.itemType === "topup"
+      ? (inv.isPaid === false
+          ? `⚡ *الحالة:* ⏳ *غير مسددة (بانتظار السداد - الرصيد معلق)*\n⚠️ *ملاحظة:* تم اعتماد الطلب وإصدار الفاتورة، ورصيد الرموز الإضافي (+${inv.tokenQuota.toLocaleString()} رمز) معلق حالياً وسيتم شحنه في حسابكم تلقائياً فور تأكيد استلام السداد.`
+          : `⚡ *الحالة:* ✅ *تمت الموافقة والشحن - مسددة بالكامل*\nتم شحن الرصيد الإضافي (+${inv.tokenQuota.toLocaleString()} رمز) إلى حسابكم بنجاح.`)
+      : (inv.isPaid === false
+          ? `⚡ *الحالة:* ⏳ *غير مسددة (بانتظار السداد)*`
+          : `⚡ *الحالة:* ✅ *تمت الموافقة والتفعيل - مسددة بالكامل*\nتم تفعيل الباقة وتحديث إعدادات الذكاء الاصطناعي الخاصة بكم.`),
     `شكراً لثقتكم بنا! في حال وجود أي استفسار، يسعدنا دائماً خدمتكم.`,
   ]
     .filter(Boolean)

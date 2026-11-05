@@ -3085,8 +3085,11 @@ router.get("/admin/invoices", async (req, res) => {
         titleLower.includes("شحن") ||
         titleLower.includes("topup") ||
         titleLower.includes("اشتراك") ||
+        titleLower.includes("رصيد إضافي") ||
         descLower.includes("معرف الباقة") ||
-        descLower.includes("طلب شحن");
+        descLower.includes("طلب شحن") ||
+        descLower.includes("رصيد إضافي") ||
+        descLower.includes("حزمة شحن");
 
       if (!isPlan) continue;
 
