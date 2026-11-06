@@ -4,37 +4,10 @@ import { logger } from "./logger";
 import { db, adminConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { sendSecurityEventEmail } from "./email";
+import { isSafeUrl } from "./urlSecurity";
+import { decryptTotpValue, encryptTotpValue } from "./totpEncryption";
 
-// ── TOTP encryption helpers ──────────────────────────────────────────────
-const TOTP_ENCRYPTION_KEY = process.env.TOTP_ENCRYPTION_KEY || process.env.SESSION_SECRET || "";
-
-function encryptTotpValue(plaintext: string): string {
-  if (!TOTP_ENCRYPTION_KEY) return plaintext; // Fallback: no encryption key configured
-  const iv = crypto.randomBytes(16);
-  const key = crypto.createHash("sha256").update(TOTP_ENCRYPTION_KEY).digest();
-  const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
-  let encrypted = cipher.update(plaintext, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return iv.toString("hex") + ":" + encrypted;
-}
-
-function decryptTotpValue(ciphertext: string): string {
-  if (!TOTP_ENCRYPTION_KEY) return ciphertext;
-  // If it doesn't contain ":", it's a legacy unencrypted value
-  if (!ciphertext.includes(":")) return ciphertext;
-  try {
-    const [ivHex, encrypted] = ciphertext.split(":");
-    const iv = Buffer.from(ivHex, "hex");
-    const key = crypto.createHash("sha256").update(TOTP_ENCRYPTION_KEY).digest();
-    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
-    let decrypted = decipher.update(encrypted, "hex", "utf8");
-    decrypted += decipher.final("utf8");
-    return decrypted;
-  } catch {
-    // If decryption fails, assume it's a legacy unencrypted value
-    return ciphertext;
-  }
-}
+export { isSafeUrl, safeFetch } from "./urlSecurity";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Rate Limiting — simple in-memory sliding-window limiter
@@ -100,67 +73,6 @@ export const chatLimiter = rateLimit(60 * 1000, 30, "chat");
 export const webhookLimiter = rateLimit(60 * 1000, 120, "webhook");
 /** Sensitive operations: 5 requests per hour */
 export const sensitiveLimiter = rateLimit(60 * 60 * 1000, 5, "sensitive");
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SSRF Protection — block internal/private URLs
-// ═══════════════════════════════════════════════════════════════════════════
-
-const PRIVATE_IP_RANGES = [
-  /^127\./,                      // 127.0.0.0/8  loopback
-  /^10\./,                       // 10.0.0.0/8   private
-  /^172\.(1[6-9]|2\d|3[01])\./,  // 172.16.0.0/12 private
-  /^192\.168\./,                 // 192.168.0.0/16 private
-  /^169\.254\./,                 // 169.254.0.0/16 link-local
-  /^0\./,                        // 0.0.0.0/8
-  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // 100.64.0.0/10 CGN
-];
-
-const BLOCKED_HOSTNAMES = [
-  "localhost",
-  "metadata.google.internal",
-  "metadata.google",
-  "169.254.169.254",
-  "[::1]",
-  "0.0.0.0",
-];
-
-/**
- * Validates that a URL is safe to fetch (not internal/private).
- * Returns `true` if the URL is safe, `false` if it should be blocked.
- */
-export function isSafeUrl(urlString: string): boolean {
-  try {
-    const url = new URL(urlString);
-
-    // Block non-HTTP(S) schemes
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return false;
-    }
-
-    const hostname = url.hostname.toLowerCase();
-
-    // Block known internal hostnames
-    if (BLOCKED_HOSTNAMES.includes(hostname)) {
-      return false;
-    }
-
-    // Block private IP ranges
-    for (const pattern of PRIVATE_IP_RANGES) {
-      if (pattern.test(hostname)) {
-        return false;
-      }
-    }
-
-    // Block IPv6 shorthand for loopback
-    if (hostname === "::1" || hostname === "[::1]") {
-      return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Validates a URL for SSRF and throws a descriptive error if blocked.
@@ -328,7 +240,6 @@ export interface AttackMonitoringSnapshot {
 const loginAttempts = new Map<string, LoginAttempt>();
 const blockedIps = new Map<string, number>();
 const blockedMacs = new Map<string, number>();
-const ipToMacMap = new Map<string, string>();
 const attackLogs: AttackLogEntry[] = [];
 let nextAttackLogId = 1;
 
@@ -457,18 +368,33 @@ async function saveBlockedIpsToDb() {
 }
 
 const totpSecrets = new Map<number, string>();
+const unavailableTotpUsers = new Set<number>();
+let totpConfigUnavailable = false;
 
 export async function loadTotpSecretsFromDb() {
+  totpSecrets.clear();
+  unavailableTotpUsers.clear();
+  totpConfigUnavailable = false;
   try {
     const [row] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "totp_secrets"));
     if (row && row.value) {
       const secrets: Record<string, string> = JSON.parse(row.value);
       for (const [userIdStr, secret] of Object.entries(secrets)) {
-        totpSecrets.set(Number(userIdStr), decryptTotpValue(secret));
+        const userId = Number(userIdStr);
+        try {
+          totpSecrets.set(userId, decryptTotpValue(secret));
+        } catch (err) {
+          totpSecrets.delete(userId);
+          unavailableTotpUsers.add(userId);
+          logger.error({ err, userId }, "TOTP secret cannot be authenticated; this admin must re-enroll");
+        }
       }
     }
   } catch (err) {
-    logger.error({ err }, "Failed to load TOTP secrets from DB");
+    totpSecrets.clear();
+    unavailableTotpUsers.clear();
+    totpConfigUnavailable = true;
+    logger.error({ err }, "Failed to load TOTP secrets; configure TOTP_ENCRYPTION_KEY and re-enroll legacy or invalid secrets");
   }
 }
 
@@ -494,13 +420,20 @@ export function getTotpSecret(userId: number): string | undefined {
   return totpSecrets.get(userId);
 }
 
+export function isTotpSecretUnavailable(userId: number): boolean {
+  return totpConfigUnavailable || unavailableTotpUsers.has(userId);
+}
+
 export function setTotpSecret(userId: number, secret: string): void {
+  encryptTotpValue(secret);
   totpSecrets.set(userId, secret);
+  unavailableTotpUsers.delete(userId);
   void saveTotpSecretsToDb();
 }
 
 export function removeTotpSecret(userId: number): void {
   totpSecrets.delete(userId);
+  unavailableTotpUsers.delete(userId);
   void saveTotpSecretsToDb();
 }
 
@@ -548,8 +481,12 @@ function appendAttackLog(
   saveAttackLogsToDb();
 }
 
-function getOrCreateLoginAttempt(username: string): LoginAttempt {
-  const key = username.toLowerCase();
+function getLoginAttemptKey(username: string, ip: string): string {
+  return `${username.trim().toLowerCase()}\u0000${normalizeIp(ip)}`;
+}
+
+function getOrCreateLoginAttempt(username: string, ip: string): LoginAttempt {
+  const key = getLoginAttemptKey(username, ip);
   let entry = loginAttempts.get(key);
   if (!entry) {
     entry = { failureTimes: [], lockedUntil: null, postLockoutFailures: 0, warningSent: false };
@@ -569,6 +506,7 @@ setInterval(() => {
     if (entry.lockedUntil && now > entry.lockedUntil) {
       entry.lockedUntil = null;
       entry.failureTimes = [];
+      entry.postLockoutFailures = 0;
       entry.warningSent = false;
     }
     if (!entry.lockedUntil && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
@@ -591,8 +529,8 @@ setInterval(() => {
  * Checks if a username is currently locked out.
  * Returns the remaining lockout time in seconds, or 0 if not locked.
  */
-export function isAccountLocked(username: string): number {
-  const entry = loginAttempts.get(username.toLowerCase());
+export function isAccountLocked(username: string, ip: string): number {
+  const entry = loginAttempts.get(getLoginAttemptKey(username, ip));
   if (!entry?.lockedUntil) return 0;
   const remaining = entry.lockedUntil - Date.now();
   return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
@@ -602,14 +540,9 @@ export function isAccountLocked(username: string): number {
  * Checks whether the source IP has been blocked after repeated attempts during
  * an account lockout.
  */
-export function isIpBlocked(ip: string, macAddress?: string | null): boolean {
+export function isIpBlocked(ip: string): boolean {
   const norm = normalizeIp(ip);
-  if (!isLoopbackIp(norm) && blockedIps.has(norm)) return true;
-  const normMac = normalizeMac(macAddress);
-  if (normMac && blockedMacs.has(normMac)) return true;
-  const mappedMac = ipToMacMap.get(norm);
-  if (mappedMac && blockedMacs.has(mappedMac)) return true;
-  return false;
+  return !isLoopbackIp(norm) && blockedIps.has(norm);
 }
 
 export function isMacBlocked(macAddress?: string | null): boolean {
@@ -621,34 +554,28 @@ export function isMacBlocked(macAddress?: string | null): boolean {
  * Records an attempted login while the account is already locked. Five such
  * attempts trigger a source-IP block.
  */
-export function recordBlockedLoginAttempt(username: string, ip: string, macAddress?: string | null): boolean {
-  const entry = getOrCreateLoginAttempt(username);
+export function recordBlockedLoginAttempt(username: string, ip: string): boolean {
+  const entry = getOrCreateLoginAttempt(username, ip);
   entry.postLockoutFailures++;
   const attempts = MAX_LOGIN_ATTEMPTS + entry.postLockoutFailures;
-  appendAttackLog(ip, username, attempts, "blocked_attempt", Date.now(), macAddress);
+  appendAttackLog(ip, username, attempts, "blocked_attempt");
 
   if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
     const normalizedIp = normalizeIp(ip);
-    const normMac = normalizeMac(macAddress);
     let newlyBlocked = false;
 
     if (!isLoopbackIp(normalizedIp) && !blockedIps.has(normalizedIp)) {
       blockedIps.set(normalizedIp, Date.now());
       newlyBlocked = true;
     }
-    if (normMac && !blockedMacs.has(normMac)) {
-      blockedMacs.set(normMac, Date.now());
-      ipToMacMap.set(normalizedIp, normMac);
-      newlyBlocked = true;
-    }
 
     if (newlyBlocked) {
       void saveBlockedIpsToDb();
       void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
-      appendAttackLog(ip, username, attempts, "ip_blocked", Date.now(), macAddress);
+      appendAttackLog(ip, username, attempts, "ip_blocked");
       logger.warn(
-        { username: username.toLowerCase(), ip: normalizedIp, macAddress: normMac, attempts },
-        "IP and MAC address blocked after suspicious activity during account lockout",
+        { username: username.toLowerCase(), ip: normalizedIp, attempts },
+        "IP address blocked after suspicious activity during login lockout",
       );
     }
     return true;
@@ -662,14 +589,14 @@ export function recordBlockedLoginAttempt(username: string, ip: string, macAddre
  * Automatically triggers warning notification (bell icon + email) when consecutive
  * failed attempts reach the warning threshold (3 attempts).
  */
-export function recordFailedLogin(username: string, ip: string, macAddress?: string | null): FailedLoginResult {
+export function recordFailedLogin(username: string, ip: string): FailedLoginResult {
   const cleanUsername = username.trim() || "(unknown)";
   const normUser = cleanUsername.toLowerCase();
   const normalizedIp = normalizeIp(ip);
   const now = Date.now();
 
   // 1. Account-level tracking
-  const entry = getOrCreateLoginAttempt(normUser);
+  const entry = getOrCreateLoginAttempt(normUser, normalizedIp);
   entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
   entry.failureTimes.push(now);
   const userAttempts = entry.failureTimes.length;
@@ -684,12 +611,8 @@ export function recordFailedLogin(username: string, ip: string, macAddress?: str
   ipEntry.failureTimes.push(now);
   const ipAttempts = ipEntry.failureTimes.length;
 
-  const normMac = normalizeMac(macAddress);
-  if (normMac && !isLoopbackIp(normalizedIp)) {
-    ipToMacMap.set(normalizedIp, normMac);
-  }
   const currentAttempts = Math.max(userAttempts, ipAttempts);
-  appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "failed_attempt", now, macAddress);
+  appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "failed_attempt", now);
   logger.warn({ username: normUser, ip: normalizedIp, userAttempts, ipAttempts }, "Failed login attempt");
 
   const recentFailedAttempts = attackLogs.filter(
@@ -714,7 +637,7 @@ export function recordFailedLogin(username: string, ip: string, macAddress?: str
     if (shouldWarnUser) entry.warningSent = true;
     if (shouldWarnIp) ipEntry.warningSent = true;
 
-    appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now, macAddress);
+    appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now);
     void sendSecurityEventEmail("failed_attempts_warning", normalizedIp, cleanUsername, currentAttempts);
     logger.warn(
       { username: normUser, ip: normalizedIp, attempts: currentAttempts },
@@ -732,7 +655,7 @@ export function recordFailedLogin(username: string, ip: string, macAddress?: str
     }
     
     entry.lockedUntil = now + LOCKOUT_DURATION_MS;
-    appendAttackLog(normalizedIp, cleanUsername, userAttempts, "account_locked", now, macAddress);
+    appendAttackLog(normalizedIp, cleanUsername, userAttempts, "account_locked", now);
     logger.warn({ username: normUser, ip: normalizedIp, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
   }
 
@@ -789,7 +712,7 @@ export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
         const foundLog = attackLogs.find((l) => l.ip === ip && l.macAddress && l.macAddress !== "—");
         return {
           ip,
-          macAddress: foundLog ? foundLog.macAddress : ipToMacMap.get(ip) || null,
+          macAddress: foundLog ? foundLog.macAddress : null,
           blockedAt: new Date(blockedAt).toISOString(),
         };
       })
@@ -813,60 +736,38 @@ export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
 /**
  * Resets the failed login counter on successful login.
  */
-export function resetLoginAttempts(username: string, ip?: string): void {
-  loginAttempts.delete(username.toLowerCase());
-  if (ip) {
-    ipLoginAttempts.delete(normalizeIp(ip));
-  }
+export function resetLoginAttempts(username: string, ip: string): void {
+  loginAttempts.delete(getLoginAttemptKey(username, ip));
+  ipLoginAttempts.delete(normalizeIp(ip));
 }
 
-export function manualBlockIp(ip: string, macAddress?: string | null): void {
+export function manualBlockIp(ip: string): void {
   const normalizedIp = normalizeIp(ip);
-  const normMac = normalizeMac(macAddress);
   let changed = false;
 
   if (normalizedIp && normalizedIp !== "unknown" && !blockedIps.has(normalizedIp)) {
     blockedIps.set(normalizedIp, Date.now());
     changed = true;
   }
-  if (normMac && !blockedMacs.has(normMac)) {
-    blockedMacs.set(normMac, Date.now());
-    if (normalizedIp) ipToMacMap.set(normalizedIp, normMac);
-    changed = true;
-  }
-
   if (changed) {
     void saveBlockedIpsToDb();
-    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked", Date.now(), normMac);
-    logger.info({ ip: normalizedIp, macAddress: normMac }, "IP and MAC manually blocked by admin");
+    appendAttackLog(normalizedIp, "Admin", 0, "manual_ip_blocked");
+    logger.info({ ip: normalizedIp }, "IP manually blocked by admin");
   }
 }
 
-export function manualUnblockIp(ip: string, macAddress?: string | null): void {
+export function manualUnblockIp(ip: string): void {
   const normalizedIp = normalizeIp(ip);
-  const normMac = normalizeMac(macAddress);
   let changed = false;
 
   if (normalizedIp && blockedIps.has(normalizedIp)) {
     blockedIps.delete(normalizedIp);
     changed = true;
   }
-  if (normMac && blockedMacs.has(normMac)) {
-    blockedMacs.delete(normMac);
-    changed = true;
-  }
-
-  // Also check if any associated MAC was mapped
-  const mappedMac = ipToMacMap.get(normalizedIp);
-  if (mappedMac && blockedMacs.has(mappedMac)) {
-    blockedMacs.delete(mappedMac);
-    changed = true;
-  }
-
   if (changed) {
     void saveBlockedIpsToDb();
-    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked", Date.now(), normMac || mappedMac);
-    logger.info({ ip: normalizedIp, macAddress: normMac }, "IP and MAC manually unblocked by admin");
+    appendAttackLog(normalizedIp, "Admin", 0, "ip_unblocked");
+    logger.info({ ip: normalizedIp }, "IP manually unblocked by admin");
   }
 }
 
@@ -888,7 +789,6 @@ const ALLOWED_UPLOAD_MIMETYPES = new Set([
   "image/png",
   "image/gif",
   "image/webp",
-  "image/svg+xml",
 ]);
 
 /**

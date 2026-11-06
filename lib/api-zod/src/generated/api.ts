@@ -1002,15 +1002,14 @@ export const RequestUploadUrlResponse = zod.object({
 
 
 /**
- * Called by your chatbot after each conversation turn. Authenticate using the channel-specific API key configured in the company settings (telegramBotApiKey, whatsappApiToken, messengerApiKey, or websiteChatbotKey).
+ * Server-side integration only. Authenticate with a private Telegram, WhatsApp, or Messenger key. Website widget keys are public and are not accepted. Replies are generated and saved by the server; caller-supplied botResponse values are rejected.
  * @summary Receive a chatbot conversation and store it as a chat log
  */
 export const IngestChatMessageBody = zod.object({
-  "apiKey": zod.string().describe('The channel-specific API key stored in company settings (telegramBotApiKey, whatsappApiToken, messengerApiKey, or websiteChatbotKey)'),
-  "channel": zod.enum(['telegram', 'whatsapp', 'messenger', 'website']),
+  "apiKey": zod.string().describe('A private Telegram, WhatsApp, or Messenger channel key. Public website widget keys are not accepted.'),
+  "channel": zod.enum(['telegram', 'whatsapp', 'messenger']),
   "sessionId": zod.string().optional().describe('Optional identifier for a customer conversation thread. Messages sharing the same sessionId are grouped as a conversation.'),
   "customerMessage": zod.string(),
-  "botResponse": zod.string().nullish().describe('The bot\'s reply to this message. Omit on the first call to retrieve context before generating a response.')
 })
 
 export const IngestChatMessageResponse = zod.object({
@@ -1085,5 +1084,3 @@ export const AdminDisable2faBody = zod.object({
 export const AdminDisable2faResponse = zod.object({
   "success": zod.boolean().optional()
 })
-
-

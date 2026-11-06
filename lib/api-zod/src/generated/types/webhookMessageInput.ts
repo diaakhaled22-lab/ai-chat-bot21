@@ -8,15 +8,10 @@
 import type { WebhookMessageInputChannel } from './webhookMessageInputChannel';
 
 export interface WebhookMessageInput {
-  /** The channel-specific API key stored in company settings (telegramBotApiKey, whatsappApiToken, messengerApiKey, or websiteChatbotKey) */
+  /** Private server-side channel key. Public website widget keys are not accepted. */
   apiKey: string;
   channel: WebhookMessageInputChannel;
   /** Optional identifier for a customer conversation thread. Messages sharing the same sessionId are grouped as a conversation. */
   sessionId?: string;
   customerMessage: string;
-  /**
-     * The bot's reply to this message. Omit on the first call to retrieve context before generating a response.
-     * @nullable
-     */
-  botResponse?: string | null;
 }

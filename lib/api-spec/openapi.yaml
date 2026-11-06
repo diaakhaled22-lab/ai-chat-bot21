@@ -739,9 +739,10 @@ paths:
       tags: [webhook]
       summary: Receive a chatbot conversation and store it as a chat log
       description: >
-        Called by your chatbot after each conversation turn. Authenticate using
-        the channel-specific API key configured in the company settings
-        (telegramBotApiKey, whatsappApiToken, messengerApiKey, or websiteChatbotKey).
+        Server-side integrations only. Authenticate with a private Telegram,
+        WhatsApp, or Messenger key. Public website widget keys are not accepted.
+        The server generates and stores replies; caller-supplied botResponse
+        values are rejected.
       requestBody:
         required: true
         content:
@@ -750,13 +751,17 @@ paths:
               $ref: "#/components/schemas/WebhookMessageInput"
       responses:
         "201":
-          description: Chat log saved
+          description: Server-generated reply and chat log
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/WebhookMessageResult"
         "401":
           description: Invalid API key
+        "400":
+          description: Public website key or caller-supplied botResponse rejected
+        "503":
+          description: AI service unavailable
         "404":
           description: Company not found for the given key
 
@@ -1336,7 +1341,7 @@ components:
           type: ["string", "null"]
         channel:
           type: string
-          enum: [telegram, whatsapp, messenger, website]
+          enum: [telegram, whatsapp, messenger]
         sessionId:
           type: ["string", "null"]
         customerMessage:
@@ -1407,18 +1412,15 @@ components:
       properties:
         apiKey:
           type: string
-          description: The channel-specific API key stored in company settings (telegramBotApiKey, whatsappApiToken, messengerApiKey, or websiteChatbotKey)
+          description: A private Telegram, WhatsApp, or Messenger channel key. Public website widget keys are not accepted.
         channel:
           type: string
-          enum: [telegram, whatsapp, messenger, website]
+          enum: [telegram, whatsapp, messenger]
         sessionId:
           type: string
           description: Optional identifier for a customer conversation thread. Messages sharing the same sessionId are grouped as a conversation.
         customerMessage:
           type: string
-        botResponse:
-          type: ["string", "null"]
-          description: The bot's reply to this message. Omit on the first call to retrieve context before generating a response.
 
     ConversationTurn:
       type: object

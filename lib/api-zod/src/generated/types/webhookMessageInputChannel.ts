@@ -13,5 +13,4 @@ export const WebhookMessageInputChannel = {
   telegram: 'telegram',
   whatsapp: 'whatsapp',
   messenger: 'messenger',
-  website: 'website',
 } as const;

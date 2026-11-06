@@ -1,7 +1,7 @@
 import { Router } from "express";
+import type { Request } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { exec } from "child_process";
 import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable } from "@workspace/db";
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
@@ -18,6 +18,7 @@ import {
   validatePassword,
   regenerateSession,
   getTotpSecret,
+  isTotpSecretUnavailable,
 } from "../lib/security";
 import { authenticator } from "otplib";
 
@@ -31,33 +32,9 @@ declare module "express-session" {
 
 export const temp2faTokens = new Map<string, { userId: number; name: string; expiresAt: number }>();
 
-function extractClientIp(req: any): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  const raw = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") || req.ip || req.socket?.remoteAddress || "unknown";
-  return raw.replace(/^::ffff:/, "").trim();
-}
-
-function getArpMac(ip: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    if (!ip || ip === "unknown" || ip === "127.0.0.1" || ip === "::1" || ip === "localhost") {
-      return resolve(null);
-    }
-    // Validate IP format to prevent command injection
-    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) && !/^[0-9a-fA-F:]+$/.test(ip)) {
-      return resolve(null);
-    }
-    const isWin = process.platform === "win32";
-    const cmd = isWin ? `arp -a ${ip}` : `arp -n ${ip}`;
-    exec(cmd, { timeout: 1500 }, (err, stdout) => {
-      if (err || !stdout) return resolve(null);
-      const match = stdout.match(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/);
-      if (match) {
-        resolve(match[0].replace(/-/g, ":").toUpperCase());
-      } else {
-        resolve(null);
-      }
-    });
-  });
+function extractClientIp(req: Request): string {
+  const raw = req.ip || req.socket.remoteAddress || "unknown";
+  return raw.replace(/^::ffff:/i, "").trim() || "unknown";
 }
 
 const router = Router();
@@ -70,23 +47,18 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
     const { username, password } = parsed.data;
-    const ip = req.ip || "unknown";
     const clientIp = extractClientIp(req);
-    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
-    const headerMac = typeof req.headers["x-mac-address"] === "string" ? (req.headers["x-mac-address"] as string).trim() : null;
-    const arpMac = await getArpMac(clientIp);
-    const finalMac = bodyMac || headerMac || arpMac || null;
 
-    if (isIpBlocked(clientIp, finalMac)) {
-      res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
+    if (isIpBlocked(clientIp)) {
+      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
       return;
     }
 
     // Check account lockout
-    const lockSeconds = isAccountLocked(username);
+    const lockSeconds = isAccountLocked(username, clientIp);
     if (lockSeconds > 0) {
-      recordBlockedLoginAttempt(username, ip, finalMac);
-      res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      recordBlockedLoginAttempt(username, clientIp);
+      res.status(429).json({ error: `Too many failed attempts for this account from your IP. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
 
@@ -98,7 +70,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
 
     if (!user || user.role !== "admin") {
       if (username) {
-        const result = recordFailedLogin(username, ip, finalMac);
+        const result = recordFailedLogin(username, clientIp);
         if (result.spikeDetected) {
           void sendAttackSpikeNotification({
             recentFailedAttempts: result.recentFailedAttempts,
@@ -110,9 +82,9 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    const valid = password !== "admin123" && await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, ip, finalMac);
+      const result = recordFailedLogin(username, clientIp);
       if (result.spikeDetected) {
         void sendAttackSpikeNotification({
           recentFailedAttempts: result.recentFailedAttempts,
@@ -123,7 +95,12 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
-    resetLoginAttempts(username, ip);
+    resetLoginAttempts(username, clientIp);
+
+    if (isTotpSecretUnavailable(user.id)) {
+      res.status(503).json({ error: "Admin two-factor credentials require secure re-enrollment. Contact the system operator." });
+      return;
+    }
 
     const totpSecret = getTotpSecret(user.id);
     if (totpSecret) {
@@ -217,22 +194,17 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       return;
     }
     const { username, password } = parsed.data;
-    const ip = req.ip || "unknown";
     const clientIp = extractClientIp(req);
-    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
-    const headerMac = typeof req.headers["x-mac-address"] === "string" ? (req.headers["x-mac-address"] as string).trim() : null;
-    const arpMac = await getArpMac(clientIp);
-    let finalMac = bodyMac || headerMac || arpMac || null;
 
-    if (isIpBlocked(clientIp, finalMac)) {
-      res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
+    if (isIpBlocked(clientIp)) {
+      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
       return;
     }
 
-    const lockSeconds = isAccountLocked(username);
+    const lockSeconds = isAccountLocked(username, clientIp);
     if (lockSeconds > 0) {
-      recordBlockedLoginAttempt(username, ip, finalMac);
-      res.status(429).json({ error: `Account locked. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      recordBlockedLoginAttempt(username, clientIp);
+      res.status(429).json({ error: `Too many failed attempts for this account from your IP. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
 
@@ -242,13 +214,9 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       .where(eq(usersTable.username, username))
       .limit(1);
 
-    if (user?.macAddress && !finalMac) {
-      finalMac = user.macAddress;
-    }
-
     if (!user || user.role !== "client") {
       if (username) {
-        const result = recordFailedLogin(username, ip, finalMac);
+        const result = recordFailedLogin(username, clientIp);
         if (result.spikeDetected) {
           void sendAttackSpikeNotification({
             recentFailedAttempts: result.recentFailedAttempts,
@@ -262,7 +230,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, ip, finalMac);
+      const result = recordFailedLogin(username, clientIp);
       if (result.spikeDetected) {
         void sendAttackSpikeNotification({
           recentFailedAttempts: result.recentFailedAttempts,
@@ -273,21 +241,18 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       return;
     }
 
-    resetLoginAttempts(username, ip);
+    resetLoginAttempts(username, clientIp);
 
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);
 
     const loginUpdates: Record<string, any> = { lastLoginIp: clientIp };
-    if (finalMac) {
-      loginUpdates.macAddress = finalMac;
-    }
 
     await db
       .update(usersTable)
       .set(loginUpdates)
       .where(eq(usersTable.id, user.id))
-      .catch((err) => logger.warn({ err }, "Failed to update last login IP / MAC"));
+      .catch((err) => logger.warn({ err }, "Failed to update last login IP"));
 
     req.session.userId = user.id;
     req.session.role = "client";
@@ -309,13 +274,9 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       password?: string;
     };
     const clientIp = extractClientIp(req);
-    const bodyMac = typeof (req.body as any)?.macAddress === "string" ? (req.body as any).macAddress.trim() : null;
-    const arpMac = await getArpMac(clientIp);
-    const rawMac = arpMac || bodyMac || null;
-    const finalMac = rawMac ? rawMac.replace(/-/g, ":").toUpperCase() : null;
 
-    if (isIpBlocked(clientIp, finalMac)) {
-      res.status(429).json({ error: "Suspicious activity detected. This IP address or device (MAC) is temporarily blocked." });
+    if (isIpBlocked(clientIp)) {
+      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
       return;
     }
 
@@ -410,27 +371,6 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       }
     }
 
-    // Block addition if a MAC address is already stored in the Clients Directory
-    if (finalMac) {
-      const [existingMacClient] = await db
-        .select({ id: usersTable.id, username: usersTable.username, name: usersTable.name })
-        .from(usersTable)
-        .where(
-          and(
-            eq(usersTable.role, "client"),
-            eq(sql`UPPER(REPLACE(${usersTable.macAddress}, '-', ':'))`, finalMac)
-          )
-        )
-        .limit(1);
-
-      if (existingMacClient) {
-        res.status(409).json({
-          error: "Unable to create account. Please contact support if you need assistance.",
-        });
-        return;
-      }
-    }
-
     const passwordHash = await bcrypt.hash(password, 12);
 
     const [newUser] = await db
@@ -443,7 +383,6 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
         email: trimmedEmail,
         notificationEmail: trimmedEmail,
         lastLoginIp: clientIp,
-        macAddress: finalMac,
       })
       .returning();
 
@@ -459,7 +398,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       username: newUser.username,
       email: (newUser as any).email || newUser.notificationEmail || null,
       ip: clientIp || null,
-      mac: finalMac || null,
+      mac: null,
       source: "self_registration",
     });
 

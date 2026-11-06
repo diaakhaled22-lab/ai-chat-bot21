@@ -50,7 +50,7 @@ interface AttackMonitoringSnapshot {
 const eventLabels: Record<AttackEvent, string> = {
   failed_attempt: "Failed attempt",
   warning_triggered: "Warning alert sent",
-  account_locked: "Account locked",
+  account_locked: "Login locked from this IP",
   blocked_attempt: "Blocked attempt",
   ip_blocked: "IP blocked",
   manual_ip_blocked: "Manually blocked",
@@ -83,34 +83,32 @@ export default function AdminAttackMonitoring() {
   });
 
   const blockIpMutation = useMutation({
-    mutationFn: (param: string | { ip: string; macAddress?: string | null }) => {
-      const payload = typeof param === "string" ? { ip: param } : param;
+    mutationFn: (ip: string) => {
       return customFetch("/api/admin/attack-monitoring/block", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ip }),
       });
     },
     onSuccess: () => {
-      toast({ title: lang === "ar" ? "تم حظر الـ IP و MAC بنجاح" : "IP & MAC Blocked successfully" });
+      toast({ title: lang === "ar" ? "تم حظر عنوان IP بنجاح" : "IP blocked successfully" });
       queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
     },
     onError: (err: any) => {
-      toast({ title: lang === "ar" ? "فشل الحظر" : "Failed to block IP & MAC", description: err.message, variant: "destructive" });
+      toast({ title: lang === "ar" ? "فشل حظر عنوان IP" : "Failed to block IP", description: err.message, variant: "destructive" });
     },
   });
 
   const unblockIpMutation = useMutation({
-    mutationFn: (param: string | { ip: string; macAddress?: string | null }) => {
-      const payload = typeof param === "string" ? { ip: param } : param;
+    mutationFn: (ip: string) => {
       return customFetch("/api/admin/attack-monitoring/unblock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ip }),
       });
     },
     onSuccess: () => {
-      toast({ title: lang === "ar" ? "تم فك الحظر بنجاح" : "IP & MAC Unblocked successfully" });
+      toast({ title: lang === "ar" ? "تم فك حظر عنوان IP بنجاح" : "IP unblocked successfully" });
       queryClient.invalidateQueries({ queryKey: ["admin-attack-monitoring"] });
     },
     onError: (err: any) => {
@@ -359,20 +357,10 @@ export default function AdminAttackMonitoring() {
             ) : (
               <div className="space-y-2">
                 {analytics.activeIps.map((item) => {
-                  const matchingLog = data?.logs.find((l) => l.ip === item.value);
-                  const mac = matchingLog?.macAddress && matchingLog.macAddress !== "—" ? matchingLog.macAddress : null;
-                  const isBlocked = data?.blockedIps.some((b) => b.ip === item.value || (mac && b.macAddress === mac)) ||
-                    (mac ? data?.blockedMacs?.some((bm) => bm.macAddress === mac) : false);
+                  const isBlocked = data?.blockedIps.some((b) => b.ip === item.value);
                   return (
                     <div key={item.value} className="flex items-center justify-between gap-4 text-sm">
-                      <div className="flex items-center gap-2 min-w-0 truncate">
-                        <span className="font-mono truncate">{item.value}</span>
-                        {mac && (
-                          <span className="text-[10px] font-mono text-muted-foreground/80 bg-muted px-1.5 py-0.5 rounded border border-border/40 shrink-0">
-                            MAC: {mac}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-mono min-w-0 truncate">{item.value}</span>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge variant="outline" className="tabular-nums shrink-0">{item.count} fails</Badge>
                         {isBlocked ? (
@@ -382,10 +370,10 @@ export default function AdminAttackMonitoring() {
                             variant="outline" 
                             size="sm" 
                             className="h-6 text-xs px-2 cursor-pointer"
-                            onClick={() => blockIpMutation.mutate({ ip: item.value, macAddress: mac })}
+                            onClick={() => blockIpMutation.mutate(item.value)}
                             disabled={blockIpMutation.isPending}
                           >
-                            {lang === "ar" ? "حظر الـ IP و MAC" : "Block IP & MAC"}
+                            {lang === "ar" ? "حظر عنوان IP" : "Block IP"}
                           </Button>
                         )}
                       </div>
@@ -423,28 +411,23 @@ export default function AdminAttackMonitoring() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2 text-red-300">
               <Ban className="w-4 h-4" />
-              {lang === "ar" ? "عناوين IP و MAC المحظورة" : "Blocked IP & MAC Addresses"}
+              {lang === "ar" ? "عناوين IP المحظورة" : "Blocked IP Addresses"}
             </CardTitle>
             <CardDescription>
               {lang === "ar"
-                ? "هذه العناوين تم حظرها تلقائياً أو يدوياً بعد نشاط مشبوه، ويتم حظر الجهاز وعنوان MAC الخاص به لمنع الالتفاف."
-                : "These addresses and hardware MACs were blocked after suspicious activity to prevent bypass."}
+                ? "تم حظر هذه العناوين تلقائياً أو يدوياً بعد نشاط مشبوه."
+                : "These IP addresses were blocked automatically or manually after suspicious activity."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-nowrap sm:flex-wrap gap-2 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0 scrollbar-hide w-full max-w-full">
             {data.blockedIps.map((blocked) => (
               <div key={blocked.ip} className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-full pl-3 pr-1 py-1">
                 <span className="font-mono text-xs text-red-300">{blocked.ip}</span>
-                {blocked.macAddress && blocked.macAddress !== "—" && (
-                  <span className="font-mono text-[10px] text-red-200/80 bg-red-500/20 px-1.5 py-0.5 rounded-full">
-                    {blocked.macAddress}
-                  </span>
-                )}
                 <Button
                   variant="ghost"
                   size="icon"
                   className="w-5 h-5 rounded-full hover:bg-red-500/20 text-red-400 hover:text-red-300 ml-1 cursor-pointer"
-                  onClick={() => unblockIpMutation.mutate({ ip: blocked.ip, macAddress: blocked.macAddress })}
+                  onClick={() => unblockIpMutation.mutate(blocked.ip)}
                   disabled={unblockIpMutation.isPending}
                   title={lang === "ar" ? "فك الحظر" : "Unblock"}
                 >
@@ -484,7 +467,7 @@ export default function AdminAttackMonitoring() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>IP</TableHead>
-                    <TableHead>{lang === "ar" ? "عنوان MAC" : "MAC Address"}</TableHead>
+                    <TableHead>{lang === "ar" ? "MAC المبلّغ عنه (غير موثوق)" : "Reported MAC (unverified)"}</TableHead>
                     <TableHead>{lang === "ar" ? "الوقت" : "Time"}</TableHead>
                     <TableHead>{lang === "ar" ? "اسم المستخدم" : "Username"}</TableHead>
                     <TableHead>{lang === "ar" ? "المحاولات الفاشلة" : "Failed attempts"}</TableHead>
@@ -516,7 +499,7 @@ export default function AdminAttackMonitoring() {
                                 variant="outline"
                                 size="sm"
                                 className="h-6 text-[11px] px-3 text-red-400 hover:text-red-500 border-red-500/30 bg-red-500/10"
-                                onClick={() => unblockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
+                                onClick={() => unblockIpMutation.mutate(log.ip)}
                                 disabled={unblockIpMutation.isPending}
                               >
                                 {lang === "ar" ? "إلغاء الحظر" : "Unblock"}
@@ -526,7 +509,7 @@ export default function AdminAttackMonitoring() {
                                 variant="destructive"
                                 size="sm"
                                 className="h-6 text-[11px] px-3"
-                                onClick={() => blockIpMutation.mutate({ ip: log.ip, macAddress: log.macAddress })}
+                                onClick={() => blockIpMutation.mutate(log.ip)}
                                 disabled={blockIpMutation.isPending}
                               >
                                 {lang === "ar" ? "حظر" : "Block"}

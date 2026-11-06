@@ -14,8 +14,16 @@
 
   var SESSION_KEY = "chatwidget_session_" + widgetKey;
   var sessionId = localStorage.getItem(SESSION_KEY);
-  if (!sessionId) {
-    sessionId = "ws_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  if (!/^ws_[a-f0-9]{64}$/i.test(sessionId || "")) {
+    if (!window.crypto || typeof window.crypto.getRandomValues !== "function") {
+      console.error("[ChatWidget] Secure random generation is unavailable; refusing to create a predictable session.");
+      return;
+    }
+    var sessionBytes = new Uint8Array(32);
+    window.crypto.getRandomValues(sessionBytes);
+    sessionId = "ws_" + Array.prototype.map.call(sessionBytes, function (byte) {
+      return byte.toString(16).padStart(2, "0");
+    }).join("");
     localStorage.setItem(SESSION_KEY, sessionId);
   }
 
@@ -544,35 +552,7 @@
       .catch(function () {});
   }
 
-  
-  var ws = null;
-  function connectWebSocket() {
-    if (ws) return;
-    var wsBase = apiBase.replace(/^http/, "ws");
-    var wsUrl = wsBase + "/widget/ws?sessionId=" + encodeURIComponent(sessionId);
-    ws = new WebSocket(wsUrl);
-    ws.onmessage = function(event) {
-      try {
-        var data = JSON.parse(event.data);
-        if (data.type === "new_message") {
-          addMessage(data.role, data.text);
-          if (autoSpeak) speak(data.text);
-          if (!isOpen && !hasStoredFabPosition) {
-             // Maybe show a badge? 
-             var badge = document.getElementById("cw-badge");
-             if (badge) badge.style.display = "block";
-          }
-        }
-      } catch(e) {}
-    };
-    ws.onclose = function() {
-      ws = null;
-      setTimeout(connectWebSocket, 3000);
-    };
-  }
-
   function init() {
-    connectWebSocket();
     createStyles();
     createHTML();
     applyFabPosition();

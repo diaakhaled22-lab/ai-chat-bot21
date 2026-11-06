@@ -191,11 +191,11 @@ const translations = {
     // ── Client Webhook History Page ─────────────────────────────────────────
     webhook_title: "Webhook Integration",
     webhook_desc: "Connect custom backends or bots directly to the AI Chat API endpoint.",
-    webhook_endpoint_label: "Public Webhook Endpoint",
-    webhook_phase1_title: "Phase 1: Fetch AI Context (Before Generating Reply)",
-    webhook_phase1_desc: "Send customerMessage only. The API returns the system prompt and conversation history without saving anything.",
-    webhook_phase2_title: "Phase 2: Save Complete Turn (After Generating Reply)",
-    webhook_phase2_desc: "Send customerMessage and botResponse together to log the conversation permanently.",
+    webhook_endpoint_label: "Server-to-Server Webhook Endpoint",
+    webhook_phase1_title: "Send a message and receive a server-generated reply",
+    webhook_phase1_desc: "The server generates the assistant reply, stores the conversation, and returns the chat log. Use a private channel key from a trusted server only.",
+    webhook_phase2_title: "Caller-provided replies are disabled",
+    webhook_phase2_desc: "The endpoint rejects botResponse values. Public website widget keys cannot access this endpoint.",
 
     // ── Client Widget Preview Page ──────────────────────────────────────────
     widget_preview_title: "Live Widget Preview",
@@ -604,11 +604,11 @@ const translations = {
     // ── Client Webhook History Page ─────────────────────────────────────────
     webhook_title: "تكامل الويب هوك (Webhook)",
     webhook_desc: "ربط الأنظمة الخارجية والمطورين مباشرة مع واجهة برمجة تطبيقات الذكاء الاصطناعي.",
-    webhook_endpoint_label: "رابط نقطة النهاية (Webhook Endpoint)",
-    webhook_phase1_title: "المرحلة الأولى: جلب السياق (قبل توليد الرد)",
-    webhook_phase1_desc: "أرسل رسالة العميل فقط لجلب التعليمات وسجل المحادثة دون حفظ أي شيء.",
-    webhook_phase2_title: "المرحلة الثانية: حفظ المحادثة (بعد توليد الرد)",
-    webhook_phase2_desc: "أرسل رسالة العميل مع رد البوت معاً لحفظ المحادثة بشكل دائم.",
+    webhook_endpoint_label: "نقطة اتصال خادمية (Webhook)",
+    webhook_phase1_title: "أرسل رسالة واستقبل رداً يولّده الخادم",
+    webhook_phase1_desc: "يولّد الخادم رد المساعد ويحفظ المحادثة ويعيد سجلها. استخدم مفتاح قناة خاصاً من خادم موثوق فقط.",
+    webhook_phase2_title: "الردود التي يرسلها العميل معطلة",
+    webhook_phase2_desc: "يرفض المسار قيمة botResponse، كما لا يقبل مفاتيح ويدجت الموقع العامة.",
 
     // ── Client Widget Preview Page ──────────────────────────────────────────
     widget_preview_title: "معاينة الويدجت المباشر",
@@ -721,5 +721,4 @@ const translations = {
 
 export type TranslationKey = keyof typeof translations.en;
 export { translations };
-
 

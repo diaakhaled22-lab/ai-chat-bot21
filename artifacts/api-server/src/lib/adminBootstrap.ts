@@ -7,6 +7,28 @@ import { DEFAULT_PACKAGES_CATALOG } from "./packagesCatalog";
 
 export async function ensureAdminExists(database: typeof db = db): Promise<void> {
   try {
+    const admins = await database
+      .select({ id: usersTable.id, passwordHash: usersTable.passwordHash })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+    const configuredPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+    for (const admin of admins) {
+      if (await bcrypt.compare("admin123", admin.passwordHash)) {
+        const replacementPassword = configuredPassword && configuredPassword !== "admin123" && configuredPassword.length >= 16
+          ? configuredPassword
+          : crypto.randomBytes(32).toString("hex");
+        await database.update(usersTable)
+          .set({ passwordHash: await bcrypt.hash(replacementPassword, 12) })
+          .where(eq(usersTable.id, admin.id));
+        logger.error(
+          { userId: admin.id },
+          configuredPassword && replacementPassword === configuredPassword
+            ? "SECURITY: Rotated an admin password matching the documented weak credential to DEFAULT_ADMIN_PASSWORD."
+            : "SECURITY: Rotated an admin password matching the documented weak credential to an undisclosed random value; configure a strong DEFAULT_ADMIN_PASSWORD and rotate it through a secure recovery process.",
+        );
+      }
+    }
+
     const [existingAdmin] = await database
       .select({ id: usersTable.id })
       .from(usersTable)
@@ -15,13 +37,15 @@ export async function ensureAdminExists(database: typeof db = db): Promise<void>
 
     if (existingAdmin) return;
 
-    // Keep the documented development credentials usable after a fresh reset.
-    // Production deployments should always provide DEFAULT_ADMIN_PASSWORD.
-    if (!process.env.DEFAULT_ADMIN_PASSWORD && process.env.NODE_ENV === 'production') {
-      logger.error('SECURITY: DEFAULT_ADMIN_PASSWORD env var is required in production. Refusing to create admin with weak default.');
+    if (configuredPassword && (configuredPassword === "admin123" || configuredPassword.length < 16)) {
+      logger.error("SECURITY: DEFAULT_ADMIN_PASSWORD must not be admin123 and must be at least 16 characters.");
       return;
     }
-    const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+    if (!configuredPassword && process.env.NODE_ENV === "production") {
+      logger.error("SECURITY: DEFAULT_ADMIN_PASSWORD is required in production. Refusing to create an admin.");
+      return;
+    }
+    const defaultPassword = configuredPassword || crypto.randomBytes(32).toString("hex");
     const passwordHash = await bcrypt.hash(defaultPassword, 12);
     await database.insert(usersTable).values({
       name: "Admin",
@@ -31,7 +55,7 @@ export async function ensureAdminExists(database: typeof db = db): Promise<void>
     });
     logger.warn(
       { username: "admin" },
-      `No admin user found — created default admin. ${process.env.DEFAULT_ADMIN_PASSWORD ? "Using password from DEFAULT_ADMIN_PASSWORD env var." : "Using the documented default password — CHANGE THIS IMMEDIATELY."}`,
+      `No admin user found — created admin with ${configuredPassword ? "DEFAULT_ADMIN_PASSWORD." : "an undisclosed random password; configure DEFAULT_ADMIN_PASSWORD and use the secure recovery process."}`,
     );
   } catch (err) {
     logger.error({ err }, "Failed to ensure admin user exists");

@@ -424,13 +424,13 @@ export async function sendSecurityEventEmail(
     alertTitleAr = "تحذير: محاولات تسجيل دخول فاشلة متتالية";
     alertSubtitleAr = `تم رصد نشاط دخول مشبوه بعد ${attempts} محاولات متتالية`;
   } else if (event === "account_locked") {
-    title = `تنبيه أمني: تم قفل الحساب (${username})`;
-    message = `تم قفل الحساب "${username}" مؤقتًا بعد وصول محاولات تسجيل الدخول الفاشلة إلى ${attempts} محاولات من عنوان IP: ${ip}.`;
-    subjectBadge = "قفل حساب";
+    title = `تنبيه أمني: تم إيقاف محاولات الدخول للحساب (${username}) من هذا العنوان`;
+    message = `تم إيقاف تسجيل الدخول للحساب "${username}" مؤقتًا من عنوان IP: ${ip} بعد ${attempts} محاولات فاشلة. يمكن للحساب تسجيل الدخول من عنوان آخر.`;
+    subjectBadge = "تقييد تسجيل الدخول";
     alertHeaderBg = "#fee2e2";
     alertHeaderColor = "#991b1b";
-    alertTitleAr = "تنبيه أمني: تم قفل الحساب مؤقتًا";
-    alertSubtitleAr = `تجاوز الحد الأقصى للمحاولات الفاشلة (${attempts} محاولات)`;
+    alertTitleAr = "تنبيه أمني: تم تقييد تسجيل الدخول من هذا العنوان";
+    alertSubtitleAr = `تم تجاوز الحد الأقصى للمحاولات الفاشلة (${attempts}) لهذا الحساب من عنوان IP هذا`;
   } else {
     title = `تنبيه أمني: تم حظر عنوان IP (${ip})`;
     message = `تم حظر عنوان IP: ${ip} تلقائيًا بعد ${attempts} محاولات مشبوهة استهدفت الحساب "${username}".`;
@@ -751,5 +751,4 @@ export async function sendNewClientNotification(client: {
     logger.warn({ emailErr, clientId: client.id }, "Failed to send new client email notification (non-fatal)");
   }
 }
-
 

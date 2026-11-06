@@ -48,7 +48,12 @@ export async function getMetaAppSecret(): Promise<string | null> {
     return val;
   } catch (err) {
     logger.error({ err }, "Failed to query meta_app_secret from db");
-    return process.env.META_APP_SECRET?.trim() || null;
+    return (
+      process.env.META_APP_SECRET?.trim() ||
+      process.env.WHATSAPP_APP_SECRET?.trim() ||
+      process.env.MESSENGER_APP_SECRET?.trim() ||
+      null
+    );
   }
 }
 
@@ -111,13 +116,14 @@ export function timingSafeCompare(a: string | undefined | null, b: string | unde
 
 /**
  * Express middleware to cryptographically verify incoming Meta (WhatsApp / Messenger) webhooks.
- * If Meta App Secret is configured:
- *  - Rejects with 401 Unauthorized if X-Hub-Signature-256 is absent or mathematically invalid.
- * If not yet configured:
- *  - Logs a security notice and passes through so initial webhook setup is never blocked.
+ * Missing configuration or raw request bytes fail closed.
  */
-export function createMetaSignatureMiddleware(options?: { channelName?: string }) {
+export function createMetaSignatureMiddleware(options?: {
+  channelName?: string;
+  getAppSecret?: () => Promise<string | null>;
+}) {
   const channel = options?.channelName || "Meta";
+  const loadSecret = options?.getAppSecret || getMetaAppSecret;
 
   return async (req: Request, res: Response, next: NextFunction) => {
     // Only verify POST requests
@@ -125,16 +131,31 @@ export function createMetaSignatureMiddleware(options?: { channelName?: string }
       return next();
     }
 
-    const appSecret = await getMetaAppSecret();
+    let appSecret: string | null;
+    try {
+      appSecret = await loadSecret();
+    } catch (err) {
+      logger.error({ err, channel }, "Failed to load Meta App Secret; rejecting webhook");
+      res.status(503).json({ error: "Meta webhook signature verification is unavailable" });
+      return;
+    }
 
     if (!appSecret) {
-      // If secret not configured in Admin panel, allow traffic with a warning
-      // so webhook functionality is not disrupted during setup.
-      logger.warn(
+      logger.error(
         { channel, path: req.originalUrl || req.path },
-        `[Webhook Security] ${channel} App Secret (meta_app_secret) is not configured. Signature verification bypassed. Configure it in Admin -> Webhooks for 100% cryptographic certainty.`
+        `[Webhook Security] ${channel} App Secret is not configured; rejecting webhook`,
       );
-      return next();
+      res.status(503).json({ error: "Meta webhook signature verification is not configured" });
+      return;
+    }
+
+    if (!req.rawBody) {
+      logger.error(
+        { channel, path: req.originalUrl || req.path },
+        `[Webhook Security] Raw request body unavailable; rejecting webhook`,
+      );
+      res.status(400).json({ error: "Raw request body is required for signature verification" });
+      return;
     }
 
     const sigHeader =

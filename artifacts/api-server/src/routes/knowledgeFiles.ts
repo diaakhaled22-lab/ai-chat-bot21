@@ -7,9 +7,12 @@ import { requireClient } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { processKnowledgeFile, extractTextFromBuffer, KnowledgeFileType } from "../lib/knowledgeFiles";
 import { indexKnowledgeFileChunks, retrieveRelevantKnowledgeChunks } from "../lib/knowledgeRag";
+import { ObjectStorageService } from "../lib/objectStorage";
+import { isKnowledgeUploadPath, isOwnedKnowledgeUpload } from "../lib/knowledgeFileSecurity";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+const objectStorageService = new ObjectStorageService();
 
 const FILE_TYPE_BY_EXTENSION: Record<string, KnowledgeFileType> = {
   pdf: "pdf",
@@ -179,6 +182,27 @@ router.post("/client/company/knowledge-files", async (req, res) => {
     if (company.allowSourceFiles === false) {
       res.status(403).json({ error: "Knowledge files source is disabled by administrator." });
       return;
+    }
+
+    if (fileType !== "google_sheet") {
+      if (!isKnowledgeUploadPath(objectPath!)) {
+        res.status(400).json({ error: "Invalid uploaded file path; upload the file again" });
+        return;
+      }
+
+      try {
+        const objectFile = await objectStorageService.getObjectEntityFile(objectPath!);
+        const [metadata] = await objectFile.getMetadata();
+        const customMetadata = metadata.metadata as Record<string, unknown> | undefined;
+        if (!isOwnedKnowledgeUpload(objectPath!, req.session.userId!, customMetadata)) {
+          res.status(403).json({ error: "Uploaded file does not belong to this client" });
+          return;
+        }
+      } catch (err) {
+        logger.warn({ err, companyId: company.id }, "Failed to verify uploaded knowledge file ownership");
+        res.status(400).json({ error: "Uploaded file could not be verified; upload it again" });
+        return;
+      }
     }
 
     const [file] = await db

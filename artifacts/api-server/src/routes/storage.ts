@@ -10,6 +10,7 @@ import {
 } from '../lib/objectStorage';
 import { requireClient } from '../middlewares/requireAuth';
 import { isAllowedFileType } from '../lib/security';
+import { setSafeObjectResponseHeaders } from '../lib/knowledgeFileSecurity';
 import { db, companiesTable, companyKnowledgeFilesTable } from '@workspace/db';
 import { eq, and } from 'drizzle-orm';
 
@@ -36,7 +37,7 @@ router.post(
 
     // Validate file type — only allow safe MIME types
     if (!isAllowedFileType(req.file.mimetype)) {
-      res.status(400).json({ error: `File type "${req.file.mimetype}" is not allowed. Allowed: CSV, JSON, Excel, images.` });
+      res.status(400).json({ error: `File type "${req.file.mimetype}" is not allowed. Allowed: CSV, JSON, Excel, and raster images.` });
       return;
     }
 
@@ -54,7 +55,10 @@ router.post(
       const gcsFile = bucket.file(objectName);
 
       await gcsFile.save(req.file.buffer, {
-        metadata: { contentType: req.file.mimetype || 'application/octet-stream' },
+        metadata: {
+          contentType: req.file.mimetype || 'application/octet-stream',
+          metadata: { uploadedByUserId: String(req.session.userId) },
+        },
         resumable: false,
       });
 
@@ -90,6 +94,7 @@ router.get(
 
       res.status(response.status);
       response.headers.forEach((value, key) => res.setHeader(key, value));
+      setSafeObjectResponseHeaders(res, response.headers.get('content-type') || undefined);
 
       if (response.body) {
         const nodeStream = Readable.fromWeb(
@@ -163,6 +168,7 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
 
     res.status(response.status);
     response.headers.forEach((value, key) => res.setHeader(key, value));
+    setSafeObjectResponseHeaders(res, response.headers.get('content-type') || undefined, true);
 
     if (response.body) {
       const nodeStream = Readable.fromWeb(

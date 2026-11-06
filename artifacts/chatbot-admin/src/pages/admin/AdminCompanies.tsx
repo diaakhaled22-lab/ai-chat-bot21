@@ -3673,7 +3673,7 @@ export default function AdminCompanies() {
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Webhook URL</p>
                     <pre className="bg-muted/40 border border-border rounded-lg px-3 py-2 font-mono text-xs overflow-x-auto break-all whitespace-pre-wrap">
-                      {`${window.location.origin}/api/telegram/webhook/${viewCompany.telegramBotApiKey}`}
+                      {`${window.location.origin}/api/telegram/webhook`}
                     </pre>
                   </div>
                   <div className="flex items-center gap-3">
@@ -3840,7 +3840,7 @@ export default function AdminCompanies() {
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-muted-foreground">Webhook URL</p>
                 <pre className="bg-muted/40 border border-border rounded-lg px-3 py-2.5 font-mono text-xs overflow-x-auto whitespace-pre-wrap break-all">
-                  {`${window.location.origin}/api/telegram/webhook/${tgWebhookTarget.telegramBotApiKey}`}
+                  {`${window.location.origin}/api/telegram/webhook`}
                 </pre>
               </div>
               {!tgWebhookTarget.isActive && (

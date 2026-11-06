@@ -216,24 +216,24 @@ router.get("/admin/attack-monitoring", async (_req, res) => {
 
 // POST /admin/attack-monitoring/block
 router.post("/admin/attack-monitoring/block", async (req, res) => {
-  const { ip, macAddress } = req.body as { ip?: string; macAddress?: string };
+  const { ip } = req.body as { ip?: string };
   if (!ip || typeof ip !== "string") {
     res.status(400).json({ error: "Valid IP is required" });
     return;
   }
-  manualBlockIp(ip, macAddress);
+  manualBlockIp(ip);
   await logAdminActivity(req.session.userId!, "IP Blocked", `Manually blocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
 });
 
 // POST /admin/attack-monitoring/unblock
 router.post("/admin/attack-monitoring/unblock", async (req, res) => {
-  const { ip, macAddress } = req.body as { ip?: string; macAddress?: string };
+  const { ip } = req.body as { ip?: string };
   if (!ip || typeof ip !== "string") {
     res.status(400).json({ error: "Valid IP is required" });
     return;
   }
-  manualUnblockIp(ip, macAddress);
+  manualUnblockIp(ip);
   await logAdminActivity(req.session.userId!, "IP Unblocked", `Manually unblocked IP: ${ip}`, req.ip || null);
   res.json({ ok: true });
 });
@@ -4779,7 +4779,7 @@ router.put("/admin/tickets/:id/solution", async (req, res) => {
 });
 
 // DELETE /admin/tickets/:id — admin permanently deletes a ticket
-router.delete(["/admin/tickets/:id", "/tickets/:id"], async (req, res) => {
+router.delete("/admin/tickets/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const [deleted] = await db
@@ -6817,9 +6817,9 @@ async function handleResetPackages(req: any, res: any) {
 }
 
 router.get(["/admin/packages", "/packages/catalog", "/packages"], handleGetPackages);
-router.put(["/admin/packages", "/packages"], handleUpdatePackages);
-router.post(["/admin/packages", "/packages"], handleUpdatePackages);
-router.post(["/admin/packages/reset", "/packages/reset"], handleResetPackages);
+router.put(["/admin/packages", "/packages"], requireAdmin, handleUpdatePackages);
+router.post(["/admin/packages", "/packages"], requireAdmin, handleUpdatePackages);
+router.post(["/admin/packages/reset", "/packages/reset"], requireAdmin, handleResetPackages);
 
 // ── Currency Exchange Rates Management ───────────────────────────────────────
 router.get("/admin/currency-rates", async (_req, res) => {
@@ -6884,5 +6884,3 @@ router.put("/admin/currency-rates", async (req, res) => {
 });
 
 export default router;
-
-

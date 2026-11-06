@@ -196,7 +196,11 @@ async function seed() {
     console.log("✅ Tables verified.");
 
     // Seed default admin user
-    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+    const configuredAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+    if (configuredAdminPassword && (configuredAdminPassword === "admin123" || configuredAdminPassword.length < 16)) {
+      throw new Error("DEFAULT_ADMIN_PASSWORD must not be admin123 and must be at least 16 characters.");
+    }
+    const adminPassword = configuredAdminPassword || crypto.randomBytes(32).toString("hex");
     const adminPasswordHash = await bcrypt.hash(adminPassword, 12);
     await client.query(
       `INSERT INTO users (name, username, password_hash, role)
@@ -205,7 +209,7 @@ async function seed() {
       ["System Admin", "admin", adminPasswordHash, "admin"]
     );
     console.log(
-      `✅ Default Admin user ready (username: admin / password: ${process.env.DEFAULT_ADMIN_PASSWORD ? "configured via DEFAULT_ADMIN_PASSWORD" : adminPassword})`,
+      `✅ Admin user ready (username: admin / ${configuredAdminPassword ? "password configured via DEFAULT_ADMIN_PASSWORD" : "random password generated; use the secure recovery process"})`,
     );
 
     // Seed default demo client user

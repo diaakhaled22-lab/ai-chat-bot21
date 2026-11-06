@@ -13,7 +13,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
-app.set("trust proxy", 1);
+const trustedProxies = (process.env.TRUSTED_PROXIES || "")
+  .split(",")
+  .map((proxy) => proxy.trim())
+  .filter(Boolean);
+app.set("trust proxy", trustedProxies.length > 0 ? trustedProxies : false);
 
 // ── Security Headers ─────────────────────────────────────────────────────
 app.use(securityHeaders);
@@ -26,7 +30,10 @@ app.use(
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url: req.url?.split("?")[0].replace(
+            /(\/(?:api\/)?(?:telegram\/webhook|webhook\/telegram))\/[^/]+/i,
+            "$1/[redacted]",
+          ),
         };
       },
       res(res) {

@@ -1,6 +1,5 @@
 import http from "http";
 import { exec, execSync } from "child_process";
-import { initWebSocket } from "./lib/ws";
 import app from "./app";
 import { logger } from "./lib/logger";
 
@@ -337,7 +336,6 @@ async function startServer() {
 
     server.listen(port, "0.0.0.0", () => {
       logger.info({ port }, "Server listening");
-      initWebSocket(server);
     });
 
     // Gracefully handle SIGTERM and SIGINT to close the socket cleanly on restart

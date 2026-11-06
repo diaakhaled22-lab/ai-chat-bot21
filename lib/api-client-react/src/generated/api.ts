@@ -3017,7 +3017,7 @@ export const getIngestChatMessageUrl = () => {
 }
 
 /**
- * Called by your chatbot after each conversation turn. Authenticate using the channel-specific API key configured in the company settings (telegramBotApiKey, whatsappApiToken, messengerApiKey, or websiteChatbotKey).
+ * Server-side integration only. Authenticate with a private Telegram, WhatsApp, or Messenger key. Website widget keys are public and are not accepted. Replies are generated and saved by the server; caller-supplied botResponse values are rejected.
  * @summary Receive a chatbot conversation and store it as a chat log
  */
 export const ingestChatMessage = async (webhookMessageInput: WebhookMessageInput, options?: RequestInit): Promise<WebhookMessageResult> => {
@@ -3435,4 +3435,3 @@ export const useAdminDisable2fa = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getAdminDisable2faMutationOptions(options));
     }
-

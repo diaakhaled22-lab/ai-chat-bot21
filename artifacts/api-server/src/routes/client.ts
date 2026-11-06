@@ -1,6 +1,5 @@
 import { resolveGoogleCalendarCredentials, testGoogleCalendarConnection, listUpcomingCalendarEvents, createCalendarEvent, parseServiceAccountKey } from "../lib/googleCalendar";
 import { Router } from "express";
-import { notifyWidgetClient } from "../lib/ws";
 
 import { sendWhatsAppMessage } from "./whatsapp";
 import { sendTelegramMessage } from "./telegram";
@@ -31,11 +30,7 @@ import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL
 import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
 import { getActivePackagesCatalog } from "../lib/planApproval";
 import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
-import crypto from 'crypto';
-
-function telegramWebhookSecret(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex').slice(0, 32);
-}
+import { createTelegramWebhookSecret, hashTelegramWebhookSecret } from "../lib/telegramWebhookSecurity";
 
 const router = Router();
 function parseEnabledPages(val: any): string[] | null {
@@ -420,8 +415,8 @@ router.get("/client/company/quota", async (req, res) => {
 function getAppBaseUrl(req: import("express").Request): string {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
-  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
-  const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "localhost";
+  const proto = req.protocol || "https";
+  const host = req.get("host") || "localhost";
   return `${proto}://${host}`;
 }
 
@@ -446,9 +441,8 @@ async function autoRegisterWhatsAppWebhook(
   }
 }
 
-async function autoRegisterTelegramWebhook(token: string, baseUrl: string): Promise<void> {
-  const secret = telegramWebhookSecret(token);
-  const webhookUrl = `${baseUrl}/api/telegram/webhook/${secret}`;
+async function autoRegisterTelegramWebhook(token: string, baseUrl: string, secret: string): Promise<void> {
+  const webhookUrl = `${baseUrl}/api/telegram/webhook`;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: "POST",
@@ -461,12 +455,12 @@ async function autoRegisterTelegramWebhook(token: string, baseUrl: string): Prom
     });
     const data = await res.json() as { ok: boolean; description?: string };
     if (data.ok) {
-      logger.info({ webhookUrl }, "Telegram webhook auto-registered");
+      logger.info("Telegram webhook auto-registered");
     } else {
-      logger.warn({ webhookUrl, description: data.description }, "Telegram webhook auto-registration failed");
+      logger.warn({ description: data.description }, "Telegram webhook auto-registration failed");
     }
   } catch (err) {
-    logger.warn({ err }, "Telegram webhook auto-registration error");
+    logger.warn("Telegram webhook auto-registration error");
   }
 }
 
@@ -555,6 +549,7 @@ router.post("/client/company", async (req, res) => {
     }
 
     const data = parsed.data;
+    const telegramSecret = data.telegramBotApiKey ? createTelegramWebhookSecret() : null;
     const [company] = await db
       .insert(companiesTable)
       .values({
@@ -577,7 +572,7 @@ router.post("/client/company", async (req, res) => {
         aiProvider: (data.aiProvider as "openai" | "anthropic" | "google" | "openrouter" | null) ?? null,
         aiModel: data.aiModel ?? null,
         telegramBotApiKey: data.telegramBotApiKey ?? null,
-        telegramWebhookSecretHash: data.telegramBotApiKey ? telegramWebhookSecret(data.telegramBotApiKey) : null,
+        telegramWebhookSecretHash: telegramSecret ? hashTelegramWebhookSecret(telegramSecret) : null,
         whatsappApiToken: data.whatsappApiToken ?? null,
         whatsappPhoneNumberId: data.whatsappPhoneNumberId ?? null,
         whatsappBusinessAccountId: data.whatsappBusinessAccountId ?? null,
@@ -591,7 +586,7 @@ router.post("/client/company", async (req, res) => {
       .returning();
 
     if (company.telegramBotApiKey) {
-      autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req));
+      autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req), telegramSecret!);
       fetchAndStoreTelegramUsername(company.id, company.telegramBotApiKey);
     }
     if (company.messengerApiKey && !company.messengerPageId) {
@@ -704,13 +699,17 @@ router.put("/client/company", async (req, res) => {
         [mode, existingCompany.id]
       ).catch(() => {});
     }
+    let telegramSecretToRegister: string | null = null;
     if (data.telegramBotApiKey !== undefined) {
       updates.telegramBotApiKey = preserveMaskedSecret(data.telegramBotApiKey, existingCompany.telegramBotApiKey);
     }
     // Also update the webhook secret hash for direct DB lookup
     const resolvedTgKey = updates.telegramBotApiKey as string | null | undefined;
     if (resolvedTgKey !== undefined) {
-      updates.telegramWebhookSecretHash = resolvedTgKey ? telegramWebhookSecret(resolvedTgKey) : null;
+      telegramSecretToRegister = resolvedTgKey ? createTelegramWebhookSecret() : null;
+      updates.telegramWebhookSecretHash = telegramSecretToRegister
+        ? hashTelegramWebhookSecret(telegramSecretToRegister)
+        : null;
     }
     if (data.telegramEnabled !== undefined) updates.telegramEnabled = data.telegramEnabled;
     if (data.whatsappApiToken !== undefined) {
@@ -783,7 +782,9 @@ router.put("/client/company", async (req, res) => {
     }
 
     if (company.telegramBotApiKey && data.telegramBotApiKey !== undefined) {
-      autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req));
+      if (telegramSecretToRegister) {
+        autoRegisterTelegramWebhook(company.telegramBotApiKey, getAppBaseUrl(req), telegramSecretToRegister);
+      }
       fetchAndStoreTelegramUsername(company.id, company.telegramBotApiKey);
     }
     const savedMessengerToken = preserveMaskedSecret(data.messengerApiKey, existingCompany.messengerApiKey);

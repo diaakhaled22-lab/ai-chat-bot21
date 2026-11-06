@@ -7,6 +7,7 @@ import {
 } from "../lib/companyNotification";
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -25,36 +26,20 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATI
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
+import { isWidgetOriginAllowed } from "../lib/widgetSecurity";
 
 const router = Router();
 
 const WIDGET_CORS = (req: any, res: any, next: any) => {
-  // Set the requesting origin (or fallback to *) so the browser accepts the response.
-  // Per-company domain restriction is enforced inside each route handler via isOriginAllowed().
   const requestOrigin = req.headers?.origin;
-  res.setHeader("Access-Control-Allow-Origin", requestOrigin || "*");
+  if (requestOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+    res.setHeader("Vary", "Origin");
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   next();
 };
-
-/**
- * Check if the request origin is allowed by the company's widgetAllowedDomains.
- * If widgetAllowedDomains is null/empty, all origins are allowed (backwards compatible).
- * Returns true if allowed, false if blocked.
- */
-function isOriginAllowed(origin: string | undefined, widgetAllowedDomains: string | null): boolean {
-  if (!widgetAllowedDomains || !widgetAllowedDomains.trim()) return true; // No restriction
-  if (!origin) return true; // Allow requests with no origin (curl, mobile, etc.)
-  const allowed = widgetAllowedDomains.split(",").map(d => d.trim().toLowerCase()).filter(Boolean);
-  if (allowed.length === 0) return true;
-  try {
-    const originHost = new URL(origin).hostname.toLowerCase();
-    return allowed.some(domain => originHost === domain || originHost.endsWith("." + domain));
-  } catch {
-    return false;
-  }
-}
 
 router.options("/widget/:key/config", WIDGET_CORS, (_req, res) => { res.sendStatus(204); });
 router.options("/widget/:key/chat", WIDGET_CORS, (_req, res) => { res.sendStatus(204); });
@@ -74,7 +59,7 @@ router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => 
       return;
     }
 
-    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
       res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
     }
@@ -115,7 +100,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       return;
     }
 
-    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
       res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
     }
@@ -523,13 +508,13 @@ router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) =
       return;
     }
 
-    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
       res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
     }
 
     // Save as lead
-    const formSessionId = `form_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const formSessionId = `form_${randomUUID()}`;
     await db.insert(leadsTable).values({
       companyId: company.id,
       channel: channel || "website_contact_form",
@@ -570,7 +555,7 @@ router.post("/widget/:key/order", WIDGET_CORS, chatLimiter, async (req, res) => 
       return;
     }
 
-    if (!isOriginAllowed(req.headers.origin as string | undefined, company.widgetAllowedDomains)) {
+    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
       res.status(403).json({ error: "Origin not allowed for this widget" });
       return;
     }
@@ -589,7 +574,6 @@ router.post("/widget/:key/order", WIDGET_CORS, chatLimiter, async (req, res) => 
 });
 
 export default router;
-
 
 
 

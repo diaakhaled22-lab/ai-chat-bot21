@@ -1,29 +1,31 @@
-FROM node:20-slim AS base
+FROM node:24-bookworm-slim AS build
 
-# Enable pnpm
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-# Install necessary build tools for some native dependencies (like bcrypt)
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
-
-FROM base AS build
 WORKDIR /app
-COPY . .
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies and build both API server and frontend
-RUN pnpm install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY artifacts ./artifacts
+COPY lib ./lib
+COPY scripts ./scripts
+COPY tsconfig.json tsconfig.base.json ./
+
+RUN pnpm install --frozen-lockfile
 RUN pnpm run build
+RUN pnpm install --prod --frozen-lockfile
 
-FROM base
+FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
-COPY --from=build /app /app
-
-# Set production environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
+COPY --from=build --chown=node:node /app /app
+
+USER node
 EXPOSE 8080
 
-# Start the API server (which now also serves the frontend)
-CMD ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
+CMD ["node", "artifacts/api-server/dist/index.mjs"]
