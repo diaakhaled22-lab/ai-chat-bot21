@@ -10,6 +10,8 @@ import {
 } from '../lib/objectStorage';
 import { requireClient } from '../middlewares/requireAuth';
 import { isAllowedFileType } from '../lib/security';
+import { db, companiesTable, companyKnowledgeFilesTable } from '@workspace/db';
+import { eq, and } from 'drizzle-orm';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -123,6 +125,38 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     if (!req.session?.userId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
+    }
+
+    // Ownership check: admins can access all files; clients can only access
+    // files that belong to their own company (prevents IDOR).
+    if (req.session.role === "client") {
+      const [company] = await db
+        .select({ id: companiesTable.id })
+        .from(companiesTable)
+        .where(eq(companiesTable.clientId, req.session.userId))
+        .limit(1);
+
+      if (!company) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+
+      // Check if any knowledge file owned by this company references this object
+      const [ownedFile] = await db
+        .select({ id: companyKnowledgeFilesTable.id })
+        .from(companyKnowledgeFilesTable)
+        .where(
+          and(
+            eq(companyKnowledgeFilesTable.companyId, company.id),
+            eq(companyKnowledgeFilesTable.objectPath, objectPath)
+          )
+        )
+        .limit(1);
+
+      if (!ownedFile) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
     }
 
     const response = await objectStorageService.downloadObject(objectFile);

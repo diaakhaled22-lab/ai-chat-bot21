@@ -28,10 +28,11 @@ import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportA
 
 const router = Router();
 
-const WIDGET_CORS = (_req: any, res: any, next: any) => {
-  // Origin validation is done per-request in the route handlers after loading the company.
-  // Here we set permissive headers; the route handler will block disallowed origins.
-  res.setHeader("Access-Control-Allow-Origin", "*");
+const WIDGET_CORS = (req: any, res: any, next: any) => {
+  // Set the requesting origin (or fallback to *) so the browser accepts the response.
+  // Per-company domain restriction is enforced inside each route handler via isOriginAllowed().
+  const requestOrigin = req.headers?.origin;
+  res.setHeader("Access-Control-Allow-Origin", requestOrigin || "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   next();

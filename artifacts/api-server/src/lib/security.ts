@@ -5,6 +5,37 @@ import { db, adminConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { sendSecurityEventEmail } from "./email";
 
+// ── TOTP encryption helpers ──────────────────────────────────────────────
+const TOTP_ENCRYPTION_KEY = process.env.TOTP_ENCRYPTION_KEY || process.env.SESSION_SECRET || "";
+
+function encryptTotpValue(plaintext: string): string {
+  if (!TOTP_ENCRYPTION_KEY) return plaintext; // Fallback: no encryption key configured
+  const iv = crypto.randomBytes(16);
+  const key = crypto.createHash("sha256").update(TOTP_ENCRYPTION_KEY).digest();
+  const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+  let encrypted = cipher.update(plaintext, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  return iv.toString("hex") + ":" + encrypted;
+}
+
+function decryptTotpValue(ciphertext: string): string {
+  if (!TOTP_ENCRYPTION_KEY) return ciphertext;
+  // If it doesn't contain ":", it's a legacy unencrypted value
+  if (!ciphertext.includes(":")) return ciphertext;
+  try {
+    const [ivHex, encrypted] = ciphertext.split(":");
+    const iv = Buffer.from(ivHex, "hex");
+    const key = crypto.createHash("sha256").update(TOTP_ENCRYPTION_KEY).digest();
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch {
+    // If decryption fails, assume it's a legacy unencrypted value
+    return ciphertext;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Rate Limiting — simple in-memory sliding-window limiter
 // ═══════════════════════════════════════════════════════════════════════════
@@ -433,7 +464,7 @@ export async function loadTotpSecretsFromDb() {
     if (row && row.value) {
       const secrets: Record<string, string> = JSON.parse(row.value);
       for (const [userIdStr, secret] of Object.entries(secrets)) {
-        totpSecrets.set(Number(userIdStr), secret);
+        totpSecrets.set(Number(userIdStr), decryptTotpValue(secret));
       }
     }
   } catch (err) {
@@ -443,8 +474,11 @@ export async function loadTotpSecretsFromDb() {
 
 async function saveTotpSecretsToDb() {
   try {
-    const secrets = Object.fromEntries(totpSecrets);
-    const value = JSON.stringify(secrets);
+    const encryptedSecrets: Record<string, string> = {};
+    for (const [userId, secret] of totpSecrets) {
+      encryptedSecrets[String(userId)] = encryptTotpValue(secret);
+    }
+    const value = JSON.stringify(encryptedSecrets);
     const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, "totp_secrets"));
     if (existing) {
       await db.update(adminConfigTable).set({ value }).where(eq(adminConfigTable.key, "totp_secrets"));

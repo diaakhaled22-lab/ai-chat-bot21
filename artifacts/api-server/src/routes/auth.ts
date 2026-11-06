@@ -42,6 +42,10 @@ function getArpMac(ip: string): Promise<string | null> {
     if (!ip || ip === "unknown" || ip === "127.0.0.1" || ip === "::1" || ip === "localhost") {
       return resolve(null);
     }
+    // Validate IP format to prevent command injection
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) && !/^[0-9a-fA-F:]+$/.test(ip)) {
+      return resolve(null);
+    }
     const isWin = process.platform === "win32";
     const cmd = isWin ? `arp -a ${ip}` : `arp -n ${ip}`;
     exec(cmd, { timeout: 1500 }, (err, stdout) => {
@@ -327,8 +331,13 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
 
     const cleanUsername = username.trim().toLowerCase();
 
-    if (!password || typeof password !== "string" || password.length < 6) {
-      res.status(400).json({ error: "Password must be at least 6 characters" });
+    if (!password || typeof password !== "string") {
+      res.status(400).json({ error: "Password is required" });
+      return;
+    }
+    const pwError = validatePassword(password);
+    if (pwError) {
+      res.status(400).json({ error: pwError });
       return;
     }
 
@@ -347,7 +356,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       .limit(1);
 
     if (existing) {
-      res.status(409).json({ error: `Username "${cleanUsername}" is already taken. Please choose another.` });
+      res.status(409).json({ error: "Unable to create account with the provided details. Please try different credentials." });
       return;
     }
 
@@ -373,11 +382,8 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
         .limit(1);
 
       if (existingEmail) {
-        const isAr = (req.body as any)?.lang === "ar" || req.headers["accept-language"]?.includes("ar");
         res.status(409).json({
-          error: isAr
-            ? `يوجد حساب مسجل بالفعل بهذا البريد الإلكتروني (${trimmedEmail}).`
-            : `An account with email "${trimmedEmail}" already exists.`,
+          error: "Unable to create account with the provided details. Please try different credentials.",
         });
         return;
       }
@@ -397,11 +403,8 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
         .limit(1);
 
       if (existingIpClient) {
-        const isAr = (req.body as any)?.lang === "ar" || req.headers["accept-language"]?.includes("ar");
         res.status(409).json({
-          error: isAr
-            ? `يوجد حساب مسجل بالفعل من عنوان IP هذا (${clientIp}). يسمح بحساب واحد فقط لكل عنوان IP.`
-            : `An account already exists from this IP address (${clientIp}). Only one client account is allowed per IP address.`,
+          error: "Unable to create account. Please contact support if you need assistance.",
         });
         return;
       }
@@ -421,11 +424,8 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
         .limit(1);
 
       if (existingMacClient) {
-        const isAr = (req.body as any)?.lang === "ar" || req.headers["accept-language"]?.includes("ar");
         res.status(409).json({
-          error: isAr
-            ? `يوجد حساب مسجل بالفعل من هذا الجهاز (عنوان MAC: ${finalMac}). يسمح بحساب واحد فقط لكل جهاز.`
-            : `An account already exists from this device (MAC address: ${finalMac}). Only one client account is allowed per device.`,
+          error: "Unable to create account. Please contact support if you need assistance.",
         });
         return;
       }

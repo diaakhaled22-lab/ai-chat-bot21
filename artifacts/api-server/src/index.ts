@@ -281,6 +281,10 @@ refreshAiModels().catch((err) => logger.warn({ err }, "Initial AI model catalog 
 
 function freePortIfBusy(targetPort: number): Promise<void> {
   return new Promise((resolve) => {
+    // Validate port is a safe integer to prevent command injection
+    if (!Number.isInteger(targetPort) || targetPort < 1 || targetPort > 65535) {
+      return resolve();
+    }
     if (process.platform === "win32") {
       try {
         const out = execSync(`netstat -ano | findstr :${targetPort}`, { encoding: "utf8" });
@@ -288,7 +292,8 @@ function freePortIfBusy(targetPort: number): Promise<void> {
         for (const line of lines) {
           const parts = line.trim().split(/\s+/);
           const pid = parts[parts.length - 1];
-          if (pid && pid !== String(process.pid) && pid !== "0") {
+          // Validate PID is numeric only to prevent injection
+          if (pid && /^\d+$/.test(pid) && pid !== String(process.pid) && pid !== "0") {
             execSync(`taskkill /F /PID ${pid}`, { stdio: "ignore" });
           }
         }

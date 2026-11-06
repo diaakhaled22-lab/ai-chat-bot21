@@ -48,11 +48,24 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (curl, server-to-server, mobile apps)
     if (!origin) return callback(null, true);
-    // In dev mode or if no origins configured, allow all
-    if (process.env.NODE_ENV !== "production" || ALLOWED_ORIGINS.length === 0) {
-      return callback(null, true);
+    // If specific origins are configured, enforce them regardless of env
+    if (ALLOWED_ORIGINS.length > 0) {
+      if (ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error("Not allowed by CORS"));
+      return;
     }
-    if (ALLOWED_ORIGINS.includes(origin)) {
+    // No origins configured — allow same-host origins and Replit/localhost dev origins
+    try {
+      const url = new URL(origin);
+      const hostname = url.hostname.toLowerCase();
+      if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".repl.co") || hostname.endsWith(".replit.dev") || hostname.endsWith(".replit.app")) {
+        return callback(null, true);
+      }
+    } catch {}
+    // In development mode with no origins configured, allow all (backward compatible)
+    if (process.env.NODE_ENV !== "production") {
       return callback(null, true);
     }
     callback(new Error("Not allowed by CORS"));
@@ -126,6 +139,48 @@ app.use(
 app.use(sanitizeInputs);            // Strip null bytes & dangerous control chars
 app.use(suspiciousActivityDetector); // Block SQL injection, XSS, path traversal attempts
 app.use(sessionAnomalyDetector);     // Smart session anomaly detection
+
+// ── CSRF Protection — Origin/Referer check for state-changing requests ───
+app.use((req, res, next) => {
+  // Only check state-changing methods
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+    return next();
+  }
+  // Skip CSRF check for webhook endpoints (external services send POST without origin)
+  const urlPath = req.path || req.url?.split("?")[0] || "";
+  if (
+    urlPath.startsWith("/api/webhook") || urlPath.startsWith("/webhook") ||
+    urlPath.startsWith("/api/whatsapp") || urlPath.startsWith("/whatsapp") ||
+    urlPath.startsWith("/api/telegram") || urlPath.startsWith("/telegram") ||
+    urlPath.startsWith("/api/messenger") || urlPath.startsWith("/messenger") ||
+    urlPath.startsWith("/api/widget")   || urlPath.startsWith("/widget")
+  ) {
+    return next();
+  }
+  // If request has no session (not authenticated), skip CSRF
+  if (!req.session?.userId) {
+    return next();
+  }
+  const origin = req.headers.origin || req.headers.referer;
+  if (!origin) {
+    // Allow requests with no origin (curl, mobile apps, server-to-server)
+    return next();
+  }
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname.toLowerCase();
+    // Allow same-host, localhost, and Replit
+    if (
+      hostname === "localhost" || hostname === "127.0.0.1" ||
+      hostname.endsWith(".repl.co") || hostname.endsWith(".replit.dev") || hostname.endsWith(".replit.app") ||
+      (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.some(o => { try { return new URL(o).hostname === hostname; } catch { return false; } }))
+    ) {
+      return next();
+    }
+  } catch {}
+  logger.warn({ origin, path: urlPath, method: req.method, userId: req.session.userId }, "CSRF: blocked request from unexpected origin");
+  res.status(403).json({ error: "Forbidden: cross-origin request blocked" });
+});
 
 // ── Webhook Path Normalization ───────────────────────────────────────────
 // External platforms (Meta, Telegram, Zapier, custom integrations) often
