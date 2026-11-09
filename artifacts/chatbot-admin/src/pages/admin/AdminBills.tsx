@@ -1661,8 +1661,8 @@ export default function AdminBills() {
                                           <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Invoice Summary"}</span>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                          onClick={() => togglePaidMutation.mutate(inv)}
-                                          disabled={togglePaidMutation.isPending}
+                                          onClick={() => handleTogglePaid(inv)}
+                                          disabled={togglingInvoice === inv.invoiceNumber}
                                           className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                         >
                                           {inv.isPaid ? (
@@ -2072,8 +2072,8 @@ export default function AdminBills() {
                                   <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Invoice Summary"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => togglePaidMutation.mutate(inv)}
-                                  disabled={togglePaidMutation.isPending}
+                                  onClick={() => handleTogglePaid(inv)}
+                                  disabled={togglingInvoice === inv.invoiceNumber}
                                   className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                 >
                                   {inv.isPaid ? (
