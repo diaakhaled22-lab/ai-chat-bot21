@@ -66,6 +66,30 @@ export async function getResendConfig(companyResendKey?: string | null): Promise
     }
   }
 
+  // Fallback: Check if any user has resendApiKey configured (e.g. from ClientSettings)
+  if (!apiKey) {
+    try {
+      const [u] = await db
+        .select({ resendApiKey: usersTable.resendApiKey })
+        .from(usersTable)
+        .where(and(sql`${usersTable.resendApiKey} IS NOT NULL`, sql`${usersTable.resendApiKey} != ''`))
+        .limit(1);
+      if (u?.resendApiKey) apiKey = u.resendApiKey.trim();
+    } catch {}
+  }
+
+  // Fallback: Check if any company has resendApiKey configured
+  if (!apiKey) {
+    try {
+      const [c] = await db
+        .select({ resendApiKey: companiesTable.resendApiKey })
+        .from(companiesTable)
+        .where(and(sql`${companiesTable.resendApiKey} IS NOT NULL`, sql`${companiesTable.resendApiKey} != ''`))
+        .limit(1);
+      if (c?.resendApiKey) apiKey = c.resendApiKey.trim();
+    } catch {}
+  }
+
   if (!fromEmail) {
     fromEmail = "Bot Manager <onboarding@resend.dev>";
   }

@@ -57577,6 +57577,20 @@ async function getResendConfig(companyResendKey) {
       logger.warn({ err }, "Could not load Resend config from admin_config");
     }
   }
+  if (!apiKey) {
+    try {
+      const [u] = await db.select({ resendApiKey: usersTable.resendApiKey }).from(usersTable).where(and(sql`${usersTable.resendApiKey} IS NOT NULL`, sql`${usersTable.resendApiKey} != ''`)).limit(1);
+      if (u?.resendApiKey) apiKey = u.resendApiKey.trim();
+    } catch {
+    }
+  }
+  if (!apiKey) {
+    try {
+      const [c] = await db.select({ resendApiKey: companiesTable.resendApiKey }).from(companiesTable).where(and(sql`${companiesTable.resendApiKey} IS NOT NULL`, sql`${companiesTable.resendApiKey} != ''`)).limit(1);
+      if (c?.resendApiKey) apiKey = c.resendApiKey.trim();
+    } catch {
+    }
+  }
   if (!fromEmail) {
     fromEmail = "Bot Manager <onboarding@resend.dev>";
   }
@@ -57702,10 +57716,10 @@ function buildNotificationHtml(input) {
 </html>
   `.trim();
 }
-async function sendCompanyNotification(companyId, subject, html, options) {
+async function sendCompanyNotification(companyId2, subject, html, options) {
   try {
-    if (!companyId || isNaN(companyId)) {
-      logger.warn({ companyId }, "sendCompanyNotification called with invalid companyId");
+    if (!companyId2 || isNaN(companyId2)) {
+      logger.warn({ companyId: companyId2 }, "sendCompanyNotification called with invalid companyId");
       return { ok: false, error: "Invalid companyId" };
     }
     const [company] = await db.select({
@@ -57714,9 +57728,9 @@ async function sendCompanyNotification(companyId, subject, html, options) {
       clientId: companiesTable.clientId,
       notificationEmail: companiesTable.notificationEmail,
       resendApiKey: companiesTable.resendApiKey
-    }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+    }).from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1);
     if (!company) {
-      logger.warn({ companyId }, "sendCompanyNotification: Company not found");
+      logger.warn({ companyId: companyId2 }, "sendCompanyNotification: Company not found");
       return { ok: false, error: "Company not found" };
     }
     if (company.clientId && options?.eventType) {
@@ -57794,12 +57808,12 @@ async function sendCompanyNotification(companyId, subject, html, options) {
     }
     if (!recipient) {
       logger.info(
-        { companyId, companyName: company.name },
+        { companyId: companyId2, companyName: company.name },
         "sendCompanyNotification: Skipped - No company.notificationEmail configured"
       );
       try {
         await db.insert(emailLogsTable).values({
-          companyId,
+          companyId: companyId2,
           recipientEmail: "N/A (not configured)",
           subject,
           eventType: options?.eventType || null,
@@ -57814,10 +57828,10 @@ async function sendCompanyNotification(companyId, subject, html, options) {
     const { apiKey, fromEmail } = await getResendConfig(companyResendKey);
     if (!apiKey) {
       const errorMsg = "RESEND_API_KEY is not configured (check environment variables or admin settings)";
-      logger.warn({ companyId, recipient }, errorMsg);
+      logger.warn({ companyId: companyId2, recipient }, errorMsg);
       try {
         await db.insert(emailLogsTable).values({
-          companyId,
+          companyId: companyId2,
           recipientEmail: recipient,
           subject,
           eventType: options?.eventType || null,
@@ -57829,7 +57843,7 @@ async function sendCompanyNotification(companyId, subject, html, options) {
       }
       return { ok: false, error: errorMsg };
     }
-    logger.info({ companyId, recipient, subject, fromEmail }, "Sending notification email via Resend");
+    logger.info({ companyId: companyId2, recipient, subject, fromEmail }, "Sending notification email via Resend");
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -57846,12 +57860,12 @@ async function sendCompanyNotification(companyId, subject, html, options) {
     if (res.ok) {
       const data = await res.json();
       logger.info(
-        { companyId, recipient, resendId: data.id, subject },
+        { companyId: companyId2, recipient, resendId: data.id, subject },
         "Notification email successfully sent via Resend"
       );
       try {
         await db.insert(emailLogsTable).values({
-          companyId,
+          companyId: companyId2,
           recipientEmail: recipient,
           subject,
           eventType: options?.eventType || null,
@@ -57865,12 +57879,12 @@ async function sendCompanyNotification(companyId, subject, html, options) {
     } else {
       const errorText = await res.text();
       logger.error(
-        { companyId, status: res.status, errorText },
+        { companyId: companyId2, status: res.status, errorText },
         "Resend API returned error when sending company notification"
       );
       try {
         await db.insert(emailLogsTable).values({
-          companyId,
+          companyId: companyId2,
           recipientEmail: recipient,
           subject,
           eventType: options?.eventType || null,
@@ -57883,10 +57897,10 @@ async function sendCompanyNotification(companyId, subject, html, options) {
       return { ok: false, error: `Resend error (${res.status}): ${errorText}` };
     }
   } catch (err) {
-    logger.error({ err, companyId, subject }, "Unhandled error in sendCompanyNotification");
+    logger.error({ err, companyId: companyId2, subject }, "Unhandled error in sendCompanyNotification");
     try {
       await db.insert(emailLogsTable).values({
-        companyId,
+        companyId: companyId2,
         recipientEmail: "unknown",
         subject,
         eventType: options?.eventType || null,
@@ -58475,14 +58489,14 @@ async function triggerHandoffNotification(company, sessionId, channel, customerM
     const channelDisplay = channelNames[channel] || channel;
     const title = isComplaint ? isPreview ? `[\u26A0\uFE0F \u0634\u0643\u0648\u0649 / \u0645\u0634\u0643\u0644\u0629 \u062C\u062F\u064A\u062F\u0629 - \u062A\u062C\u0631\u0628\u0629] Problem Alert (${channelDisplay})` : `[\u26A0\uFE0F \u0634\u0643\u0648\u0649 / \u0645\u0634\u0643\u0644\u0629 \u062C\u062F\u064A\u062F\u0629] Problem Alert (${channelDisplay})` : isPreview ? `[\u0637\u0644\u0628 \u062E\u062F\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621 - \u062A\u062C\u0631\u0628\u0629] Customer Service Requested (${channelDisplay})` : `[\u0637\u0644\u0628 \u062E\u062F\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621] Customer Service Requested (${channelDisplay})`;
     const message = isComplaint ? `A customer reported a problem/complaint on ${channelDisplay}: "${(customerMessage || "").slice(0, 80)}...". Open Inbox to review. | \u0623\u0628\u0644\u063A \u0623\u062D\u062F \u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0639\u0646 \u0645\u0634\u0643\u0644\u0629/\u0634\u0643\u0648\u0649 \u0639\u0644\u0649 ${channelDisplay}. \u0627\u0641\u062A\u062D \u0635\u0646\u062F\u0648\u0642 \u0627\u0644\u0648\u0627\u0631\u062F \u0644\u0644\u0645\u0631\u0627\u062C\u0639\u0629 \u0648\u0627\u0644\u0631\u062F.` : `A customer on ${channelDisplay} requested human customer service. | \u0637\u0644\u0628 \u0623\u062D\u062F \u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0639\u0644\u0649 ${channelDisplay} \u0627\u0644\u062A\u062D\u062F\u062B \u0645\u0639 \u062E\u062F\u0645\u0629 \u0627\u0644\u0639\u0645\u0644\u0627\u0621. \u064A\u0631\u062C\u0649 \u0645\u0631\u0627\u062C\u0639\u0629 \u0627\u0644\u0634\u0627\u062A \u0627\u0644\u0634\u0627\u0645\u0644.`;
-    let clientId = company.clientId;
-    if (!clientId) {
+    let clientId2 = company.clientId;
+    if (!clientId2) {
       const [comp] = await db.select({ clientId: companiesTable.clientId }).from(companiesTable).where(eq(companiesTable.id, company.id)).limit(1);
-      clientId = comp?.clientId ?? null;
+      clientId2 = comp?.clientId ?? null;
     }
-    if (clientId) {
+    if (clientId2) {
       await db.insert(notificationsTable).values({
-        userId: clientId,
+        userId: clientId2,
         type: isComplaint ? "problem_alert" : "handoff_request",
         title,
         message,
@@ -58543,12 +58557,12 @@ CRITICAL INSTRUCTION: Analyze the user's latest message and determine their sent
 
 // artifacts/api-server/src/lib/malfunctions.ts
 import OpenAI from "openai";
-async function reportSystemMalfunction(title, description, companyId, rawError) {
+async function reportSystemMalfunction(title, description, companyId2, rawError) {
   try {
     const existing = await db.select().from(malfunctionsTable).where(and(
       eq(malfunctionsTable.isActive, true),
       eq(malfunctionsTable.title, title),
-      companyId ? eq(malfunctionsTable.companyId, companyId) : isNull(malfunctionsTable.companyId)
+      companyId2 ? eq(malfunctionsTable.companyId, companyId2) : isNull(malfunctionsTable.companyId)
     ));
     if (existing.length > 0) {
       return;
@@ -58580,29 +58594,29 @@ async function reportSystemMalfunction(title, description, companyId, rawError) 
       }
     }
     await db.insert(malfunctionsTable).values({
-      companyId: companyId || null,
+      companyId: companyId2 || null,
       title,
       description: finalDescription,
       source: "system",
       isActive: true
     });
-    logger.info({ title, companyId }, "Auto-reported system malfunction");
+    logger.info({ title, companyId: companyId2 }, "Auto-reported system malfunction");
     const { notifySystemMalfunction: notifySystemMalfunction2 } = await Promise.resolve().then(() => (init_companyNotification(), companyNotification_exports));
     const { companiesTable: companiesTable4 } = await Promise.resolve().then(() => (init_src(), src_exports));
-    if (companyId) {
-      const [company] = await db.select({ id: companiesTable4.id, name: companiesTable4.name }).from(companiesTable4).where(eq(companiesTable4.id, companyId)).limit(1);
+    if (companyId2) {
+      const [company] = await db.select({ id: companiesTable4.id, name: companiesTable4.name }).from(companiesTable4).where(eq(companiesTable4.id, companyId2)).limit(1);
       if (company) {
         notifySystemMalfunction2(
           { id: company.id, name: company.name },
           { title, description: finalDescription, rawError }
-        ).catch((err) => logger.error({ err, companyId }, "Failed to send malfunction notification email"));
+        ).catch((err) => logger.error({ err, companyId: companyId2 }, "Failed to send malfunction notification email"));
       }
       const { sendMalfunctionNotification: sendMalfunctionNotification2 } = await Promise.resolve().then(() => (init_email(), email_exports));
       sendMalfunctionNotification2({
         title,
         description: finalDescription,
         source: "system",
-        companyId,
+        companyId: companyId2,
         companyName: company?.name
       }).catch((err) => logger.error({ err }, "Failed to send admin malfunction notification"));
     } else {
@@ -60501,9 +60515,9 @@ function chunkText(fullText, maxChunkChars = 900, overlapChars = 150) {
   }
   return chunks.filter((c) => c.length > 20);
 }
-async function resolveEmbeddingCredentials(companyId) {
+async function resolveEmbeddingCredentials(companyId2) {
   try {
-    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1);
     if (company?.aiAgentApiKey?.trim()) {
       const prov = company.aiProvider || "openai";
       if (prov === "openai" || prov === "google") {
@@ -60570,12 +60584,12 @@ async function generateEmbeddings(texts, creds) {
   }
   return texts.map(() => null);
 }
-async function indexKnowledgeFileChunks(fileId, companyId, fullText) {
+async function indexKnowledgeFileChunks(fileId, companyId2, fullText) {
   try {
     const chunks = chunkText(fullText);
     if (chunks.length === 0) return 0;
     await db.delete(companyKnowledgeChunksTable).where(eq(companyKnowledgeChunksTable.fileId, fileId));
-    const creds = await resolveEmbeddingCredentials(companyId);
+    const creds = await resolveEmbeddingCredentials(companyId2);
     const embeddings = await generateEmbeddings(chunks, creds);
     const BATCH_SIZE = 50;
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
@@ -60585,7 +60599,7 @@ async function indexKnowledgeFileChunks(fileId, companyId, fullText) {
         chunkSlice.map((content, idx) => {
           const emb = embSlice[idx];
           return {
-            companyId,
+            companyId: companyId2,
             fileId,
             chunkIndex: i + idx + 1,
             content,
@@ -60596,7 +60610,7 @@ async function indexKnowledgeFileChunks(fileId, companyId, fullText) {
       );
     }
     await db.update(companyKnowledgeFilesTable).set({ chunkCount: chunks.length }).where(eq(companyKnowledgeFilesTable.id, fileId));
-    logger.info({ fileId, companyId, chunkCount: chunks.length }, "Knowledge file indexed into RAG chunks");
+    logger.info({ fileId, companyId: companyId2, chunkCount: chunks.length }, "Knowledge file indexed into RAG chunks");
     return chunks.length;
   } catch (err) {
     logger.error({ err, fileId }, "Failed to index knowledge file chunks");
@@ -60628,7 +60642,7 @@ function lexicalScore(query, content) {
   }
   return matches / queryWords.length;
 }
-async function retrieveRelevantKnowledgeChunks(companyId, query, topK = 4) {
+async function retrieveRelevantKnowledgeChunks(companyId2, query, topK = 4) {
   if (!query || !query.trim()) return [];
   try {
     const rows = await db.select({
@@ -60638,12 +60652,12 @@ async function retrieveRelevantKnowledgeChunks(companyId, query, topK = 4) {
       chunkIndex: companyKnowledgeChunksTable.chunkIndex,
       content: companyKnowledgeChunksTable.content,
       embeddingJson: companyKnowledgeChunksTable.embeddingJson
-    }).from(companyKnowledgeChunksTable).innerJoin(companyKnowledgeFilesTable, eq(companyKnowledgeChunksTable.fileId, companyKnowledgeFilesTable.id)).where(eq(companyKnowledgeChunksTable.companyId, companyId)).limit(600);
+    }).from(companyKnowledgeChunksTable).innerJoin(companyKnowledgeFilesTable, eq(companyKnowledgeChunksTable.fileId, companyKnowledgeFilesTable.id)).where(eq(companyKnowledgeChunksTable.companyId, companyId2)).limit(600);
     if (rows.length === 0) return [];
     const hasEmbeddings = rows.some((r) => r.embeddingJson);
     let queryEmbedding = null;
     if (hasEmbeddings) {
-      const creds = await resolveEmbeddingCredentials(companyId);
+      const creds = await resolveEmbeddingCredentials(companyId2);
       const [emb] = await generateEmbeddings([query.trim()], creds);
       queryEmbedding = emb || null;
     }
@@ -60674,7 +60688,7 @@ async function retrieveRelevantKnowledgeChunks(companyId, query, topK = 4) {
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, topK);
   } catch (err) {
-    logger.error({ err, companyId, query }, "Semantic retrieval error");
+    logger.error({ err, companyId: companyId2, query }, "Semantic retrieval error");
     return [];
   }
 }
@@ -60855,14 +60869,14 @@ async function processKnowledgeFile(fileId) {
     }).where(eq(companyKnowledgeFilesTable.id, fileId));
   }
 }
-async function getKnowledgeFilesPromptSection(companyId, userQuery) {
+async function getKnowledgeFilesPromptSection(companyId2, userQuery) {
   if (userQuery && userQuery.trim()) {
-    const relevantChunks = await retrieveRelevantKnowledgeChunks(companyId, userQuery.trim(), 4);
+    const relevantChunks = await retrieveRelevantKnowledgeChunks(companyId2, userQuery.trim(), 4);
     if (relevantChunks.length > 0) {
       return formatRagPromptSection(relevantChunks);
     }
   }
-  const files = await db.select().from(companyKnowledgeFilesTable).where(and(eq(companyKnowledgeFilesTable.companyId, companyId), eq(companyKnowledgeFilesTable.status, "ready")));
+  const files = await db.select().from(companyKnowledgeFilesTable).where(and(eq(companyKnowledgeFilesTable.companyId, companyId2), eq(companyKnowledgeFilesTable.status, "ready")));
   if (files.length === 0) return "";
   let combined = "";
   for (const file2 of files) {
@@ -61190,8 +61204,8 @@ ${lines.join("\n\n")}`);
   if (combined.length > 5e4) combined = combined.slice(0, 5e4);
   return { ok: true, totalItems, contentCache: combined };
 }
-async function syncCompanyWordPress(companyId) {
-  const [integration] = await db.select().from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId)).limit(1);
+async function syncCompanyWordPress(companyId2) {
+  const [integration] = await db.select().from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId2)).limit(1);
   if (!integration) return false;
   try {
     const result = await fetchWordPressContent({
@@ -61212,7 +61226,7 @@ async function syncCompanyWordPress(companyId) {
     }).where(eq(companyWordPressIntegrationsTable.id, integration.id));
     return true;
   } catch (err) {
-    logger.error({ err, companyId }, "WordPress sync error");
+    logger.error({ err, companyId: companyId2 }, "WordPress sync error");
     await db.update(companyWordPressIntegrationsTable).set({ status: "error", errorMessage: "Unexpected error during sync" }).where(eq(companyWordPressIntegrationsTable.id, integration.id));
     return false;
   }
@@ -61223,8 +61237,8 @@ async function syncAllWordPressIntegrations() {
     if (integrations.length === 0) return;
     logger.info({ count: integrations.length }, "WordPress AutoSync: starting");
     let synced = 0;
-    for (const { companyId } of integrations) {
-      const ok = await syncCompanyWordPress(companyId);
+    for (const { companyId: companyId2 } of integrations) {
+      const ok = await syncCompanyWordPress(companyId2);
       if (ok) synced++;
     }
     logger.info({ synced, total: integrations.length }, "WordPress AutoSync: complete");
@@ -61232,13 +61246,13 @@ async function syncAllWordPressIntegrations() {
     logger.error({ err }, "WordPress AutoSync: error");
   }
 }
-async function getWordPressKnowledgeSection(companyId) {
+async function getWordPressKnowledgeSection(companyId2) {
   try {
     const [integration] = await db.select({
       status: companyWordPressIntegrationsTable.status,
       contentCache: companyWordPressIntegrationsTable.contentCache,
       apiUrl: companyWordPressIntegrationsTable.apiUrl
-    }).from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId)).limit(1);
+    }).from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId2)).limit(1);
     if (!integration || integration.status !== "connected" || !integration.contentCache) {
       return "";
     }
@@ -61415,9 +61429,9 @@ async function fetchRestApiContent(params) {
     };
   }
 }
-async function syncCompanyRestApi(companyId) {
+async function syncCompanyRestApi(companyId2) {
   try {
-    const [integration] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId)).limit(1);
+    const [integration] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId2)).limit(1);
     if (!integration) return false;
     const result = await fetchRestApiContent({
       apiUrl: integration.apiUrl,
@@ -61442,7 +61456,7 @@ async function syncCompanyRestApi(companyId) {
     }).where(eq(companyRestApiIntegrationsTable.id, integration.id));
     return true;
   } catch (err) {
-    logger.error({ err, companyId }, "REST API sync error");
+    logger.error({ err, companyId: companyId2 }, "REST API sync error");
     return false;
   }
 }
@@ -61452,8 +61466,8 @@ async function syncAllRestApiIntegrations() {
     if (integrations.length === 0) return;
     logger.info({ count: integrations.length }, "REST API AutoSync: starting");
     let synced = 0;
-    for (const { companyId } of integrations) {
-      const ok = await syncCompanyRestApi(companyId);
+    for (const { companyId: companyId2 } of integrations) {
+      const ok = await syncCompanyRestApi(companyId2);
       if (ok) synced++;
     }
     logger.info({ synced, total: integrations.length }, "REST API AutoSync: complete");
@@ -61461,13 +61475,13 @@ async function syncAllRestApiIntegrations() {
     logger.error({ err }, "REST API AutoSync: error");
   }
 }
-async function getRestApiKnowledgeSection(companyId) {
+async function getRestApiKnowledgeSection(companyId2) {
   try {
     const [integration] = await db.select({
       status: companyRestApiIntegrationsTable.status,
       contentCache: companyRestApiIntegrationsTable.contentCache,
       apiUrl: companyRestApiIntegrationsTable.apiUrl
-    }).from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId)).limit(1);
+    }).from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId2)).limit(1);
     if (!integration || integration.status !== "connected" || !integration.contentCache) {
       return "";
     }
@@ -61719,8 +61733,8 @@ ${formattedProducts.join("\n\n---\n\n")}`);
     samplePreview
   };
 }
-async function syncCompanyShopify(companyId) {
-  const [integration] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId)).limit(1);
+async function syncCompanyShopify(companyId2) {
+  const [integration] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId2)).limit(1);
   if (!integration) return false;
   try {
     const result = await fetchShopifyContent({
@@ -61748,7 +61762,7 @@ async function syncCompanyShopify(companyId) {
     }).where(eq(companyShopifyIntegrationsTable.id, integration.id));
     return true;
   } catch (err) {
-    logger.error({ err, companyId }, "Shopify sync error");
+    logger.error({ err, companyId: companyId2 }, "Shopify sync error");
     await db.update(companyShopifyIntegrationsTable).set({
       status: "error",
       errorMessage: err?.message || "Unexpected error during Shopify sync",
@@ -61763,8 +61777,8 @@ async function syncAllShopifyIntegrations() {
     if (integrations.length === 0) return;
     logger.info({ count: integrations.length }, "Shopify AutoSync: starting");
     let synced = 0;
-    for (const { companyId } of integrations) {
-      const ok = await syncCompanyShopify(companyId);
+    for (const { companyId: companyId2 } of integrations) {
+      const ok = await syncCompanyShopify(companyId2);
       if (ok) synced++;
     }
     logger.info({ synced, total: integrations.length }, "Shopify AutoSync: complete");
@@ -61772,14 +61786,14 @@ async function syncAllShopifyIntegrations() {
     logger.error({ err }, "Shopify AutoSync: error");
   }
 }
-async function getShopifyKnowledgeSection(companyId) {
+async function getShopifyKnowledgeSection(companyId2) {
   try {
     const [integration] = await db.select({
       status: companyShopifyIntegrationsTable.status,
       contentCache: companyShopifyIntegrationsTable.contentCache,
       shopDomain: companyShopifyIntegrationsTable.shopDomain,
       shopName: companyShopifyIntegrationsTable.shopName
-    }).from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId)).limit(1);
+    }).from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId2)).limit(1);
     if (!integration || integration.status !== "connected" || !integration.contentCache) {
       return "";
     }
@@ -63575,10 +63589,10 @@ function parseTicketPlanDetails(ticket, catalog2 = DEFAULT_PACKAGES_CATALOG) {
     dataSources
   };
 }
-async function applyPlanTierToCompany(companyId, plan, options = {}) {
-  const [existingCompany] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+async function applyPlanTierToCompany(companyId2, plan, options = {}) {
+  const [existingCompany] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1);
   if (!existingCompany) {
-    throw new Error(`Company #${companyId} not found`);
+    throw new Error(`Company #${companyId2} not found`);
   }
   const isFreeTrial = plan.id === "free_trial";
   const durationDays = options.durationDays ?? (isFreeTrial ? 7 : options.isYearly ? 365 : 30);
@@ -63650,9 +63664,9 @@ async function applyPlanTierToCompany(companyId, plan, options = {}) {
   if (options.phone && !existingCompany.whatsappNumber) {
     companyUpdates.whatsappNumber = options.phone;
   }
-  await db.update(companiesTable).set(companyUpdates).where(eq(companiesTable.id, companyId));
+  await db.update(companiesTable).set(companyUpdates).where(eq(companiesTable.id, companyId2));
   if (pages.length > 0) {
-    const pagesKey = `enabled_client_pages_${companyId}`;
+    const pagesKey = `enabled_client_pages_${companyId2}`;
     try {
       await db.insert(adminConfigTable).values({
         key: pagesKey,
@@ -63670,7 +63684,7 @@ async function applyPlanTierToCompany(companyId, plan, options = {}) {
     }
   }
   await db.insert(companyActivityLogsTable).values({
-    companyId,
+    companyId: companyId2,
     action: "plan_tier_applied",
     performedBy: options.approvedBy || "Admin",
     note: JSON.stringify({
@@ -63685,7 +63699,7 @@ async function applyPlanTierToCompany(companyId, plan, options = {}) {
       activationEnd: activationEnd.toISOString()
     })
   }).catch((e) => logger.warn({ err: e }, "Could not log plan tier application in activity logs"));
-  const [updatedCompany] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+  const [updatedCompany] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1);
   return updatedCompany || existingCompany;
 }
 async function processApprovedPlanRequest(ticketId, options) {
@@ -94058,23 +94072,23 @@ router4.get("/admin/usage-cost", async (req, res) => {
 });
 router4.post("/admin/usage-cost/reset", async (req, res) => {
   try {
-    const { companyId, deleteLogs } = req.body;
+    const { companyId: companyId2, deleteLogs } = req.body;
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
     if (deleteLogs) {
       const now = /* @__PURE__ */ new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       monthStart.setHours(0, 0, 0, 0);
       const conditions = [gte(chatLogsTable.createdAt, monthStart)];
-      if (companyId) conditions.push(eq(chatLogsTable.companyId, companyId));
+      if (companyId2) conditions.push(eq(chatLogsTable.companyId, companyId2));
       await db.delete(chatLogsTable).where(and(...conditions));
     }
-    if (companyId) {
-      const key = `quota_reset_company_${companyId}`;
+    if (companyId2) {
+      const key = `quota_reset_company_${companyId2}`;
       await db.insert(adminConfigTable).values({ key, value: nowIso }).onConflictDoUpdate({ target: adminConfigTable.key, set: { value: nowIso, updatedAt: /* @__PURE__ */ new Date() } });
       await logAdminActivity(
         req.session.userId,
         "Reset Quota Usage",
-        `Reset monthly quota usage counter for company ID ${companyId} (deleteLogs: ${!!deleteLogs})`,
+        `Reset monthly quota usage counter for company ID ${companyId2} (deleteLogs: ${!!deleteLogs})`,
         req.ip || null
       );
     } else {
@@ -95669,8 +95683,8 @@ router4.put("/admin/companies/:id/retention", async (req, res) => {
 });
 router4.post("/admin/companies/:id/apply-plan-tier", async (req, res) => {
   try {
-    const companyId = Number(req.params.id);
-    if (!companyId || isNaN(companyId)) {
+    const companyId2 = Number(req.params.id);
+    if (!companyId2 || isNaN(companyId2)) {
       res.status(400).json({ error: "Invalid company id" });
       return;
     }
@@ -95694,7 +95708,7 @@ router4.post("/admin/companies/:id/apply-plan-tier", async (req, res) => {
       res.status(404).json({ error: "Plan tier definition not found" });
       return;
     }
-    const updatedCompany = await applyPlanTierToCompany(companyId, matchedPlan, {
+    const updatedCompany = await applyPlanTierToCompany(companyId2, matchedPlan, {
       durationDays,
       isYearly,
       explicitRetentionDays,
@@ -95707,7 +95721,7 @@ router4.post("/admin/companies/:id/apply-plan-tier", async (req, res) => {
     await logAdminActivity(
       req.session.userId,
       "Apply Plan Tier",
-      `Admin applied plan tier [${matchedPlan.nameEn || matchedPlan.nameAr}] to company #${companyId}`,
+      `Admin applied plan tier [${matchedPlan.nameEn || matchedPlan.nameAr}] to company #${companyId2}`,
       req.ip || null
     );
     res.json({ ok: true, company: updatedCompany, plan: matchedPlan });
@@ -95849,12 +95863,12 @@ router4.get("/admin/chat-logs", async (req, res) => {
       if (ticketConditions.length > 0) ticketQuery = ticketQuery.where(and(...ticketConditions));
       const tickets = await ticketQuery.orderBy(sql`${ticketsTable.createdAt} DESC`).limit(100);
       const existingSessionIds = new Set(mappedRows.map((r) => r.sessionId));
-      for (const { ticket, companyName, companyId } of tickets) {
+      for (const { ticket, companyName, companyId: companyId2 } of tickets) {
         const sessId = `ticket_${ticket.id}`;
         if (!existingSessionIds.has(sessId)) {
           mappedRows.push({
             id: 9e6 + ticket.id,
-            companyId: companyId ?? 0,
+            companyId: companyId2 ?? 0,
             companyName: companyName ?? "\u0639\u0645\u064A\u0644",
             channel: "website",
             sessionId: sessId,
@@ -96448,12 +96462,12 @@ router4.get("/admin/invoices", async (req, res) => {
 });
 router4.post("/admin/invoices/void", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, tokensToDeduct, costToDeduct, reason } = req.body;
+    const { invoiceNumber, ticketId, companyId: companyId2, tokensToDeduct, costToDeduct, reason } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
     }
-    let effectiveCompanyId = companyId;
+    let effectiveCompanyId = companyId2;
     let associatedTicket = null;
     if (ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
@@ -96572,12 +96586,12 @@ router4.post("/admin/invoices/void", async (req, res) => {
 });
 router4.post("/admin/invoices/pause", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, tokensToPause, reason } = req.body;
+    const { invoiceNumber, ticketId, companyId: companyId2, tokensToPause, reason } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
     }
-    let effectiveCompanyId = companyId;
+    let effectiveCompanyId = companyId2;
     let associatedTicket = null;
     if (ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
@@ -96676,12 +96690,12 @@ router4.post("/admin/invoices/pause", async (req, res) => {
 });
 router4.post("/admin/invoices/resume", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, tokensToResume } = req.body;
+    const { invoiceNumber, ticketId, companyId: companyId2, tokensToResume } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
     }
-    let effectiveCompanyId = companyId;
+    let effectiveCompanyId = companyId2;
     let associatedTicket = null;
     if (ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
@@ -96793,12 +96807,12 @@ router4.post("/admin/invoices/resume", async (req, res) => {
 });
 router4.post("/admin/invoices/delete", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId } = req.body;
+    const { invoiceNumber, ticketId, companyId: companyId2 } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
     }
-    let effectiveCompanyId = companyId;
+    let effectiveCompanyId = companyId2;
     if (!effectiveCompanyId && ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
       if (ticket) {
@@ -96858,12 +96872,12 @@ router4.post("/admin/invoices/delete", async (req, res) => {
 });
 router4.post("/admin/invoices/toggle-paid", async (req, res) => {
   try {
-    const { invoiceNumber, ticketId, companyId, isPaid } = req.body;
+    const { invoiceNumber, ticketId, companyId: companyId2, isPaid } = req.body;
     if (!invoiceNumber) {
       res.status(400).json({ error: "invoiceNumber is required" });
       return;
     }
-    let effectiveCompanyId = companyId;
+    let effectiveCompanyId = companyId2;
     if (!effectiveCompanyId && ticketId) {
       const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
       if (ticket) {
@@ -97058,188 +97072,201 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
     const pLocal = Number(priceLocal || 0);
     if (sendViaEmail && recipientEmail && recipientEmail.trim()) {
       const targetEmail = recipientEmail.trim();
-      const cfg = await getEmailConfig();
-      if (isSmtpConfigured(cfg)) {
-        try {
-          const transporter = buildTransporter(cfg);
-          const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
-          const finalHtml = htmlContent || (hasImage ? `
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</title>
-            </head>
-            <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
-              <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
-                
-                <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
-                  <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
-                    BOT MANAGER \u2022 OFFICIAL INVOICE CARD
-                  </div>
-                  <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml(invoiceNumber)}</h2>
-                  <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
-                </div>
-
-                ${customNotes ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
-                        <strong style="color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml(customNotes)}
-                      </div>` : ""}
-
-                <!-- Primary Invoice Card Image ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
-                <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
-                  <img src="cid:invoice-copy-image" alt="\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
-                </div>
-
-                <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
-                  <p style="margin:0;">\u0645\u0646\u0635\u0629 <strong>Bot Manager</strong> \u2022 \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0623\u0639\u0644\u0627\u0647 \u0643\u0635\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629 \u0648\u0645\u0631\u0641\u0642\u0629 \u0643\u0645\u0644\u0641 PNG \u0639\u0627\u0644\u064A \u0627\u0644\u062F\u0642\u0629.</p>
-                </div>
-
+      let matchedCompany = null;
+      let matchedClient = null;
+      if (companyId) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
+        matchedCompany = comp || null;
+      }
+      if (!matchedCompany && companyName) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.name, companyName)).limit(1);
+        matchedCompany = comp || null;
+      }
+      if (matchedCompany?.clientId) {
+        const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, matchedCompany.clientId)).limit(1);
+        matchedClient = cli || null;
+      } else if (clientId) {
+        const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
+        matchedClient = cli || null;
+      }
+      const customResendKey = matchedCompany?.resendApiKey || matchedClient?.resendApiKey || null;
+      const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
+      const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+      const finalHtml = htmlContent || (hasImage ? `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</title>
+        </head>
+        <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
+          <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+            
+            <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
+              <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
+                BOT MANAGER \u2022 OFFICIAL INVOICE CARD
               </div>
-            </body>
-            </html>
-          `.trim() : `
-            <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
-              <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
-                <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
-                  BOT MANAGER \u2022 INVOICE COPY / \u0646\u0633\u062E\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0646 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629
-                </div>
-                <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</h2>
-                <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
-              </div>
-
-              <div style="padding:28px 24px;">
-                ${customNotes ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
-                        <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong>
-                        ${escapeHtml(customNotes)}
-                      </div>` : ""}
-
-                <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
-                  <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
-                    <tr>
-                      <td style="color:#64748b;width:35%;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629:</td>
-                      <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#64748b;">\u0627\u0644\u0639\u0645\u064A\u0644 / \u0627\u0644\u0634\u0631\u0643\u0629:</td>
-                      <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "\u0627\u0644\u0639\u0645\u064A\u0644")} - ${escapeHtml(companyName || "")}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#64748b;">\u0627\u0644\u0628\u0646\u062F / \u0627\u0644\u0628\u0627\u0642\u0629:</td>
-                      <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "\u0627\u0634\u062A\u0631\u0627\u0643 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064A")}</td>
-                    </tr>
-                    ${tokenQuota ? `<tr>
-                            <td style="color:#64748b;">\u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632:</td>
-                            <td style="font-weight:700;color:#0f172a;">${tokenQuota.toLocaleString()} Tokens</td>
-                          </tr>` : ""}
-                    <tr>
-                      <td style="color:#64748b;">\u0627\u0644\u0645\u0628\u0644\u063A \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A:</td>
-                      <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
-                        ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="color:#64748b;">\u0627\u0644\u062D\u0627\u0644\u0629:</td>
-                      <td style="font-weight:700;color:#16a34a;">\u2705 \u0645\u0639\u062A\u0645\u062F\u0629 \u0648\u0645\u0633\u062F\u062F\u0629</td>
-                    </tr>
-                  </table>
-                </div>
-
-                <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
-                  \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0647\u0630\u0647 \u0627\u0644\u0646\u0633\u062E\u0629 \u0627\u0644\u0631\u0633\u0645\u064A\u0629 \u0645\u0646 \u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.<br/>
-                  \u0634\u0643\u0631\u0627\u064B \u0644\u0627\u062E\u062A\u064A\u0627\u0631\u0643\u0645 Bot Manager \u0644\u0623\u0646\u0638\u0645\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A.
-                </p>
-              </div>
+              <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml(invoiceNumber)}</h2>
+              <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
             </div>
-          `);
-          const mailOptions = {
-            from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
-            to: targetEmail,
+
+            ${customNotes ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
+                    <strong style="color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml(customNotes)}
+                  </div>` : ""}
+
+            <!-- Primary Invoice Card Image ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
+            <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
+              <img src="cid:invoice-copy-image" alt="\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
+            </div>
+
+            <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
+              <p style="margin:0;">\u0645\u0646\u0635\u0629 <strong>Bot Manager</strong> \u2022 \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0623\u0639\u0644\u0627\u0647 \u0643\u0635\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629 \u0648\u0645\u0631\u0641\u0642\u0629 \u0643\u0645\u0644\u0641 PNG \u0639\u0627\u0644\u064A \u0627\u0644\u062F\u0642\u0629.</p>
+            </div>
+
+          </div>
+        </body>
+        </html>
+      `.trim() : `
+        <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
+          <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
+            <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
+              BOT MANAGER \u2022 INVOICE COPY / \u0646\u0633\u062E\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0646 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629
+            </div>
+            <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</h2>
+            <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
+          </div>
+
+          <div style="padding:28px 24px;">
+            ${customNotes ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
+                    <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong>
+                    ${escapeHtml(customNotes)}
+                  </div>` : ""}
+
+            <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
+              <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
+                <tr>
+                  <td style="color:#64748b;width:35%;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629:</td>
+                  <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;">\u0627\u0644\u0639\u0645\u064A\u0644 / \u0627\u0644\u0634\u0631\u0643\u0629:</td>
+                  <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "\u0627\u0644\u0639\u0645\u064A\u0644")} - ${escapeHtml(companyName || "")}</td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;">\u0627\u0644\u0628\u0646\u062F / \u0627\u0644\u0628\u0627\u0642\u0629:</td>
+                  <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "\u0627\u0634\u062A\u0631\u0627\u0643 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064A")}</td>
+                </tr>
+                ${tokenQuota ? `<tr>
+                        <td style="color:#64748b;">\u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632:</td>
+                        <td style="font-weight:700;color:#0f172a;">${tokenQuota.toLocaleString()} Tokens</td>
+                      </tr>` : ""}
+                <tr>
+                  <td style="color:#64748b;">\u0627\u0644\u0645\u0628\u0644\u063A \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A:</td>
+                  <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
+                    ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;">\u0627\u0644\u062D\u0627\u0644\u0629:</td>
+                  <td style="font-weight:700;color:#16a34a;">\u2705 \u0645\u0639\u062A\u0645\u062F\u0629 \u0648\u0645\u0633\u062F\u062F\u0629</td>
+                </tr>
+              </table>
+            </div>
+
+            <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
+              \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0647\u0630\u0647 \u0627\u0644\u0646\u0633\u062E\u0629 \u0627\u0644\u0631\u0633\u0645\u064A\u0629 \u0645\u0646 \u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.<br/>
+              \u0634\u0643\u0631\u0627\u064B \u0644\u0627\u062E\u062A\u064A\u0627\u0631\u0643\u0645 Bot Manager \u0644\u0623\u0646\u0638\u0645\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A.
+            </p>
+          </div>
+        </div>
+      `);
+      if (resendApiKey) {
+        try {
+          const resendPayload = {
+            from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+            to: [targetEmail],
             subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
             html: finalHtml
           };
           if (hasImage && imageDataUrl) {
             const base64Data = imageDataUrl.split(",")[1];
-            mailOptions.attachments = [
+            resendPayload.attachments = [
               {
-                filename: `invoice-${invoiceNumber}.png`,
-                content: Buffer.from(base64Data, "base64"),
-                cid: "invoice-copy-image"
+                filename: `Invoice-${invoiceNumber}.png`,
+                content: base64Data,
+                content_id: "invoice-copy-image"
               }
             ];
           }
-          await transporter.sendMail(mailOptions);
-          emailSent = true;
-          await db.insert(emailLogsTable).values({
-            companyId: 1,
-            recipientEmail: targetEmail,
-            subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
-            eventType: "invoice_copy",
-            status: "sent"
-          }).catch(() => {
+          const resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(resendPayload)
           });
-        } catch (err) {
-          logger.warn({ err, targetEmail }, "Failed to send invoice copy email via SMTP, attempting Resend fallback");
-          emailError = err?.message || "Email send failure";
+          if (resendRes.ok) {
+            emailSent = true;
+            emailError = null;
+            logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend API");
+            await db.insert(emailLogsTable).values({
+              companyId: matchedCompany?.id || 1,
+              recipientEmail: targetEmail,
+              subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
+              eventType: "invoice_copy",
+              status: "sent"
+            }).catch(() => {
+            });
+          } else {
+            const errBody = await resendRes.text();
+            emailError = `Resend error: ${errBody}`;
+            logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed; falling back to SMTP");
+          }
+        } catch (resendErr) {
+          emailError = resendErr?.message ?? "Resend error";
+          logger.warn({ err: resendErr, targetEmail }, "Resend exception; trying SMTP fallback");
         }
-      } else {
-        emailError = "SMTP settings are not configured in Admin Email Settings";
       }
       if (!emailSent) {
-        try {
-          const { apiKey: resendKey, fromEmail } = await getResendConfig();
-          if (resendKey) {
-            const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
-            const resendPayload = {
-              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-              to: [targetEmail],
+        const cfg = await getEmailConfig();
+        if (isSmtpConfigured(cfg)) {
+          try {
+            const transporter = buildTransporter(cfg);
+            const mailOptions = {
+              from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
+              to: targetEmail,
               subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
-              html: htmlContent || (hasImage ? `
-                <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;text-align:center;padding:20px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;">
-                  <h2 style="margin:0 0 12px;color:#0f172a;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml(invoiceNumber)}</h2>
-                  ${customNotes ? `<p style="color:#2563eb;margin-bottom:16px;"><strong>\u0645\u0644\u0627\u062D\u0638\u0629:</strong> ${escapeHtml(customNotes)}</p>` : ""}
-                  <p style="color:#64748b;font-size:12px;">\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0645\u0631\u0641\u0642\u0629 \u0643\u0635\u0648\u0631\u0629 \u0639\u0627\u0644\u064A\u0629 \u0627\u0644\u062F\u0642\u0629.</p>
-                </div>
-              ` : `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`)
+              html: finalHtml
             };
             if (hasImage && imageDataUrl) {
               const base64Data = imageDataUrl.split(",")[1];
-              resendPayload.attachments = [
+              mailOptions.attachments = [
                 {
                   filename: `invoice-${invoiceNumber}.png`,
-                  content: base64Data,
-                  content_id: "invoice-copy-image"
+                  content: Buffer.from(base64Data, "base64"),
+                  cid: "invoice-copy-image"
                 }
               ];
             }
-            const resendRes = await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${resendKey}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify(resendPayload)
+            await transporter.sendMail(mailOptions);
+            emailSent = true;
+            emailError = null;
+            await db.insert(emailLogsTable).values({
+              companyId: matchedCompany?.id || 1,
+              recipientEmail: targetEmail,
+              subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
+              eventType: "invoice_copy",
+              status: "sent"
+            }).catch(() => {
             });
-            if (resendRes.ok) {
-              emailSent = true;
-              emailError = null;
-              logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend");
-              await db.insert(emailLogsTable).values({
-                companyId: 1,
-                recipientEmail: targetEmail,
-                subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
-                eventType: "invoice_copy",
-                status: "sent"
-              }).catch(() => {
-              });
-            } else {
-              const errBody = await resendRes.text();
-              emailError = `Resend error: ${errBody}`;
-              logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed");
-            }
+          } catch (err) {
+            logger.error({ err, targetEmail }, "Failed to send invoice copy email via SMTP");
+            emailError = (emailError ? emailError + " | " : "") + (err?.message || "SMTP send failure");
           }
-        } catch (resendErr) {
-          emailError = (emailError ? emailError + " | " : "") + (resendErr?.message ?? "Resend error");
+        } else if (!emailError) {
+          emailError = "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062E\u062F\u0645\u0629 \u0628\u0631\u064A\u062F \u0645\u0647\u064A\u0623\u0629 (Resend \u0623\u0648 SMTP). \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0623\u0643\u062F \u0645\u0646 \u0645\u0641\u062A\u0627\u062D Secret (RESEND_API_KEY) \u0623\u0648 \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0628\u0631\u064A\u062F SMTP.";
         }
       }
     }
@@ -97932,13 +97959,13 @@ router4.put("/admin/settings", async (req, res) => {
 });
 router4.post("/admin/broadcast", async (req, res) => {
   try {
-    const { title, message, target, companyId } = req.body;
+    const { title, message, target, companyId: companyId2 } = req.body;
     if (!title?.trim() || !message?.trim()) {
       res.status(400).json({ error: "Title and message are required" });
       return;
     }
     const validTarget = ["all", "active", "inactive", "specific"].includes(target ?? "") ? target : "all";
-    if (validTarget === "specific" && !companyId) {
+    if (validTarget === "specific" && !companyId2) {
       res.status(400).json({ error: "Company ID is required for specific target" });
       return;
     }
@@ -97951,7 +97978,7 @@ router4.post("/admin/broadcast", async (req, res) => {
     }).from(companiesTable).leftJoin(usersTable, eq(companiesTable.clientId, usersTable.id));
     if (validTarget === "active") companies = companies.filter((c) => c.isActive);
     else if (validTarget === "inactive") companies = companies.filter((c) => !c.isActive);
-    else if (validTarget === "specific") companies = companies.filter((c) => c.id === companyId);
+    else if (validTarget === "specific") companies = companies.filter((c) => c.id === companyId2);
     if (companies.length === 0) {
       res.json({ sent: 0, message: "No matching companies found." });
       return;
@@ -97983,7 +98010,7 @@ router4.post("/admin/broadcast", async (req, res) => {
 router4.get("/admin/broadcast/preview", async (req, res) => {
   try {
     const target = req.query.target ?? "all";
-    const companyId = req.query.companyId ? parseInt(req.query.companyId, 10) : void 0;
+    const companyId2 = req.query.companyId ? parseInt(req.query.companyId, 10) : void 0;
     let companies = await db.select({
       id: companiesTable.id,
       name: companiesTable.name,
@@ -97991,7 +98018,7 @@ router4.get("/admin/broadcast/preview", async (req, res) => {
     }).from(companiesTable);
     if (target === "active") companies = companies.filter((c) => c.isActive);
     else if (target === "inactive") companies = companies.filter((c) => !c.isActive);
-    else if (target === "specific" && companyId) companies = companies.filter((c) => c.id === companyId);
+    else if (target === "specific" && companyId2) companies = companies.filter((c) => c.id === companyId2);
     res.json({ count: companies.length, companies: companies.slice(0, 10) });
   } catch (err) {
     logger.error({ err }, "Broadcast preview error");
@@ -99782,8 +99809,8 @@ function getAppBaseUrl(req) {
 }
 router5.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, res) => {
   try {
-    const { companyId } = req.body;
-    const [company] = req.session.role === "admin" ? await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1) : await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId)).limit(1);
+    const { companyId: companyId2 } = req.body;
+    const [company] = req.session.role === "admin" ? await db.select().from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1) : await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId)).limit(1);
     if (!company || !company.telegramBotApiKey) {
       res.status(404).json({ error: "No company found or missing Telegram Bot API Key" });
       return;
@@ -99814,12 +99841,12 @@ router5.post("/telegram/register-webhook", requireAuth, apiLimiter, async (req, 
 });
 router5.get("/telegram/webhook-info/:companyId", requireAuth, apiLimiter, async (req, res) => {
   try {
-    const companyId = Number(req.params.companyId);
-    if (!companyId) {
+    const companyId2 = Number(req.params.companyId);
+    if (!companyId2) {
       res.status(400).json({ error: "Invalid company ID" });
       return;
     }
-    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1);
     if (!company || !company.telegramBotApiKey) {
       res.status(404).json({ error: "No company found or missing Telegram Bot API Key" });
       return;
@@ -100841,17 +100868,17 @@ async function autoRegisterTelegramWebhook(token, baseUrl, secret) {
     logger.warn("Telegram webhook auto-registration error");
   }
 }
-async function fetchAndStoreTelegramUsername(companyId, token) {
+async function fetchAndStoreTelegramUsername(companyId2, token) {
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
     const data = await res.json();
     if (data.ok && data.result?.username) {
-      await db.update(companiesTable).set({ telegramBotUsername: data.result.username }).where(eq(companiesTable.id, companyId));
+      await db.update(companiesTable).set({ telegramBotUsername: data.result.username }).where(eq(companiesTable.id, companyId2));
     } else {
-      logger.warn({ companyId }, "Telegram getMe did not return a username");
+      logger.warn({ companyId: companyId2 }, "Telegram getMe did not return a username");
     }
   } catch (err) {
-    logger.warn({ err, companyId }, "Failed to fetch Telegram bot username");
+    logger.warn({ err, companyId: companyId2 }, "Failed to fetch Telegram bot username");
   }
 }
 function getMessengerMetaError(error40) {
@@ -100866,18 +100893,18 @@ function getMessengerMetaError(error40) {
   }
   return { code: error40?.code, requiresPageAccess: false, message: rawMessage };
 }
-async function fetchAndStoreMessengerPageId(companyId, pageAccessToken) {
+async function fetchAndStoreMessengerPageId(companyId2, pageAccessToken) {
   try {
     const res = await fetch(`https://graph.facebook.com/v19.0/me?fields=id&access_token=${encodeURIComponent(pageAccessToken)}`);
     const data = await res.json();
     if (data.id) {
-      await db.update(companiesTable).set({ messengerPageId: data.id }).where(eq(companiesTable.id, companyId));
+      await db.update(companiesTable).set({ messengerPageId: data.id }).where(eq(companiesTable.id, companyId2));
     } else {
       const metaError = getMessengerMetaError(data.error);
-      logger.warn({ companyId, error: data.error, requiresPageAccess: metaError.requiresPageAccess }, "Graph API /me did not return a page id");
+      logger.warn({ companyId: companyId2, error: data.error, requiresPageAccess: metaError.requiresPageAccess }, "Graph API /me did not return a page id");
     }
   } catch (err) {
-    logger.warn({ err, companyId }, "Failed to fetch Messenger page id");
+    logger.warn({ err, companyId: companyId2 }, "Failed to fetch Messenger page id");
   }
 }
 router7.post("/client/company", async (req, res) => {
@@ -103354,12 +103381,12 @@ router7.get("/client/malfunctions", async (req, res) => {
 });
 router7.post("/client/malfunctions", async (req, res) => {
   try {
-    let companyId = req.session.companyId;
-    if (!companyId && req.session.userId) {
+    let companyId2 = req.session.companyId;
+    if (!companyId2 && req.session.userId) {
       const [comp] = await db.select({ id: companiesTable.id }).from(companiesTable).where(eq(companiesTable.clientId, req.session.userId)).limit(1);
-      if (comp) companyId = comp.id;
+      if (comp) companyId2 = comp.id;
     }
-    if (!companyId) {
+    if (!companyId2) {
       res.status(400).json({ error: "Company required to report malfunction" });
       return;
     }
@@ -103368,9 +103395,9 @@ router7.post("/client/malfunctions", async (req, res) => {
       res.status(400).json({ error: "Missing title or description" });
       return;
     }
-    const [company] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+    const [company] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, companyId2)).limit(1);
     const result = await db.insert(malfunctionsTable).values({
-      companyId,
+      companyId: companyId2,
       title,
       description,
       source: "client",
@@ -103381,7 +103408,7 @@ router7.post("/client/malfunctions", async (req, res) => {
       title,
       description,
       source: "client",
-      companyId,
+      companyId: companyId2,
       companyName: company?.name
     }).catch((err) => logger.error({ err }, "Failed to send malfunction notification"));
     res.json(result[0]);
@@ -105196,8 +105223,8 @@ var FILE_TYPE_BY_EXTENSION = {
   txt: "txt"
 };
 router12.use("/client/company/knowledge-files", requireClient);
-async function getOwnedCompany(clientId) {
-  const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, clientId)).limit(1);
+async function getOwnedCompany(clientId2) {
+  const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, clientId2)).limit(1);
   return company;
 }
 function serialize(file2) {
@@ -105474,14 +105501,14 @@ router13.put("/client/wordpress", async (req, res) => {
       res.status(403).json({ error: "WordPress data source is disabled by administrator." });
       return;
     }
-    const companyId = company.id;
+    const companyId2 = company.id;
     const { apiUrl, username, appPassword, autoSync } = req.body;
     if (!apiUrl || typeof apiUrl !== "string") {
       res.status(400).json({ error: "apiUrl is required" });
       return;
     }
     const normalisedUrl = normaliseApiUrl(apiUrl);
-    const [existing] = await db.select({ id: companyWordPressIntegrationsTable.id, appPassword: companyWordPressIntegrationsTable.appPassword }).from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId)).limit(1);
+    const [existing] = await db.select({ id: companyWordPressIntegrationsTable.id, appPassword: companyWordPressIntegrationsTable.appPassword }).from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId2)).limit(1);
     const resolvedPassword = appPassword !== void 0 ? appPassword || null : existing?.appPassword ?? null;
     const values = {
       apiUrl: normalisedUrl,
@@ -105495,9 +105522,9 @@ router13.put("/client/wordpress", async (req, res) => {
     if (existing) {
       [row] = await db.update(companyWordPressIntegrationsTable).set(values).where(eq(companyWordPressIntegrationsTable.id, existing.id)).returning();
     } else {
-      [row] = await db.insert(companyWordPressIntegrationsTable).values({ companyId, ...values }).returning();
+      [row] = await db.insert(companyWordPressIntegrationsTable).values({ companyId: companyId2, ...values }).returning();
     }
-    void syncCompanyWordPress(companyId);
+    void syncCompanyWordPress(companyId2);
     res.json(serializeIntegration(row));
   } catch (err) {
     logger.error({ err }, "PUT /client/wordpress error");
@@ -105515,14 +105542,14 @@ router13.post("/client/wordpress/sync", async (req, res) => {
       res.status(403).json({ error: "WordPress data source is disabled by administrator." });
       return;
     }
-    const companyId = company.id;
-    const [existing] = await db.select().from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId)).limit(1);
+    const companyId2 = company.id;
+    const [existing] = await db.select().from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId2)).limit(1);
     if (!existing) {
       res.status(404).json({ error: "No WordPress integration configured" });
       return;
     }
-    const ok = await syncCompanyWordPress(companyId);
-    const [updated] = await db.select().from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId)).limit(1);
+    const ok = await syncCompanyWordPress(companyId2);
+    const [updated] = await db.select().from(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId2)).limit(1);
     res.json({ ok, integration: updated ? serializeIntegration(updated) : null });
   } catch (err) {
     logger.error({ err }, "POST /client/wordpress/sync error");
@@ -105536,8 +105563,8 @@ router13.delete("/client/wordpress", async (req, res) => {
       res.status(404).json({ error: "No company found" });
       return;
     }
-    const companyId = company.id;
-    await db.delete(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId));
+    const companyId2 = company.id;
+    await db.delete(companyWordPressIntegrationsTable).where(eq(companyWordPressIntegrationsTable.companyId, companyId2));
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "DELETE /client/wordpress error");
@@ -105622,17 +105649,17 @@ router14.put("/client/rest-api", async (req, res) => {
       res.status(403).json({ error: "REST API data source is disabled by administrator." });
       return;
     }
-    const companyId = company.id;
+    const companyId2 = company.id;
     const { apiUrl, httpMethod, headerName, headerValue, dataExtractionPath, autoSync } = req.body;
     if (!apiUrl || typeof apiUrl !== "string" || !apiUrl.trim()) {
       res.status(400).json({ error: "API URL is required" });
       return;
     }
     const trimmedUrl = apiUrl.trim();
-    const [existing] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId)).limit(1);
+    const [existing] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId2)).limit(1);
     const effectiveHeaderValue = headerValue !== void 0 && headerValue !== "" ? headerValue.trim() : existing?.headerValue ?? null;
     const values = {
-      companyId,
+      companyId: companyId2,
       apiUrl: trimmedUrl,
       httpMethod: (httpMethod || "GET").toUpperCase(),
       headerName: headerName?.trim() || null,
@@ -105650,7 +105677,7 @@ router14.put("/client/rest-api", async (req, res) => {
       const [inserted] = await db.insert(companyRestApiIntegrationsTable).values(values).returning({ id: companyRestApiIntegrationsTable.id });
       integrationId = inserted.id;
     }
-    void syncCompanyRestApi(companyId);
+    void syncCompanyRestApi(companyId2);
     const [saved] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.id, integrationId)).limit(1);
     res.json(saved ? serializeIntegration2(saved) : null);
   } catch (err) {
@@ -105669,9 +105696,9 @@ router14.post("/client/rest-api/sync", async (req, res) => {
       res.status(403).json({ error: "REST API data source is disabled by administrator." });
       return;
     }
-    const companyId = company.id;
-    const ok = await syncCompanyRestApi(companyId);
-    const [integration] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId)).limit(1);
+    const companyId2 = company.id;
+    const ok = await syncCompanyRestApi(companyId2);
+    const [integration] = await db.select().from(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId2)).limit(1);
     res.json({
       ok,
       integration: integration ? serializeIntegration2(integration) : null
@@ -105688,8 +105715,8 @@ router14.delete("/client/rest-api", async (req, res) => {
       res.status(404).json({ error: "Company not found" });
       return;
     }
-    const companyId = company.id;
-    await db.delete(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId));
+    const companyId2 = company.id;
+    await db.delete(companyRestApiIntegrationsTable).where(eq(companyRestApiIntegrationsTable.companyId, companyId2));
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "DELETE /client/rest-api error");
@@ -105772,17 +105799,17 @@ router15.put("/client/shopify", async (req, res) => {
       res.status(403).json({ error: "Shopify data source is disabled by administrator." });
       return;
     }
-    const companyId = company.id;
+    const companyId2 = company.id;
     const { shopDomain, accessToken, apiVersion, autoSync } = req.body;
     if (!shopDomain || typeof shopDomain !== "string" || !shopDomain.trim()) {
       res.status(400).json({ error: "Shop domain is required" });
       return;
     }
     const cleanDomain = normaliseShopDomain(shopDomain);
-    const [existing] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId)).limit(1);
+    const [existing] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId2)).limit(1);
     const effectiveToken = accessToken !== void 0 && accessToken !== "" ? accessToken.trim() : existing?.accessToken ?? null;
     const values = {
-      companyId,
+      companyId: companyId2,
       shopDomain: cleanDomain,
       accessToken: effectiveToken,
       apiVersion: apiVersion?.trim() || "2024-01",
@@ -105798,7 +105825,7 @@ router15.put("/client/shopify", async (req, res) => {
       const [inserted] = await db.insert(companyShopifyIntegrationsTable).values(values).returning({ id: companyShopifyIntegrationsTable.id });
       integrationId = inserted.id;
     }
-    void syncCompanyShopify(companyId);
+    void syncCompanyShopify(companyId2);
     const [saved] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.id, integrationId)).limit(1);
     res.json(saved ? serializeIntegration3(saved) : null);
   } catch (err) {
@@ -105817,9 +105844,9 @@ router15.post("/client/shopify/sync", async (req, res) => {
       res.status(403).json({ error: "Shopify data source is disabled by administrator." });
       return;
     }
-    const companyId = company.id;
-    const ok = await syncCompanyShopify(companyId);
-    const [integration] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId)).limit(1);
+    const companyId2 = company.id;
+    const ok = await syncCompanyShopify(companyId2);
+    const [integration] = await db.select().from(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId2)).limit(1);
     res.json({
       ok,
       integration: integration ? serializeIntegration3(integration) : null
@@ -105836,8 +105863,8 @@ router15.delete("/client/shopify", async (req, res) => {
       res.status(404).json({ error: "Company not found" });
       return;
     }
-    const companyId = company.id;
-    await db.delete(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId));
+    const companyId2 = company.id;
+    await db.delete(companyShopifyIntegrationsTable).where(eq(companyShopifyIntegrationsTable.companyId, companyId2));
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "DELETE /client/shopify error");

@@ -4335,214 +4335,230 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     // 1. Send via Email if requested
     if (sendViaEmail && recipientEmail && recipientEmail.trim()) {
       const targetEmail = recipientEmail.trim();
-      const cfg = await getEmailConfig();
 
-      if (isSmtpConfigured(cfg)) {
-        try {
-          const transporter = buildTransporter(cfg);
-          const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+      // Look up company and client for custom Resend key and notification email
+      let matchedCompany: any = null;
+      let matchedClient: any = null;
 
-          // Visual invoice email centered on the image card ("صورة مش كلام")
-          const finalHtml = htmlContent || (hasImage ? `
-            <!DOCTYPE html>
-            <html dir="rtl" lang="ar">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>فاتورة #${escapeHtml(invoiceNumber)}</title>
-            </head>
-            <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
-              <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
-                
-                <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
-                  <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
-                    BOT MANAGER • OFFICIAL INVOICE CARD
-                  </div>
-                  <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">فاتورة رسمية #${escapeHtml(invoiceNumber)}</h2>
-                  <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
-                </div>
+      if (companyId) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
+        matchedCompany = comp || null;
+      }
+      if (!matchedCompany && companyName) {
+        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.name, companyName)).limit(1);
+        matchedCompany = comp || null;
+      }
+      if (matchedCompany?.clientId) {
+        const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, matchedCompany.clientId)).limit(1);
+        matchedClient = cli || null;
+      } else if (clientId) {
+        const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
+        matchedClient = cli || null;
+      }
 
-                ${
-                  customNotes
-                    ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
-                        <strong style="color:#1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(customNotes)}
-                      </div>`
-                    : ""
-                }
+      const customResendKey = matchedCompany?.resendApiKey || matchedClient?.resendApiKey || null;
+      const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
+      const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
 
-                <!-- Primary Invoice Card Image ("صورة مش كلام") -->
-                <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
-                  <img src="cid:invoice-copy-image" alt="فاتورة #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
-                </div>
-
-                <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
-                  <p style="margin:0;">منصة <strong>Bot Manager</strong> • تم إرسال الفاتورة أعلاه كصورة رسمية معتمدة ومرفقة كملف PNG عالي الدقة.</p>
-                </div>
-
+      // Clean, centered visual invoice card HTML ("صورة مش كلام")
+      const finalHtml = htmlContent || (hasImage ? `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>فاتورة #${escapeHtml(invoiceNumber)}</title>
+        </head>
+        <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
+          <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+            
+            <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
+              <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
+                BOT MANAGER • OFFICIAL INVOICE CARD
               </div>
-            </body>
-            </html>
-          `.trim() : `
-            <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
-              <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
-                <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
-                  BOT MANAGER • INVOICE COPY / نسخة رسمية من الفاتورة
-                </div>
-                <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">فاتورة #${escapeHtml(invoiceNumber)}</h2>
-                <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
-              </div>
-
-              <div style="padding:28px 24px;">
-                ${
-                  customNotes
-                    ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
-                        <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">ملاحظة من الإدارة:</strong>
-                        ${escapeHtml(customNotes)}
-                      </div>`
-                    : ""
-                }
-
-                <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
-                  <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
-                    <tr>
-                      <td style="color:#64748b;width:35%;">رقم الفاتورة:</td>
-                      <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#64748b;">العميل / الشركة:</td>
-                      <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "العميل")} - ${escapeHtml(companyName || "")}</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#64748b;">البند / الباقة:</td>
-                      <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "اشتراك ذكاء اصطناعي")}</td>
-                    </tr>
-                    ${
-                      tokenQuota
-                        ? `<tr>
-                            <td style="color:#64748b;">رصيد الرموز:</td>
-                            <td style="font-weight:700;color:#0f172a;">${tokenQuota.toLocaleString()} Tokens</td>
-                          </tr>`
-                        : ""
-                    }
-                    <tr>
-                      <td style="color:#64748b;">المبلغ الإجمالي:</td>
-                      <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
-                        ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="color:#64748b;">الحالة:</td>
-                      <td style="font-weight:700;color:#16a34a;">✅ معتمدة ومسددة</td>
-                    </tr>
-                  </table>
-                </div>
-
-                <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
-                  تم إرسال هذه النسخة الرسمية من لوحة تحكم الإدارة.<br/>
-                  شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي.
-                </p>
-              </div>
+              <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">فاتورة رسمية #${escapeHtml(invoiceNumber)}</h2>
+              <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
             </div>
-          `);
 
-          const mailOptions: any = {
-            from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
-            to: targetEmail,
+            ${
+              customNotes
+                ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
+                    <strong style="color:#1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(customNotes)}
+                  </div>`
+                : ""
+            }
+
+            <!-- Primary Invoice Card Image ("صورة مش كلام") -->
+            <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
+              <img src="cid:invoice-copy-image" alt="فاتورة #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
+            </div>
+
+            <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
+              <p style="margin:0;">منصة <strong>Bot Manager</strong> • تم إرسال الفاتورة أعلاه كصورة رسمية معتمدة ومرفقة كملف PNG عالي الدقة.</p>
+            </div>
+
+          </div>
+        </body>
+        </html>
+      `.trim() : `
+        <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
+          <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
+            <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
+              BOT MANAGER • INVOICE COPY / نسخة رسمية من الفاتورة
+            </div>
+            <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">فاتورة #${escapeHtml(invoiceNumber)}</h2>
+            <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
+          </div>
+
+          <div style="padding:28px 24px;">
+            ${
+              customNotes
+                ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
+                    <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">ملاحظة من الإدارة:</strong>
+                    ${escapeHtml(customNotes)}
+                  </div>`
+                : ""
+            }
+
+            <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
+              <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
+                <tr>
+                  <td style="color:#64748b;width:35%;">رقم الفاتورة:</td>
+                  <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;">العميل / الشركة:</td>
+                  <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "العميل")} - ${escapeHtml(companyName || "")}</td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;">البند / الباقة:</td>
+                  <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "اشتراك ذكاء اصطناعي")}</td>
+                </tr>
+                ${
+                  tokenQuota
+                    ? `<tr>
+                        <td style="color:#64748b;">رصيد الرموز:</td>
+                        <td style="font-weight:700;color:#0f172a;">${tokenQuota.toLocaleString()} Tokens</td>
+                      </tr>`
+                    : ""
+                }
+                <tr>
+                  <td style="color:#64748b;">المبلغ الإجمالي:</td>
+                  <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
+                    ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color:#64748b;">الحالة:</td>
+                  <td style="font-weight:700;color:#16a34a;">✅ معتمدة ومسددة</td>
+                </tr>
+              </table>
+            </div>
+
+            <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
+              تم إرسال هذه النسخة الرسمية من لوحة تحكم الإدارة.<br/>
+              شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي.
+            </p>
+          </div>
+        </div>
+      `);
+
+      // 1. Prioritize Resend API (as configured in Secret RESEND_API_KEY)
+      if (resendApiKey) {
+        try {
+          const resendPayload: any = {
+            from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+            to: [targetEmail],
             subject: `🧾 نسخة من فاتورة #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
             html: finalHtml,
           };
 
           if (hasImage && imageDataUrl) {
             const base64Data = imageDataUrl.split(",")[1];
-            mailOptions.attachments = [
+            resendPayload.attachments = [
               {
-                filename: `invoice-${invoiceNumber}.png`,
-                content: Buffer.from(base64Data, "base64"),
-                cid: "invoice-copy-image",
+                filename: `Invoice-${invoiceNumber}.png`,
+                content: base64Data,
+                content_id: "invoice-copy-image",
               },
             ];
           }
 
-          await transporter.sendMail(mailOptions);
-          emailSent = true;
+          const resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(resendPayload),
+          });
 
-          // Log in email_logs
-          await db.insert(emailLogsTable).values({
-            companyId: 1,
-            recipientEmail: targetEmail,
-            subject: `نسخة من فاتورة #${invoiceNumber}`,
-            eventType: "invoice_copy",
-            status: "sent",
-          }).catch(() => {});
-        } catch (err: any) {
-          logger.warn({ err, targetEmail }, "Failed to send invoice copy email via SMTP, attempting Resend fallback");
-          emailError = err?.message || "Email send failure";
+          if (resendRes.ok) {
+            emailSent = true;
+            emailError = null;
+            logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend API");
+            await db
+              .insert(emailLogsTable)
+              .values({
+                companyId: matchedCompany?.id || 1,
+                recipientEmail: targetEmail,
+                subject: `نسخة من فاتورة #${invoiceNumber}`,
+                eventType: "invoice_copy",
+                status: "sent",
+              })
+              .catch(() => {});
+          } else {
+            const errBody = await resendRes.text();
+            emailError = `Resend error: ${errBody}`;
+            logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed; falling back to SMTP");
+          }
+        } catch (resendErr: any) {
+          emailError = resendErr?.message ?? "Resend error";
+          logger.warn({ err: resendErr, targetEmail }, "Resend exception; trying SMTP fallback");
         }
-      } else {
-        emailError = "SMTP settings are not configured in Admin Email Settings";
       }
 
-      // If SMTP did not send, try Resend API
+      // 2. Fallback to SMTP (Nodemailer) if Resend did not send or wasn't configured
       if (!emailSent) {
-        try {
-          const { apiKey: resendKey, fromEmail } = await getResendConfig();
-          if (resendKey) {
-            const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
-            const resendPayload: any = {
-              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-              to: [targetEmail],
+        const cfg = await getEmailConfig();
+        if (isSmtpConfigured(cfg)) {
+          try {
+            const transporter = buildTransporter(cfg);
+            const mailOptions: any = {
+              from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
+              to: targetEmail,
               subject: `🧾 نسخة من فاتورة #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
-              html: htmlContent || (hasImage ? `
-                <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;text-align:center;padding:20px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;">
-                  <h2 style="margin:0 0 12px;color:#0f172a;">فاتورة رسمية #${escapeHtml(invoiceNumber)}</h2>
-                  ${customNotes ? `<p style="color:#2563eb;margin-bottom:16px;"><strong>ملاحظة:</strong> ${escapeHtml(customNotes)}</p>` : ""}
-                  <p style="color:#64748b;font-size:12px;">بطاقة الفاتورة مرفقة كصورة عالية الدقة.</p>
-                </div>
-              ` : `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`),
+              html: finalHtml,
             };
 
             if (hasImage && imageDataUrl) {
               const base64Data = imageDataUrl.split(",")[1];
-              resendPayload.attachments = [
+              mailOptions.attachments = [
                 {
                   filename: `invoice-${invoiceNumber}.png`,
-                  content: base64Data,
-                  content_id: "invoice-copy-image",
+                  content: Buffer.from(base64Data, "base64"),
+                  cid: "invoice-copy-image",
                 },
               ];
             }
 
-            const resendRes = await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${resendKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(resendPayload),
-            });
+            await transporter.sendMail(mailOptions);
+            emailSent = true;
+            emailError = null;
 
-            if (resendRes.ok) {
-              emailSent = true;
-              emailError = null;
-              logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend");
-              await db
-                .insert(emailLogsTable)
-                .values({
-                  companyId: 1,
-                  recipientEmail: targetEmail,
-                  subject: `نسخة من فاتورة #${invoiceNumber}`,
-                  eventType: "invoice_copy",
-                  status: "sent",
-                })
-                .catch(() => {});
-            } else {
-              const errBody = await resendRes.text();
-              emailError = `Resend error: ${errBody}`;
-              logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed");
-            }
+            await db.insert(emailLogsTable).values({
+              companyId: matchedCompany?.id || 1,
+              recipientEmail: targetEmail,
+              subject: `نسخة من فاتورة #${invoiceNumber}`,
+              eventType: "invoice_copy",
+              status: "sent",
+            }).catch(() => {});
+          } catch (err: any) {
+            logger.error({ err, targetEmail }, "Failed to send invoice copy email via SMTP");
+            emailError = (emailError ? emailError + " | " : "") + (err?.message || "SMTP send failure");
           }
-        } catch (resendErr: any) {
-          emailError = (emailError ? emailError + " | " : "") + (resendErr?.message ?? "Resend error");
+        } else if (!emailError) {
+          emailError = "لم يتم العثور على خدمة بريد مهيأة (Resend أو SMTP). يرجى التأكد من مفتاح Secret (RESEND_API_KEY) أو إعدادات بريد SMTP.";
         }
       }
     }

@@ -793,10 +793,23 @@ export default function AdminBills() {
   // Handle open Send Copy Modal
   const handleOpenSendCopy = (invoice: InvoiceItem) => {
     setSelectedInvoice(invoice);
-    setRecipientEmail(invoice.clientEmail || "");
-    setRecipientPhone(invoice.clientPhone || "");
+
+    // Look for configured notification email (Gmail) from company or client
+    const matchedComp = companies.find(
+      (c: any) =>
+        (invoice.companyId && c.id === invoice.companyId) ||
+        (c.name && invoice.companyName && c.name.toLowerCase() === invoice.companyName.toLowerCase())
+    );
+    const defaultEmail =
+      invoice.clientEmail ||
+      matchedComp?.notificationEmail ||
+      matchedComp?.clientNotificationEmail ||
+      "";
+
+    setRecipientEmail(defaultEmail);
+    setRecipientPhone(invoice.clientPhone || matchedComp?.whatsappNumber || "");
     setSendViaEmail(true);
-    setSendViaWhatsApp(Boolean(invoice.clientPhone));
+    setSendViaWhatsApp(Boolean(invoice.clientPhone || matchedComp?.whatsappNumber));
     setCustomNotes("");
     setSendCopyModalOpen(true);
   };
@@ -839,6 +852,8 @@ export default function AdminBills() {
         body: JSON.stringify({
           invoiceNumber: selectedInvoice.invoiceNumber,
           itemType: selectedInvoice.itemType,
+          companyId: selectedInvoice.companyId,
+          clientId: selectedInvoice.clientId,
           title: lang === "ar" ? selectedInvoice.titleAr : selectedInvoice.titleEn,
           recipientEmail: recipientEmail.trim(),
           recipientPhone: recipientPhone.trim(),
