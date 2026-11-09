@@ -899,9 +899,9 @@ export default function AdminBills() {
         toast({
           title: lang === "ar" ? "✅ تم إرسال نسخة الفاتورة بنجاح!" : "Invoice Copy Sent Successfully!",
           description:
-            successParts.length > 0
-              ? (lang === "ar" ? `تم الإرسال عبر: ${successParts.join(" و ")}` : `Dispatched via: ${successParts.join(", ")}`)
-              : (lang === "ar" ? "تمت المعالجة وتجهيز رابط المشاركة." : "Processed successfully."),
+            lang === "ar"
+              ? `تم الإرسال بنجاح إلى ${recipientEmail}. 💡 يرجى مراجعة مجلد الرسائل غير المرغوب فيها (Spam / Junk) إذا لم تظهر في البريد الوارد.`
+              : `Dispatched to ${recipientEmail}. Please check your Inbox or Spam folder.`,
         });
       }
 

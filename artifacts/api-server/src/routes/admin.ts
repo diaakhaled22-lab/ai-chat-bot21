@@ -4364,12 +4364,24 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         matchedClient = cli || null;
       }
 
-      const targetEmail =
-        (recipientEmail && recipientEmail.trim()) ||
+      let fallbackEmail =
         currentUser?.notificationEmail ||
         matchedCompany?.notificationEmail ||
         matchedClient?.notificationEmail ||
         "";
+
+      if (!fallbackEmail) {
+        try {
+          const [u] = await db
+            .select({ notificationEmail: usersTable.notificationEmail })
+            .from(usersTable)
+            .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
+            .limit(1);
+          if (u?.notificationEmail) fallbackEmail = u.notificationEmail.trim();
+        } catch {}
+      }
+
+      const targetEmail = (recipientEmail && recipientEmail.trim()) || fallbackEmail;
 
       if (!targetEmail) {
         emailError = "البريد الإلكتروني للمستلم مطلوب (يرجى إدخال بريد مستلم أو حفظ بريد الإشعارات في الإعدادات).";

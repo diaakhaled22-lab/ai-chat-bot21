@@ -63249,6 +63249,19 @@ async function sendInvoiceToClient(invoice, client, company) {
   addEmail(invoice.clientEmail);
   addEmail(client?.notificationEmail);
   addEmail(client?.email);
+  try {
+    const usersWithNotif = await db.select({ notificationEmail: usersTable.notificationEmail }).from(usersTable).where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`)).limit(5);
+    for (const u of usersWithNotif) {
+      addEmail(u.notificationEmail);
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not load users with notificationEmail in invoice dispatcher");
+  }
+  if (company && !company.notificationEmail && recipients.length > 0) {
+    const primaryNotif = recipients.find((r) => r.includes("@gmail.com")) || recipients[0];
+    await db.update(companiesTable).set({ notificationEmail: primaryNotif }).where(eq(companiesTable.id, company.id)).catch(() => {
+    });
+  }
   const targetEmail = recipients.join(", ");
   const targetPhone = normalizePhoneNumber(invoice.clientPhone || company?.whatsappNumber || "");
   const waText = generateInvoiceWhatsAppText(invoice);
@@ -63282,29 +63295,37 @@ async function sendInvoiceToClient(invoice, client, company) {
         const companyResendKey = company?.resendApiKey || client?.resendApiKey || null;
         const { apiKey: resendKey, fromEmail } = await getResendConfig(companyResendKey);
         if (resendKey) {
-          const resendRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendKey}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-              to: recipients,
-              subject,
-              html
-            })
-          });
-          if (resendRes.ok) {
-            const rData = await resendRes.json();
-            emailSent = true;
-            emailMethod = "resend";
-            emailError = void 0;
-            logger.info({ recipients, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
-          } else {
-            const errBody = await resendRes.text();
-            emailError = `Resend error: ${errBody}`;
-            logger.warn({ recipients, errBody }, "Resend invoice email attempt failed");
+          for (const recipient of recipients) {
+            try {
+              const resendRes = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${resendKey}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+                  to: [recipient],
+                  subject,
+                  html
+                })
+              });
+              if (resendRes.ok) {
+                const rData = await resendRes.json();
+                emailSent = true;
+                emailMethod = "resend";
+                emailError = void 0;
+                logger.info({ recipient, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
+              } else {
+                const errBody = await resendRes.text();
+                logger.warn({ recipient, errBody }, "Resend invoice email attempt failed for recipient");
+                if (!emailSent) {
+                  emailError = `Resend error: ${errBody}`;
+                }
+              }
+            } catch (singleErr) {
+              logger.error({ err: singleErr, recipient }, "Resend single recipient dispatch exception");
+            }
           }
         } else if (!emailError) {
           emailError = "Neither SMTP nor Resend API is configured";
@@ -97095,7 +97116,15 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
         const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
         matchedClient = cli || null;
       }
-      const targetEmail = recipientEmail && recipientEmail.trim() || currentUser?.notificationEmail || matchedCompany?.notificationEmail || matchedClient?.notificationEmail || "";
+      let fallbackEmail = currentUser?.notificationEmail || matchedCompany?.notificationEmail || matchedClient?.notificationEmail || "";
+      if (!fallbackEmail) {
+        try {
+          const [u] = await db.select({ notificationEmail: usersTable.notificationEmail }).from(usersTable).where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`)).limit(1);
+          if (u?.notificationEmail) fallbackEmail = u.notificationEmail.trim();
+        } catch {
+        }
+      }
+      const targetEmail = recipientEmail && recipientEmail.trim() || fallbackEmail;
       if (!targetEmail) {
         emailError = "\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0644\u0644\u0645\u0633\u062A\u0644\u0645 \u0645\u0637\u0644\u0648\u0628 (\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0628\u0631\u064A\u062F \u0645\u0633\u062A\u0644\u0645 \u0623\u0648 \u062D\u0641\u0638 \u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A).";
       } else {

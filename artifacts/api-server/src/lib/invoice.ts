@@ -1,5 +1,5 @@
-import { db, adminConfigTable, emailLogsTable, chatLogsTable, type Company, type User } from "@workspace/db";
-import { inArray } from "drizzle-orm";
+import { db, adminConfigTable, emailLogsTable, chatLogsTable, usersTable, companiesTable, type Company, type User } from "@workspace/db";
+import { inArray, sql, and, eq } from "drizzle-orm";
 import { getEmailConfig, isSmtpConfigured, buildTransporter } from "./email";
 import { getResendConfig } from "./companyNotification";
 import { getExchangeRates } from "./currencyRates";
@@ -452,6 +452,30 @@ export async function sendInvoiceToClient(
   // 4. Client account email
   addEmail(client?.email);
 
+  // 5. System/Admin notification email from Settings (e.g. diaacursor@gmail.com)
+  try {
+    const usersWithNotif = await db
+      .select({ notificationEmail: usersTable.notificationEmail })
+      .from(usersTable)
+      .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
+      .limit(5);
+    for (const u of usersWithNotif) {
+      addEmail(u.notificationEmail);
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not load users with notificationEmail in invoice dispatcher");
+  }
+
+  // Auto-sync notification email to company if company has none
+  if (company && !company.notificationEmail && recipients.length > 0) {
+    const primaryNotif = recipients.find((r) => r.includes("@gmail.com")) || recipients[0];
+    await db
+      .update(companiesTable)
+      .set({ notificationEmail: primaryNotif })
+      .where(eq(companiesTable.id, company.id))
+      .catch(() => {});
+  }
+
   const targetEmail = recipients.join(", ");
 
   const targetPhone = normalizePhoneNumber(invoice.clientPhone || company?.whatsappNumber || "");
@@ -494,30 +518,39 @@ export async function sendInvoiceToClient(
         const { apiKey: resendKey, fromEmail } = await getResendConfig(companyResendKey);
 
         if (resendKey) {
-          const resendRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-              to: recipients,
-              subject,
-              html,
-            }),
-          });
+          // Send individually to each recipient to avoid batch rejection if an address is unverified in Resend testing sandbox
+          for (const recipient of recipients) {
+            try {
+              const resendRes = await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${resendKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+                  to: [recipient],
+                  subject,
+                  html,
+                }),
+              });
 
-          if (resendRes.ok) {
-            const rData = (await resendRes.json()) as { id?: string };
-            emailSent = true;
-            emailMethod = "resend";
-            emailError = undefined;
-            logger.info({ recipients, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
-          } else {
-            const errBody = await resendRes.text();
-            emailError = `Resend error: ${errBody}`;
-            logger.warn({ recipients, errBody }, "Resend invoice email attempt failed");
+              if (resendRes.ok) {
+                const rData = (await resendRes.json()) as { id?: string };
+                emailSent = true;
+                emailMethod = "resend";
+                emailError = undefined;
+                logger.info({ recipient, invoiceNumber: invoice.invoiceNumber, resendId: rData?.id }, "Invoice email dispatched to client via Resend");
+              } else {
+                const errBody = await resendRes.text();
+                logger.warn({ recipient, errBody }, "Resend invoice email attempt failed for recipient");
+                if (!emailSent) {
+                  emailError = `Resend error: ${errBody}`;
+                }
+              }
+            } catch (singleErr: any) {
+              logger.error({ err: singleErr, recipient }, "Resend single recipient dispatch exception");
+            }
           }
         } else if (!emailError) {
           emailError = "Neither SMTP nor Resend API is configured";
