@@ -4279,6 +4279,8 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     const {
       invoiceNumber,
       itemType,
+      companyId,
+      clientId,
       title,
       recipientEmail,
       recipientPhone,
@@ -4299,6 +4301,8 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     } = req.body as {
       invoiceNumber: string;
       itemType?: string;
+      companyId?: number | string | null;
+      clientId?: number | string | null;
       title?: string;
       recipientEmail?: string;
       recipientPhone?: string;
