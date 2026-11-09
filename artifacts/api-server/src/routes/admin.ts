@@ -4337,12 +4337,16 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     const pLocal = Number(priceLocal || 0);
 
     // 1. Send via Email if requested
-    if (sendViaEmail && recipientEmail && recipientEmail.trim()) {
-      const targetEmail = recipientEmail.trim();
-
-      // Look up company and client for custom Resend key and notification email
+    if (sendViaEmail) {
+      // Look up company, client, and current logged-in user for custom Resend key and notification email
       let matchedCompany: any = null;
       let matchedClient: any = null;
+      let currentUser: any = null;
+
+      if (req.session?.userId) {
+        const [u] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+        currentUser = u || null;
+      }
 
       if (companyId) {
         const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
@@ -4360,9 +4364,23 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         matchedClient = cli || null;
       }
 
-      const customResendKey = matchedCompany?.resendApiKey || matchedClient?.resendApiKey || null;
-      const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
-      const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+      const targetEmail =
+        (recipientEmail && recipientEmail.trim()) ||
+        currentUser?.notificationEmail ||
+        matchedCompany?.notificationEmail ||
+        matchedClient?.notificationEmail ||
+        "";
+
+      if (!targetEmail) {
+        emailError = "البريد الإلكتروني للمستلم مطلوب (يرجى إدخال بريد مستلم أو حفظ بريد الإشعارات في الإعدادات).";
+      } else {
+        const customResendKey =
+          matchedCompany?.resendApiKey ||
+          matchedClient?.resendApiKey ||
+          currentUser?.resendApiKey ||
+          null;
+        const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
+        const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
 
       // Clean, centered visual invoice card HTML ("صورة مش كلام")
       const finalHtml = htmlContent || (hasImage ? `
@@ -4513,8 +4531,13 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
               .catch(() => {});
           } else {
             const errBody = await resendRes.text();
-            emailError = `Resend error: ${errBody}`;
-            logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed; falling back to SMTP");
+            let errMsg = errBody;
+            try {
+              const parsed = JSON.parse(errBody);
+              if (parsed?.message) errMsg = parsed.message;
+            } catch {}
+            emailError = `Resend: ${errMsg}`;
+            logger.warn({ targetEmail, errBody, errMsg }, "Resend invoice copy email attempt failed; falling back to SMTP");
           }
         } catch (resendErr: any) {
           emailError = resendErr?.message ?? "Resend error";
@@ -4564,6 +4587,7 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         } else if (!emailError) {
           emailError = "لم يتم العثور على خدمة بريد مهيأة (Resend أو SMTP). يرجى التأكد من مفتاح Secret (RESEND_API_KEY) أو إعدادات بريد SMTP.";
         }
+      }
       }
     }
 

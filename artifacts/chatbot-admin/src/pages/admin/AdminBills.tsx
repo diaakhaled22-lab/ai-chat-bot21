@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { customFetch } from "@workspace/api-client-react";
+import { customFetch, useGetMe } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -359,6 +359,8 @@ export default function AdminBills() {
   const { lang } = useLanguage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: me } = useGetMe();
+  const settingsNotificationEmail = (me as any)?.notificationEmail?.trim() || "";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
@@ -800,10 +802,13 @@ export default function AdminBills() {
         (invoice.companyId && c.id === invoice.companyId) ||
         (c.name && invoice.companyName && c.name.toLowerCase() === invoice.companyName.toLowerCase())
     );
+
+    // Prioritize user's Settings Notification Email (linked with RESEND_API_KEY), then company notif, then client email
     const defaultEmail =
-      invoice.clientEmail ||
+      settingsNotificationEmail ||
       matchedComp?.notificationEmail ||
       matchedComp?.clientNotificationEmail ||
+      invoice.clientEmail ||
       "";
 
     setRecipientEmail(defaultEmail);
@@ -880,13 +885,25 @@ export default function AdminBills() {
         successParts.push(lang === "ar" ? `الواتساب مباشرة` : `WhatsApp direct`);
       }
 
-      toast({
-        title: lang === "ar" ? "✅ تم إرسال نسخة الفاتورة بنجاح!" : "Invoice Copy Sent Successfully!",
-        description:
-          successParts.length > 0
-            ? (lang === "ar" ? `تم الإرسال عبر: ${successParts.join(" و ")}` : `Dispatched via: ${successParts.join(", ")}`)
-            : (lang === "ar" ? "تمت المعالجة وتجهيز رابط المشاركة." : "Processed successfully."),
-      });
+      if (sendViaEmail && !res.emailSent) {
+        toast({
+          title: lang === "ar" ? "⚠️ تعذر إرسال البريد الإلكتروني" : "⚠️ Email Delivery Failed",
+          description:
+            res.emailError ||
+            (lang === "ar"
+              ? "فشل الإرسال عبر Resend. يرجى التأكد من أن البريد المستلم هو نفس البريد المسجل في حساب Resend (diaacursor@gmail.com) أو التحقق من صحة RESEND_API_KEY."
+              : "Failed to send email via Resend. Ensure recipient email matches your Resend account."),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: lang === "ar" ? "✅ تم إرسال نسخة الفاتورة بنجاح!" : "Invoice Copy Sent Successfully!",
+          description:
+            successParts.length > 0
+              ? (lang === "ar" ? `تم الإرسال عبر: ${successParts.join(" و ")}` : `Dispatched via: ${successParts.join(", ")}`)
+              : (lang === "ar" ? "تمت المعالجة وتجهيز رابط المشاركة." : "Processed successfully."),
+        });
+      }
 
       // If WhatsApp URL was created and WhatsApp was chosen, offer direct open
       if (res.whatsappUrl && sendViaWhatsApp) {
@@ -2548,10 +2565,22 @@ export default function AdminBills() {
                 </div>
 
                 {sendViaEmail && (
-                  <div className="pt-1.5 space-y-1">
-                    <span className="text-[11px] text-muted-foreground block">
-                      {lang === "ar" ? "البريد الإلكتروني للمستلم:" : "Recipient Email:"}
-                    </span>
+                  <div className="pt-1.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground block">
+                        {lang === "ar" ? "البريد الإلكتروني للمستلم:" : "Recipient Email:"}
+                      </span>
+                      {settingsNotificationEmail && (
+                        <button
+                          type="button"
+                          onClick={() => setRecipientEmail(settingsNotificationEmail)}
+                          className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                          title={lang === "ar" ? "استخدام بريد الإعدادات" : "Use settings email"}
+                        >
+                          <span>🔑 {settingsNotificationEmail}</span>
+                        </button>
+                      )}
+                    </div>
                     <Input
                       type="email"
                       placeholder="client@example.com"
@@ -2559,6 +2588,28 @@ export default function AdminBills() {
                       onChange={(e) => setRecipientEmail(e.target.value)}
                       className="h-9 text-xs bg-background"
                     />
+                    {settingsNotificationEmail && (
+                      <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/40 text-blue-900 dark:text-blue-200">
+                        <span className="flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span>
+                            {lang === "ar"
+                              ? "البريد المرتبط بـ RESEND_API_KEY في الإعدادات: "
+                              : "Email linked with RESEND_API_KEY: "}
+                            <strong className="underline">{settingsNotificationEmail}</strong>
+                          </span>
+                        </span>
+                        {recipientEmail !== settingsNotificationEmail && (
+                          <button
+                            type="button"
+                            onClick={() => setRecipientEmail(settingsNotificationEmail)}
+                            className="text-xs font-bold text-blue-700 dark:text-blue-300 underline hover:text-blue-950 dark:hover:text-white shrink-0 ml-2"
+                          >
+                            {lang === "ar" ? "استخدامه الآن" : "Apply"}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

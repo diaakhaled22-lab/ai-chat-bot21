@@ -97072,10 +97072,14 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
     const sym = currencySymbol || "EGP";
     const pUsd = Number(priceUsd || 0);
     const pLocal = Number(priceLocal || 0);
-    if (sendViaEmail && recipientEmail && recipientEmail.trim()) {
-      const targetEmail = recipientEmail.trim();
+    if (sendViaEmail) {
       let matchedCompany = null;
       let matchedClient = null;
+      let currentUser = null;
+      if (req.session?.userId) {
+        const [u] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+        currentUser = u || null;
+      }
       if (companyId) {
         const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
         matchedCompany = comp || null;
@@ -97091,10 +97095,14 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
         const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
         matchedClient = cli || null;
       }
-      const customResendKey = matchedCompany?.resendApiKey || matchedClient?.resendApiKey || null;
-      const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
-      const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
-      const finalHtml = htmlContent || (hasImage ? `
+      const targetEmail = recipientEmail && recipientEmail.trim() || currentUser?.notificationEmail || matchedCompany?.notificationEmail || matchedClient?.notificationEmail || "";
+      if (!targetEmail) {
+        emailError = "\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0644\u0644\u0645\u0633\u062A\u0644\u0645 \u0645\u0637\u0644\u0648\u0628 (\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0628\u0631\u064A\u062F \u0645\u0633\u062A\u0644\u0645 \u0623\u0648 \u062D\u0641\u0638 \u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A \u0641\u064A \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A).";
+      } else {
+        const customResendKey = matchedCompany?.resendApiKey || matchedClient?.resendApiKey || currentUser?.resendApiKey || null;
+        const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
+        const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+        const finalHtml = htmlContent || (hasImage ? `
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
         <head>
@@ -97183,92 +97191,99 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
           </div>
         </div>
       `);
-      if (resendApiKey) {
-        try {
-          const resendPayload = {
-            from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-            to: [targetEmail],
-            subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
-            html: finalHtml
-          };
-          if (hasImage && imageDataUrl) {
-            const base64Data = imageDataUrl.split(",")[1];
-            resendPayload.attachments = [
-              {
-                filename: `Invoice-${invoiceNumber}.png`,
-                content: base64Data,
-                content_id: "invoice-copy-image"
-              }
-            ];
-          }
-          const resendRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(resendPayload)
-          });
-          if (resendRes.ok) {
-            emailSent = true;
-            emailError = null;
-            logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend API");
-            await db.insert(emailLogsTable).values({
-              companyId: matchedCompany?.id || 1,
-              recipientEmail: targetEmail,
-              subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
-              eventType: "invoice_copy",
-              status: "sent"
-            }).catch(() => {
-            });
-          } else {
-            const errBody = await resendRes.text();
-            emailError = `Resend error: ${errBody}`;
-            logger.warn({ targetEmail, errBody }, "Resend invoice copy email attempt failed; falling back to SMTP");
-          }
-        } catch (resendErr) {
-          emailError = resendErr?.message ?? "Resend error";
-          logger.warn({ err: resendErr, targetEmail }, "Resend exception; trying SMTP fallback");
-        }
-      }
-      if (!emailSent) {
-        const cfg = await getEmailConfig();
-        if (isSmtpConfigured(cfg)) {
+        if (resendApiKey) {
           try {
-            const transporter = buildTransporter(cfg);
-            const mailOptions = {
-              from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
-              to: targetEmail,
+            const resendPayload = {
+              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+              to: [targetEmail],
               subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
               html: finalHtml
             };
             if (hasImage && imageDataUrl) {
               const base64Data = imageDataUrl.split(",")[1];
-              mailOptions.attachments = [
+              resendPayload.attachments = [
                 {
-                  filename: `invoice-${invoiceNumber}.png`,
-                  content: Buffer.from(base64Data, "base64"),
-                  cid: "invoice-copy-image"
+                  filename: `Invoice-${invoiceNumber}.png`,
+                  content: base64Data,
+                  content_id: "invoice-copy-image"
                 }
               ];
             }
-            await transporter.sendMail(mailOptions);
-            emailSent = true;
-            emailError = null;
-            await db.insert(emailLogsTable).values({
-              companyId: matchedCompany?.id || 1,
-              recipientEmail: targetEmail,
-              subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
-              eventType: "invoice_copy",
-              status: "sent"
-            }).catch(() => {
+            const resendRes = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(resendPayload)
             });
-          } catch (err) {
-            logger.error({ err, targetEmail }, "Failed to send invoice copy email via SMTP");
-            emailError = (emailError ? emailError + " | " : "") + (err?.message || "SMTP send failure");
+            if (resendRes.ok) {
+              emailSent = true;
+              emailError = null;
+              logger.info({ targetEmail, invoiceNumber }, "Invoice copy email dispatched to client via Resend API");
+              await db.insert(emailLogsTable).values({
+                companyId: matchedCompany?.id || 1,
+                recipientEmail: targetEmail,
+                subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
+                eventType: "invoice_copy",
+                status: "sent"
+              }).catch(() => {
+              });
+            } else {
+              const errBody = await resendRes.text();
+              let errMsg = errBody;
+              try {
+                const parsed = JSON.parse(errBody);
+                if (parsed?.message) errMsg = parsed.message;
+              } catch {
+              }
+              emailError = `Resend: ${errMsg}`;
+              logger.warn({ targetEmail, errBody, errMsg }, "Resend invoice copy email attempt failed; falling back to SMTP");
+            }
+          } catch (resendErr) {
+            emailError = resendErr?.message ?? "Resend error";
+            logger.warn({ err: resendErr, targetEmail }, "Resend exception; trying SMTP fallback");
           }
-        } else if (!emailError) {
-          emailError = "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062E\u062F\u0645\u0629 \u0628\u0631\u064A\u062F \u0645\u0647\u064A\u0623\u0629 (Resend \u0623\u0648 SMTP). \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0623\u0643\u062F \u0645\u0646 \u0645\u0641\u062A\u0627\u062D Secret (RESEND_API_KEY) \u0623\u0648 \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0628\u0631\u064A\u062F SMTP.";
+        }
+        if (!emailSent) {
+          const cfg = await getEmailConfig();
+          if (isSmtpConfigured(cfg)) {
+            try {
+              const transporter = buildTransporter(cfg);
+              const mailOptions = {
+                from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
+                to: targetEmail,
+                subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
+                html: finalHtml
+              };
+              if (hasImage && imageDataUrl) {
+                const base64Data = imageDataUrl.split(",")[1];
+                mailOptions.attachments = [
+                  {
+                    filename: `invoice-${invoiceNumber}.png`,
+                    content: Buffer.from(base64Data, "base64"),
+                    cid: "invoice-copy-image"
+                  }
+                ];
+              }
+              await transporter.sendMail(mailOptions);
+              emailSent = true;
+              emailError = null;
+              await db.insert(emailLogsTable).values({
+                companyId: matchedCompany?.id || 1,
+                recipientEmail: targetEmail,
+                subject: `\u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber}`,
+                eventType: "invoice_copy",
+                status: "sent"
+              }).catch(() => {
+              });
+            } catch (err) {
+              logger.error({ err, targetEmail }, "Failed to send invoice copy email via SMTP");
+              emailError = (emailError ? emailError + " | " : "") + (err?.message || "SMTP send failure");
+            }
+          } else if (!emailError) {
+            emailError = "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u062E\u062F\u0645\u0629 \u0628\u0631\u064A\u062F \u0645\u0647\u064A\u0623\u0629 (Resend \u0623\u0648 SMTP). \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0623\u0643\u062F \u0645\u0646 \u0645\u0641\u062A\u0627\u062D Secret (RESEND_API_KEY) \u0623\u0648 \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0628\u0631\u064A\u062F SMTP.";
+          }
         }
       }
     }
