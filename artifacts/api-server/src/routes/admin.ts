@@ -1901,7 +1901,10 @@ function buildBillEmailHtml(data: {
   remainingTokens: string;
   totalCost: string;
   hasImageAttachment: boolean;
+  title?: string;
+  notes?: string;
 }) {
+  const displayTitle = data.title || "فاتورة رسمية";
   if (data.hasImageAttachment) {
     return `
 <!DOCTYPE html>
@@ -1909,7 +1912,7 @@ function buildBillEmailHtml(data: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>فاتورة استهلاك الحصة #${escapeHtml(data.invoiceNumber)}</title>
+  <title>${escapeHtml(displayTitle)} #${escapeHtml(data.invoiceNumber)}</title>
 </head>
 <body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
   <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
@@ -1917,9 +1920,14 @@ function buildBillEmailHtml(data: {
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
       <div style="font-size: 26px; margin-bottom: 4px;">🧾</div>
-      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">فاتورة استهلاك الحصة — Bot Manager</h1>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">${escapeHtml(displayTitle)} — Bot Manager</h1>
       <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} • ${escapeHtml(data.rangeLabel)}</p>
     </div>
+
+    ${data.notes ? `
+    <div style="padding: 12px 20px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; text-align: right; font-size: 12px; color: #1e40af;">
+      <strong>ملاحظة من الإدارة:</strong> ${escapeHtml(data.notes)}
+    </div>` : ""}
 
     <!-- Hero Image Card ("صورة مش كلام") -->
     <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
@@ -2271,9 +2279,13 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "—"} → ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "—"}`
           : "");
 
-    const emailSubject = isTopup
-      ? (billData?.subject || `[فاتورة شحن باقة إضافية] ${company.name} - #${invoiceNumber}`)
-      : `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`;
+    const emailSubject =
+      billData?.subject ||
+      (isTopup
+        ? `[فاتورة شحن باقة إضافية] ${company.name} - #${invoiceNumber}`
+        : billData?.title
+        ? `[فاتورة ${billData.title}] ${company.name} - #${invoiceNumber}`
+        : `[فاتورة استهلاك الحصة] ${company.name} - #${invoiceNumber}`);
 
     const emailHtml = isTopup
       ? buildTopupBillEmailHtml({
@@ -2292,7 +2304,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           companyName: company.name,
           clientName: clientUser?.name || "—",
           invoiceNumber,
-          rangeLabel,
+          rangeLabel: billData?.rangeLabel || rangeLabel,
           effectiveModel,
           quotaFormatted,
           validityPeriod,
@@ -2304,13 +2316,24 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           remainingTokens: billData?.remaining != null ? `${Number(billData.remaining).toLocaleString()} tokens` : "غير محدود",
           totalCost: billData?.cost != null ? (Number(billData.cost) > 0 && Number(billData.cost) < 0.0001 ? Number(billData.cost).toFixed(6) : Number(billData.cost).toFixed(4)) : "0.0000",
           hasImageAttachment: !!imageDataUrl,
+          title: billData?.title,
+          notes: billData?.notes,
         });
 
     let sentVia = "";
     let sendError: string | null = null;
 
     // 1. Try Resend first if available
-    const { apiKey: resendApiKey, fromEmail } = await getResendConfig(company.resendApiKey || clientUser?.resendApiKey);
+    let customKey = company.resendApiKey || clientUser?.resendApiKey || null;
+    if (!customKey && req.session?.userId) {
+      const [u] = await db
+        .select({ resendApiKey: usersTable.resendApiKey })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.session.userId))
+        .limit(1);
+      if (u?.resendApiKey) customKey = u.resendApiKey;
+    }
+    const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customKey);
 
     if (resendApiKey) {
       try {
@@ -2345,6 +2368,16 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
 
         if (resendRes.ok) {
           sentVia = "resend";
+          await db
+            .insert(emailLogsTable)
+            .values({
+              companyId: company.id,
+              recipientEmail: recipient,
+              subject: emailSubject,
+              eventType: "invoice_bill",
+              status: "sent",
+            })
+            .catch(() => {});
         } else {
           const errText = await resendRes.text();
           sendError = `Resend failed: ${errText}`;

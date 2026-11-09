@@ -844,74 +844,115 @@ export default function AdminBills() {
         console.warn("Failed to generate canvas image", e);
       }
 
-      const res = await customFetch<{
-        ok: boolean;
-        message: string;
-        emailSent: boolean;
-        whatsappSent: boolean;
-        whatsappUrl?: string;
-        emailError?: string;
-      }>("/api/admin/invoices/send-copy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          invoiceNumber: selectedInvoice.invoiceNumber,
-          itemType: selectedInvoice.itemType,
-          companyId: selectedInvoice.companyId,
-          clientId: selectedInvoice.clientId,
-          title: lang === "ar" ? selectedInvoice.titleAr : selectedInvoice.titleEn,
-          recipientEmail: recipientEmail.trim(),
-          recipientPhone: recipientPhone.trim(),
-          sendViaEmail,
-          sendViaWhatsApp,
-          customNotes: customNotes.trim() || undefined,
-          priceUsd: selectedInvoice.priceUsd,
-          priceLocal: convertedLocal,
-          currencySymbol: currencyInfo.symbol,
-          clientName: selectedInvoice.clientName,
-          companyName: selectedInvoice.companyName,
-          tokenQuota: selectedInvoice.tokenQuota,
-          retentionDays: selectedInvoice.retentionDays,
-          billingCycle: selectedInvoice.billingCycleAr,
-          imageDataUrl,
-        }),
-      });
+      let emailSent = false;
+      let emailRecipient = recipientEmail.trim();
+
+      // 1. Follow the exact route of Quota Usage Bill (/api/admin/companies/:id/send-bill-email)
+      if (sendViaEmail) {
+        let companyId = selectedInvoice.companyId;
+        if (!companyId && selectedInvoice.companyName) {
+          const matched = companies.find(
+            (c: any) => c.name && c.name.toLowerCase() === selectedInvoice.companyName.toLowerCase()
+          );
+          if (matched) companyId = matched.id;
+        }
+        if (!companyId && companies.length > 0) {
+          companyId = companies[0].id;
+        }
+
+        const isTopup = selectedInvoice.itemType === "topup";
+        const res = await customFetch<{ ok: boolean; recipient: string; message: string; sentVia?: string }>(
+          `/api/admin/companies/${companyId || 1}/send-bill-email`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipientEmail: recipientEmail.trim(),
+              saveAsNotificationEmail: true,
+              imageDataUrl,
+              billData: {
+                invoiceNumber: selectedInvoice.invoiceNumber,
+                title: lang === "ar" ? selectedInvoice.titleAr : selectedInvoice.titleEn,
+                subject: `🧾 فاتورة #${selectedInvoice.invoiceNumber} - ${selectedInvoice.companyName || "Bot Manager"}`,
+                companyName: selectedInvoice.companyName,
+                clientName: selectedInvoice.clientName || "—",
+                rangeLabel: selectedInvoice.billingCycleAr || "الشهر الحالي",
+                isTopup,
+                addedTokens: selectedInvoice.tokenQuota,
+                price: selectedInvoice.priceUsd,
+                notes: customNotes.trim() || undefined,
+              },
+            }),
+          }
+        );
+
+        if (res.ok) {
+          emailSent = true;
+          if (res.recipient) emailRecipient = res.recipient;
+        }
+      }
+
+      // 2. Dispatch WhatsApp if selected
+      let whatsappSent = false;
+      let whatsappUrl: string | undefined;
+      if (sendViaWhatsApp && recipientPhone.trim()) {
+        try {
+          const waRes = await customFetch<{ ok: boolean; whatsappSent: boolean; whatsappUrl?: string }>(
+            "/api/admin/invoices/send-copy",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                invoiceNumber: selectedInvoice.invoiceNumber,
+                itemType: selectedInvoice.itemType,
+                companyId: selectedInvoice.companyId,
+                clientId: selectedInvoice.clientId,
+                title: lang === "ar" ? selectedInvoice.titleAr : selectedInvoice.titleEn,
+                recipientPhone: recipientPhone.trim(),
+                sendViaEmail: false,
+                sendViaWhatsApp: true,
+                customNotes: customNotes.trim() || undefined,
+                priceUsd: selectedInvoice.priceUsd,
+                priceLocal: convertedLocal,
+                currencySymbol: currencyInfo.symbol,
+                clientName: selectedInvoice.clientName,
+                companyName: selectedInvoice.companyName,
+                tokenQuota: selectedInvoice.tokenQuota,
+                billingCycle: selectedInvoice.billingCycleAr,
+              }),
+            }
+          );
+          whatsappSent = Boolean(waRes.whatsappSent);
+          whatsappUrl = waRes.whatsappUrl;
+        } catch {}
+      }
 
       const successParts: string[] = [];
-      if (res.emailSent) {
-        successParts.push(lang === "ar" ? `البريد (${recipientEmail})` : `Email (${recipientEmail})`);
+      if (emailSent) {
+        successParts.push(lang === "ar" ? `البريد (${emailRecipient})` : `Email (${emailRecipient})`);
       }
-      if (res.whatsappSent) {
+      if (whatsappSent) {
         successParts.push(lang === "ar" ? `الواتساب مباشرة` : `WhatsApp direct`);
       }
 
-      if (sendViaEmail && !res.emailSent) {
-        toast({
-          title: lang === "ar" ? "⚠️ تعذر إرسال البريد الإلكتروني" : "⚠️ Email Delivery Failed",
-          description:
-            res.emailError ||
-            (lang === "ar"
-              ? "فشل الإرسال عبر Resend. يرجى التأكد من أن البريد المستلم هو نفس البريد المسجل في حساب Resend (diaacursor@gmail.com) أو التحقق من صحة RESEND_API_KEY."
-              : "Failed to send email via Resend. Ensure recipient email matches your Resend account."),
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: lang === "ar" ? "✅ تم إرسال نسخة الفاتورة بنجاح!" : "Invoice Copy Sent Successfully!",
-          description:
-            lang === "ar"
-              ? `تم الإرسال بنجاح إلى ${recipientEmail}. 💡 يرجى مراجعة مجلد الرسائل غير المرغوب فيها (Spam / Junk) إذا لم تظهر في البريد الوارد.`
-              : `Dispatched to ${recipientEmail}. Please check your Inbox or Spam folder.`,
-        });
-      }
+      toast({
+        title: lang === "ar" ? "✅ تم إرسال الفاتورة بنجاح!" : "Invoice Sent Successfully!",
+        description:
+          successParts.length > 0
+            ? (lang === "ar"
+                ? `تم الإرسال عبر: ${successParts.join(" و ")}. 💡 يرجى مراجعة مجلد الرسائل غير المرغوب فيها (Spam / Junk) إذا لم تظهر في البريد الوارد.`
+                : `Dispatched via: ${successParts.join(", ")}. Check Inbox or Spam folder.`)
+            : (lang === "ar" ? "تمت معالجة الطلب بنجاح." : "Processed successfully."),
+      });
 
       // If WhatsApp URL was created and WhatsApp was chosen, offer direct open
-      if (res.whatsappUrl && sendViaWhatsApp) {
-        window.open(res.whatsappUrl, "_blank");
+      if (whatsappUrl && sendViaWhatsApp) {
+        window.open(whatsappUrl, "_blank");
       }
 
       setSendCopyModalOpen(false);
       queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
     } catch (err: any) {
       toast({
         title: lang === "ar" ? "خطأ في الإرسال" : "Failed to Send Copy",

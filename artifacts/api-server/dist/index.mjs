@@ -95228,6 +95228,7 @@ router4.put("/admin/companies/:id/quota", async (req, res) => {
   }
 });
 function buildBillEmailHtml(data) {
+  const displayTitle = data.title || "\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629";
   if (data.hasImageAttachment) {
     return `
 <!DOCTYPE html>
@@ -95235,7 +95236,7 @@ function buildBillEmailHtml(data) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629 #${escapeHtml(data.invoiceNumber)}</title>
+  <title>${escapeHtml(displayTitle)} #${escapeHtml(data.invoiceNumber)}</title>
 </head>
 <body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
   <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
@@ -95243,9 +95244,14 @@ function buildBillEmailHtml(data) {
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
       <div style="font-size: 26px; margin-bottom: 4px;">\u{1F9FE}</div>
-      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629 \u2014 Bot Manager</h1>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">${escapeHtml(displayTitle)} \u2014 Bot Manager</h1>
       <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} \u2022 ${escapeHtml(data.rangeLabel)}</p>
     </div>
+
+    ${data.notes ? `
+    <div style="padding: 12px 20px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; text-align: right; font-size: 12px; color: #1e40af;">
+      <strong>\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml(data.notes)}
+    </div>` : ""}
 
     <!-- Hero Image Card ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
     <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
@@ -95550,7 +95556,7 @@ router4.post("/admin/companies/:id/send-bill-email", async (req, res) => {
     const quotaVal = billData?.quota ?? company.monthlyTokenQuota;
     const quotaFormatted = quotaVal ? quotaVal >= 1e6 ? `${(quotaVal / 1e6).toFixed(1)}M` : quotaVal >= 1e3 ? `${(quotaVal / 1e3).toFixed(0)}K` : String(quotaVal) : "\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F";
     const validityPeriod = company.quotaStartDate || company.quotaEndDate ? `${company.quotaStartDate ? new Date(company.quotaStartDate).toLocaleDateString() : "\u2014"} \u2192 ${company.quotaEndDate ? new Date(company.quotaEndDate).toLocaleDateString() : "\u2014"}` : company.activationStart || company.activationEnd ? `${company.activationStart ? new Date(company.activationStart).toLocaleDateString() : "\u2014"} \u2192 ${company.activationEnd ? new Date(company.activationEnd).toLocaleDateString() : "\u2014"}` : "";
-    const emailSubject = isTopup ? billData?.subject || `[\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0628\u0627\u0642\u0629 \u0625\u0636\u0627\u0641\u064A\u0629] ${company.name} - #${invoiceNumber}` : `[\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629] ${company.name} - #${invoiceNumber}`;
+    const emailSubject = billData?.subject || (isTopup ? `[\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0628\u0627\u0642\u0629 \u0625\u0636\u0627\u0641\u064A\u0629] ${company.name} - #${invoiceNumber}` : billData?.title ? `[\u0641\u0627\u062A\u0648\u0631\u0629 ${billData.title}] ${company.name} - #${invoiceNumber}` : `[\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629] ${company.name} - #${invoiceNumber}`);
     const emailHtml = isTopup ? buildTopupBillEmailHtml({
       companyName: company.name,
       clientName: clientUser?.name || "\u2014",
@@ -95566,7 +95572,7 @@ router4.post("/admin/companies/:id/send-bill-email", async (req, res) => {
       companyName: company.name,
       clientName: clientUser?.name || "\u2014",
       invoiceNumber,
-      rangeLabel,
+      rangeLabel: billData?.rangeLabel || rangeLabel,
       effectiveModel,
       quotaFormatted,
       validityPeriod,
@@ -95577,11 +95583,18 @@ router4.post("/admin/companies/:id/send-bill-email", async (req, res) => {
       quotaPercent: billData?.percent != null ? `${Number(billData.percent).toFixed(1)}%` : "0%",
       remainingTokens: billData?.remaining != null ? `${Number(billData.remaining).toLocaleString()} tokens` : "\u063A\u064A\u0631 \u0645\u062D\u062F\u0648\u062F",
       totalCost: billData?.cost != null ? Number(billData.cost) > 0 && Number(billData.cost) < 1e-4 ? Number(billData.cost).toFixed(6) : Number(billData.cost).toFixed(4) : "0.0000",
-      hasImageAttachment: !!imageDataUrl
+      hasImageAttachment: !!imageDataUrl,
+      title: billData?.title,
+      notes: billData?.notes
     });
     let sentVia = "";
     let sendError = null;
-    const { apiKey: resendApiKey, fromEmail } = await getResendConfig(company.resendApiKey || clientUser?.resendApiKey);
+    let customKey = company.resendApiKey || clientUser?.resendApiKey || null;
+    if (!customKey && req.session?.userId) {
+      const [u] = await db.select({ resendApiKey: usersTable.resendApiKey }).from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+      if (u?.resendApiKey) customKey = u.resendApiKey;
+    }
+    const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customKey);
     if (resendApiKey) {
       try {
         const resendAttachments = [];
@@ -95612,6 +95625,14 @@ router4.post("/admin/companies/:id/send-bill-email", async (req, res) => {
         });
         if (resendRes.ok) {
           sentVia = "resend";
+          await db.insert(emailLogsTable).values({
+            companyId: company.id,
+            recipientEmail: recipient,
+            subject: emailSubject,
+            eventType: "invoice_bill",
+            status: "sent"
+          }).catch(() => {
+          });
         } else {
           const errText = await resendRes.text();
           sendError = `Resend failed: ${errText}`;
