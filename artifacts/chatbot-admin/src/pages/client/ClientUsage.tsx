@@ -576,7 +576,7 @@ export default function ClientUsage() {
                             <td className="px-6 py-4 text-right tabular-nums">
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                                 <CheckCircle2 className="w-3 h-3" />
-                                {lang === "ar" ? "مغطى بالحصة ($0.00)" : "Covered ($0.00)"}
+                                {lang === "ar" ? "مغطى بالحصة" : "Covered by Quota"}
                               </span>
                             </td>
                           </tr>
@@ -594,8 +594,8 @@ export default function ClientUsage() {
             <Info className="w-4 h-4 shrink-0 mt-0.5 opacity-60" />
             <span>
               {lang === "ar"
-                ? `يتم استهلاك الرموز من الحصة الشهرية المخصصة لشركتك من قِبل مسؤول النظام مجاناً ($0.00). يتم تشغيل الذكاء الاصطناعي عبر مزود المنصة المعتمد (`
-                : "Tokens are consumed from your administrator-allocated monthly quota at $0.00 cost to you. Chatbot requests are processed by the central platform provider ("}
+                ? `يتم استهلاك الرموز من باقة الحصة الشهرية المخصصة لشركتك. يتم تشغيل الذكاء الاصطناعي عبر مزود المنصة المعتمد (`
+                : "Tokens are consumed from your active monthly plan quota. Chatbot requests are processed by the central platform provider ("}
               <strong className="text-foreground">{providerLabel}</strong>).
               {lang === "ar"
                 ? " في حال استنفاذ الحصة الشهرية، يمكنك التواصل مع إدارة المنصة لترقية أو زيادة الحصة الشهرية المخصصة لشركتك."

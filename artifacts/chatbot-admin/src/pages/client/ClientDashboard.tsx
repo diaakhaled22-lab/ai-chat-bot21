@@ -319,11 +319,6 @@ export default function ClientDashboard() {
                   {data?.quotaAiProvider ?? "openai"}
                 </span>
               </div>
-              <p>
-                {lang === "ar"
-                  ? "يتم تشغيل المحادثات مجاناً للعميل اعتماداً على حصة الرموز المحددة من الإدارة. لا تتحمل أي تكلفة مباشرة حتى استهلاك كامل الحصة المخصصة."
-                  : "Conversations are processed through the central AI agent allocated by the system administrator at $0.00 cost to you, up to your monthly quota limit."}
-              </p>
             </div>
           </div>
         ) : (

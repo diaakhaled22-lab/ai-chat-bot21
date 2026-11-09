@@ -24,6 +24,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   Receipt,
   Mail,
   MessageCircle,
@@ -61,6 +69,7 @@ import {
   Play,
   CreditCard,
   Smartphone,
+  MoreVertical,
 } from "lucide-react";
 
 export interface InvoiceItem {
@@ -1406,7 +1415,7 @@ export default function AdminBills() {
                             </th>
                             <th className="p-3 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
                             <th className="p-3 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
-                            <th className="p-3 text-center min-w-[320px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                            <th className="p-3 text-center min-w-[140px]">{lang === "ar" ? "الإجراءات" : "Actions"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
@@ -1578,7 +1587,7 @@ export default function AdminBills() {
                                 </td>
 
                                 {/* Actions */}
-                                <td className="p-3 text-center whitespace-nowrap min-w-[320px]">
+                                <td className="p-3 text-center whitespace-nowrap min-w-[140px]">
                                   <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                                     <Button
                                       size="sm"
@@ -1602,71 +1611,111 @@ export default function AdminBills() {
                                     >
                                       <Eye className="w-3.5 h-3.5" />
                                     </Button>
-
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleCopySummary(inv)}
-                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
-                                      title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
-                                    >
-                                      {copiedId === inv.id ? (
-                                        <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                      ) : (
-                                        <Copy className="w-3.5 h-3.5" />
-                                      )}
-                                    </Button>
-
-                                    {/* Pause / Resume Button */}
-                                    {!inv.isVoided && inv.state !== "voided" && (
-                                      inv.isPaused || inv.state === "paused" ? (
+                                    {/* Three dots Actions Dropdown Menu */}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
                                         <Button
+                                          variant="ghost"
                                           size="sm"
-                                          onClick={() => handleOpenResumeDialog(inv)}
-                                          className="h-7 px-2.5 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 shrink-0 shadow-sm"
-                                          title={lang === "ar" ? "استئناف العملية وإعادة تفعيل الرموز (Resume)" : "Resume Transaction & Tokens"}
+                                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg shrink-0"
+                                          title={lang === "ar" ? "المزيد من الإجراءات" : "More Actions"}
                                         >
-                                          <Play className="w-3 h-3 fill-current" />
-                                          <span>{lang === "ar" ? "استئناف" : "Resume"}</span>
+                                          <MoreVertical className="w-4 h-4" />
+                                          <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
                                         </Button>
-                                      ) : (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleOpenPauseDialog(inv)}
-                                          className="h-7 px-2.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-500/15 border-blue-500/40 bg-blue-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
-                                          title={lang === "ar" ? "إيقاف العملية وتجميد استخدام الرموز مؤقتاً (Pause Tokens)" : "Pause Transaction & Freeze Tokens"}
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-xl border border-border/80">
+                                        <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1.5">
+                                          <span className="font-mono font-bold text-foreground">#{inv.invoiceNumber}</span>
+                                          <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                            {inv.companyName}
+                                          </span>
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            setViewingInvoice(inv);
+                                            setViewInvoiceModalOpen(true);
+                                          }}
+                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                         >
-                                          <Pause className="w-3 h-3" />
-                                          <span>{lang === "ar" ? "إيقاف مؤقت" : "Pause"}</span>
-                                        </Button>
-                                      )
-                                    )}
-
-                                    {/* Void / Cancel Booking Button */}
-                                    {!inv.isVoided && inv.state !== "voided" && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleOpenVoidDialog(inv)}
-                                        className="h-7 px-2.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/15 border-amber-500/40 bg-amber-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
-                                        title={lang === "ar" ? "إلغاء حجز العملية وخصم الرموز (Void & Deduct Tokens)" : "Cancel Booking & Void"}
-                                      >
-                                        <Ban className="w-3 h-3" />
-                                        <span>{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
-                                      </Button>
-                                    )}
-
-                                    {/* Delete Invoice Button */}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleOpenDeleteDialog(inv)}
-                                      className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg shrink-0"
-                                      title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
+                                          <Eye className="w-4 h-4 text-blue-500 shrink-0" />
+                                          <span>{lang === "ar" ? "معاينة الفاتورة بالكامل" : "View Full Invoice"}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleOpenSendCopy(inv)}
+                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                        >
+                                          <Send className="w-4 h-4 text-emerald-500 shrink-0" />
+                                          <span>{lang === "ar" ? "إرسال نسخة (بريد / واتساب)" : "Send Copy (Email/WhatsApp)"}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleCopySummary(inv)}
+                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                        >
+                                          {copiedId === inv.id ? (
+                                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                          ) : (
+                                            <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                                          )}
+                                          <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Invoice Summary"}</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => togglePaidMutation.mutate(inv)}
+                                          disabled={togglePaidMutation.isPending}
+                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                        >
+                                          {inv.isPaid ? (
+                                            <>
+                                              <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                                              <span>{lang === "ar" ? "تحديد كـ غير مسددة" : "Mark as Unpaid"}</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                              <span>{lang === "ar" ? "تأكيد السداد (مسددة)" : "Mark as Paid"}</span>
+                                            </>
+                                          )}
+                                        </DropdownMenuItem>
+                                        {!inv.isVoided && inv.state !== "voided" && (
+                                          <>
+                                            <DropdownMenuSeparator />
+                                            {inv.isPaused || inv.state === "paused" ? (
+                                              <DropdownMenuItem
+                                                onClick={() => handleOpenResumeDialog(inv)}
+                                                className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-600 focus:bg-emerald-500/10"
+                                              >
+                                                <Play className="w-4 h-4 text-emerald-500 fill-current shrink-0" />
+                                                <span>{lang === "ar" ? "استئناف العملية والرموز" : "Resume Transaction"}</span>
+                                              </DropdownMenuItem>
+                                            ) : (
+                                              <DropdownMenuItem
+                                                onClick={() => handleOpenPauseDialog(inv)}
+                                                className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-blue-600 dark:text-blue-400 focus:text-blue-600 focus:bg-blue-500/10"
+                                              >
+                                                <Pause className="w-4 h-4 text-blue-500 shrink-0" />
+                                                <span>{lang === "ar" ? "إيقاف مؤقت وتجميد الرموز" : "Pause & Freeze Tokens"}</span>
+                                              </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuItem
+                                              onClick={() => handleOpenVoidDialog(inv)}
+                                              className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10"
+                                            >
+                                              <Ban className="w-4 h-4 text-amber-500 shrink-0" />
+                                              <span>{lang === "ar" ? "إلغاء حجز العملية وخصم الرموز" : "Cancel Booking & Void"}</span>
+                                            </DropdownMenuItem>
+                                          </>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          onClick={() => handleOpenDeleteDialog(inv)}
+                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
+                                        >
+                                          <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+                                          <span>{lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}</span>
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </td>
                               </tr>
@@ -1749,7 +1798,7 @@ export default function AdminBills() {
                   <th className="p-3.5 text-right rtl:text-right ltr:text-left font-bold text-foreground">{lang === "ar" ? `المبلغ (${currencyInfo.code})` : `Amount (${currencyInfo.code})`}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "الحالة" : "State"}</th>
                   <th className="p-3.5 text-center">{lang === "ar" ? "السداد" : "Paid"}</th>
-                  <th className="p-3.5 text-center min-w-[320px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
+                  <th className="p-3.5 text-center min-w-[140px]">{lang === "ar" ? "إجراءات الفاتورة" : "Actions"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -1949,7 +1998,7 @@ export default function AdminBills() {
                         </td>
 
                         {/* Actions */}
-                        <td className="p-3.5 text-center whitespace-nowrap min-w-[320px]">
+                        <td className="p-3.5 text-center whitespace-nowrap min-w-[140px]">
                           <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                             <Button
                               size="sm"
@@ -1973,71 +2022,111 @@ export default function AdminBills() {
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleCopySummary(inv)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
-                              title={lang === "ar" ? "نسخ الملخص" : "Copy Summary"}
-                            >
-                              {copiedId === inv.id ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-500" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </Button>
-
-                            {/* Pause / Resume Button */}
-                            {!inv.isVoided && inv.state !== "voided" && (
-                              inv.isPaused || inv.state === "paused" ? (
+                            {/* Three dots Actions Dropdown Menu */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <Button
+                                  variant="ghost"
                                   size="sm"
-                                  onClick={() => handleOpenResumeDialog(inv)}
-                                  className="h-7 px-2.5 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 shrink-0 shadow-sm"
-                                  title={lang === "ar" ? "استئناف العملية وإعادة تفعيل الرموز (Resume)" : "Resume Transaction & Tokens"}
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg shrink-0"
+                                  title={lang === "ar" ? "المزيد من الإجراءات" : "More Actions"}
                                 >
-                                  <Play className="w-3 h-3 fill-current" />
-                                  <span>{lang === "ar" ? "استئناف" : "Resume"}</span>
+                                  <MoreVertical className="w-4 h-4" />
+                                  <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
                                 </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleOpenPauseDialog(inv)}
-                                  className="h-7 px-2.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-500/15 border-blue-500/40 bg-blue-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
-                                  title={lang === "ar" ? "إيقاف العملية وتجميد استخدام الرموز مؤقتاً (Pause Tokens)" : "Pause Transaction & Freeze Tokens"}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-xl border border-border/80">
+                                <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1.5">
+                                  <span className="font-mono font-bold text-foreground">#{inv.invoiceNumber}</span>
+                                  <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                    {inv.companyName}
+                                  </span>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setViewingInvoice(inv);
+                                    setViewInvoiceModalOpen(true);
+                                  }}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                 >
-                                  <Pause className="w-3 h-3" />
-                                  <span>{lang === "ar" ? "إيقاف مؤقت" : "Pause"}</span>
-                                </Button>
-                              )
-                            )}
-
-                            {/* Void / Cancel Booking Button */}
-                            {!inv.isVoided && inv.state !== "voided" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenVoidDialog(inv)}
-                                className="h-7 px-2.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-500/15 border-amber-500/40 bg-amber-500/5 rounded-lg gap-1 shrink-0 shadow-sm"
-                                title={lang === "ar" ? "إلغاء حجز العملية وخصم الرموز والتكلفة (Void & Deduct)" : "Cancel Booking & Void"}
-                              >
-                                <Ban className="w-3 h-3" />
-                                <span>{lang === "ar" ? "إلغاء العملية" : "Void"}</span>
-                              </Button>
-                            )}
-
-                            {/* Delete Invoice Button */}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenDeleteDialog(inv)}
-                              className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg shrink-0"
-                              title={lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                                  <Eye className="w-4 h-4 text-blue-500 shrink-0" />
+                                  <span>{lang === "ar" ? "معاينة الفاتورة بالكامل" : "View Full Invoice"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenSendCopy(inv)}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                >
+                                  <Send className="w-4 h-4 text-emerald-500 shrink-0" />
+                                  <span>{lang === "ar" ? "إرسال نسخة (بريد / واتساب)" : "Send Copy (Email/WhatsApp)"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleCopySummary(inv)}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                >
+                                  {copiedId === inv.id ? (
+                                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                  ) : (
+                                    <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                                  )}
+                                  <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Invoice Summary"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => togglePaidMutation.mutate(inv)}
+                                  disabled={togglePaidMutation.isPending}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                >
+                                  {inv.isPaid ? (
+                                    <>
+                                      <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                                      <span>{lang === "ar" ? "تحديد كـ غير مسددة" : "Mark as Unpaid"}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                      <span>{lang === "ar" ? "تأكيد السداد (مسددة)" : "Mark as Paid"}</span>
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                {!inv.isVoided && inv.state !== "voided" && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    {inv.isPaused || inv.state === "paused" ? (
+                                      <DropdownMenuItem
+                                        onClick={() => handleOpenResumeDialog(inv)}
+                                        className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-600 focus:bg-emerald-500/10"
+                                      >
+                                        <Play className="w-4 h-4 text-emerald-500 fill-current shrink-0" />
+                                        <span>{lang === "ar" ? "استئناف العملية والرموز" : "Resume Transaction"}</span>
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem
+                                        onClick={() => handleOpenPauseDialog(inv)}
+                                        className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-blue-600 dark:text-blue-400 focus:text-blue-600 focus:bg-blue-500/10"
+                                      >
+                                        <Pause className="w-4 h-4 text-blue-500 shrink-0" />
+                                        <span>{lang === "ar" ? "إيقاف مؤقت وتجميد الرموز" : "Pause & Freeze Tokens"}</span>
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenVoidDialog(inv)}
+                                      className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10"
+                                    >
+                                      <Ban className="w-4 h-4 text-amber-500 shrink-0" />
+                                      <span>{lang === "ar" ? "إلغاء حجز العملية وخصم الرموز" : "Cancel Booking & Void"}</span>
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenDeleteDialog(inv)}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
+                                >
+                                  <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+                                  <span>{lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </td>
                       </tr>
