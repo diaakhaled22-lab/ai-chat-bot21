@@ -97,8 +97,14 @@ function requestPinnedAddress(
     requestHeaders[name] = value;
   });
 
-  const pinnedLookup: LookupFunction = (_hostname, _options, callback) => {
-    callback(null, address.address, address.family);
+  const pinnedLookup: any = (_hostname: string, options: any, callback: any) => {
+    const cb = typeof options === "function" ? options : callback;
+    const opts = typeof options === "object" && options !== null ? options : {};
+    if (opts.all) {
+      cb(null, [{ address: address.address, family: address.family }]);
+    } else {
+      cb(null, address.address, address.family);
+    }
   };
 
   return new Promise((resolve, reject) => {
