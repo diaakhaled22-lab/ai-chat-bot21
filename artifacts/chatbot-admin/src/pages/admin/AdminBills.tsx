@@ -148,6 +148,213 @@ const SUPPORTED_CURRENCIES: Record<string, { code: string; labelAr: string; labe
   EUR: { code: "EUR", labelAr: "يورو أوروبي", labelEn: "Euro", symbol: "€", rate: 0.92 },
 };
 
+
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number | [number, number, number, number]
+) {
+  const [tl, tr, br, bl] = typeof r === "number" ? [r, r, r, r] : r;
+  ctx.beginPath();
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + w - tr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + tr);
+  ctx.lineTo(x + w, y + h - br);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+  ctx.lineTo(x + bl, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
+  ctx.lineTo(x + tl);
+  ctx.quadraticCurveTo(x, y, x + tl, y);
+  ctx.closePath();
+}
+
+function generateInvoiceCardCanvas(
+  inv: InvoiceItem,
+  lang: string,
+  currencyInfo: { code: string; symbol: string; rate: number }
+): string {
+  const width = 640;
+  const isUnpaid = inv.isPaid === false;
+  const hasPaymentDetails = isUnpaid && (inv.paymentPhone || inv.paymentInstaPay);
+  const height = hasPaymentDetails ? 680 : 610;
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "";
+  ctx.scale(scale, scale);
+
+  // Background
+  ctx.fillStyle = "#ffffff";
+  drawRoundRect(ctx, 0, 0, width, height, 16);
+  ctx.fill();
+
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, 0, 0, width, height, 16);
+  ctx.stroke();
+
+  // Header Banner
+  const grad = ctx.createLinearGradient(0, 0, width, 110);
+  if (isUnpaid) {
+    grad.addColorStop(0, "#d97706");
+    grad.addColorStop(1, "#b45309");
+  } else {
+    grad.addColorStop(0, "#10b981");
+    grad.addColorStop(1, "#059669");
+  }
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx, 0, 0, width, 110, [16, 16, 0, 0]);
+  ctx.fill();
+
+  // Title
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    lang === "ar" ? "فاتورة رسمية معتمدة — Bot Manager" : "Official Invoice Card — Bot Manager",
+    width / 2,
+    40
+  );
+
+  ctx.font = "12px monospace";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.fillText(`Invoice #: ${inv.invoiceNumber}`, width / 2, 65);
+
+  // Status Badge in header
+  ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+  drawRoundRect(ctx, width / 2 - 130, 75, 260, 24, 12);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillText(
+    isUnpaid
+      ? (lang === "ar" ? "⏳ فاتورة غير مسددة (معلقة)" : "⏳ Unpaid Invoice (Pending)")
+      : (lang === "ar" ? "✅ فاتورة مسددة ومعتمدة" : "✅ Paid & Verified"),
+    width / 2,
+    91
+  );
+
+  // Helper
+  const drawCard = (x: number, y: number, w: number, h: number, title: string, value: string, color = "#111827") => {
+    ctx.fillStyle = "#f8fafc";
+    ctx.strokeStyle = "#e2e8f0";
+    drawRoundRect(ctx, x, y, w, h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#64748b";
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.fillText(title, x + w - 12, y + 18);
+
+    ctx.fillStyle = color;
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillText(value, x + w - 12, y + 38);
+  };
+
+  const cardW = 286;
+  const cardH = 50;
+  const startY = 126;
+  drawCard(334, startY, cardW, cardH, lang === "ar" ? "الشركة" : "Company", inv.companyName || "—");
+  drawCard(20, startY, cardW, cardH, lang === "ar" ? "العميل" : "Client", inv.clientName || "—");
+
+  const itemTitle = lang === "ar" ? inv.titleAr : inv.titleEn;
+  drawCard(334, startY + 58, cardW, cardH, lang === "ar" ? "البند / الباقة" : "Item / Plan", itemTitle || "—", "#2563eb");
+  drawCard(20, startY + 58, cardW, cardH, lang === "ar" ? "رصيد الرموز" : "Token Quota", `${inv.tokenQuota?.toLocaleString() || 0} Tokens`, "#059669");
+
+  let currentY = startY + 116;
+
+  // Dates
+  ctx.fillStyle = "#f1f5f9";
+  ctx.strokeStyle = "#cbd5e1";
+  drawRoundRect(ctx, 20, currentY, 600, 32, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillStyle = "#334155";
+  const issueDateFormatted = new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB");
+  const endDateFormatted = inv.endDate || inv.periodEnd;
+  const dateText = `${lang === "ar" ? "تاريخ الإصدار:" : "Issued:"} ${issueDateFormatted}${
+    endDateFormatted ? `  •  ${lang === "ar" ? "انتهاء الصلاحية:" : "Expires:"} ${endDateFormatted}` : ""
+  }`;
+  ctx.fillText(dateText, width / 2, currentY + 20);
+
+  currentY += 44;
+
+  // Total Amount Box
+  ctx.fillStyle = isUnpaid ? "#fffbeb" : "#f0fdf4";
+  ctx.strokeStyle = isUnpaid ? "#fde68a" : "#bbf7d0";
+  drawRoundRect(ctx, 20, currentY, 600, 72, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = "right";
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.fillStyle = isUnpaid ? "#92400e" : "#166534";
+  ctx.fillText(
+    lang === "ar" ? "المبلغ الإجمالي المستحق:" : "Total Amount Due:",
+    608,
+    currentY + 24
+  );
+
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillStyle = isUnpaid ? "#b45309" : "#047857";
+  const localPrice = Math.round(inv.priceUsd * (currencyInfo.rate || 50));
+  ctx.fillText(
+    `≈ ${localPrice.toLocaleString()} ${currencyInfo.symbol} (${currencyInfo.code})`,
+    608,
+    currentY + 46
+  );
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = isUnpaid ? "#b45309" : "#059669";
+  ctx.font = "bold 26px monospace";
+  ctx.fillText(`${inv.priceUsd} USD`, 36, currentY + 44);
+
+  currentY += 84;
+
+  // Payment details if unpaid
+  if (hasPaymentDetails) {
+    ctx.fillStyle = "#fef3c7";
+    ctx.strokeStyle = "#fcd34d";
+    drawRoundRect(ctx, 20, currentY, 600, 64, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#92400e";
+    ctx.font = "bold 11px system-ui, sans-serif";
+    ctx.fillText("💳 بيانات التحويل وسداد الفاتورة (Payment Details):", 608, currentY + 20);
+
+    ctx.font = "11px monospace";
+    ctx.fillStyle = "#78350f";
+    const phoneTxt = `📱 الهاتف / كاش: ${inv.paymentPhone || "01000000000"}`;
+    const ipaTxt = `⚡ إنستاباي IPA: ${inv.paymentInstaPay || "username@instapay"}`;
+    ctx.fillText(`${phoneTxt}   |   ${ipaTxt}`, 608, currentY + 42);
+
+    currentY += 76;
+  }
+
+  // Footer
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "10px system-ui, sans-serif";
+  ctx.fillText(
+    "نظام إدارة الفواتير والحسابات — Bot Manager Billing & Invoices System",
+    width / 2,
+    height - 14
+  );
+
+  return canvas.toDataURL("image/png");
+}
+
 export default function AdminBills() {
   const { lang } = useLanguage();
   const { toast } = useToast();
@@ -229,6 +436,33 @@ export default function AdminBills() {
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedPayment, setCopiedPayment] = useState<string | null>(null);
+
+  
+  const handleDownloadInvoiceCard = (inv: InvoiceItem) => {
+    try {
+      const dataUrl = generateInvoiceCardCanvas(inv, lang, currencyInfo);
+      if (!dataUrl) {
+        throw new Error("Failed to generate invoice image");
+      }
+      const link = document.createElement("a");
+      link.download = `Invoice_${inv.invoiceNumber}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: lang === "ar" ? "تم تحميل بطاقة الفاتورة بنجاح" : "Invoice Card Downloaded!",
+        description: `Invoice #${inv.invoiceNumber} PNG`,
+      });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل تحميل بطاقة الفاتورة" : "Failed to download invoice card",
+        description: err?.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleCopyPayment = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -1387,12 +1621,90 @@ export default function AdminBills() {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {/* Company Three Dots Dropdown Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-8 h-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                              title={lang === "ar" ? "خيارات الشركة والفواتير" : "Company & Invoice Options"}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                              <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-xl border border-border/80" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1.5">
+                              <span className="font-bold text-foreground truncate max-w-[140px]">{group.companyName}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                {group.invoices.length} {lang === "ar" ? "فواتير" : "bills"}
+                              </span>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (group.invoices.length > 0) {
+                                  setViewingInvoice(group.invoices[0]);
+                                  setViewInvoiceModalOpen(true);
+                                }
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (group.invoices.length > 0) {
+                                  handleOpenSendCopy(group.invoices[0]);
+                                }
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                              <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (group.invoices.length > 0) {
+                                  handleCopySummary(group.invoices[0]);
+                                }
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                              <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (group.invoices.length > 0) {
+                                  handleDownloadInvoiceCard(group.invoices[0]);
+                                }
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Download className="w-4 h-4 text-blue-500 shrink-0" />
+                              <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <Button
                           variant="ghost"
                           size="sm"
                           className="w-8 h-8 p-0 rounded-xl text-muted-foreground hover:text-foreground"
                           title={isCollapsed ? (lang === "ar" ? "توسيع الفواتير" : "Expand") : (lang === "ar" ? "طي الفواتير" : "Collapse")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCompany(group.companyKey);
+                          }}
                         >
                           {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                         </Button>
@@ -1632,34 +1944,41 @@ export default function AdminBills() {
                                           </span>
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            setViewingInvoice(inv);
-                                            setViewInvoiceModalOpen(true);
-                                          }}
-                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
-                                        >
-                                          <Eye className="w-4 h-4 text-blue-500 shrink-0" />
-                                          <span>{lang === "ar" ? "معاينة الفاتورة بالكامل" : "View Full Invoice"}</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleOpenSendCopy(inv)}
-                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
-                                        >
-                                          <Send className="w-4 h-4 text-emerald-500 shrink-0" />
-                                          <span>{lang === "ar" ? "إرسال نسخة (بريد / واتساب)" : "Send Copy (Email/WhatsApp)"}</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleCopySummary(inv)}
-                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
-                                        >
-                                          {copiedId === inv.id ? (
-                                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                          ) : (
-                                            <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
-                                          )}
-                                          <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Invoice Summary"}</span>
-                                        </DropdownMenuItem>
+                                         <DropdownMenuItem
+                                           onClick={() => {
+                                             setViewingInvoice(inv);
+                                             setViewInvoiceModalOpen(true);
+                                           }}
+                                           className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                         >
+                                           <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
+                                           <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
+                                         </DropdownMenuItem>
+                                         <DropdownMenuItem
+                                           onClick={() => handleOpenSendCopy(inv)}
+                                           className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                         >
+                                           <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                                           <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
+                                         </DropdownMenuItem>
+                                         <DropdownMenuItem
+                                           onClick={() => handleCopySummary(inv)}
+                                           className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                         >
+                                           {copiedId === inv.id ? (
+                                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                           ) : (
+                                             <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                                           )}
+                                           <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                                         </DropdownMenuItem>
+                                         <DropdownMenuItem
+                                           onClick={() => handleDownloadInvoiceCard(inv)}
+                                           className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                         >
+                                           <Download className="w-4 h-4 text-blue-500 shrink-0" />
+                                           <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                           onClick={() => handleTogglePaid(inv)}
                                           disabled={togglingInvoice === inv.invoiceNumber}
@@ -2050,15 +2369,15 @@ export default function AdminBills() {
                                   }}
                                   className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                 >
-                                  <Eye className="w-4 h-4 text-blue-500 shrink-0" />
-                                  <span>{lang === "ar" ? "معاينة الفاتورة بالكامل" : "View Full Invoice"}</span>
+                                  <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
+                                  <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleOpenSendCopy(inv)}
                                   className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                 >
-                                  <Send className="w-4 h-4 text-emerald-500 shrink-0" />
-                                  <span>{lang === "ar" ? "إرسال نسخة (بريد / واتساب)" : "Send Copy (Email/WhatsApp)"}</span>
+                                  <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                                  <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleCopySummary(inv)}
@@ -2069,7 +2388,14 @@ export default function AdminBills() {
                                   ) : (
                                     <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
                                   )}
-                                  <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Invoice Summary"}</span>
+                                  <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDownloadInvoiceCard(inv)}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                >
+                                  <Download className="w-4 h-4 text-blue-500 shrink-0" />
+                                  <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleTogglePaid(inv)}
