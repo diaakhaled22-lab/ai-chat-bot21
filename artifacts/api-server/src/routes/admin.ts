@@ -1902,6 +1902,41 @@ function buildBillEmailHtml(data: {
   totalCost: string;
   hasImageAttachment: boolean;
 }) {
+  if (data.hasImageAttachment) {
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاتورة استهلاك الحصة #${escapeHtml(data.invoiceNumber)}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
+  <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
+      <div style="font-size: 26px; margin-bottom: 4px;">🧾</div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">فاتورة استهلاك الحصة — Bot Manager</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} • ${escapeHtml(data.rangeLabel)}</p>
+    </div>
+
+    <!-- Hero Image Card ("صورة مش كلام") -->
+    <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
+      <img src="cid:bill-image" alt="بطاقة الفاتورة #${escapeHtml(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 16px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff;">
+      <p style="margin: 0;">تم إرسال بطاقة الفاتورة كصورة رسمية معتمدة من نظام <strong>Bot Manager</strong> إلى بريدك الإلكتروني.</p>
+      <p style="margin: 4px 0 0;">يمكنك أيضاً تحميل الصورة كملف مرفق عالي الدقة (PNG) من هذا البريد.</p>
+    </div>
+
+  </div>
+</body>
+</html>`.trim();
+  }
+
   return `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -2032,6 +2067,46 @@ function buildTopupBillEmailHtml(data: {
   notes?: string;
   hasImageAttachment: boolean;
 }) {
+  if (data.hasImageAttachment) {
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فاتورة شحن باقة إضافية #${escapeHtml(data.invoiceNumber)}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
+  <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
+      <div style="font-size: 26px; margin-bottom: 4px;">⚡</div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">فاتورة شحن رصيد إضافي — Bot Manager</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} • شحن +${data.addedTokens.toLocaleString()} رمز</p>
+    </div>
+
+    ${data.notes ? `
+    <div style="padding: 12px 20px; background: #fffbeb; border-bottom: 1px solid #fef3c7; text-align: right; font-size: 12px; color: #92400e;">
+      <strong>ملاحظة:</strong> ${escapeHtml(data.notes)}
+    </div>` : ""}
+
+    <!-- Hero Image Card ("صورة مش كلام") -->
+    <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
+      <img src="cid:bill-image" alt="بطاقة الفاتورة #${escapeHtml(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 16px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff;">
+      <p style="margin: 0;">تم إرسال بطاقة الفاتورة كصورة رسمية معتمدة من نظام <strong>Bot Manager</strong>.</p>
+      <p style="margin: 4px 0 0;">يمكنك تحميل الصورة بدقة كاملة من المرفقات.</p>
+    </div>
+
+  </div>
+</body>
+</html>`.trim();
+  }
+
   return `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -2245,6 +2320,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           resendAttachments.push({
             filename: `Invoice-${invoiceNumber}.png`,
             content: base64Data,
+            content_id: "bill-image",
           });
         }
 
@@ -4264,8 +4340,49 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
       if (isSmtpConfigured(cfg)) {
         try {
           const transporter = buildTransporter(cfg);
+          const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
 
-          const finalHtml = htmlContent || `
+          // Visual invoice email centered on the image card ("صورة مش كلام")
+          const finalHtml = htmlContent || (hasImage ? `
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>فاتورة #${escapeHtml(invoiceNumber)}</title>
+            </head>
+            <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
+              <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+                
+                <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
+                  <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
+                    BOT MANAGER • OFFICIAL INVOICE CARD
+                  </div>
+                  <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">فاتورة رسمية #${escapeHtml(invoiceNumber)}</h2>
+                  <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
+                </div>
+
+                ${
+                  customNotes
+                    ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
+                        <strong style="color:#1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(customNotes)}
+                      </div>`
+                    : ""
+                }
+
+                <!-- Primary Invoice Card Image ("صورة مش كلام") -->
+                <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
+                  <img src="cid:invoice-copy-image" alt="فاتورة #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
+                </div>
+
+                <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
+                  <p style="margin:0;">منصة <strong>Bot Manager</strong> • تم إرسال الفاتورة أعلاه كصورة رسمية معتمدة ومرفقة كملف PNG عالي الدقة.</p>
+                </div>
+
+              </div>
+            </body>
+            </html>
+          `.trim() : `
             <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
               <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
                 <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
@@ -4320,22 +4437,13 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
                   </table>
                 </div>
 
-                ${
-                  imageDataUrl
-                    ? `<div style="text-align:center;margin:24px 0;">
-                        <p style="font-size:12px;color:#64748b;margin-bottom:8px;">صورة بطاقة الفاتورة المعتمدة:</p>
-                        <img src="cid:invoice-copy-image" alt="Invoice Card" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,0.06);" />
-                      </div>`
-                    : ""
-                }
-
                 <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
                   تم إرسال هذه النسخة الرسمية من لوحة تحكم الإدارة.<br/>
                   شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي.
                 </p>
               </div>
             </div>
-          `;
+          `);
 
           const mailOptions: any = {
             from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
@@ -4344,7 +4452,7 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
             html: finalHtml,
           };
 
-          if (imageDataUrl && imageDataUrl.includes(",")) {
+          if (hasImage && imageDataUrl) {
             const base64Data = imageDataUrl.split(",")[1];
             mailOptions.attachments = [
               {
@@ -4379,19 +4487,38 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         try {
           const { apiKey: resendKey, fromEmail } = await getResendConfig();
           if (resendKey) {
-            const finalHtml = htmlContent || `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`;
+            const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+            const resendPayload: any = {
+              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+              to: [targetEmail],
+              subject: `🧾 نسخة من فاتورة #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
+              html: htmlContent || (hasImage ? `
+                <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;text-align:center;padding:20px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;">
+                  <h2 style="margin:0 0 12px;color:#0f172a;">فاتورة رسمية #${escapeHtml(invoiceNumber)}</h2>
+                  ${customNotes ? `<p style="color:#2563eb;margin-bottom:16px;"><strong>ملاحظة:</strong> ${escapeHtml(customNotes)}</p>` : ""}
+                  <p style="color:#64748b;font-size:12px;">بطاقة الفاتورة مرفقة كصورة عالية الدقة.</p>
+                </div>
+              ` : `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`),
+            };
+
+            if (hasImage && imageDataUrl) {
+              const base64Data = imageDataUrl.split(",")[1];
+              resendPayload.attachments = [
+                {
+                  filename: `invoice-${invoiceNumber}.png`,
+                  content: base64Data,
+                  content_id: "invoice-copy-image",
+                },
+              ];
+            }
+
             const resendRes = await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${resendKey}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-                to: [targetEmail],
-                subject: `🧾 نسخة من فاتورة #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
-                html: finalHtml,
-              }),
+              body: JSON.stringify(resendPayload),
             });
 
             if (resendRes.ok) {

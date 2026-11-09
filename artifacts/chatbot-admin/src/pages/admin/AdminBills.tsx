@@ -818,6 +818,14 @@ export default function AdminBills() {
       setIsSendingCopy(true);
       const convertedLocal = convertPrice(selectedInvoice.priceUsd);
 
+      // Generate invoice card image to send as image ("صورة مش كلام")
+      let imageDataUrl: string | undefined;
+      try {
+        imageDataUrl = generateInvoiceCardCanvas(selectedInvoice, lang, currencyInfo);
+      } catch (e) {
+        console.warn("Failed to generate canvas image", e);
+      }
+
       const res = await customFetch<{
         ok: boolean;
         message: string;
@@ -845,6 +853,7 @@ export default function AdminBills() {
           tokenQuota: selectedInvoice.tokenQuota,
           retentionDays: selectedInvoice.retentionDays,
           billingCycle: selectedInvoice.billingCycleAr,
+          imageDataUrl,
         }),
       });
 
@@ -2518,9 +2527,9 @@ export default function AdminBills() {
                       className="rounded border-border text-emerald-600 focus:ring-emerald-500"
                     />
                     <Mail className="w-4 h-4 text-blue-500" />
-                    <span>{lang === "ar" ? "إرسال نسخة عبر البريد الإلكتروني (Email)" : "Send copy via Email"}</span>
+                    <span>{lang === "ar" ? "إرسال بطاقة الفاتورة كصورة (Gmail / Email)" : "Send invoice card as image (Gmail / Email)"}</span>
                   </label>
-                  <span className="text-[10px] text-muted-foreground">HTML Invoice</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">{lang === "ar" ? "بطاقة صورة معتمدة 📷" : "Visual Image Card 📷"}</span>
                 </div>
 
                 {sendViaEmail && (

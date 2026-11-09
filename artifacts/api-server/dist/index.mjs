@@ -95193,6 +95193,40 @@ router4.put("/admin/companies/:id/quota", async (req, res) => {
   }
 });
 function buildBillEmailHtml(data) {
+  if (data.hasImageAttachment) {
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629 #${escapeHtml(data.invoiceNumber)}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
+  <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
+      <div style="font-size: 26px; margin-bottom: 4px;">\u{1F9FE}</div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629 \u2014 Bot Manager</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} \u2022 ${escapeHtml(data.rangeLabel)}</p>
+    </div>
+
+    <!-- Hero Image Card ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
+    <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
+      <img src="cid:bill-image" alt="\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 16px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff;">
+      <p style="margin: 0;">\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0643\u0635\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629 \u0645\u0646 \u0646\u0638\u0627\u0645 <strong>Bot Manager</strong> \u0625\u0644\u0649 \u0628\u0631\u064A\u062F\u0643 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A.</p>
+      <p style="margin: 4px 0 0;">\u064A\u0645\u0643\u0646\u0643 \u0623\u064A\u0636\u0627\u064B \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0635\u0648\u0631\u0629 \u0643\u0645\u0644\u0641 \u0645\u0631\u0641\u0642 \u0639\u0627\u0644\u064A \u0627\u0644\u062F\u0642\u0629 (PNG) \u0645\u0646 \u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F.</p>
+    </div>
+
+  </div>
+</body>
+</html>`.trim();
+  }
   return `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -95311,6 +95345,45 @@ function buildBillEmailHtml(data) {
   `;
 }
 function buildTopupBillEmailHtml(data) {
+  if (data.hasImageAttachment) {
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0628\u0627\u0642\u0629 \u0625\u0636\u0627\u0641\u064A\u0629 #${escapeHtml(data.invoiceNumber)}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
+  <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
+      <div style="font-size: 26px; margin-bottom: 4px;">\u26A1</div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0625\u0636\u0627\u0641\u064A \u2014 Bot Manager</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} \u2022 \u0634\u062D\u0646 +${data.addedTokens.toLocaleString()} \u0631\u0645\u0632</p>
+    </div>
+
+    ${data.notes ? `
+    <div style="padding: 12px 20px; background: #fffbeb; border-bottom: 1px solid #fef3c7; text-align: right; font-size: 12px; color: #92400e;">
+      <strong>\u0645\u0644\u0627\u062D\u0638\u0629:</strong> ${escapeHtml(data.notes)}
+    </div>` : ""}
+
+    <!-- Hero Image Card ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
+    <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
+      <img src="cid:bill-image" alt="\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 16px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff;">
+      <p style="margin: 0;">\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0643\u0635\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629 \u0645\u0646 \u0646\u0638\u0627\u0645 <strong>Bot Manager</strong>.</p>
+      <p style="margin: 4px 0 0;">\u064A\u0645\u0643\u0646\u0643 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0635\u0648\u0631\u0629 \u0628\u062F\u0642\u0629 \u0643\u0627\u0645\u0644\u0629 \u0645\u0646 \u0627\u0644\u0645\u0631\u0641\u0642\u0627\u062A.</p>
+    </div>
+
+  </div>
+</body>
+</html>`.trim();
+  }
   return `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -95481,7 +95554,8 @@ router4.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           const base64Data = imageDataUrl.split(",")[1];
           resendAttachments.push({
             filename: `Invoice-${invoiceNumber}.png`,
-            content: base64Data
+            content: base64Data,
+            content_id: "bill-image"
           });
         }
         const resendPayload = {
@@ -96988,7 +97062,43 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
       if (isSmtpConfigured(cfg)) {
         try {
           const transporter = buildTransporter(cfg);
-          const finalHtml = htmlContent || `
+          const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+          const finalHtml = htmlContent || (hasImage ? `
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</title>
+            </head>
+            <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
+              <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+                
+                <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
+                  <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
+                    BOT MANAGER \u2022 OFFICIAL INVOICE CARD
+                  </div>
+                  <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml(invoiceNumber)}</h2>
+                  <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
+                </div>
+
+                ${customNotes ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
+                        <strong style="color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml(customNotes)}
+                      </div>` : ""}
+
+                <!-- Primary Invoice Card Image ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
+                <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
+                  <img src="cid:invoice-copy-image" alt="\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
+                </div>
+
+                <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
+                  <p style="margin:0;">\u0645\u0646\u0635\u0629 <strong>Bot Manager</strong> \u2022 \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0623\u0639\u0644\u0627\u0647 \u0643\u0635\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0639\u062A\u0645\u062F\u0629 \u0648\u0645\u0631\u0641\u0642\u0629 \u0643\u0645\u0644\u0641 PNG \u0639\u0627\u0644\u064A \u0627\u0644\u062F\u0642\u0629.</p>
+                </div>
+
+              </div>
+            </body>
+            </html>
+          `.trim() : `
             <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
               <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
                 <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
@@ -97035,25 +97145,20 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
                   </table>
                 </div>
 
-                ${imageDataUrl ? `<div style="text-align:center;margin:24px 0;">
-                        <p style="font-size:12px;color:#64748b;margin-bottom:8px;">\u0635\u0648\u0631\u0629 \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0644\u0645\u0639\u062A\u0645\u062F\u0629:</p>
-                        <img src="cid:invoice-copy-image" alt="Invoice Card" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,0.06);" />
-                      </div>` : ""}
-
                 <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
                   \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0647\u0630\u0647 \u0627\u0644\u0646\u0633\u062E\u0629 \u0627\u0644\u0631\u0633\u0645\u064A\u0629 \u0645\u0646 \u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629.<br/>
                   \u0634\u0643\u0631\u0627\u064B \u0644\u0627\u062E\u062A\u064A\u0627\u0631\u0643\u0645 Bot Manager \u0644\u0623\u0646\u0638\u0645\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A.
                 </p>
               </div>
             </div>
-          `;
+          `);
           const mailOptions = {
             from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
             to: targetEmail,
             subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
             html: finalHtml
           };
-          if (imageDataUrl && imageDataUrl.includes(",")) {
+          if (hasImage && imageDataUrl) {
             const base64Data = imageDataUrl.split(",")[1];
             mailOptions.attachments = [
               {
@@ -97084,19 +97189,36 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
         try {
           const { apiKey: resendKey, fromEmail } = await getResendConfig();
           if (resendKey) {
-            const finalHtml = htmlContent || `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`;
+            const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
+            const resendPayload = {
+              from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+              to: [targetEmail],
+              subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
+              html: htmlContent || (hasImage ? `
+                <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;text-align:center;padding:20px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;">
+                  <h2 style="margin:0 0 12px;color:#0f172a;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml(invoiceNumber)}</h2>
+                  ${customNotes ? `<p style="color:#2563eb;margin-bottom:16px;"><strong>\u0645\u0644\u0627\u062D\u0638\u0629:</strong> ${escapeHtml(customNotes)}</p>` : ""}
+                  <p style="color:#64748b;font-size:12px;">\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0645\u0631\u0641\u0642\u0629 \u0643\u0635\u0648\u0631\u0629 \u0639\u0627\u0644\u064A\u0629 \u0627\u0644\u062F\u0642\u0629.</p>
+                </div>
+              ` : `<p>Invoice #${escapeHtml(invoiceNumber)}</p>`)
+            };
+            if (hasImage && imageDataUrl) {
+              const base64Data = imageDataUrl.split(",")[1];
+              resendPayload.attachments = [
+                {
+                  filename: `invoice-${invoiceNumber}.png`,
+                  content: base64Data,
+                  content_id: "invoice-copy-image"
+                }
+              ];
+            }
             const resendRes = await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${resendKey}`,
                 "Content-Type": "application/json"
               },
-              body: JSON.stringify({
-                from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
-                to: [targetEmail],
-                subject: `\u{1F9FE} \u0646\u0633\u062E\u0629 \u0645\u0646 \u0641\u0627\u062A\u0648\u0631\u0629 #${invoiceNumber} - ${title || companyName || "Bot Manager"}`,
-                html: finalHtml
-              })
+              body: JSON.stringify(resendPayload)
             });
             if (resendRes.ok) {
               emailSent = true;
