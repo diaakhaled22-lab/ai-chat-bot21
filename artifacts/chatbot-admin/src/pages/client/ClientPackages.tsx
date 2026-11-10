@@ -1548,8 +1548,8 @@ export default function ClientPackages() {
             </h4>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {lang === "ar"
-                ? "نعم، يمكنك الترقية إلى باقة أعلى في أي وقت وسيتم ترحيل رصيد الرموز المتبقي لديك وتطبيق الميزات المتقدمة مباشرة."
-                : "Yes, you can upgrade your subscription at any time. Remaining tokens carry over and new features are unlocked instantly."}
+                ? "نعم، يمكنك ترقية اشتراكك في أي وقت وتطبيق الميزات الجديدة مباشرة."
+                : "Yes, you can upgrade your subscription at any time and new features are unlocked instantly."}
             </p>
           </div>
 
