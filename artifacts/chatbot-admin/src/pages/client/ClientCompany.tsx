@@ -1001,7 +1001,7 @@ export default function ClientCompany() {
                 if (rawOwnModel?.includes("nemotron-nano")) {
                   rawOwnModel = "nvidia/nemotron-3.5-lightning:free";
                 }
-                const ownModel = rawOwnModel;
+                const ownModel = rawOwnModel.replace(/:free\b/gi, "").replace(/\/free\b/gi, "").replace(/\bfree\b/gi, "").trim();
                 const hasOwnKey = Boolean(company?.aiAgentApiKey);
 
                 const activeProvider = isQuotaMode ? quotaProvider : (hasOwnKey ? ownProvider : null);
