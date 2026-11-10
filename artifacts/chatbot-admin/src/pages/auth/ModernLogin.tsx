@@ -97,6 +97,29 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
 
+  // Compute registration password strength
+  const regPasswordStrength = useMemo(() => {
+    if (!regPassword) return "empty";
+    let score = 0;
+    if (regPassword.length >= 8) score++;
+    if (regPassword.length >= 10) score++;
+    if (/[A-Z]/.test(regPassword)) score++;
+    if (/[a-z]/.test(regPassword)) score++;
+    if (/\d/.test(regPassword)) score++;
+    if (/[^A-Za-z0-9]/.test(regPassword)) score++;
+
+    // Strong: at least 8 chars + uppercase + lowercase + number + extra length/symbol (score >= 5)
+    // Medium: meets basic criteria or score 3-4
+    // Weak: score <= 2 or length < 8
+    if (regPassword.length >= 8 && /[A-Z]/.test(regPassword) && /[a-z]/.test(regPassword) && /\d/.test(regPassword) && score >= 5) {
+      return "strong";
+    }
+    if (regPassword.length >= 8 && score >= 3) {
+      return "medium";
+    }
+    return "weak";
+  }, [regPassword]);
+
   useEffect(() => {
     if (otpCooldown <= 0) return;
     const timer = setInterval(() => {
@@ -931,12 +954,34 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     {lang === "ar" ? "كلمة المرور *" : "Password *"}
                   </label>
-                  <span className="text-[11px] text-slate-400">
-                    {lang === "ar" ? "8 أحرف على الأقل" : "Password must be at least 8 characters long"}
+                  <span className={`text-[11px] font-medium transition-colors ${
+                    regPasswordStrength === "strong"
+                      ? "text-emerald-500 font-semibold"
+                      : regPasswordStrength === "medium"
+                      ? "text-amber-500 font-semibold"
+                      : regPasswordStrength === "weak"
+                      ? "text-rose-500 font-semibold"
+                      : "text-slate-400"
+                  }`}>
+                    {regPasswordStrength === "strong"
+                      ? (lang === "ar" ? "✓ كلمة مرور قوية" : "✓ Strong password")
+                      : regPasswordStrength === "medium"
+                      ? (lang === "ar" ? "⚠️ كلمة مرور متوسطة" : "⚠️ Medium strength")
+                      : regPasswordStrength === "weak"
+                      ? (lang === "ar" ? "ضعيفة (8 أحرف على الأقل)" : "Weak: Password must be at least 8 characters long")
+                      : (lang === "ar" ? "8 أحرف على الأقل" : "Password must be at least 8 characters long")}
                   </span>
                 </div>
                 <div className="relative">
-                  <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                  <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none ${
+                    regPasswordStrength === "strong"
+                      ? "text-emerald-500"
+                      : regPasswordStrength === "medium"
+                      ? "text-amber-500"
+                      : regPasswordStrength === "weak"
+                      ? "text-rose-500"
+                      : "text-slate-400"
+                  }`}>
                     <Lock className="w-4 h-4" />
                   </span>
                   <input
@@ -945,7 +990,15 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     placeholder="••••••••"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className={`w-full ${lang === "ar" ? "pr-9 pl-10 text-right" : "pl-9 pr-10 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                    className={`w-full ${lang === "ar" ? "pr-9 pl-10 text-right" : "pl-9 pr-10 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border ${
+                      regPasswordStrength === "strong"
+                        ? "border-emerald-500 focus:border-emerald-600 focus:ring-emerald-500/20"
+                        : regPasswordStrength === "medium"
+                        ? "border-amber-500 focus:border-amber-600 focus:ring-amber-500/20"
+                        : regPasswordStrength === "weak"
+                        ? "border-rose-500 focus:border-rose-600 focus:ring-rose-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:border-blue-600 focus:ring-blue-600/20"
+                    } rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-all`}
                   />
                   <button
                     type="button"
@@ -955,6 +1008,29 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {/* Visual strength bar indicator */}
+                {regPassword && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <div className="h-1 flex-1 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          regPasswordStrength === "strong"
+                            ? "w-full bg-emerald-500"
+                            : regPasswordStrength === "medium"
+                            ? "w-2/3 bg-amber-500"
+                            : "w-1/3 bg-rose-500"
+                        }`}
+                      />
+                    </div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider shrink-0 text-muted-foreground">
+                      {regPasswordStrength === "strong"
+                        ? (lang === "ar" ? "قوية" : "Strong")
+                        : regPasswordStrength === "medium"
+                        ? (lang === "ar" ? "متوسطة" : "Medium")
+                        : (lang === "ar" ? "ضعيفة" : "Weak")}
+                    </span>
+                  </div>
+                )}
                 <p className="text-[11px] text-slate-400 mt-1">
                   {lang === "ar" ? "يجب أن تحتوي على 8 أحرف على الأقل (حرف كبير، حرف صغير، ورقم)" : "Password must be at least 8 characters long (uppercase, lowercase & number)"}
                 </p>
