@@ -56030,6 +56030,23 @@ var init_emailLogs = __esm({
   }
 });
 
+// ../../lib/db/src/schema/emailVerificationCodes.ts
+var emailVerificationCodesTable;
+var init_emailVerificationCodes = __esm({
+  "../../lib/db/src/schema/emailVerificationCodes.ts"() {
+    "use strict";
+    init_pg_core();
+    emailVerificationCodesTable = pgTable("email_verification_codes", {
+      id: serial("id").primaryKey(),
+      email: text("email").notNull(),
+      code: text("code").notNull(),
+      attempts: integer("attempts").notNull().default(0),
+      expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+  }
+});
+
 // ../../lib/db/src/schema/index.ts
 var schema_exports = {};
 __export(schema_exports, {
@@ -56046,6 +56063,7 @@ __export(schema_exports, {
   companyWordPressIntegrationsTable: () => companyWordPressIntegrationsTable,
   conversations: () => conversations,
   emailLogsTable: () => emailLogsTable,
+  emailVerificationCodesTable: () => emailVerificationCodesTable,
   insertChatLogSchema: () => insertChatLogSchema,
   insertCompanyKnowledgeFileSchema: () => insertCompanyKnowledgeFileSchema,
   insertCompanyRestApiIntegrationSchema: () => insertCompanyRestApiIntegrationSchema,
@@ -56088,6 +56106,7 @@ var init_schema2 = __esm({
     init_leads();
     init_cannedResponses();
     init_emailLogs();
+    init_emailVerificationCodes();
   }
 });
 
@@ -56109,6 +56128,7 @@ __export(src_exports, {
   db: () => db,
   decrypt: () => decrypt,
   emailLogsTable: () => emailLogsTable,
+  emailVerificationCodesTable: () => emailVerificationCodesTable,
   encrypt: () => encrypt,
   encryptedText: () => encryptedText,
   insertChatLogSchema: () => insertChatLogSchema,
@@ -56330,6 +56350,773 @@ var init_currencyRates = __esm({
     CACHE_TTL_MS = 24 * 60 * 60 * 1e3;
     PRIMARY_API = "https://open.er-api.com/v6/latest/USD";
     BACKUP_API = "https://api.exchangerate-api.com/v4/latest/USD";
+  }
+});
+
+// src/lib/companyNotification.ts
+var companyNotification_exports = {};
+__export(companyNotification_exports, {
+  buildNotificationHtml: () => buildNotificationHtml,
+  ensureEmailNotificationSchema: () => ensureEmailNotificationSchema,
+  getResendConfig: () => getResendConfig,
+  notifyContactFormSubmission: () => notifyContactFormSubmission,
+  notifyCustomerServiceRequest: () => notifyCustomerServiceRequest,
+  notifyNewChatMessage: () => notifyNewChatMessage,
+  notifyNewConversation: () => notifyNewConversation,
+  notifyNewLead: () => notifyNewLead,
+  notifyNewOrder: () => notifyNewOrder,
+  notifyQuota75PercentConsumed: () => notifyQuota75PercentConsumed,
+  notifyQuotaAmberLowBalance: () => notifyQuotaAmberLowBalance,
+  notifyQuotaRedDepleted: () => notifyQuotaRedDepleted,
+  notifySubscriptionActivated: () => notifySubscriptionActivated,
+  notifySubscriptionExpired: () => notifySubscriptionExpired,
+  notifySubscriptionExpiringSoon: () => notifySubscriptionExpiringSoon,
+  notifySystemMalfunction: () => notifySystemMalfunction,
+  sendCompanyNotification: () => sendCompanyNotification
+});
+async function ensureEmailNotificationSchema() {
+  try {
+    if (!pool) return;
+    await pool.query(`
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS notification_email text;
+      ALTER TABLE companies ADD COLUMN IF NOT EXISTS resend_api_key text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email text;
+    `);
+    try {
+      await pool.query(`
+        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_analysis text;
+        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_provider text;
+        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_model text;
+      `);
+    } catch (e) {
+    }
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id serial PRIMARY KEY,
+        company_id integer NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        recipient_email text NOT NULL,
+        subject text NOT NULL,
+        event_type text,
+        status text NOT NULL,
+        error text,
+        resend_id text,
+        created_at timestamp with time zone NOT NULL DEFAULT now()
+      );
+    `);
+    logger.info("Email notification schema ensured in database");
+  } catch (err) {
+    logger.error({ err }, "Failed to ensure email notification schema");
+  }
+}
+async function getResendConfig(companyResendKey) {
+  let apiKey = companyResendKey?.trim() || process.env.RESEND_API_KEY || "";
+  let fromEmail = process.env.RESEND_FROM_EMAIL || "";
+  if (!apiKey || !fromEmail) {
+    try {
+      const rows = await db.select().from(adminConfigTable).where(inArray(adminConfigTable.key, ["resend_api_key", "resend_from_email"]));
+      for (const row of rows) {
+        if (!apiKey && row.key === "resend_api_key" && row.value) apiKey = row.value.trim();
+        if (!fromEmail && row.key === "resend_from_email" && row.value) fromEmail = row.value.trim();
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not load Resend config from admin_config");
+    }
+  }
+  if (!apiKey) {
+    try {
+      const [u] = await db.select({ resendApiKey: usersTable.resendApiKey }).from(usersTable).where(and(sql`${usersTable.resendApiKey} IS NOT NULL`, sql`${usersTable.resendApiKey} != ''`)).limit(1);
+      if (u?.resendApiKey) apiKey = u.resendApiKey.trim();
+    } catch {
+    }
+  }
+  if (!apiKey) {
+    try {
+      const [c] = await db.select({ resendApiKey: companiesTable.resendApiKey }).from(companiesTable).where(and(sql`${companiesTable.resendApiKey} IS NOT NULL`, sql`${companiesTable.resendApiKey} != ''`)).limit(1);
+      if (c?.resendApiKey) apiKey = c.resendApiKey.trim();
+    } catch {
+    }
+  }
+  if (!fromEmail) {
+    fromEmail = "Bot Manager <onboarding@resend.dev>";
+  }
+  return { apiKey, fromEmail };
+}
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+function buildNotificationHtml(input) {
+  const dateObj = input.dateTime instanceof Date ? input.dateTime : input.dateTime ? new Date(input.dateTime) : /* @__PURE__ */ new Date();
+  const formattedDate = dateObj.toLocaleString("en-US", {
+    timeZone: "UTC",
+    dateStyle: "full",
+    timeStyle: "medium"
+  }) + " (UTC)";
+  const customerRows = Object.entries(input.customerDetails || {}).filter(([_, v]) => v !== void 0 && v !== null && String(v).trim() !== "").map(([key, val]) => `
+      <tr>
+        <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; border-bottom: 1px solid #e5e7eb; width: 35%; font-size: 13px;">${escapeHtml(key)}</td>
+        <td style="padding: 8px 12px; color: #111827; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${escapeHtml(String(val))}</td>
+      </tr>
+    `).join("");
+  let eventDetailsContent = "";
+  if (typeof input.eventDetails === "string") {
+    eventDetailsContent = `<div style="font-size: 14px; line-height: 1.6; color: #1f2937; white-space: pre-wrap; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb;">${escapeHtml(input.eventDetails)}</div>`;
+  } else if (input.eventDetails && typeof input.eventDetails === "object") {
+    const rows = Object.entries(input.eventDetails).filter(([_, v]) => v !== void 0 && v !== null && String(v).trim() !== "").map(([k, v]) => `
+        <tr>
+          <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; border-bottom: 1px solid #e5e7eb; width: 35%; font-size: 13px;">${escapeHtml(k)}</td>
+          <td style="padding: 8px 12px; color: #111827; border-bottom: 1px solid #e5e7eb; font-size: 13px; white-space: pre-wrap;">${escapeHtml(typeof v === "object" ? JSON.stringify(v, null, 2) : String(v))}</td>
+        </tr>
+      `).join("");
+    eventDetailsContent = `
+      <table style="width: 100%; border-collapse: collapse; margin-top: 6px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(input.eventType)}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 24px; color: #111827;">
+  <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #2563eb, #4f46e5); padding: 24px 32px; color: #ffffff;">
+        <p style="margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.85); font-weight: 700;">
+          ${escapeHtml(input.companyName)}
+        </p>
+        <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; line-height: 1.3;">
+          ${escapeHtml(input.title || input.eventType)}
+        </h1>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 28px 32px;">
+        <!-- Meta block: Event Type & Date/Time -->
+        <table role="presentation" style="width: 100%; margin-bottom: 24px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px;">
+          <tr>
+            <td style="padding: 4px 0; font-size: 13px; color: #4b5563;">
+              <strong style="color: #111827;">Event Type:</strong>
+              <span style="display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-left: 6px;">
+                ${escapeHtml(input.eventType)}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 4px 0; font-size: 13px; color: #4b5563;">
+              <strong style="color: #111827;">Date &amp; Time:</strong> ${escapeHtml(formattedDate)}
+            </td>
+          </tr>
+        </table>
+
+        ${customerRows ? `
+        <!-- Customer Details -->
+        <div style="margin-bottom: 24px;">
+          <h2 style="font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.05em;">
+            Customer Details
+          </h2>
+          <table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+            <tbody>
+              ${customerRows}
+            </tbody>
+          </table>
+        </div>
+        ` : `
+        <!-- Customer Details (General Visitor / System) -->
+        <div style="margin-bottom: 24px;">
+          <h2 style="font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.05em;">
+            Customer Details
+          </h2>
+          <p style="margin: 0; font-size: 13px; color: #6b7280; font-style: italic;">
+            Not applicable (System or unauthenticated visitor event)
+          </p>
+        </div>
+        `}
+
+        <!-- Full Event Details -->
+        <div style="margin-bottom: 12px;">
+          <h2 style="font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.05em;">
+            Full Event Details
+          </h2>
+          ${eventDetailsContent}
+        </div>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 32px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+        <p style="margin: 0 0 4px 0;">This email was sent exclusively to the notification email of <strong>${escapeHtml(input.companyName)}</strong>.</p>
+        <p style="margin: 0; color: #9ca3af;">Bot Manager Client Notification Service &bull; Powered by Resend</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+async function sendCompanyNotification(companyId, subject, html, options) {
+  try {
+    if (!companyId || isNaN(companyId)) {
+      logger.warn({ companyId }, "sendCompanyNotification called with invalid companyId");
+      return { ok: false, error: "Invalid companyId" };
+    }
+    const [company] = await db.select({
+      id: companiesTable.id,
+      name: companiesTable.name,
+      clientId: companiesTable.clientId,
+      notificationEmail: companiesTable.notificationEmail,
+      resendApiKey: companiesTable.resendApiKey
+    }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+    if (!company) {
+      logger.warn({ companyId }, "sendCompanyNotification: Company not found");
+      return { ok: false, error: "Company not found" };
+    }
+    if (company.clientId && options?.eventType) {
+      const skipDuplicates = ["New chatbot message", "Customer Service Request"];
+      if (!skipDuplicates.includes(options.eventType)) {
+        try {
+          const inAppTitle = options.inAppTitle || `[${options.eventType}] ${company.name}`;
+          const inAppMessage = options.inAppMessage || subject;
+          const notifType = options?.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+          const [existingDup] = await db.select({ id: notificationsTable.id }).from(notificationsTable).where(
+            and(
+              eq(notificationsTable.userId, company.clientId),
+              eq(notificationsTable.title, inAppTitle),
+              sql`${notificationsTable.createdAt} >= NOW() - INTERVAL '5 minutes'`
+            )
+          ).limit(1);
+          if (!existingDup) {
+            await db.insert(notificationsTable).values({
+              userId: company.clientId,
+              type: notifType,
+              title: inAppTitle,
+              message: inAppMessage,
+              companyId: company.id,
+              isRead: false
+            });
+          }
+        } catch (notifErr) {
+          logger.warn({ notifErr }, "Failed to create synced in-app notification in notificationsTable");
+        }
+      }
+    }
+    let recipient = company.notificationEmail?.trim();
+    let companyResendKey = company.resendApiKey?.trim();
+    if ((!recipient || !companyResendKey) && company.clientId) {
+      try {
+        const [owner] = await db.select({
+          notificationEmail: usersTable.notificationEmail,
+          resendApiKey: usersTable.resendApiKey
+        }).from(usersTable).where(eq(usersTable.id, company.clientId)).limit(1);
+        if (owner) {
+          if (!recipient && owner.notificationEmail?.trim()) {
+            recipient = owner.notificationEmail.trim();
+          }
+          if (!companyResendKey && owner.resendApiKey?.trim()) {
+            companyResendKey = owner.resendApiKey.trim();
+          }
+        }
+      } catch (ownerErr) {
+        logger.warn({ ownerErr, clientId: company.clientId }, "Failed to fetch owner user notification settings");
+      }
+    }
+    if (!recipient || !companyResendKey) {
+      try {
+        const clientUsers = await db.select({
+          notificationEmail: usersTable.notificationEmail,
+          resendApiKey: usersTable.resendApiKey
+        }).from(usersTable).where(eq(usersTable.role, "client")).limit(5);
+        for (const cu of clientUsers) {
+          if (!recipient && cu.notificationEmail?.trim()) {
+            recipient = cu.notificationEmail.trim();
+          }
+          if (!companyResendKey && cu.resendApiKey?.trim()) {
+            companyResendKey = cu.resendApiKey.trim();
+          }
+        }
+      } catch (clientErr) {
+        logger.warn({ clientErr }, "Failed to query client users for notification fallback");
+      }
+    }
+    if (recipient && !company.notificationEmail) {
+      db.update(companiesTable).set({ notificationEmail: recipient }).where(eq(companiesTable.id, company.id)).catch((e) => logger.warn({ err: e }, "Failed to backfill company.notificationEmail"));
+    }
+    if (companyResendKey && !company.resendApiKey) {
+      db.update(companiesTable).set({ resendApiKey: companyResendKey }).where(eq(companiesTable.id, company.id)).catch((e) => logger.warn({ err: e }, "Failed to backfill company.resendApiKey"));
+    }
+    if (!recipient) {
+      logger.info(
+        { companyId, companyName: company.name },
+        "sendCompanyNotification: Skipped - No company.notificationEmail configured"
+      );
+      try {
+        await db.insert(emailLogsTable).values({
+          companyId,
+          recipientEmail: "N/A (not configured)",
+          subject,
+          eventType: options?.eventType || null,
+          status: "skipped",
+          error: "company.notificationEmail is empty"
+        });
+      } catch (logErr) {
+        logger.warn({ logErr }, "Failed to insert skipped email log");
+      }
+      return { ok: false, error: "No notification email configured" };
+    }
+    const { apiKey, fromEmail } = await getResendConfig(companyResendKey);
+    if (!apiKey) {
+      const errorMsg = "RESEND_API_KEY is not configured (check environment variables or admin settings)";
+      logger.warn({ companyId, recipient }, errorMsg);
+      try {
+        await db.insert(emailLogsTable).values({
+          companyId,
+          recipientEmail: recipient,
+          subject,
+          eventType: options?.eventType || null,
+          status: "failed",
+          error: errorMsg
+        });
+      } catch (logErr) {
+        logger.warn({ logErr }, "Failed to log email attempt");
+      }
+      return { ok: false, error: errorMsg };
+    }
+    logger.info({ companyId, recipient, subject, fromEmail }, "Sending notification email via Resend");
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [recipient],
+        subject,
+        html
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      logger.info(
+        { companyId, recipient, resendId: data.id, subject },
+        "Notification email successfully sent via Resend"
+      );
+      try {
+        await db.insert(emailLogsTable).values({
+          companyId,
+          recipientEmail: recipient,
+          subject,
+          eventType: options?.eventType || null,
+          status: "sent",
+          resendId: data.id || null
+        });
+      } catch (logErr) {
+        logger.warn({ logErr }, "Failed to insert sent email log");
+      }
+      return { ok: true, id: data.id };
+    } else {
+      const errorText = await res.text();
+      logger.error(
+        { companyId, status: res.status, errorText },
+        "Resend API returned error when sending company notification"
+      );
+      try {
+        await db.insert(emailLogsTable).values({
+          companyId,
+          recipientEmail: recipient,
+          subject,
+          eventType: options?.eventType || null,
+          status: "failed",
+          error: `HTTP ${res.status}: ${errorText.slice(0, 500)}`
+        });
+      } catch (logErr) {
+        logger.warn({ logErr }, "Failed to insert failed email log");
+      }
+      return { ok: false, error: `Resend error (${res.status}): ${errorText}` };
+    }
+  } catch (err) {
+    logger.error({ err, companyId, subject }, "Unhandled error in sendCompanyNotification");
+    try {
+      await db.insert(emailLogsTable).values({
+        companyId,
+        recipientEmail: "unknown",
+        subject,
+        eventType: options?.eventType || null,
+        status: "failed",
+        error: String(err?.message || err)
+      });
+    } catch {
+    }
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+async function notifyNewChatMessage(company, details) {
+  if (details.sessionId && details.sessionId.startsWith("preview_")) {
+    return;
+  }
+  const eventType = "New chatbot message";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `New Message on ${details.channel}`,
+    customerDetails: {
+      Channel: details.channel,
+      "Session ID": details.sessionId || "N/A",
+      "Phone / Contact": details.customerPhone || "Visitor"
+    },
+    eventDetails: {
+      "Customer Message": details.customerMessage,
+      Channel: details.channel
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - Message received on ${details.channel}`,
+    html,
+    { eventType }
+  );
+}
+async function notifyNewConversation(company, details) {
+  if (details.sessionId && details.sessionId.startsWith("preview_")) {
+    return;
+  }
+  const channelNames = {
+    whatsapp: "WhatsApp",
+    telegram: "Telegram",
+    messenger: "Messenger",
+    website: "Website Widget"
+  };
+  const channelDisplay = channelNames[details.channel] || details.channel;
+  const eventType = "New conversation";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `New Conversation Started on ${channelDisplay}`,
+    customerDetails: {
+      Channel: channelDisplay,
+      "Session ID": details.sessionId || "N/A",
+      "Phone / Contact": details.customerPhone || "Visitor"
+    },
+    eventDetails: {
+      "Initial Message": details.initialMessage,
+      Channel: channelDisplay,
+      "Session ID": details.sessionId || "N/A"
+    }
+  });
+  const snippet = details.initialMessage.length > 70 ? details.initialMessage.substring(0, 70) + "..." : details.initialMessage;
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - New conversation on ${channelDisplay}`,
+    html,
+    {
+      eventType,
+      inAppTitle: `New conversation (${channelDisplay})`,
+      inAppMessage: `User started a conversation: "${snippet}"`
+    }
+  );
+}
+async function notifyNewLead(company, lead) {
+  const isClinicBooking = Boolean(lead.appointmentDate || lead.doctor);
+  const eventType = isClinicBooking ? "New Clinic Booking / Patient Lead" : "New lead";
+  const leadIdentifier = lead.name || lead.phone || lead.email || (isClinicBooking ? "New Patient" : "New Customer");
+  const eventDetails = {
+    Interest: lead.interest || (isClinicBooking ? "Clinic Appointment" : "General Inquiry"),
+    Channel: lead.channel || "N/A"
+  };
+  if (lead.appointmentDate) eventDetails["Appointment Date / Time"] = lead.appointmentDate;
+  if (lead.doctor) eventDetails["Doctor / Specialty"] = lead.doctor;
+  if (lead.bookingType) eventDetails["Booking Type"] = lead.bookingType;
+  if (lead.notes) eventDetails["Notes / Symptoms"] = lead.notes;
+  if (lead.status) eventDetails["Status"] = lead.status;
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: isClinicBooking ? `New Patient Appointment: ${leadIdentifier}` : `New Lead Captured: ${leadIdentifier}`,
+    customerDetails: {
+      Name: lead.name || "N/A",
+      Email: lead.email || "N/A",
+      Phone: lead.phone || "N/A",
+      Channel: lead.channel || "N/A",
+      "Session ID": lead.sessionId || "N/A"
+    },
+    eventDetails
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - ${leadIdentifier}`,
+    html,
+    { eventType }
+  );
+}
+async function notifyContactFormSubmission(company, submission) {
+  const eventType = "Contact form submission";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Contact Form Submission from ${submission.name || submission.email || "Visitor"}`,
+    customerDetails: {
+      Name: submission.name || "N/A",
+      Email: submission.email || "N/A",
+      Phone: submission.phone || "N/A",
+      Channel: submission.channel || "Website"
+    },
+    eventDetails: {
+      Subject: submission.subject || "Contact Form Inquiry",
+      Message: submission.message || "No message provided"
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - ${submission.subject || "New Inquiry"}`,
+    html,
+    { eventType }
+  );
+}
+async function notifyNewOrder(company, order) {
+  const eventType = "New order";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `New Order Received for ${company.name}`,
+    customerDetails: {
+      "Customer Name": order.customerName || "N/A",
+      "Customer Email": order.customerEmail || "N/A",
+      "Customer Phone": order.customerPhone || "N/A",
+      Channel: order.channel || "Chatbot"
+    },
+    eventDetails: {
+      "Order Items": Array.isArray(order.items) ? JSON.stringify(order.items, null, 2) : order.items || "N/A",
+      "Total Amount": order.total ? String(order.total) : "N/A",
+      "Additional Notes": order.notes || "None"
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - New order from ${order.customerName || "Customer"}`,
+    html,
+    { eventType }
+  );
+}
+async function notifyCustomerServiceRequest(company, request) {
+  const eventType = "Customer Service Request";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Customer Service Contact Request on ${request.channel}`,
+    customerDetails: {
+      Channel: request.channel,
+      "Session ID": request.sessionId || "N/A",
+      "Phone / Contact": request.customerPhone || "Visitor"
+    },
+    eventDetails: {
+      "Action Required": "Customer explicitly requested to speak to a human representative / customer service.",
+      Channel: request.channel,
+      Reason: request.reason || "Customer requested human support"
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - Customer requested support on ${request.channel}`,
+    html,
+    { eventType }
+  );
+}
+async function notifySystemMalfunction(company, malfunction) {
+  const eventType = "System malfunction";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `System Malfunction Alert: ${malfunction.title}`,
+    customerDetails: {
+      "Affected Company": company.name
+    },
+    eventDetails: {
+      "Malfunction Title": malfunction.title,
+      Description: malfunction.description,
+      "Technical Details": malfunction.rawError ? String(malfunction.rawError).slice(0, 500) : "None"
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - ${malfunction.title}`,
+    html,
+    { eventType }
+  );
+}
+async function notifySubscriptionActivated(company, subscription) {
+  const eventType = "Subscription activated";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Subscription Activated for ${company.name}`,
+    customerDetails: {
+      "Company Name": company.name,
+      "Client ID": company.clientId ? String(company.clientId) : "N/A"
+    },
+    eventDetails: {
+      Status: "Active",
+      "Activation Start": subscription.activationStart ? String(subscription.activationStart) : "Now",
+      "Activation End": subscription.activationEnd ? String(subscription.activationEnd) : "No expiration set"
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[${eventType}] ${company.name} - Your subscription is active!`,
+    html,
+    { eventType }
+  );
+}
+async function notifyQuota75PercentConsumed(company, quota) {
+  const eventType = "Upon consuming 75% of API.AI";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `AI Quota Alert: 75% of API.AI consumed`,
+    customerDetails: {
+      "Company Name": company.name
+    },
+    eventDetails: {
+      "Usage Percentage": `${quota.percentUsed}%`,
+      "Tokens Consumed": quota.usedTokens.toLocaleString(),
+      "Total Monthly Quota": quota.monthlyQuota.toLocaleString(),
+      Recommendation: "Your chatbot has consumed over 75% of its monthly AI token quota. Consider upgrading your quota to ensure continuous uninterrupted service."
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[API.AI Alert] ${company.name} - 75% of monthly AI quota consumed`,
+    html,
+    { eventType }
+  );
+}
+async function notifyQuotaAmberLowBalance(company, quota) {
+  const eventType = "Quota Warning: Balance Below 20%";
+  const inAppTitle = "\u{1F7E1} \u062A\u062D\u0630\u064A\u0631: \u0631\u0635\u064A\u062F \u062D\u0635\u0629 \u0627\u0644\u0631\u0645\u0648\u0632 \u0623\u0642\u0644 \u0645\u0646 20%";
+  const inAppMessage = `\u0631\u0635\u064A\u062F\u0643 \u0627\u0644\u0645\u062A\u0628\u0642\u064A \u0645\u0646 \u062D\u0635\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0623\u0635\u0628\u062D \u0623\u0642\u0644 \u0645\u0646 20% (\u0645\u062A\u0628\u0642\u064A ${quota.remainingTokens.toLocaleString()} \u0631\u0645\u0632 \u0645\u0646 \u0623\u0635\u0644 ${quota.monthlyQuota.toLocaleString()}). \u064A\u0631\u062C\u0649 \u0637\u0644\u0628 \u0632\u064A\u0627\u062F\u0629 \u0623\u0648 \u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0644\u0636\u0645\u0627\u0646 \u0627\u0633\u062A\u0645\u0631\u0627\u0631 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A\u0629.`;
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `AI Quota Warning: Balance below 20% (${quota.remainingTokens.toLocaleString()} tokens left)`,
+    customerDetails: {
+      "Company Name": company.name
+    },
+    eventDetails: {
+      "Remaining Tokens (\u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062A\u0628\u0642\u064A)": quota.remainingTokens.toLocaleString(),
+      "Usage Percentage (\u0646\u0633\u0628\u0629 \u0627\u0644\u0627\u0633\u062A\u0647\u0644\u0627\u0643)": `${quota.percentUsed}%`,
+      "Tokens Consumed (\u0627\u0644\u0645\u0633\u062A\u0647\u0644\u0643)": quota.usedTokens.toLocaleString(),
+      "Total Monthly Quota (\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062D\u0635\u0629)": quota.monthlyQuota.toLocaleString(),
+      Recommendation: "Your chatbot has consumed over 80% of its monthly AI token quota. Please request a quota top-up or upgrade to ensure uninterrupted service."
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[\u062A\u0646\u0628\u064A\u0647 \u0627\u0644\u062D\u0635\u0629 \u{1F7E1}] \u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062A\u0628\u0642\u064A \u0644\u0634\u0631\u0643\u0629 ${company.name} \u0623\u0642\u0644 \u0645\u0646 20%`,
+    html,
+    {
+      eventType,
+      inAppTitle,
+      inAppMessage,
+      inAppType: "quota_warning_amber"
+    }
+  );
+}
+async function notifyQuotaRedDepleted(company, quota) {
+  const eventType = "Urgent: AI Quota Completely Depleted";
+  const inAppTitle = "\u{1F534} \u062A\u0646\u0628\u064A\u0647 \u0639\u0627\u062C\u0644: \u062A\u0645 \u0627\u0633\u062A\u0646\u0641\u0627\u062F \u062D\u0635\u0629 \u0627\u0644\u0631\u0645\u0648\u0632 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 (0 \u0645\u062A\u0628\u0642\u064A)";
+  const inAppMessage = `\u0644\u0642\u062F \u0627\u0633\u062A\u0646\u0641\u062F\u062A \u0643\u0627\u0645\u0644 \u062D\u0635\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0627\u0644\u0634\u0647\u0631\u064A\u0629 (${quota.monthlyQuota.toLocaleString()} \u0631\u0645\u0632). \u062A\u0648\u0642\u0641\u062A \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A\u0629 \u0644\u0644\u0645\u0633\u0627\u0639\u062F \u0645\u0624\u0642\u062A\u0627\u064B \u062D\u062A\u0649 \u062A\u062C\u062F\u064A\u062F \u0627\u0644\u062D\u0635\u0629 \u0623\u0648 \u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0625\u0636\u0627\u0641\u064A.`;
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Urgent: Monthly AI Quota Depleted (0 Tokens Remaining)`,
+    customerDetails: {
+      "Company Name": company.name
+    },
+    eventDetails: {
+      "Remaining Tokens (\u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062A\u0628\u0642\u064A)": "0 tokens (100% depleted)",
+      "Tokens Consumed (\u0627\u0644\u0645\u0633\u062A\u0647\u0644\u0643)": quota.usedTokens.toLocaleString(),
+      "Total Monthly Quota (\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062D\u0635\u0629)": quota.monthlyQuota.toLocaleString(),
+      "Action Required": "Automated chatbot responses are currently paused. Please request an immediate quota top-up or upgrade from platform administration."
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[\u062A\u0646\u0628\u064A\u0647 \u0639\u0627\u062C\u0644 \u{1F534}] \u0627\u0633\u062A\u0646\u0641\u0627\u062F \u062D\u0635\u0629 \u0627\u0644\u0631\u0645\u0648\u0632 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 \u0644\u0634\u0631\u0643\u0629 ${company.name}`,
+    html,
+    {
+      eventType,
+      inAppTitle,
+      inAppMessage,
+      inAppType: "quota_depleted_red"
+    }
+  );
+}
+async function notifySubscriptionExpiringSoon(company, daysRemaining, expirationDate) {
+  const eventType = `When ${daysRemaining} day${daysRemaining > 1 ? "s" : ""} remain${daysRemaining === 1 ? "s" : ""} until the subscription ends`;
+  const formattedEndDate = expirationDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Urgent: ${daysRemaining} Day${daysRemaining > 1 ? "s" : ""} Remaining on Subscription`,
+    customerDetails: {
+      "Company Name": company.name
+    },
+    eventDetails: {
+      "Days Remaining": `${daysRemaining} day${daysRemaining > 1 ? "s" : ""}`,
+      "Expiration Date": formattedEndDate,
+      "Action Required": "Please contact platform administration to renew your subscription and avoid service interruption."
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[Subscription Notice] ${company.name} - ${daysRemaining} day${daysRemaining > 1 ? "s" : ""} remaining until subscription ends`,
+    html,
+    { eventType }
+  );
+}
+async function notifySubscriptionExpired(company, expiredAt) {
+  const eventType = "When the subscription expires";
+  const html = buildNotificationHtml({
+    companyName: company.name,
+    eventType,
+    title: `Subscription Expired for ${company.name}`,
+    customerDetails: {
+      "Company Name": company.name
+    },
+    eventDetails: {
+      Status: "Inactive (Expired)",
+      "Expired On": expiredAt.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }),
+      Note: "Your chatbot service has been paused. Please contact administrator to reactivate your subscription."
+    }
+  });
+  return sendCompanyNotification(
+    company.id,
+    `[Subscription Expired] ${company.name} - Your subscription has expired`,
+    html,
+    { eventType }
+  );
+}
+var init_companyNotification = __esm({
+  "src/lib/companyNotification.ts"() {
+    "use strict";
+    init_src();
+    init_drizzle_orm();
+    init_logger2();
   }
 });
 
@@ -56564,7 +57351,7 @@ function rateLimit(windowMs, maxRequests, keyPrefix = "rl") {
     next();
   };
 }
-function escapeHtml(str) {
+function escapeHtml2(str) {
   return String(str).replace(/[&<>"'/]/g, (char2) => HTML_ESCAPE_MAP[char2] || char2);
 }
 function maskApiKey(key) {
@@ -57510,773 +58297,6 @@ var init_packagesCatalog = __esm({
         { id: "topup-250k", tokens: 25e4, formatted: "+250K", priceUsd: 40, isActive: true }
       ]
     };
-  }
-});
-
-// src/lib/companyNotification.ts
-var companyNotification_exports = {};
-__export(companyNotification_exports, {
-  buildNotificationHtml: () => buildNotificationHtml,
-  ensureEmailNotificationSchema: () => ensureEmailNotificationSchema,
-  getResendConfig: () => getResendConfig,
-  notifyContactFormSubmission: () => notifyContactFormSubmission,
-  notifyCustomerServiceRequest: () => notifyCustomerServiceRequest,
-  notifyNewChatMessage: () => notifyNewChatMessage,
-  notifyNewConversation: () => notifyNewConversation,
-  notifyNewLead: () => notifyNewLead,
-  notifyNewOrder: () => notifyNewOrder,
-  notifyQuota75PercentConsumed: () => notifyQuota75PercentConsumed,
-  notifyQuotaAmberLowBalance: () => notifyQuotaAmberLowBalance,
-  notifyQuotaRedDepleted: () => notifyQuotaRedDepleted,
-  notifySubscriptionActivated: () => notifySubscriptionActivated,
-  notifySubscriptionExpired: () => notifySubscriptionExpired,
-  notifySubscriptionExpiringSoon: () => notifySubscriptionExpiringSoon,
-  notifySystemMalfunction: () => notifySystemMalfunction,
-  sendCompanyNotification: () => sendCompanyNotification
-});
-async function ensureEmailNotificationSchema() {
-  try {
-    if (!pool) return;
-    await pool.query(`
-      ALTER TABLE companies ADD COLUMN IF NOT EXISTS notification_email text;
-      ALTER TABLE companies ADD COLUMN IF NOT EXISTS resend_api_key text;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key text;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email text;
-    `);
-    try {
-      await pool.query(`
-        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_analysis text;
-        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_provider text;
-        ALTER TABLE malfunctions ADD COLUMN IF NOT EXISTS ai_model text;
-      `);
-    } catch (e) {
-    }
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS email_logs (
-        id serial PRIMARY KEY,
-        company_id integer NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-        recipient_email text NOT NULL,
-        subject text NOT NULL,
-        event_type text,
-        status text NOT NULL,
-        error text,
-        resend_id text,
-        created_at timestamp with time zone NOT NULL DEFAULT now()
-      );
-    `);
-    logger.info("Email notification schema ensured in database");
-  } catch (err) {
-    logger.error({ err }, "Failed to ensure email notification schema");
-  }
-}
-async function getResendConfig(companyResendKey) {
-  let apiKey = companyResendKey?.trim() || process.env.RESEND_API_KEY || "";
-  let fromEmail = process.env.RESEND_FROM_EMAIL || "";
-  if (!apiKey || !fromEmail) {
-    try {
-      const rows = await db.select().from(adminConfigTable).where(inArray(adminConfigTable.key, ["resend_api_key", "resend_from_email"]));
-      for (const row of rows) {
-        if (!apiKey && row.key === "resend_api_key" && row.value) apiKey = row.value.trim();
-        if (!fromEmail && row.key === "resend_from_email" && row.value) fromEmail = row.value.trim();
-      }
-    } catch (err) {
-      logger.warn({ err }, "Could not load Resend config from admin_config");
-    }
-  }
-  if (!apiKey) {
-    try {
-      const [u] = await db.select({ resendApiKey: usersTable.resendApiKey }).from(usersTable).where(and(sql`${usersTable.resendApiKey} IS NOT NULL`, sql`${usersTable.resendApiKey} != ''`)).limit(1);
-      if (u?.resendApiKey) apiKey = u.resendApiKey.trim();
-    } catch {
-    }
-  }
-  if (!apiKey) {
-    try {
-      const [c] = await db.select({ resendApiKey: companiesTable.resendApiKey }).from(companiesTable).where(and(sql`${companiesTable.resendApiKey} IS NOT NULL`, sql`${companiesTable.resendApiKey} != ''`)).limit(1);
-      if (c?.resendApiKey) apiKey = c.resendApiKey.trim();
-    } catch {
-    }
-  }
-  if (!fromEmail) {
-    fromEmail = "Bot Manager <onboarding@resend.dev>";
-  }
-  return { apiKey, fromEmail };
-}
-function escapeHtml2(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-}
-function buildNotificationHtml(input) {
-  const dateObj = input.dateTime instanceof Date ? input.dateTime : input.dateTime ? new Date(input.dateTime) : /* @__PURE__ */ new Date();
-  const formattedDate = dateObj.toLocaleString("en-US", {
-    timeZone: "UTC",
-    dateStyle: "full",
-    timeStyle: "medium"
-  }) + " (UTC)";
-  const customerRows = Object.entries(input.customerDetails || {}).filter(([_, v]) => v !== void 0 && v !== null && String(v).trim() !== "").map(([key, val]) => `
-      <tr>
-        <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; border-bottom: 1px solid #e5e7eb; width: 35%; font-size: 13px;">${escapeHtml2(key)}</td>
-        <td style="padding: 8px 12px; color: #111827; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${escapeHtml2(String(val))}</td>
-      </tr>
-    `).join("");
-  let eventDetailsContent = "";
-  if (typeof input.eventDetails === "string") {
-    eventDetailsContent = `<div style="font-size: 14px; line-height: 1.6; color: #1f2937; white-space: pre-wrap; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb;">${escapeHtml2(input.eventDetails)}</div>`;
-  } else if (input.eventDetails && typeof input.eventDetails === "object") {
-    const rows = Object.entries(input.eventDetails).filter(([_, v]) => v !== void 0 && v !== null && String(v).trim() !== "").map(([k, v]) => `
-        <tr>
-          <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; border-bottom: 1px solid #e5e7eb; width: 35%; font-size: 13px;">${escapeHtml2(k)}</td>
-          <td style="padding: 8px 12px; color: #111827; border-bottom: 1px solid #e5e7eb; font-size: 13px; white-space: pre-wrap;">${escapeHtml2(typeof v === "object" ? JSON.stringify(v, null, 2) : String(v))}</td>
-        </tr>
-      `).join("");
-    eventDetailsContent = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 6px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
-        <tbody>${rows}</tbody>
-      </table>
-    `;
-  }
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml2(input.eventType)}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 24px; color: #111827;">
-  <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb;">
-    <!-- Header -->
-    <tr>
-      <td style="background: linear-gradient(135deg, #2563eb, #4f46e5); padding: 24px 32px; color: #ffffff;">
-        <p style="margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255, 255, 255, 0.85); font-weight: 700;">
-          ${escapeHtml2(input.companyName)}
-        </p>
-        <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; line-height: 1.3;">
-          ${escapeHtml2(input.title || input.eventType)}
-        </h1>
-      </td>
-    </tr>
-
-    <!-- Body Content -->
-    <tr>
-      <td style="padding: 28px 32px;">
-        <!-- Meta block: Event Type & Date/Time -->
-        <table role="presentation" style="width: 100%; margin-bottom: 24px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px;">
-          <tr>
-            <td style="padding: 4px 0; font-size: 13px; color: #4b5563;">
-              <strong style="color: #111827;">Event Type:</strong>
-              <span style="display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-left: 6px;">
-                ${escapeHtml2(input.eventType)}
-              </span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 4px 0; font-size: 13px; color: #4b5563;">
-              <strong style="color: #111827;">Date &amp; Time:</strong> ${escapeHtml2(formattedDate)}
-            </td>
-          </tr>
-        </table>
-
-        ${customerRows ? `
-        <!-- Customer Details -->
-        <div style="margin-bottom: 24px;">
-          <h2 style="font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.05em;">
-            Customer Details
-          </h2>
-          <table style="width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
-            <tbody>
-              ${customerRows}
-            </tbody>
-          </table>
-        </div>
-        ` : `
-        <!-- Customer Details (General Visitor / System) -->
-        <div style="margin-bottom: 24px;">
-          <h2 style="font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.05em;">
-            Customer Details
-          </h2>
-          <p style="margin: 0; font-size: 13px; color: #6b7280; font-style: italic;">
-            Not applicable (System or unauthenticated visitor event)
-          </p>
-        </div>
-        `}
-
-        <!-- Full Event Details -->
-        <div style="margin-bottom: 12px;">
-          <h2 style="font-size: 15px; font-weight: 700; color: #111827; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.05em;">
-            Full Event Details
-          </h2>
-          ${eventDetailsContent}
-        </div>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color: #f9fafb; padding: 20px 32px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
-        <p style="margin: 0 0 4px 0;">This email was sent exclusively to the notification email of <strong>${escapeHtml2(input.companyName)}</strong>.</p>
-        <p style="margin: 0; color: #9ca3af;">Bot Manager Client Notification Service &bull; Powered by Resend</p>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-}
-async function sendCompanyNotification(companyId, subject, html, options) {
-  try {
-    if (!companyId || isNaN(companyId)) {
-      logger.warn({ companyId }, "sendCompanyNotification called with invalid companyId");
-      return { ok: false, error: "Invalid companyId" };
-    }
-    const [company] = await db.select({
-      id: companiesTable.id,
-      name: companiesTable.name,
-      clientId: companiesTable.clientId,
-      notificationEmail: companiesTable.notificationEmail,
-      resendApiKey: companiesTable.resendApiKey
-    }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
-    if (!company) {
-      logger.warn({ companyId }, "sendCompanyNotification: Company not found");
-      return { ok: false, error: "Company not found" };
-    }
-    if (company.clientId && options?.eventType) {
-      const skipDuplicates = ["New chatbot message", "Customer Service Request"];
-      if (!skipDuplicates.includes(options.eventType)) {
-        try {
-          const inAppTitle = options.inAppTitle || `[${options.eventType}] ${company.name}`;
-          const inAppMessage = options.inAppMessage || subject;
-          const notifType = options?.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-          const [existingDup] = await db.select({ id: notificationsTable.id }).from(notificationsTable).where(
-            and(
-              eq(notificationsTable.userId, company.clientId),
-              eq(notificationsTable.title, inAppTitle),
-              sql`${notificationsTable.createdAt} >= NOW() - INTERVAL '5 minutes'`
-            )
-          ).limit(1);
-          if (!existingDup) {
-            await db.insert(notificationsTable).values({
-              userId: company.clientId,
-              type: notifType,
-              title: inAppTitle,
-              message: inAppMessage,
-              companyId: company.id,
-              isRead: false
-            });
-          }
-        } catch (notifErr) {
-          logger.warn({ notifErr }, "Failed to create synced in-app notification in notificationsTable");
-        }
-      }
-    }
-    let recipient = company.notificationEmail?.trim();
-    let companyResendKey = company.resendApiKey?.trim();
-    if ((!recipient || !companyResendKey) && company.clientId) {
-      try {
-        const [owner] = await db.select({
-          notificationEmail: usersTable.notificationEmail,
-          resendApiKey: usersTable.resendApiKey
-        }).from(usersTable).where(eq(usersTable.id, company.clientId)).limit(1);
-        if (owner) {
-          if (!recipient && owner.notificationEmail?.trim()) {
-            recipient = owner.notificationEmail.trim();
-          }
-          if (!companyResendKey && owner.resendApiKey?.trim()) {
-            companyResendKey = owner.resendApiKey.trim();
-          }
-        }
-      } catch (ownerErr) {
-        logger.warn({ ownerErr, clientId: company.clientId }, "Failed to fetch owner user notification settings");
-      }
-    }
-    if (!recipient || !companyResendKey) {
-      try {
-        const clientUsers = await db.select({
-          notificationEmail: usersTable.notificationEmail,
-          resendApiKey: usersTable.resendApiKey
-        }).from(usersTable).where(eq(usersTable.role, "client")).limit(5);
-        for (const cu of clientUsers) {
-          if (!recipient && cu.notificationEmail?.trim()) {
-            recipient = cu.notificationEmail.trim();
-          }
-          if (!companyResendKey && cu.resendApiKey?.trim()) {
-            companyResendKey = cu.resendApiKey.trim();
-          }
-        }
-      } catch (clientErr) {
-        logger.warn({ clientErr }, "Failed to query client users for notification fallback");
-      }
-    }
-    if (recipient && !company.notificationEmail) {
-      db.update(companiesTable).set({ notificationEmail: recipient }).where(eq(companiesTable.id, company.id)).catch((e) => logger.warn({ err: e }, "Failed to backfill company.notificationEmail"));
-    }
-    if (companyResendKey && !company.resendApiKey) {
-      db.update(companiesTable).set({ resendApiKey: companyResendKey }).where(eq(companiesTable.id, company.id)).catch((e) => logger.warn({ err: e }, "Failed to backfill company.resendApiKey"));
-    }
-    if (!recipient) {
-      logger.info(
-        { companyId, companyName: company.name },
-        "sendCompanyNotification: Skipped - No company.notificationEmail configured"
-      );
-      try {
-        await db.insert(emailLogsTable).values({
-          companyId,
-          recipientEmail: "N/A (not configured)",
-          subject,
-          eventType: options?.eventType || null,
-          status: "skipped",
-          error: "company.notificationEmail is empty"
-        });
-      } catch (logErr) {
-        logger.warn({ logErr }, "Failed to insert skipped email log");
-      }
-      return { ok: false, error: "No notification email configured" };
-    }
-    const { apiKey, fromEmail } = await getResendConfig(companyResendKey);
-    if (!apiKey) {
-      const errorMsg = "RESEND_API_KEY is not configured (check environment variables or admin settings)";
-      logger.warn({ companyId, recipient }, errorMsg);
-      try {
-        await db.insert(emailLogsTable).values({
-          companyId,
-          recipientEmail: recipient,
-          subject,
-          eventType: options?.eventType || null,
-          status: "failed",
-          error: errorMsg
-        });
-      } catch (logErr) {
-        logger.warn({ logErr }, "Failed to log email attempt");
-      }
-      return { ok: false, error: errorMsg };
-    }
-    logger.info({ companyId, recipient, subject, fromEmail }, "Sending notification email via Resend");
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [recipient],
-        subject,
-        html
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      logger.info(
-        { companyId, recipient, resendId: data.id, subject },
-        "Notification email successfully sent via Resend"
-      );
-      try {
-        await db.insert(emailLogsTable).values({
-          companyId,
-          recipientEmail: recipient,
-          subject,
-          eventType: options?.eventType || null,
-          status: "sent",
-          resendId: data.id || null
-        });
-      } catch (logErr) {
-        logger.warn({ logErr }, "Failed to insert sent email log");
-      }
-      return { ok: true, id: data.id };
-    } else {
-      const errorText = await res.text();
-      logger.error(
-        { companyId, status: res.status, errorText },
-        "Resend API returned error when sending company notification"
-      );
-      try {
-        await db.insert(emailLogsTable).values({
-          companyId,
-          recipientEmail: recipient,
-          subject,
-          eventType: options?.eventType || null,
-          status: "failed",
-          error: `HTTP ${res.status}: ${errorText.slice(0, 500)}`
-        });
-      } catch (logErr) {
-        logger.warn({ logErr }, "Failed to insert failed email log");
-      }
-      return { ok: false, error: `Resend error (${res.status}): ${errorText}` };
-    }
-  } catch (err) {
-    logger.error({ err, companyId, subject }, "Unhandled error in sendCompanyNotification");
-    try {
-      await db.insert(emailLogsTable).values({
-        companyId,
-        recipientEmail: "unknown",
-        subject,
-        eventType: options?.eventType || null,
-        status: "failed",
-        error: String(err?.message || err)
-      });
-    } catch {
-    }
-    return { ok: false, error: String(err?.message || err) };
-  }
-}
-async function notifyNewChatMessage(company, details) {
-  if (details.sessionId && details.sessionId.startsWith("preview_")) {
-    return;
-  }
-  const eventType = "New chatbot message";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `New Message on ${details.channel}`,
-    customerDetails: {
-      Channel: details.channel,
-      "Session ID": details.sessionId || "N/A",
-      "Phone / Contact": details.customerPhone || "Visitor"
-    },
-    eventDetails: {
-      "Customer Message": details.customerMessage,
-      Channel: details.channel
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - Message received on ${details.channel}`,
-    html,
-    { eventType }
-  );
-}
-async function notifyNewConversation(company, details) {
-  if (details.sessionId && details.sessionId.startsWith("preview_")) {
-    return;
-  }
-  const channelNames = {
-    whatsapp: "WhatsApp",
-    telegram: "Telegram",
-    messenger: "Messenger",
-    website: "Website Widget"
-  };
-  const channelDisplay = channelNames[details.channel] || details.channel;
-  const eventType = "New conversation";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `New Conversation Started on ${channelDisplay}`,
-    customerDetails: {
-      Channel: channelDisplay,
-      "Session ID": details.sessionId || "N/A",
-      "Phone / Contact": details.customerPhone || "Visitor"
-    },
-    eventDetails: {
-      "Initial Message": details.initialMessage,
-      Channel: channelDisplay,
-      "Session ID": details.sessionId || "N/A"
-    }
-  });
-  const snippet = details.initialMessage.length > 70 ? details.initialMessage.substring(0, 70) + "..." : details.initialMessage;
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - New conversation on ${channelDisplay}`,
-    html,
-    {
-      eventType,
-      inAppTitle: `New conversation (${channelDisplay})`,
-      inAppMessage: `User started a conversation: "${snippet}"`
-    }
-  );
-}
-async function notifyNewLead(company, lead) {
-  const isClinicBooking = Boolean(lead.appointmentDate || lead.doctor);
-  const eventType = isClinicBooking ? "New Clinic Booking / Patient Lead" : "New lead";
-  const leadIdentifier = lead.name || lead.phone || lead.email || (isClinicBooking ? "New Patient" : "New Customer");
-  const eventDetails = {
-    Interest: lead.interest || (isClinicBooking ? "Clinic Appointment" : "General Inquiry"),
-    Channel: lead.channel || "N/A"
-  };
-  if (lead.appointmentDate) eventDetails["Appointment Date / Time"] = lead.appointmentDate;
-  if (lead.doctor) eventDetails["Doctor / Specialty"] = lead.doctor;
-  if (lead.bookingType) eventDetails["Booking Type"] = lead.bookingType;
-  if (lead.notes) eventDetails["Notes / Symptoms"] = lead.notes;
-  if (lead.status) eventDetails["Status"] = lead.status;
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: isClinicBooking ? `New Patient Appointment: ${leadIdentifier}` : `New Lead Captured: ${leadIdentifier}`,
-    customerDetails: {
-      Name: lead.name || "N/A",
-      Email: lead.email || "N/A",
-      Phone: lead.phone || "N/A",
-      Channel: lead.channel || "N/A",
-      "Session ID": lead.sessionId || "N/A"
-    },
-    eventDetails
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - ${leadIdentifier}`,
-    html,
-    { eventType }
-  );
-}
-async function notifyContactFormSubmission(company, submission) {
-  const eventType = "Contact form submission";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `Contact Form Submission from ${submission.name || submission.email || "Visitor"}`,
-    customerDetails: {
-      Name: submission.name || "N/A",
-      Email: submission.email || "N/A",
-      Phone: submission.phone || "N/A",
-      Channel: submission.channel || "Website"
-    },
-    eventDetails: {
-      Subject: submission.subject || "Contact Form Inquiry",
-      Message: submission.message || "No message provided"
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - ${submission.subject || "New Inquiry"}`,
-    html,
-    { eventType }
-  );
-}
-async function notifyNewOrder(company, order) {
-  const eventType = "New order";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `New Order Received for ${company.name}`,
-    customerDetails: {
-      "Customer Name": order.customerName || "N/A",
-      "Customer Email": order.customerEmail || "N/A",
-      "Customer Phone": order.customerPhone || "N/A",
-      Channel: order.channel || "Chatbot"
-    },
-    eventDetails: {
-      "Order Items": Array.isArray(order.items) ? JSON.stringify(order.items, null, 2) : order.items || "N/A",
-      "Total Amount": order.total ? String(order.total) : "N/A",
-      "Additional Notes": order.notes || "None"
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - New order from ${order.customerName || "Customer"}`,
-    html,
-    { eventType }
-  );
-}
-async function notifyCustomerServiceRequest(company, request) {
-  const eventType = "Customer Service Request";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `Customer Service Contact Request on ${request.channel}`,
-    customerDetails: {
-      Channel: request.channel,
-      "Session ID": request.sessionId || "N/A",
-      "Phone / Contact": request.customerPhone || "Visitor"
-    },
-    eventDetails: {
-      "Action Required": "Customer explicitly requested to speak to a human representative / customer service.",
-      Channel: request.channel,
-      Reason: request.reason || "Customer requested human support"
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - Customer requested support on ${request.channel}`,
-    html,
-    { eventType }
-  );
-}
-async function notifySystemMalfunction(company, malfunction) {
-  const eventType = "System malfunction";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `System Malfunction Alert: ${malfunction.title}`,
-    customerDetails: {
-      "Affected Company": company.name
-    },
-    eventDetails: {
-      "Malfunction Title": malfunction.title,
-      Description: malfunction.description,
-      "Technical Details": malfunction.rawError ? String(malfunction.rawError).slice(0, 500) : "None"
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - ${malfunction.title}`,
-    html,
-    { eventType }
-  );
-}
-async function notifySubscriptionActivated(company, subscription) {
-  const eventType = "Subscription activated";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `Subscription Activated for ${company.name}`,
-    customerDetails: {
-      "Company Name": company.name,
-      "Client ID": company.clientId ? String(company.clientId) : "N/A"
-    },
-    eventDetails: {
-      Status: "Active",
-      "Activation Start": subscription.activationStart ? String(subscription.activationStart) : "Now",
-      "Activation End": subscription.activationEnd ? String(subscription.activationEnd) : "No expiration set"
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[${eventType}] ${company.name} - Your subscription is active!`,
-    html,
-    { eventType }
-  );
-}
-async function notifyQuota75PercentConsumed(company, quota) {
-  const eventType = "Upon consuming 75% of API.AI";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `AI Quota Alert: 75% of API.AI consumed`,
-    customerDetails: {
-      "Company Name": company.name
-    },
-    eventDetails: {
-      "Usage Percentage": `${quota.percentUsed}%`,
-      "Tokens Consumed": quota.usedTokens.toLocaleString(),
-      "Total Monthly Quota": quota.monthlyQuota.toLocaleString(),
-      Recommendation: "Your chatbot has consumed over 75% of its monthly AI token quota. Consider upgrading your quota to ensure continuous uninterrupted service."
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[API.AI Alert] ${company.name} - 75% of monthly AI quota consumed`,
-    html,
-    { eventType }
-  );
-}
-async function notifyQuotaAmberLowBalance(company, quota) {
-  const eventType = "Quota Warning: Balance Below 20%";
-  const inAppTitle = "\u{1F7E1} \u062A\u062D\u0630\u064A\u0631: \u0631\u0635\u064A\u062F \u062D\u0635\u0629 \u0627\u0644\u0631\u0645\u0648\u0632 \u0623\u0642\u0644 \u0645\u0646 20%";
-  const inAppMessage = `\u0631\u0635\u064A\u062F\u0643 \u0627\u0644\u0645\u062A\u0628\u0642\u064A \u0645\u0646 \u062D\u0635\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0623\u0635\u0628\u062D \u0623\u0642\u0644 \u0645\u0646 20% (\u0645\u062A\u0628\u0642\u064A ${quota.remainingTokens.toLocaleString()} \u0631\u0645\u0632 \u0645\u0646 \u0623\u0635\u0644 ${quota.monthlyQuota.toLocaleString()}). \u064A\u0631\u062C\u0649 \u0637\u0644\u0628 \u0632\u064A\u0627\u062F\u0629 \u0623\u0648 \u0634\u062D\u0646 \u0627\u0644\u0631\u0635\u064A\u062F \u0644\u0636\u0645\u0627\u0646 \u0627\u0633\u062A\u0645\u0631\u0627\u0631 \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A\u0629.`;
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `AI Quota Warning: Balance below 20% (${quota.remainingTokens.toLocaleString()} tokens left)`,
-    customerDetails: {
-      "Company Name": company.name
-    },
-    eventDetails: {
-      "Remaining Tokens (\u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062A\u0628\u0642\u064A)": quota.remainingTokens.toLocaleString(),
-      "Usage Percentage (\u0646\u0633\u0628\u0629 \u0627\u0644\u0627\u0633\u062A\u0647\u0644\u0627\u0643)": `${quota.percentUsed}%`,
-      "Tokens Consumed (\u0627\u0644\u0645\u0633\u062A\u0647\u0644\u0643)": quota.usedTokens.toLocaleString(),
-      "Total Monthly Quota (\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062D\u0635\u0629)": quota.monthlyQuota.toLocaleString(),
-      Recommendation: "Your chatbot has consumed over 80% of its monthly AI token quota. Please request a quota top-up or upgrade to ensure uninterrupted service."
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[\u062A\u0646\u0628\u064A\u0647 \u0627\u0644\u062D\u0635\u0629 \u{1F7E1}] \u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u062A\u0628\u0642\u064A \u0644\u0634\u0631\u0643\u0629 ${company.name} \u0623\u0642\u0644 \u0645\u0646 20%`,
-    html,
-    {
-      eventType,
-      inAppTitle,
-      inAppMessage,
-      inAppType: "quota_warning_amber"
-    }
-  );
-}
-async function notifyQuotaRedDepleted(company, quota) {
-  const eventType = "Urgent: AI Quota Completely Depleted";
-  const inAppTitle = "\u{1F534} \u062A\u0646\u0628\u064A\u0647 \u0639\u0627\u062C\u0644: \u062A\u0645 \u0627\u0633\u062A\u0646\u0641\u0627\u062F \u062D\u0635\u0629 \u0627\u0644\u0631\u0645\u0648\u0632 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 (0 \u0645\u062A\u0628\u0642\u064A)";
-  const inAppMessage = `\u0644\u0642\u062F \u0627\u0633\u062A\u0646\u0641\u062F\u062A \u0643\u0627\u0645\u0644 \u062D\u0635\u0629 \u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064A \u0627\u0644\u0634\u0647\u0631\u064A\u0629 (${quota.monthlyQuota.toLocaleString()} \u0631\u0645\u0632). \u062A\u0648\u0642\u0641\u062A \u0627\u0644\u0631\u062F\u0648\u062F \u0627\u0644\u062A\u0644\u0642\u0627\u0626\u064A\u0629 \u0644\u0644\u0645\u0633\u0627\u0639\u062F \u0645\u0624\u0642\u062A\u0627\u064B \u062D\u062A\u0649 \u062A\u062C\u062F\u064A\u062F \u0627\u0644\u062D\u0635\u0629 \u0623\u0648 \u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0625\u0636\u0627\u0641\u064A.`;
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `Urgent: Monthly AI Quota Depleted (0 Tokens Remaining)`,
-    customerDetails: {
-      "Company Name": company.name
-    },
-    eventDetails: {
-      "Remaining Tokens (\u0627\u0644\u0631\u0635\u064A\u062F \u0627\u0644\u0645\u062A\u0628\u0642\u064A)": "0 tokens (100% depleted)",
-      "Tokens Consumed (\u0627\u0644\u0645\u0633\u062A\u0647\u0644\u0643)": quota.usedTokens.toLocaleString(),
-      "Total Monthly Quota (\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u062D\u0635\u0629)": quota.monthlyQuota.toLocaleString(),
-      "Action Required": "Automated chatbot responses are currently paused. Please request an immediate quota top-up or upgrade from platform administration."
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[\u062A\u0646\u0628\u064A\u0647 \u0639\u0627\u062C\u0644 \u{1F534}] \u0627\u0633\u062A\u0646\u0641\u0627\u062F \u062D\u0635\u0629 \u0627\u0644\u0631\u0645\u0648\u0632 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 \u0644\u0634\u0631\u0643\u0629 ${company.name}`,
-    html,
-    {
-      eventType,
-      inAppTitle,
-      inAppMessage,
-      inAppType: "quota_depleted_red"
-    }
-  );
-}
-async function notifySubscriptionExpiringSoon(company, daysRemaining, expirationDate) {
-  const eventType = `When ${daysRemaining} day${daysRemaining > 1 ? "s" : ""} remain${daysRemaining === 1 ? "s" : ""} until the subscription ends`;
-  const formattedEndDate = expirationDate.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  });
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `Urgent: ${daysRemaining} Day${daysRemaining > 1 ? "s" : ""} Remaining on Subscription`,
-    customerDetails: {
-      "Company Name": company.name
-    },
-    eventDetails: {
-      "Days Remaining": `${daysRemaining} day${daysRemaining > 1 ? "s" : ""}`,
-      "Expiration Date": formattedEndDate,
-      "Action Required": "Please contact platform administration to renew your subscription and avoid service interruption."
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[Subscription Notice] ${company.name} - ${daysRemaining} day${daysRemaining > 1 ? "s" : ""} remaining until subscription ends`,
-    html,
-    { eventType }
-  );
-}
-async function notifySubscriptionExpired(company, expiredAt) {
-  const eventType = "When the subscription expires";
-  const html = buildNotificationHtml({
-    companyName: company.name,
-    eventType,
-    title: `Subscription Expired for ${company.name}`,
-    customerDetails: {
-      "Company Name": company.name
-    },
-    eventDetails: {
-      Status: "Inactive (Expired)",
-      "Expired On": expiredAt.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      }),
-      Note: "Your chatbot service has been paused. Please contact administrator to reactivate your subscription."
-    }
-  });
-  return sendCompanyNotification(
-    company.id,
-    `[Subscription Expired] ${company.name} - Your subscription has expired`,
-    html,
-    { eventType }
-  );
-}
-var init_companyNotification = __esm({
-  "src/lib/companyNotification.ts"() {
-    "use strict";
-    init_src();
-    init_drizzle_orm();
-    init_logger2();
   }
 });
 
@@ -62997,15 +63017,15 @@ function generateInvoiceHtml(inv) {
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <tr>
           <td style="color:#64748b;">
-            \u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629: <strong style="color:#0f172a;">#${escapeHtml(inv.invoiceNumber)}</strong>
+            \u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629: <strong style="color:#0f172a;">#${escapeHtml2(inv.invoiceNumber)}</strong>
           </td>
           <td style="text-align:center;color:#64748b;">
             \u0631\u0642\u0645 \u0627\u0644\u0637\u0644\u0628: <strong style="color:#0f172a;">#${inv.ticketId}</strong>
           </td>
           <td style="text-align:left;color:#64748b;">
-            \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0625\u0635\u062F\u0627\u0631: <strong style="color:#0f172a;">${escapeHtml(inv.issueDate)}</strong>
+            \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0625\u0635\u062F\u0627\u0631: <strong style="color:#0f172a;">${escapeHtml2(inv.issueDate)}</strong>
             ${inv.endDate ? `<div style="margin-top:4px;color:#2563eb;font-weight:700;">
-                    \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0627\u0646\u062A\u0647\u0627\u0621: <strong style="color:#1d4ed8;">${escapeHtml(inv.endDate)}</strong>
+                    \u062A\u0627\u0631\u064A\u062E \u0627\u0644\u0627\u0646\u062A\u0647\u0627\u0621: <strong style="color:#1d4ed8;">${escapeHtml2(inv.endDate)}</strong>
                   </div>` : ""}
           </td>
         </tr>
@@ -63021,17 +63041,17 @@ function generateInvoiceHtml(inv) {
         <tr>
           <td style="width:50%;vertical-align:top;padding-left:12px;">
             <p style="margin:0 0 4px;color:#64748b;font-size:12px;">\u0627\u0633\u0645 \u0627\u0644\u0639\u0645\u064A\u0644 / Client Name</p>
-            <p style="margin:0 0 12px;font-weight:700;color:#0f172a;">${escapeHtml(inv.clientName)}</p>
+            <p style="margin:0 0 12px;font-weight:700;color:#0f172a;">${escapeHtml2(inv.clientName)}</p>
 
             <p style="margin:0 0 4px;color:#64748b;font-size:12px;">\u0627\u0644\u0634\u0631\u0643\u0629 / Organization</p>
-            <p style="margin:0;font-weight:600;color:#1e293b;">${escapeHtml(inv.companyName)}</p>
+            <p style="margin:0;font-weight:600;color:#1e293b;">${escapeHtml2(inv.companyName)}</p>
           </td>
           <td style="width:50%;vertical-align:top;padding-right:12px;">
             <p style="margin:0 0 4px;color:#64748b;font-size:12px;">\u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A / Email</p>
-            <p style="margin:0 0 12px;font-weight:600;color:#1e293b;">${escapeHtml(inv.clientEmail)}</p>
+            <p style="margin:0 0 12px;font-weight:600;color:#1e293b;">${escapeHtml2(inv.clientEmail)}</p>
 
             <p style="margin:0 0 4px;color:#64748b;font-size:12px;">\u0631\u0642\u0645 \u0627\u0644\u062A\u0648\u0627\u0635\u0644 / WhatsApp</p>
-            <p style="margin:0;font-weight:600;color:#1e293b;direction:ltr;text-align:right;">${escapeHtml(inv.clientPhone || "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644")}</p>
+            <p style="margin:0;font-weight:600;color:#1e293b;direction:ltr;text-align:right;">${escapeHtml2(inv.clientPhone || "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644")}</p>
           </td>
         </tr>
       </table>
@@ -63055,28 +63075,28 @@ function generateInvoiceHtml(inv) {
         <tbody>
           <tr>
             <td style="padding:16px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top;">
-              <strong style="color:#0f172a;font-size:15px;display:block;">${escapeHtml(inv.itemNameAr)}</strong>
-              <span style="color:#64748b;font-size:12px;display:block;margin-top:2px;">${escapeHtml(inv.itemNameEn)}</span>
+              <strong style="color:#0f172a;font-size:15px;display:block;">${escapeHtml2(inv.itemNameAr)}</strong>
+              <span style="color:#64748b;font-size:12px;display:block;margin-top:2px;">${escapeHtml2(inv.itemNameEn)}</span>
               
               <div style="margin-top:10px;font-size:12px;color:#475569;line-height:1.6;">
-                <div>\u2022 \u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u0627\u062D\u062A\u0641\u0627\u0638 \u0628\u0627\u0644\u0633\u062C\u0644\u0627\u062A: <strong>${escapeHtml(retentionText)}</strong></div>
-                <div>\u2022 \u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0627\u0644\u0646\u0634\u0637\u0629: <span>${escapeHtml(channelsList)}</span></div>
-                <div>\u2022 \u0627\u0644\u0623\u062F\u0648\u0627\u062A \u0648\u0627\u0644\u062A\u0643\u0627\u0645\u0644\u0627\u062A: <span>${escapeHtml(toolsList)}</span></div>
+                <div>\u2022 \u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u0627\u062D\u062A\u0641\u0627\u0638 \u0628\u0627\u0644\u0633\u062C\u0644\u0627\u062A: <strong>${escapeHtml2(retentionText)}</strong></div>
+                <div>\u2022 \u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0627\u0644\u0646\u0634\u0637\u0629: <span>${escapeHtml2(channelsList)}</span></div>
+                <div>\u2022 \u0627\u0644\u0623\u062F\u0648\u0627\u062A \u0648\u0627\u0644\u062A\u0643\u0627\u0645\u0644\u0627\u062A: <span>${escapeHtml2(toolsList)}</span></div>
                 ${inv.endDate ? `<div style="margin-top:6px;padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;color:#1e40af;font-weight:600;">
-                        \u{1F4C5} \u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629: <strong>${escapeHtml(inv.endDate)}</strong> ${inv.itemType === "topup" ? "(\u0645\u0637\u0627\u0628\u0642 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643)" : ""}
+                        \u{1F4C5} \u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629: <strong>${escapeHtml2(inv.endDate)}</strong> ${inv.itemType === "topup" ? "(\u0645\u0637\u0627\u0628\u0642 \u0644\u0646\u0647\u0627\u064A\u0629 \u0627\u0644\u0627\u0634\u062A\u0631\u0627\u0643)" : ""}
                       </div>` : ""}
               </div>
             </td>
             <td style="padding:16px 14px;text-align:center;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#334155;">
-              <strong>${escapeHtml(inv.billingCycleAr)}</strong>
-              <span style="display:block;font-size:11px;color:#94a3b8;">${escapeHtml(inv.billingCycleEn)}</span>
+              <strong>${escapeHtml2(inv.billingCycleAr)}</strong>
+              <span style="display:block;font-size:11px;color:#94a3b8;">${escapeHtml2(inv.billingCycleEn)}</span>
             </td>
             <td style="padding:16px 14px;text-align:center;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#2563eb;font-weight:700;">
               ${inv.tokenQuota.toLocaleString()}
             </td>
             <td style="padding:16px 14px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:top;direction:ltr;">
               <strong style="color:#0f172a;font-size:16px;">$${inv.priceUsd} USD</strong>
-              ${inv.currencySymbol && inv.currencySymbol !== "$" ? `<div style="font-size:12px;color:#64748b;margin-top:2px;">\u2248 ${inv.priceLocal.toLocaleString()} ${escapeHtml(inv.currencySymbol)}</div>` : ""}
+              ${inv.currencySymbol && inv.currencySymbol !== "$" ? `<div style="font-size:12px;color:#64748b;margin-top:2px;">\u2248 ${inv.priceLocal.toLocaleString()} ${escapeHtml2(inv.currencySymbol)}</div>` : ""}
             </td>
           </tr>
         </tbody>
@@ -63112,7 +63132,7 @@ function generateInvoiceHtml(inv) {
                 </tr>
                 ${inv.currencySymbol && inv.currencySymbol !== "$" ? `<tr>
                         <td colspan="2" style="text-align:left;font-size:12px;color:#64748b;padding-top:4px;direction:ltr;">
-                          (\u064A\u0639\u0627\u062F\u0644 \u062A\u0642\u0631\u064A\u0628\u0627\u064B ${inv.priceLocal.toLocaleString()} ${escapeHtml(inv.currencySymbol)})
+                          (\u064A\u0639\u0627\u062F\u0644 \u062A\u0642\u0631\u064A\u0628\u0627\u064B ${inv.priceLocal.toLocaleString()} ${escapeHtml2(inv.currencySymbol)})
                         </td>
                       </tr>` : ""}
               </table>
@@ -63145,7 +63165,7 @@ function generateInvoiceHtml(inv) {
           </td>
           <td style="padding:14px 18px;vertical-align:middle;direction:ltr;text-align:right;border-bottom:1px solid #fef3c7;">
             <span style="font-family:'Courier New',Courier,monospace;font-size:16px;font-weight:800;color:#0f172a;letter-spacing:1px;background:#f8fafc;padding:6px 14px;border-radius:8px;border:1px solid #cbd5e1;display:inline-block;">
-              ${escapeHtml(inv.paymentPhone || "01000000000")}
+              ${escapeHtml2(inv.paymentPhone || "01000000000")}
             </span>
           </td>
         </tr>
@@ -63158,7 +63178,7 @@ function generateInvoiceHtml(inv) {
           </td>
           <td style="padding:14px 18px;vertical-align:middle;direction:ltr;text-align:right;">
             <span style="font-family:'Courier New',Courier,monospace;font-size:15px;font-weight:800;color:#2563eb;letter-spacing:0.5px;background:#eff6ff;padding:6px 14px;border-radius:8px;border:1px solid #bfdbfe;display:inline-block;">
-              ${escapeHtml(inv.paymentInstaPay || "username@instapay")}
+              ${escapeHtml2(inv.paymentInstaPay || "username@instapay")}
             </span>
           </td>
         </tr>
@@ -64098,19 +64118,19 @@ async function sendNewTicketNotification(ticket) {
             <tr>
               <td style="padding:12px;background:#fff;border:1px solid #e4e4e7;border-radius:6px 6px 0 0;">
                 <p style="margin:0 0 4px;font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.5px;">Customer</p>
-                <p style="margin:0;font-weight:600;color:#18181b;">${escapeHtml(ticket.clientName)}</p>
+                <p style="margin:0;font-weight:600;color:#18181b;">${escapeHtml2(ticket.clientName)}</p>
               </td>
             </tr>
             <tr>
               <td style="padding:12px;background:#fff;border:1px solid #e4e4e7;border-top:0;">
                 <p style="margin:0 0 4px;font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.5px;">Problem</p>
-                <p style="margin:0;font-weight:600;color:#18181b;">${escapeHtml(ticket.title)}</p>
+                <p style="margin:0;font-weight:600;color:#18181b;">${escapeHtml2(ticket.title)}</p>
               </td>
             </tr>
             <tr>
               <td style="padding:12px;background:#fff;border:1px solid #e4e4e7;border-top:0;border-radius:0 0 6px 6px;">
                 <p style="margin:0 0 4px;font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.5px;">Description</p>
-                <p style="margin:0;color:#3f3f46;white-space:pre-wrap;line-height:1.6;font-size:14px;">${escapeHtml(ticket.description)}</p>
+                <p style="margin:0;color:#3f3f46;white-space:pre-wrap;line-height:1.6;font-size:14px;">${escapeHtml2(ticket.description)}</p>
               </td>
             </tr>
           </table>
@@ -64178,7 +64198,7 @@ async function sendPlanRequestAdminNotification(input) {
                 \u0627\u0644\u0639\u0645\u064A\u0644 / Client:
               </td>
               <td style="padding:12px 16px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">
-                ${escapeHtml(input.clientName)} ${input.clientEmail ? `<span style="font-size:12px;color:#64748b;">(${escapeHtml(input.clientEmail)})</span>` : ""}
+                ${escapeHtml2(input.clientName)} ${input.clientEmail ? `<span style="font-size:12px;color:#64748b;">(${escapeHtml2(input.clientEmail)})</span>` : ""}
               </td>
             </tr>
             ${input.companyName ? `<tr>
@@ -64186,7 +64206,7 @@ async function sendPlanRequestAdminNotification(input) {
                       \u0627\u0644\u0634\u0631\u0643\u0629 / Company:
                     </td>
                     <td style="padding:12px 16px;font-weight:600;color:#0f172a;border-bottom:1px solid #e2e8f0;">
-                      ${escapeHtml(input.companyName)}
+                      ${escapeHtml2(input.companyName)}
                     </td>
                   </tr>` : ""}
             <tr>
@@ -64194,7 +64214,7 @@ async function sendPlanRequestAdminNotification(input) {
                 \u0627\u0644\u0637\u0644\u0628 / Request:
               </td>
               <td style="padding:12px 16px;font-weight:700;color:#2563eb;border-bottom:1px solid #e2e8f0;">
-                ${escapeHtml(input.title)}
+                ${escapeHtml2(input.title)}
               </td>
             </tr>
             <tr>
@@ -64202,7 +64222,7 @@ async function sendPlanRequestAdminNotification(input) {
                 \u062A\u0641\u0627\u0635\u064A\u0644 \u0627\u0644\u0637\u0644\u0628:
               </td>
               <td style="padding:12px 16px;color:#334155;white-space:pre-wrap;line-height:1.6;font-size:13px;background:#ffffff;">
-                ${escapeHtml(input.description)}
+                ${escapeHtml2(input.description)}
               </td>
             </tr>
           </table>
@@ -64282,9 +64302,9 @@ async function sendClientNotification(clientEmail, title, messageText) {
         <h2 style="margin: 0;">New Notification</h2>
       </div>
       <div style="padding: 20px;">
-        <p style="font-size: 16px; margin-bottom: 8px;"><strong>${escapeHtml(title)}</strong></p>
+        <p style="font-size: 16px; margin-bottom: 8px;"><strong>${escapeHtml2(title)}</strong></p>
         <p style="font-size: 14px; color: #4b5563; line-height: 1.5; margin-bottom: 20px;">
-          ${escapeHtml(messageText).replace(/\n/g, "<br>")}
+          ${escapeHtml2(messageText).replace(/\n/g, "<br>")}
         </p>
         <p style="font-size: 14px; margin-bottom: 20px;">
           Please check the Bot Manager client portal for more details.
@@ -64341,7 +64361,7 @@ async function sendAttackSpikeNotification(input) {
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
           <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
-          <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
+          <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml2(message)}</p>
           <p style="margin:0;color:#450a0a;font-size:13px;">Open Bot Manager \u2192 Attack Monitoring to review IP addresses, targeted accounts, and automatic blocks.</p>
         </div>
       `
@@ -64418,24 +64438,24 @@ async function sendSecurityEventEmail(event, ip, username, attempts) {
         <div dir="rtl" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
           <div style="background-color: ${alertHeaderBg}; padding: 24px 20px; border-bottom: 2px solid ${alertHeaderColor}; text-align: center;">
             <div style="font-size: 36px; line-height: 1; margin-bottom: 8px;">\u{1F6E1}\uFE0F</div>
-            <h2 style="margin: 0; color: ${alertHeaderColor}; font-size: 20px; font-weight: 700;">${escapeHtml(alertTitleAr)}</h2>
-            <p style="margin: 6px 0 0; color: ${alertHeaderColor}; opacity: 0.9; font-size: 13px;">${escapeHtml(alertSubtitleAr)}</p>
+            <h2 style="margin: 0; color: ${alertHeaderColor}; font-size: 20px; font-weight: 700;">${escapeHtml2(alertTitleAr)}</h2>
+            <p style="margin: 6px 0 0; color: ${alertHeaderColor}; opacity: 0.9; font-size: 13px;">${escapeHtml2(alertSubtitleAr)}</p>
           </div>
 
           <div style="padding: 24px 20px;">
             <p style="font-size: 15px; color: #1f2937; line-height: 1.6; margin: 0 0 20px; font-weight: 500;">
-              ${escapeHtml(message)}
+              ${escapeHtml2(message)}
             </p>
 
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 14px;">
               <tbody>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                   <td style="padding: 10px 12px; color: #6b7280; width: 40%; font-weight: 600;">\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0645\u0633\u062A\u0647\u062F\u0641:</td>
-                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml(username)}</td>
+                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml2(username)}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                   <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">\u0639\u0646\u0648\u0627\u0646 IP \u0627\u0644\u0645\u0635\u062F\u0631:</td>
-                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml(ip)}</td>
+                  <td style="padding: 10px 12px; color: #111827; font-weight: bold; font-family: monospace;">${escapeHtml2(ip)}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f3f4f6;">
                   <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">\u0639\u062F\u062F \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u0641\u0627\u0634\u0644\u0629:</td>
@@ -64443,7 +64463,7 @@ async function sendSecurityEventEmail(event, ip, username, attempts) {
                 </tr>
                 <tr>
                   <td style="padding: 10px 12px; color: #6b7280; font-weight: 600;">\u062A\u0648\u0642\u064A\u062A \u0627\u0644\u0631\u0635\u062F:</td>
-                  <td style="padding: 10px 12px; color: #111827;">${escapeHtml(dateStr)}</td>
+                  <td style="padding: 10px 12px; color: #111827;">${escapeHtml2(dateStr)}</td>
                 </tr>
               </tbody>
             </table>
@@ -64508,27 +64528,27 @@ async function sendMalfunctionNotification(input) {
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;">
                   <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">\u0627\u0644\u0639\u0646\u0648\u0627\u0646 / Title:</span>
-                  <p style="margin:4px 0 0;font-size:15px;font-weight:600;color:#18181b;">${escapeHtml(input.title)}</p>
+                  <p style="margin:4px 0 0;font-size:15px;font-weight:600;color:#18181b;">${escapeHtml2(input.title)}</p>
                 </td>
               </tr>
               ${input.companyName ? `
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;">
                   <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">\u0627\u0644\u0634\u0631\u0643\u0629 / Company:</span>
-                  <p style="margin:4px 0 0;font-size:14px;color:#18181b;">${escapeHtml(input.companyName)}</p>
+                  <p style="margin:4px 0 0;font-size:14px;color:#18181b;">${escapeHtml2(input.companyName)}</p>
                 </td>
               </tr>
               ` : ""}
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;">
                   <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">\u0627\u0644\u0645\u0635\u062F\u0631 / Source:</span>
-                  <p style="margin:4px 0 0;font-size:14px;color:#18181b;">${escapeHtml(input.source || "Client / System")}</p>
+                  <p style="margin:4px 0 0;font-size:14px;color:#18181b;">${escapeHtml2(input.source || "Client / System")}</p>
                 </td>
               </tr>
               <tr>
                 <td style="padding:10px 0;">
                   <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;">\u0627\u0644\u062A\u0641\u0627\u0635\u064A\u0644 / Description:</span>
-                  <p style="margin:6px 0 0;color:#3f3f46;white-space:pre-wrap;line-height:1.6;font-size:14px;background:#f9fafb;padding:12px;border-radius:6px;border:1px solid #f3f4f6;">${escapeHtml(input.description)}</p>
+                  <p style="margin:6px 0 0;color:#3f3f46;white-space:pre-wrap;line-height:1.6;font-size:14px;background:#f9fafb;padding:12px;border-radius:6px;border:1px solid #f3f4f6;">${escapeHtml2(input.description)}</p>
                 </td>
               </tr>
             </table>
@@ -64587,7 +64607,7 @@ async function sendNewClientNotification(client) {
             <div style="display:inline-block;width:52px;height:52px;line-height:52px;background:rgba(255,255,255,0.18);border-radius:14px;margin-bottom:12px;font-size:24px;">
               \u{1F464}
             </div>
-            <h1 style="margin:0;font-size:20px;font-weight:700;color:#ffffff;">${escapeHtml(title)}</h1>
+            <h1 style="margin:0;font-size:20px;font-weight:700;color:#ffffff;">${escapeHtml2(title)}</h1>
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.9);">
               ${isSelf ? "A new client has self-registered via the Client Portal" : "A new client account was created in Bot Manager"}
             </p>
@@ -64602,24 +64622,24 @@ async function sendNewClientNotification(client) {
             <table style="width:100%;border-collapse:separate;border-spacing:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:20px;">
               <tr>
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;width:35%;">Client Name</td>
-                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(client.name)}</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml2(client.name)}</td>
               </tr>
               <tr>
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">Username</td>
-                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#2563eb;font-weight:600;">@${escapeHtml(client.username)}</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#2563eb;font-weight:600;">@${escapeHtml2(client.username)}</td>
               </tr>
               <tr>
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">Gmail / Email</td>
-                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155;">${client.email ? escapeHtml(client.email) : "<span style='color:#94a3b8;'>\u2014</span>"}</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#334155;">${client.email ? escapeHtml2(client.email) : "<span style='color:#94a3b8;'>\u2014</span>"}</td>
               </tr>
               <tr>
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">IP Address</td>
-                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${client.ip ? escapeHtml(client.ip) : "<span style='color:#94a3b8;'>\u2014</span>"}</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${client.ip ? escapeHtml2(client.ip) : "<span style='color:#94a3b8;'>\u2014</span>"}</td>
               </tr>
               ${client.mac ? `
               <tr>
                 <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#64748b;">MAC Address</td>
-                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${escapeHtml(client.mac)}</td>
+                <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;">${escapeHtml2(client.mac)}</td>
               </tr>` : ""}
               <tr>
                 <td style="padding:12px 16px;font-size:12px;font-weight:600;color:#64748b;">Date Added</td>
@@ -93288,6 +93308,7 @@ init_src();
 init_drizzle_orm();
 import crypto6 from "crypto";
 init_logger2();
+init_companyNotification();
 init_email();
 init_security();
 var import_otplib = __toESM(require_otplib(), 1);
@@ -93464,25 +93485,187 @@ router3.post("/auth/client/login", authLimiter, async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-router3.post("/auth/client/register", authLimiter, async (req, res) => {
+function normalizeEmail(email3) {
+  const trimmed = email3.trim().toLowerCase();
+  const [localPart, domain2] = trimmed.split("@");
+  if (!localPart || !domain2) return trimmed;
+  if (domain2 === "gmail.com" || domain2 === "googlemail.com") {
+    const cleanLocal = localPart.split("+")[0].replace(/\./g, "");
+    return `${cleanLocal}@gmail.com`;
+  }
+  return `${localPart}@${domain2}`;
+}
+router3.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) => {
   try {
-    const { name, username, email: email3, password } = req.body;
+    const { email: email3, username, name, lang } = req.body;
+    const isAr = lang !== "en";
     const clientIp = extractClientIp(req);
     if (isIpBlocked(clientIp)) {
-      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
+      res.status(429).json({ error: isAr ? "\u062A\u0645 \u062D\u0638\u0631 \u0647\u0630\u0627 \u0627\u0644\u0640 IP \u0645\u0624\u0642\u062A\u0627\u064B \u0628\u0633\u0628\u0628 \u0646\u0634\u0627\u0637 \u0645\u0634\u0628\u0648\u0647." : "Suspicious activity detected. IP blocked." });
+      return;
+    }
+    if (!email3 || typeof email3 !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3.trim())) {
+      res.status(400).json({ error: isAr ? "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0628\u0631\u064A\u062F \u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0635\u062D\u064A\u062D" : "Please provide a valid email address" });
+      return;
+    }
+    const cleanEmail = normalizeEmail(email3);
+    if (username && typeof username === "string") {
+      const cleanUsername = username.trim().toLowerCase();
+      const [existingUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, cleanUsername)).limit(1);
+      if (existingUser) {
+        res.status(409).json({ error: isAr ? "\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0628\u0627\u0644\u0641\u0639\u0644. \u064A\u0631\u062C\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u0645 \u0622\u062E\u0631." : "Username already taken." });
+        return;
+      }
+    }
+    const [existingEmail] = await db.select({ id: usersTable.id }).from(usersTable).where(
+      and(
+        eq(usersTable.role, "client"),
+        or(
+          eq(usersTable.email, cleanEmail),
+          eq(usersTable.notificationEmail, cleanEmail)
+        )
+      )
+    ).limit(1);
+    if (existingEmail) {
+      res.status(409).json({
+        error: isAr ? "\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0645\u0633\u062C\u0644 \u0628\u0627\u0644\u0641\u0639\u0644. \u064A\u0645\u0643\u0646\u0643 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0645\u0628\u0627\u0634\u0631\u0629." : "This email is already registered. Please sign in."
+      });
+      return;
+    }
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_verification_codes (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL,
+        attempts INT NOT NULL DEFAULT 0,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_email_verification_codes_email ON email_verification_codes(email);
+    `).catch(() => {
+    });
+    const recentCodes = await db.select().from(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail)).orderBy(sql`${emailVerificationCodesTable.id} DESC`).limit(5);
+    if (recentCodes.length > 0) {
+      const latest = recentCodes[0];
+      const timeSinceLatest = Date.now() - new Date(latest.createdAt).getTime();
+      if (timeSinceLatest < 6e4) {
+        const remainingSec = Math.ceil((6e4 - timeSinceLatest) / 1e3);
+        res.status(429).json({
+          error: isAr ? `\u064A\u0631\u062C\u0649 \u0627\u0644\u0627\u0646\u062A\u0638\u0627\u0631 ${remainingSec} \u062B\u0627\u0646\u064A\u0629 \u0642\u0628\u0644 \u0637\u0644\u0628 \u0643\u0648\u062F \u062C\u062F\u064A\u062F.` : `Please wait ${remainingSec}s before requesting a new code.`
+        });
+        return;
+      }
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
+      const codesInLastHour = recentCodes.filter((c) => new Date(c.createdAt) > oneHourAgo);
+      if (codesInLastHour.length >= 5) {
+        res.status(429).json({
+          error: isAr ? "\u062A\u0645 \u062A\u062C\u0627\u0648\u0632 \u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 \u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0643\u0648\u062F \u0644\u0647\u0630\u0627 \u0627\u0644\u0625\u064A\u0645\u064A\u0644 (5 \u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0641\u064A \u0627\u0644\u0633\u0627\u0639\u0629). \u064A\u0631\u062C\u0649 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0644\u0627\u062D\u0642\u0627\u064B." : "Too many verification requests for this email. Please try again later."
+        });
+        return;
+      }
+    }
+    const { apiKey, fromEmail } = await getResendConfig();
+    if (!apiKey) {
+      res.status(503).json({
+        error: isAr ? "\u062E\u062F\u0645\u0629 \u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u063A\u064A\u0631 \u0645\u0647\u064A\u0623\u0629 \u062D\u0627\u0644\u064A\u0627\u064B (\u0645\u0641\u062A\u0627\u062D RESEND_API_KEY \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F). \u064A\u0631\u062C\u0649 \u0627\u0644\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0646\u0638\u0627\u0645." : "Email verification service is not configured (RESEND_API_KEY missing)."
+      });
+      return;
+    }
+    const otpCode = crypto6.randomInt(1e5, 999999).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1e3);
+    await db.insert(emailVerificationCodesTable).values({
+      email: cleanEmail,
+      code: otpCode,
+      attempts: 0,
+      expiresAt
+    });
+    const sender = fromEmail || "Bot Manager <onboarding@resend.dev>";
+    const subject = isAr ? `\u0631\u0645\u0632 \u0627\u0644\u062A\u062D\u0642\u0642 \u0627\u0644\u062E\u0627\u0635 \u0628\u0643: ${otpCode} | \u0645\u0646\u0635\u0629 \u0627\u0644\u0645\u0633\u0627\u0639\u062F \u0627\u0644\u0630\u0643\u064A` : `Your Verification Code: ${otpCode} | AI Chatbot`;
+    const html = `
+      <div dir="${isAr ? "rtl" : "ltr"}" style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "\u062A\u0623\u0643\u064A\u062F \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A" : "Verify Your Email"}</h2>
+          <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
+            ${isAr ? `\u0645\u0631\u062D\u0628\u0627\u064B ${name ? name.trim() : ""}\u060C \u0627\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0631\u0645\u0632 \u0627\u0644\u062A\u0627\u0644\u064A \u0644\u062A\u0641\u0639\u064A\u0644 \u062D\u0633\u0627\u0628\u0643 \u0627\u0644\u062C\u062F\u064A\u062F:` : `Hello ${name ? name.trim() : ""}, use the code below to complete your registration:`}
+          </p>
+        </div>
+
+        <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+          <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb; display: inline-block;">
+            ${otpCode}
+          </span>
+        </div>
+
+        <div style="background-color: #fef2f2; border-right: 4px solid #ef4444; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+          <p style="margin: 0; color: #991b1b; font-size: 13px; font-weight: 600;">
+            ${isAr ? "\u0635\u0644\u0627\u062D\u064A\u0629 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 10 \u062F\u0642\u0627\u0626\u0642 \u0641\u0642\u0637. \u0644\u0627 \u062A\u0634\u0627\u0631\u0643 \u0647\u0630\u0627 \u0627\u0644\u0631\u0645\u0632 \u0645\u0639 \u0623\u064A \u0634\u062E\u0635 \u0644\u062D\u0645\u0627\u064A\u0629 \u062D\u0633\u0627\u0628\u0643." : "This code expires in 10 minutes. Never share this code with anyone."}
+          </p>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+          ${isAr ? "\u0625\u0630\u0627 \u0644\u0645 \u062A\u0642\u0645 \u0628\u0637\u0644\u0628 \u0647\u0630\u0627 \u0627\u0644\u062D\u0633\u0627\u0628\u060C \u064A\u0645\u0643\u0646\u0643 \u062A\u062C\u0627\u0647\u0644 \u0647\u0630\u0647 \u0627\u0644\u0631\u0633\u0627\u0644\u0629 \u0628\u0623\u0645\u0627\u0646." : "If you did not request this registration, you can safely ignore this email."}
+        </p>
+      </div>
+    `;
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: sender,
+        to: [email3.trim()],
+        subject,
+        html
+      })
+    });
+    if (!resendRes.ok) {
+      const errText = await resendRes.text();
+      logger.error({ status: resendRes.status, err: errText }, "Resend failed to send OTP");
+      let friendlyError = isAr ? "\u0641\u0634\u0644 \u0625\u0631\u0633\u0627\u0644 \u0643\u0648\u062F \u0627\u0644\u062A\u062D\u0642\u0642 \u0639\u0628\u0631 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A." : "Failed to send verification code.";
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed?.message && parsed.message.includes("testing emails")) {
+          friendlyError = isAr ? "\u062A\u0646\u0628\u064A\u0647: \u062D\u0633\u0627\u0628 Resend \u0627\u0644\u062D\u0627\u0644\u064A \u0641\u064A \u0627\u0644\u062E\u0637\u0629 \u0627\u0644\u062A\u062C\u0631\u064A\u0628\u064A\u0629 \u0648\u064A\u062A\u0637\u0644\u0628 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u062F\u0648\u0645\u064A\u0646 \u0627\u0644\u062E\u0627\u0635 \u0628\u0643 \u0641\u064A \u0644\u0648\u062D\u0629 Resend (resend.com/domains) \u0644\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0625\u064A\u0645\u064A\u0644\u0627\u062A \u0644\u0644\u0639\u0645\u0644\u0627\u0621." : "Resend Free Tier restriction: please verify your custom domain in Resend Dashboard to send to external recipients.";
+        } else if (parsed?.message) {
+          friendlyError += ` (${parsed.message})`;
+        }
+      } catch {
+      }
+      res.status(500).json({ error: friendlyError });
+      return;
+    }
+    res.json({
+      ok: true,
+      message: isAr ? "\u062A\u0645 \u0625\u0631\u0633\u0627\u0644 \u0643\u0648\u062F \u0627\u0644\u062A\u062D\u0642\u0642 \u0625\u0644\u0649 \u0628\u0631\u064A\u062F\u0643 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0628\u0646\u062C\u0627\u062D." : "Verification code sent to your email successfully.",
+      email: cleanEmail
+    });
+  } catch (err) {
+    logger.error({ err }, "Error in send-registration-otp");
+    res.status(500).json({ error: err.message || "Failed to process verification request" });
+  }
+});
+router3.post("/auth/client/register", authLimiter, async (req, res) => {
+  try {
+    const { name, username, email: email3, password, otpCode, lang } = req.body;
+    const isAr = lang !== "en";
+    const clientIp = extractClientIp(req);
+    if (isIpBlocked(clientIp)) {
+      res.status(429).json({ error: isAr ? "\u062A\u0645 \u062D\u0638\u0631 \u0647\u0630\u0627 \u0627\u0644\u0640 IP \u0645\u0624\u0642\u062A\u0627\u064B \u0628\u0633\u0628\u0628 \u0646\u0634\u0627\u0637 \u0645\u0634\u0628\u0648\u0647." : "Suspicious activity detected. This IP address is temporarily blocked." });
       return;
     }
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      res.status(400).json({ error: "Name must be at least 2 characters" });
+      res.status(400).json({ error: isAr ? "\u0627\u0644\u0627\u0633\u0645 \u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 \u062D\u0631\u0641\u064A\u0646 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644" : "Name must be at least 2 characters" });
       return;
     }
     if (!username || typeof username !== "string" || username.trim().length < 3) {
-      res.status(400).json({ error: "Username must be at least 3 characters" });
+      res.status(400).json({ error: isAr ? "\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 3 \u0623\u062D\u0631\u0641 \u0639\u0644\u0649 \u0627\u0644\u0623\u0642\u0644" : "Username must be at least 3 characters" });
       return;
     }
     const cleanUsername = username.trim().toLowerCase();
     if (!password || typeof password !== "string") {
-      res.status(400).json({ error: "Password is required" });
+      res.status(400).json({ error: isAr ? "\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631 \u0645\u0637\u0644\u0648\u0628\u0629" : "Password is required" });
       return;
     }
     const pwError = validatePassword(password);
@@ -93490,6 +93673,47 @@ router3.post("/auth/client/register", authLimiter, async (req, res) => {
       res.status(400).json({ error: pwError });
       return;
     }
+    if (!email3 || typeof email3 !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3.trim())) {
+      res.status(400).json({ error: isAr ? "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0628\u0631\u064A\u062F \u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0635\u062D\u064A\u062D" : "A valid email is required" });
+      return;
+    }
+    const cleanEmail = normalizeEmail(email3);
+    if (!otpCode || typeof otpCode !== "string" || otpCode.trim().length !== 6) {
+      res.status(400).json({
+        error: isAr ? "\u064A\u0631\u062C\u0649 \u0625\u062F\u062E\u0627\u0644 \u0631\u0645\u0632 \u0627\u0644\u062A\u062D\u0642\u0642 \u0627\u0644\u0645\u0643\u0648\u0646 \u0645\u0646 6 \u0623\u0631\u0642\u0627\u0645 \u0627\u0644\u0645\u0631\u0633\u0644 \u0625\u0644\u0649 \u0628\u0631\u064A\u062F\u0643 \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A." : "Please enter the 6-digit verification code sent to your email."
+      });
+      return;
+    }
+    const [verificationRecord] = await db.select().from(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail)).orderBy(sql`${emailVerificationCodesTable.id} DESC`).limit(1);
+    if (!verificationRecord) {
+      res.status(400).json({
+        error: isAr ? "\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0631\u0645\u0632 \u062A\u062D\u0642\u0642 \u0644\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F. \u064A\u0631\u062C\u0649 \u0637\u0644\u0628 \u0631\u0645\u0632 \u062C\u062F\u064A\u062F \u0623\u0648\u0644\u0627\u064B." : "No verification code found for this email. Please request a new code."
+      });
+      return;
+    }
+    if (new Date(verificationRecord.expiresAt) < /* @__PURE__ */ new Date()) {
+      await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.id, verificationRecord.id));
+      res.status(400).json({
+        error: isAr ? "\u0627\u0646\u062A\u0647\u062A \u0635\u0644\u0627\u062D\u064A\u0629 \u0631\u0645\u0632 \u0627\u0644\u062A\u062D\u0642\u0642 (10 \u062F\u0642\u0627\u0626\u0642). \u064A\u0631\u062C\u0649 \u0637\u0644\u0628 \u0631\u0645\u0632 \u062C\u062F\u064A\u062F." : "Verification code has expired. Please request a new code."
+      });
+      return;
+    }
+    if (verificationRecord.attempts >= 5) {
+      await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.id, verificationRecord.id));
+      res.status(429).json({
+        error: isAr ? "\u062A\u0645 \u062A\u062C\u0627\u0648\u0632 \u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 \u0644\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A \u0627\u0644\u062E\u0627\u0637\u0626\u0629. \u062A\u0645 \u0625\u0644\u063A\u0627\u0621 \u0627\u0644\u0631\u0645\u0632 \u0644\u0623\u0633\u0628\u0627\u0628 \u0623\u0645\u0646\u064A\u0629\u060C \u064A\u0631\u062C\u0649 \u0637\u0644\u0628 \u0631\u0645\u0632 \u062C\u062F\u064A\u062F." : "Too many failed attempts. Code invalidated, please request a new one."
+      });
+      return;
+    }
+    if (verificationRecord.code !== otpCode.trim()) {
+      await db.update(emailVerificationCodesTable).set({ attempts: verificationRecord.attempts + 1 }).where(eq(emailVerificationCodesTable.id, verificationRecord.id));
+      const remaining = 5 - (verificationRecord.attempts + 1);
+      res.status(400).json({
+        error: isAr ? `\u0631\u0645\u0632 \u0627\u0644\u062A\u062D\u0642\u0642 \u063A\u064A\u0631 \u0635\u062D\u064A\u062D. \u0645\u062A\u0628\u0642\u064A ${remaining} \u0645\u062D\u0627\u0648\u0644\u0627\u062A.` : `Invalid verification code. ${remaining} attempts remaining.`
+      });
+      return;
+    }
+    await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail));
     await db.execute(sql`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT;
@@ -93498,30 +93722,23 @@ router3.post("/auth/client/register", authLimiter, async (req, res) => {
     `).catch((e) => logger.warn({ err: e }, "Failed to ensure users columns in register"));
     const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, cleanUsername)).limit(1);
     if (existing) {
-      res.status(409).json({ error: "Unable to create account with the provided details. Please try different credentials." });
+      res.status(409).json({ error: isAr ? "\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0628\u0627\u0644\u0641\u0639\u0644. \u064A\u0631\u062C\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u0645 \u0622\u062E\u0631." : "Username already taken." });
       return;
     }
-    const trimmedEmail = typeof email3 === "string" && email3.trim() ? email3.trim() : null;
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      res.status(400).json({ error: "Invalid email format" });
-      return;
-    }
-    if (trimmedEmail) {
-      const [existingEmail] = await db.select({ id: usersTable.id }).from(usersTable).where(
-        and(
-          eq(usersTable.role, "client"),
-          or(
-            eq(usersTable.email, trimmedEmail),
-            eq(usersTable.notificationEmail, trimmedEmail)
-          )
+    const [existingEmail] = await db.select({ id: usersTable.id }).from(usersTable).where(
+      and(
+        eq(usersTable.role, "client"),
+        or(
+          eq(usersTable.email, cleanEmail),
+          eq(usersTable.notificationEmail, cleanEmail)
         )
-      ).limit(1);
-      if (existingEmail) {
-        res.status(409).json({
-          error: "Unable to create account with the provided details. Please try different credentials."
-        });
-        return;
-      }
+      )
+    ).limit(1);
+    if (existingEmail) {
+      res.status(409).json({
+        error: isAr ? "\u0647\u0630\u0627 \u0627\u0644\u0628\u0631\u064A\u062F \u0627\u0644\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A \u0645\u0633\u062C\u0644 \u0628\u0627\u0644\u0641\u0639\u0644. \u064A\u0645\u0643\u0646\u0643 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0645\u0628\u0627\u0634\u0631\u0629." : "This email is already registered."
+      });
+      return;
     }
     if (clientIp && clientIp !== "unknown") {
       const [existingIpClient] = await db.select({ id: usersTable.id, username: usersTable.username, name: usersTable.name }).from(usersTable).where(
@@ -93532,7 +93749,7 @@ router3.post("/auth/client/register", authLimiter, async (req, res) => {
       ).limit(1);
       if (existingIpClient) {
         res.status(409).json({
-          error: "Unable to create account. Please contact support if you need assistance."
+          error: isAr ? "\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u062D\u0633\u0627\u0628 \u0645\u0633\u0628\u0642\u0627\u064B \u0645\u0646 \u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632/\u0627\u0644\u0634\u0628\u0643\u0629. \u064A\u0631\u062C\u0649 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0623\u0648 \u0627\u0644\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u062F\u0639\u0645." : "Unable to create account. Please contact support if you need assistance."
         });
         return;
       }
@@ -93543,8 +93760,8 @@ router3.post("/auth/client/register", authLimiter, async (req, res) => {
       username: cleanUsername,
       passwordHash,
       role: "client",
-      email: trimmedEmail,
-      notificationEmail: trimmedEmail,
+      email: cleanEmail,
+      notificationEmail: cleanEmail,
       lastLoginIp: clientIp
     }).returning();
     await regenerateSession(req);
@@ -95242,7 +95459,7 @@ function buildBillEmailHtml(data) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(displayTitle)} #${escapeHtml(data.invoiceNumber)}</title>
+  <title>${escapeHtml2(displayTitle)} #${escapeHtml2(data.invoiceNumber)}</title>
 </head>
 <body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
   <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
@@ -95250,18 +95467,18 @@ function buildBillEmailHtml(data) {
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
       <div style="font-size: 26px; margin-bottom: 4px;">\u{1F9FE}</div>
-      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">${escapeHtml(displayTitle)} \u2014 Bot Manager</h1>
-      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} \u2022 ${escapeHtml(data.rangeLabel)}</p>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700;">${escapeHtml2(displayTitle)} \u2014 Bot Manager</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml2(data.invoiceNumber)} \u2022 ${escapeHtml2(data.rangeLabel)}</p>
     </div>
 
     ${data.notes ? `
     <div style="padding: 12px 20px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; text-align: right; font-size: 12px; color: #1e40af;">
-      <strong>\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml(data.notes)}
+      <strong>\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml2(data.notes)}
     </div>` : ""}
 
     <!-- Hero Image Card ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
     <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
-      <img src="cid:bill-image" alt="\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+      <img src="cid:bill-image" alt="\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml2(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
     </div>
 
     <!-- Footer -->
@@ -95289,9 +95506,9 @@ function buildBillEmailHtml(data) {
     <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
       <div style="font-size: 32px; margin-bottom: 6px;">\u{1F9FE}</div>
       <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629 (Quota Usage Bill)</h1>
-      <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-family: monospace;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629: ${escapeHtml(data.invoiceNumber)}</p>
+      <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-family: monospace;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629: ${escapeHtml2(data.invoiceNumber)}</p>
       <div style="margin-top: 10px; display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
-        \u0627\u0644\u0641\u062A\u0631\u0629: ${escapeHtml(data.rangeLabel)}
+        \u0627\u0644\u0641\u062A\u0631\u0629: ${escapeHtml2(data.rangeLabel)}
       </div>
     </div>
 
@@ -95301,27 +95518,27 @@ function buildBillEmailHtml(data) {
         <tr>
           <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
             <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">\u0627\u0644\u0634\u0631\u0643\u0629:</span>
-            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.companyName)}</strong>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml2(data.companyName)}</strong>
           </td>
           <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
             <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">\u0627\u0644\u0639\u0645\u064A\u0644:</span>
-            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.clientName)}</strong>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml2(data.clientName)}</strong>
           </td>
         </tr>
         <tr>
           <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6;">
             <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">\u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0646\u0634\u0637:</span>
-            <span style="font-size: 12px; font-family: monospace; color: #d97706; font-weight: 600;">${escapeHtml(data.effectiveModel)}</span>
+            <span style="font-size: 12px; font-family: monospace; color: #d97706; font-weight: 600;">${escapeHtml2(data.effectiveModel)}</span>
           </td>
           <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6;">
             <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">\u0627\u0644\u062D\u0635\u0629 \u0627\u0644\u0645\u062E\u0635\u0635\u0629:</span>
-            <strong style="font-size: 13px; color: #2563eb;">${escapeHtml(data.quotaFormatted)}</strong>
+            <strong style="font-size: 13px; color: #2563eb;">${escapeHtml2(data.quotaFormatted)}</strong>
           </td>
         </tr>
         ${data.validityPeriod ? `
         <tr>
           <td colspan="2" style="background: #f0fdf4; padding: 10px 14px; border-radius: 10px; border: 1px solid #dcfce7; text-align: center; font-size: 12px;">
-            <span style="color: #166534;">\u{1F4C5} \u0641\u062A\u0631\u0629 \u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u062D\u0635\u0629: <strong>${escapeHtml(data.validityPeriod)}</strong></span>
+            <span style="color: #166534;">\u{1F4C5} \u0641\u062A\u0631\u0629 \u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u062D\u0635\u0629: <strong>${escapeHtml2(data.validityPeriod)}</strong></span>
           </td>
         </tr>` : ""}
       </table>
@@ -95330,11 +95547,11 @@ function buildBillEmailHtml(data) {
       <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px;">
           <span style="color: #4b5563; font-weight: 500;">\u0645\u0633\u062A\u0648\u0649 \u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0627\u0644\u062D\u0635\u0629:</span>
-          <strong style="color: #059669;">${escapeHtml(data.quotaPercent)}</strong>
+          <strong style="color: #059669;">${escapeHtml2(data.quotaPercent)}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; margin-top: 8px;">
           <span>\u0627\u0644\u0645\u0633\u062A\u0647\u0644\u0643: <strong style="color: #111827;">${data.totalTokens.toLocaleString()}</strong> tokens</span>
-          <span>\u0627\u0644\u0645\u062A\u0628\u0642\u064A: <strong style="color: #111827;">${escapeHtml(data.remainingTokens)}</strong></span>
+          <span>\u0627\u0644\u0645\u062A\u0628\u0642\u064A: <strong style="color: #111827;">${escapeHtml2(data.remainingTokens)}</strong></span>
         </div>
       </div>
 
@@ -95367,7 +95584,7 @@ function buildBillEmailHtml(data) {
           <tr style="background: #f0fdf4; font-weight: bold; border-top: 2px solid #bbf7d0;">
             <td style="padding: 12px; color: #166534;">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0627\u0633\u062A\u0647\u0644\u0627\u0643 \u0648\u0627\u0644\u062A\u0643\u0644\u0641\u0629</td>
             <td style="padding: 12px; text-align: center; color: #166534; font-family: monospace;">${data.totalTokens.toLocaleString()} tokens</td>
-            <td style="padding: 12px; text-align: left; color: #166534; font-size: 15px; font-family: monospace;">$${escapeHtml(data.totalCost)} USD</td>
+            <td style="padding: 12px; text-align: left; color: #166534; font-size: 15px; font-family: monospace;">$${escapeHtml2(data.totalCost)} USD</td>
           </tr>
         </tbody>
       </table>
@@ -95399,7 +95616,7 @@ function buildTopupBillEmailHtml(data) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0628\u0627\u0642\u0629 \u0625\u0636\u0627\u0641\u064A\u0629 #${escapeHtml(data.invoiceNumber)}</title>
+  <title>\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0628\u0627\u0642\u0629 \u0625\u0636\u0627\u0641\u064A\u0629 #${escapeHtml2(data.invoiceNumber)}</title>
 </head>
 <body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
   <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
@@ -95408,17 +95625,17 @@ function buildTopupBillEmailHtml(data) {
     <div style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 22px 20px; text-align: center; color: #ffffff;">
       <div style="font-size: 26px; margin-bottom: 4px;">\u26A1</div>
       <h1 style="margin: 0; font-size: 20px; font-weight: 700;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0631\u0635\u064A\u062F \u0625\u0636\u0627\u0641\u064A \u2014 Bot Manager</h1>
-      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(data.invoiceNumber)} \u2022 \u0634\u062D\u0646 +${data.addedTokens.toLocaleString()} \u0631\u0645\u0632</p>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml2(data.invoiceNumber)} \u2022 \u0634\u062D\u0646 +${data.addedTokens.toLocaleString()} \u0631\u0645\u0632</p>
     </div>
 
     ${data.notes ? `
     <div style="padding: 12px 20px; background: #fffbeb; border-bottom: 1px solid #fef3c7; text-align: right; font-size: 12px; color: #92400e;">
-      <strong>\u0645\u0644\u0627\u062D\u0638\u0629:</strong> ${escapeHtml(data.notes)}
+      <strong>\u0645\u0644\u0627\u062D\u0638\u0629:</strong> ${escapeHtml2(data.notes)}
     </div>` : ""}
 
     <!-- Hero Image Card ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
     <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
-      <img src="cid:bill-image" alt="\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+      <img src="cid:bill-image" alt="\u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml2(data.invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
     </div>
 
     <!-- Footer -->
@@ -95446,7 +95663,7 @@ function buildTopupBillEmailHtml(data) {
     <div style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 28px 24px; text-align: center; color: #ffffff;">
       <div style="font-size: 32px; margin-bottom: 6px;">\u26A1</div>
       <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0634\u062D\u0646 \u0628\u0627\u0642\u0629 \u0625\u0636\u0627\u0641\u064A\u0629 (Top-up Quota Invoice)</h1>
-      <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-family: monospace;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629: ${escapeHtml(data.invoiceNumber)}</p>
+      <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9; font-family: monospace;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629: ${escapeHtml2(data.invoiceNumber)}</p>
       <div style="margin-top: 10px; display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
         \u0627\u0644\u062D\u0627\u0644\u0629: \u062A\u0645 \u0627\u0644\u0634\u062D\u0646 \u0648\u0627\u0644\u062A\u0641\u0639\u064A\u0644 \u0628\u0646\u062C\u0627\u062D \u2705
       </div>
@@ -95458,11 +95675,11 @@ function buildTopupBillEmailHtml(data) {
         <tr>
           <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
             <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">\u0627\u0644\u0634\u0631\u0643\u0629:</span>
-            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.companyName)}</strong>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml2(data.companyName)}</strong>
           </td>
           <td style="background: #f9fafb; padding: 12px 14px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
             <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">\u0627\u0644\u0639\u0645\u064A\u0644:</span>
-            <strong style="font-size: 14px; color: #111827;">${escapeHtml(data.clientName)}</strong>
+            <strong style="font-size: 14px; color: #111827;">${escapeHtml2(data.clientName)}</strong>
           </td>
         </tr>
       </table>
@@ -95492,7 +95709,7 @@ function buildTopupBillEmailHtml(data) {
           ${data.newEndDate ? `
           <tr style="border-bottom: 1px solid #f3f4f6;">
             <td style="padding: 10px 12px;">\u{1F4C5} \u062A\u0627\u0631\u064A\u062E \u0627\u0646\u062A\u0647\u0627\u0621 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u0645\u062D\u062F\u062B</td>
-            <td style="padding: 10px 12px; text-align: left; font-family: monospace;">${escapeHtml(data.newEndDate)}</td>
+            <td style="padding: 10px 12px; text-align: left; font-family: monospace;">${escapeHtml2(data.newEndDate)}</td>
           </tr>` : ""}
           <tr style="background: #f0fdf4; font-weight: bold; border-top: 2px solid #bbf7d0;">
             <td style="padding: 12px; color: #166534;">\u0627\u0644\u0645\u0628\u0644\u063A \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062F\u0641\u0648\u0639</td>
@@ -95503,7 +95720,7 @@ function buildTopupBillEmailHtml(data) {
 
       ${data.notes ? `
       <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: #92400e;">
-        <strong>\u0645\u0644\u0627\u062D\u0638\u0627\u062A:</strong> ${escapeHtml(data.notes)}
+        <strong>\u0645\u0644\u0627\u062D\u0638\u0627\u062A:</strong> ${escapeHtml2(data.notes)}
       </div>` : ""}
 
       ${data.hasImageAttachment ? `
@@ -97164,7 +97381,7 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</title>
+          <title>\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml2(invoiceNumber)}</title>
         </head>
         <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
           <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
@@ -97173,17 +97390,17 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
               <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
                 BOT MANAGER \u2022 OFFICIAL INVOICE CARD
               </div>
-              <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml(invoiceNumber)}</h2>
+              <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 \u0631\u0633\u0645\u064A\u0629 #${escapeHtml2(invoiceNumber)}</h2>
               <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
             </div>
 
             ${customNotes ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
-                    <strong style="color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml(customNotes)}
+                    <strong style="color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong> ${escapeHtml2(customNotes)}
                   </div>` : ""}
 
             <!-- Primary Invoice Card Image ("\u0635\u0648\u0631\u0629 \u0645\u0634 \u0643\u0644\u0627\u0645") -->
             <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
-              <img src="cid:invoice-copy-image" alt="\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
+              <img src="cid:invoice-copy-image" alt="\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml2(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
             </div>
 
             <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
@@ -97199,29 +97416,29 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
             <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
               BOT MANAGER \u2022 INVOICE COPY / \u0646\u0633\u062E\u0629 \u0631\u0633\u0645\u064A\u0629 \u0645\u0646 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629
             </div>
-            <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml(invoiceNumber)}</h2>
+            <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">\u0641\u0627\u062A\u0648\u0631\u0629 #${escapeHtml2(invoiceNumber)}</h2>
             <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">\u0645\u0631\u0633\u0644\u0629 \u0645\u0646 \u0625\u062F\u0627\u0631\u0629 \u0645\u0646\u0635\u0629 Bot Manager</p>
           </div>
 
           <div style="padding:28px 24px;">
             ${customNotes ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
                     <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">\u0645\u0644\u0627\u062D\u0638\u0629 \u0645\u0646 \u0627\u0644\u0625\u062F\u0627\u0631\u0629:</strong>
-                    ${escapeHtml(customNotes)}
+                    ${escapeHtml2(customNotes)}
                   </div>` : ""}
 
             <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
               <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
                 <tr>
                   <td style="color:#64748b;width:35%;">\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629:</td>
-                  <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
+                  <td style="font-weight:700;color:#0f172a;">#${escapeHtml2(invoiceNumber)}</td>
                 </tr>
                 <tr>
                   <td style="color:#64748b;">\u0627\u0644\u0639\u0645\u064A\u0644 / \u0627\u0644\u0634\u0631\u0643\u0629:</td>
-                  <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "\u0627\u0644\u0639\u0645\u064A\u0644")} - ${escapeHtml(companyName || "")}</td>
+                  <td style="font-weight:600;color:#1e293b;">${escapeHtml2(clientName || "\u0627\u0644\u0639\u0645\u064A\u0644")} - ${escapeHtml2(companyName || "")}</td>
                 </tr>
                 <tr>
                   <td style="color:#64748b;">\u0627\u0644\u0628\u0646\u062F / \u0627\u0644\u0628\u0627\u0642\u0629:</td>
-                  <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "\u0627\u0634\u062A\u0631\u0627\u0643 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064A")}</td>
+                  <td style="font-weight:700;color:#2563eb;">${escapeHtml2(title || "\u0627\u0634\u062A\u0631\u0627\u0643 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064A")}</td>
                 </tr>
                 ${tokenQuota ? `<tr>
                         <td style="color:#64748b;">\u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632:</td>
@@ -97230,7 +97447,7 @@ router4.post("/admin/invoices/send-copy", async (req, res) => {
                 <tr>
                   <td style="color:#64748b;">\u0627\u0644\u0645\u0628\u0644\u063A \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A:</td>
                   <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
-                    ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
+                    ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml2(sym)})` : ""}
                   </td>
                 </tr>
                 <tr>
@@ -104335,13 +104552,13 @@ router8.get(
               </div>
               <h1 style="margin:0 0 8px;font-size:22px;color:#1e3a8a;font-weight:800;">\u0627\u0639\u062A\u0645\u0627\u062F \u0648\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629 \u0648\u0625\u0635\u062F\u0627\u0631 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629</h1>
               <p style="margin:0 0 20px;color:#64748b;font-size:14px;">
-                \u0637\u0644\u0628 \u0631\u0642\u0645 <strong>#${ticketId}</strong> \u2022 \u0627\u0644\u0639\u0645\u064A\u0644: <strong>${escapeHtml(clientDisplayName)}</strong>
+                \u0637\u0644\u0628 \u0631\u0642\u0645 <strong>#${ticketId}</strong> \u2022 \u0627\u0644\u0639\u0645\u064A\u0644: <strong>${escapeHtml2(clientDisplayName)}</strong>
               </p>
 
               ${ticket ? `
                 <div style="background:#f1f5f9;border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:right;font-size:13px;line-height:1.7;border:1px solid #e2e8f0;">
-                  <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml(ticket.title)}</div>
-                  <div style="color:#475569;font-size:12px;">${escapeHtml(ticket.description.slice(0, 180))}${ticket.description.length > 180 ? "..." : ""}</div>
+                  <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml2(ticket.title)}</div>
+                  <div style="color:#475569;font-size:12px;">${escapeHtml2(ticket.description.slice(0, 180))}${ticket.description.length > 180 ? "..." : ""}</div>
                 </div>
               ` : ""}
 
@@ -104388,7 +104605,7 @@ router8.get(
             </div>
             <h1 style="margin:0 0 10px;font-size:22px;color:#166534;font-weight:800;">\u062A\u0645\u062A \u0627\u0644\u0645\u0648\u0627\u0641\u0642\u0629 \u0648\u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0628\u0627\u0642\u0629 \u0628\u0646\u062C\u0627\u062D!</h1>
             <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6;">
-              \u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628 \u0627\u0644\u0639\u0645\u064A\u0644 <strong>${escapeHtml(result.invoice.clientName)}</strong> \u0648\u062A\u0641\u0639\u064A\u0644 \u0628\u0627\u0642\u0629 <strong>${escapeHtml(result.invoice.itemNameAr)}</strong> \u0628\u0646\u062C\u0627\u062D \u0648\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0643\u0648\u062A\u0627.
+              \u062A\u0645 \u0627\u0639\u062A\u0645\u0627\u062F \u0637\u0644\u0628 \u0627\u0644\u0639\u0645\u064A\u0644 <strong>${escapeHtml2(result.invoice.clientName)}</strong> \u0648\u062A\u0641\u0639\u064A\u0644 \u0628\u0627\u0642\u0629 <strong>${escapeHtml2(result.invoice.itemNameAr)}</strong> \u0628\u0646\u062C\u0627\u062D \u0648\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0643\u0648\u062A\u0627.
             </p>
 
             <div style="display:inline-block;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:20px;${isPaid ? "background:#dcfce7;color:#166534;border:1px solid #86efac;" : "background:#fef3c7;color:#92400e;border:1px solid #fcd34d;"}">
@@ -104396,7 +104613,7 @@ router8.get(
             </div>
 
             <div style="background:#f1f5f9;border-radius:12px;padding:18px 20px;margin-bottom:24px;text-align:right;font-size:13px;line-height:1.8;border:1px solid #e2e8f0;">
-              <div>\u2022 <strong>\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629:</strong> #${escapeHtml(result.invoice.invoiceNumber)}</div>
+              <div>\u2022 <strong>\u0631\u0642\u0645 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629:</strong> #${escapeHtml2(result.invoice.invoiceNumber)}</div>
               <div>\u2022 <strong>\u062D\u0627\u0644\u0629 \u0627\u0644\u0633\u062F\u0627\u062F:</strong> ${isPaid ? "\u0645\u0633\u062F\u062F\u0629 (Paid)" : "\u063A\u064A\u0631 \u0645\u0633\u062F\u062F\u0629 (Unpaid)"}</div>
               <div>\u2022 <strong>\u0631\u0635\u064A\u062F \u0627\u0644\u0631\u0645\u0648\u0632 \u0627\u0644\u0645\u0636\u0627\u0641:</strong> ${result.invoice.tokenQuota.toLocaleString()} Tokens</div>
               <div>\u2022 <strong>\u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u0639\u0628\u0631 \u0627\u0644\u0625\u064A\u0645\u064A\u0644:</strong> ${result.dispatchResult.emailSent ? "\u2705 \u062A\u0645 \u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0628\u0646\u062C\u0627\u062D" : "\u26A0\uFE0F \u0628\u0631\u064A\u062F \u0627\u0644\u0639\u0645\u064A\u0644 \u0623\u0648 SMTP \u063A\u064A\u0631 \u0645\u062A\u0648\u0641\u0631"}</div>
@@ -104426,7 +104643,7 @@ router8.get(
         <head><meta charset="utf-8"><title>\u062D\u062F\u062B \u062E\u0637\u0623</title></head>
         <body style="font-family:sans-serif;padding:40px;text-align:center;">
           <h2>\u26A0\uFE0F \u062D\u062F\u062B \u062E\u0637\u0623 \u0623\u062B\u0646\u0627\u0621 \u0645\u0639\u0627\u0644\u062C\u0629 \u0627\u0644\u0637\u0644\u0628</h2>
-          <p>${escapeHtml(err?.message || "\u062E\u0637\u0623 \u063A\u064A\u0631 \u0645\u062A\u0648\u0642\u0639")}</p>
+          <p>${escapeHtml2(err?.message || "\u062E\u0637\u0623 \u063A\u064A\u0631 \u0645\u062A\u0648\u0642\u0639")}</p>
         </body>
         </html>
       `);

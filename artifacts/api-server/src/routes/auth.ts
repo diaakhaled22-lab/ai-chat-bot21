@@ -2,10 +2,11 @@ import { Router } from "express";
 import type { Request } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable } from "@workspace/db";
+import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable, emailVerificationCodesTable } from "@workspace/db";
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { getResendConfig } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured } from "../lib/email";
 import {
   authLimiter,
@@ -265,35 +266,253 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
   }
 });
 
+export function normalizeEmail(email: string): string {
+  const trimmed = email.trim().toLowerCase();
+  const [localPart, domain] = trimmed.split("@");
+  if (!localPart || !domain) return trimmed;
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    const cleanLocal = localPart.split("+")[0].replace(/\./g, "");
+    return `${cleanLocal}@gmail.com`;
+  }
+  return `${localPart}@${domain}`;
+}
+
+router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) => {
+  try {
+    const { email, username, name, lang } = req.body as {
+      email?: string;
+      username?: string;
+      name?: string;
+      lang?: string;
+    };
+    const isAr = lang !== "en";
+    const clientIp = extractClientIp(req);
+
+    if (isIpBlocked(clientIp)) {
+      res.status(429).json({ error: isAr ? "تم حظر هذا الـ IP مؤقتاً بسبب نشاط مشبوه." : "Suspicious activity detected. IP blocked." });
+      return;
+    }
+
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ error: isAr ? "يرجى إدخال بريد إلكتروني صحيح" : "Please provide a valid email address" });
+      return;
+    }
+
+    const cleanEmail = normalizeEmail(email);
+
+    if (username && typeof username === "string") {
+      const cleanUsername = username.trim().toLowerCase();
+      const [existingUser] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.username, cleanUsername))
+        .limit(1);
+      if (existingUser) {
+        res.status(409).json({ error: isAr ? "اسم المستخدم مستخدم بالفعل. يرجى اختيار اسم آخر." : "Username already taken." });
+        return;
+      }
+    }
+
+    // Check if email already registered
+    const [existingEmail] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(
+        and(
+          eq(usersTable.role, "client"),
+          or(
+            eq(usersTable.email, cleanEmail),
+            eq(usersTable.notificationEmail, cleanEmail)
+          )
+        )
+      )
+      .limit(1);
+
+    if (existingEmail) {
+      res.status(409).json({
+        error: isAr ? "هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول مباشرة." : "This email is already registered. Please sign in.",
+      });
+      return;
+    }
+
+    // Ensure email_verification_codes table exists
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_verification_codes (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL,
+        attempts INT NOT NULL DEFAULT 0,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_email_verification_codes_email ON email_verification_codes(email);
+    `).catch(() => {});
+
+    // Cooldown check (60 seconds) & Hourly limit (5 max)
+    const recentCodes = await db
+      .select()
+      .from(emailVerificationCodesTable)
+      .where(eq(emailVerificationCodesTable.email, cleanEmail))
+      .orderBy(sql`${emailVerificationCodesTable.id} DESC`)
+      .limit(5);
+
+    if (recentCodes.length > 0) {
+      const latest = recentCodes[0];
+      const timeSinceLatest = Date.now() - new Date(latest.createdAt).getTime();
+      if (timeSinceLatest < 60000) {
+        const remainingSec = Math.ceil((60000 - timeSinceLatest) / 1000);
+        res.status(429).json({
+          error: isAr
+            ? `يرجى الانتظار ${remainingSec} ثانية قبل طلب كود جديد.`
+            : `Please wait ${remainingSec}s before requesting a new code.`,
+        });
+        return;
+      }
+
+      // Check count in last 1 hour
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const codesInLastHour = recentCodes.filter((c) => new Date(c.createdAt) > oneHourAgo);
+      if (codesInLastHour.length >= 5) {
+        res.status(429).json({
+          error: isAr
+            ? "تم تجاوز الحد الأقصى لمحاولات إرسال الكود لهذا الإيميل (5 محاولات في الساعة). يرجى المحاولة لاحقاً."
+            : "Too many verification requests for this email. Please try again later.",
+        });
+        return;
+      }
+    }
+
+    // Check Resend Configuration
+    const { apiKey, fromEmail } = await getResendConfig();
+    if (!apiKey) {
+      res.status(503).json({
+        error: isAr
+          ? "خدمة تأكيد البريد الإلكتروني غير مهيأة حالياً (مفتاح RESEND_API_KEY غير موجود). يرجى التواصل مع إدارة النظام."
+          : "Email verification service is not configured (RESEND_API_KEY missing).",
+      });
+      return;
+    }
+
+    // Generate cryptographically secure 6-digit code
+    const otpCode = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes TTL
+
+    // Insert new OTP record
+    await db.insert(emailVerificationCodesTable).values({
+      email: cleanEmail,
+      code: otpCode,
+      attempts: 0,
+      expiresAt,
+    });
+
+    // Send email via Resend
+    const sender = fromEmail || "Bot Manager <onboarding@resend.dev>";
+    const subject = isAr
+      ? `رمز التحقق الخاص بك: ${otpCode} | منصة المساعد الذكي`
+      : `Your Verification Code: ${otpCode} | AI Chatbot`;
+
+    const html = `
+      <div dir="${isAr ? "rtl" : "ltr"}" style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تأكيد البريد الإلكتروني" : "Verify Your Email"}</h2>
+          <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
+            ${isAr ? `مرحباً ${name ? name.trim() : ""}، استخدم الرمز التالي لتفعيل حسابك الجديد:` : `Hello ${name ? name.trim() : ""}, use the code below to complete your registration:`}
+          </p>
+        </div>
+
+        <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+          <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb; display: inline-block;">
+            ${otpCode}
+          </span>
+        </div>
+
+        <div style="background-color: #fef2f2; border-right: 4px solid #ef4444; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+          <p style="margin: 0; color: #991b1b; font-size: 13px; font-weight: 600;">
+            ${isAr ? "صلاحية هذا الرمز 10 دقائق فقط. لا تشارك هذا الرمز مع أي شخص لحماية حسابك." : "This code expires in 10 minutes. Never share this code with anyone."}
+          </p>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+          ${isAr ? "إذا لم تقم بطلب هذا الحساب، يمكنك تجاهل هذه الرسالة بأمان." : "If you did not request this registration, you can safely ignore this email."}
+        </p>
+      </div>
+    `;
+
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: sender,
+        to: [email.trim()],
+        subject,
+        html,
+      }),
+    });
+
+    if (!resendRes.ok) {
+      const errText = await resendRes.text();
+      logger.error({ status: resendRes.status, err: errText }, "Resend failed to send OTP");
+      let friendlyError = isAr ? "فشل إرسال كود التحقق عبر البريد الإلكتروني." : "Failed to send verification code.";
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed?.message && parsed.message.includes("testing emails")) {
+          friendlyError = isAr
+            ? "تنبيه: حساب Resend الحالي في الخطة التجريبية ويتطلب تفعيل الدومين الخاص بك في لوحة Resend (resend.com/domains) لإرسال الإيميلات للعملاء."
+            : "Resend Free Tier restriction: please verify your custom domain in Resend Dashboard to send to external recipients.";
+        } else if (parsed?.message) {
+          friendlyError += ` (${parsed.message})`;
+        }
+      } catch {}
+      res.status(500).json({ error: friendlyError });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      message: isAr ? "تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح." : "Verification code sent to your email successfully.",
+      email: cleanEmail,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Error in send-registration-otp");
+    res.status(500).json({ error: err.message || "Failed to process verification request" });
+  }
+});
+
 router.post("/auth/client/register", authLimiter, async (req, res) => {
   try {
-    const { name, username, email, password } = req.body as {
+    const { name, username, email, password, otpCode, lang } = req.body as {
       name?: string;
       username?: string;
       email?: string;
       password?: string;
+      otpCode?: string;
+      lang?: string;
     };
+    const isAr = lang !== "en";
     const clientIp = extractClientIp(req);
 
     if (isIpBlocked(clientIp)) {
-      res.status(429).json({ error: "Suspicious activity detected. This IP address is temporarily blocked." });
+      res.status(429).json({ error: isAr ? "تم حظر هذا الـ IP مؤقتاً بسبب نشاط مشبوه." : "Suspicious activity detected. This IP address is temporarily blocked." });
       return;
     }
 
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      res.status(400).json({ error: "Name must be at least 2 characters" });
+      res.status(400).json({ error: isAr ? "الاسم يجب أن يكون حرفين على الأقل" : "Name must be at least 2 characters" });
       return;
     }
 
     if (!username || typeof username !== "string" || username.trim().length < 3) {
-      res.status(400).json({ error: "Username must be at least 3 characters" });
+      res.status(400).json({ error: isAr ? "اسم المستخدم يجب أن يكون 3 أحرف على الأقل" : "Username must be at least 3 characters" });
       return;
     }
 
     const cleanUsername = username.trim().toLowerCase();
 
     if (!password || typeof password !== "string") {
-      res.status(400).json({ error: "Password is required" });
+      res.status(400).json({ error: isAr ? "كلمة المرور مطلوبة" : "Password is required" });
       return;
     }
     const pwError = validatePassword(password);
@@ -301,6 +520,75 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       res.status(400).json({ error: pwError });
       return;
     }
+
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ error: isAr ? "يرجى إدخال بريد إلكتروني صحيح" : "A valid email is required" });
+      return;
+    }
+    const cleanEmail = normalizeEmail(email);
+
+    // Verify OTP code
+    if (!otpCode || typeof otpCode !== "string" || otpCode.trim().length !== 6) {
+      res.status(400).json({
+        error: isAr
+          ? "يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك الإلكتروني."
+          : "Please enter the 6-digit verification code sent to your email.",
+      });
+      return;
+    }
+
+    const [verificationRecord] = await db
+      .select()
+      .from(emailVerificationCodesTable)
+      .where(eq(emailVerificationCodesTable.email, cleanEmail))
+      .orderBy(sql`${emailVerificationCodesTable.id} DESC`)
+      .limit(1);
+
+    if (!verificationRecord) {
+      res.status(400).json({
+        error: isAr
+          ? "لم يتم العثور على رمز تحقق لهذا البريد. يرجى طلب رمز جديد أولاً."
+          : "No verification code found for this email. Please request a new code.",
+      });
+      return;
+    }
+
+    if (new Date(verificationRecord.expiresAt) < new Date()) {
+      await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.id, verificationRecord.id));
+      res.status(400).json({
+        error: isAr
+          ? "انتهت صلاحية رمز التحقق (10 دقائق). يرجى طلب رمز جديد."
+          : "Verification code has expired. Please request a new code.",
+      });
+      return;
+    }
+
+    if (verificationRecord.attempts >= 5) {
+      await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.id, verificationRecord.id));
+      res.status(429).json({
+        error: isAr
+          ? "تم تجاوز الحد الأقصى للمحاولات الخاطئة. تم إلغاء الرمز لأسباب أمنية، يرجى طلب رمز جديد."
+          : "Too many failed attempts. Code invalidated, please request a new one.",
+      });
+      return;
+    }
+
+    if (verificationRecord.code !== otpCode.trim()) {
+      await db
+        .update(emailVerificationCodesTable)
+        .set({ attempts: verificationRecord.attempts + 1 })
+        .where(eq(emailVerificationCodesTable.id, verificationRecord.id));
+      const remaining = 5 - (verificationRecord.attempts + 1);
+      res.status(400).json({
+        error: isAr
+          ? `رمز التحقق غير صحيح. متبقي ${remaining} محاولات.`
+          : `Invalid verification code. ${remaining} attempts remaining.`,
+      });
+      return;
+    }
+
+    // Code is valid! Delete verification records for this email
+    await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail));
 
     // Ensure columns exist on users table
     await db.execute(sql`
@@ -317,37 +605,29 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       .limit(1);
 
     if (existing) {
-      res.status(409).json({ error: "Unable to create account with the provided details. Please try different credentials." });
+      res.status(409).json({ error: isAr ? "اسم المستخدم مستخدم بالفعل. يرجى اختيار اسم آخر." : "Username already taken." });
       return;
     }
 
-    const trimmedEmail = typeof email === "string" && email.trim() ? email.trim() : null;
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      res.status(400).json({ error: "Invalid email format" });
-      return;
-    }
-
-    if (trimmedEmail) {
-      const [existingEmail] = await db
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(
-          and(
-            eq(usersTable.role, "client"),
-            or(
-              eq(usersTable.email, trimmedEmail),
-              eq(usersTable.notificationEmail, trimmedEmail)
-            )
+    const [existingEmail] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(
+        and(
+          eq(usersTable.role, "client"),
+          or(
+            eq(usersTable.email, cleanEmail),
+            eq(usersTable.notificationEmail, cleanEmail)
           )
         )
-        .limit(1);
+      )
+      .limit(1);
 
-      if (existingEmail) {
-        res.status(409).json({
-          error: "Unable to create account with the provided details. Please try different credentials.",
-        });
-        return;
-      }
+    if (existingEmail) {
+      res.status(409).json({
+        error: isAr ? "هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول مباشرة." : "This email is already registered.",
+      });
+      return;
     }
 
     // Block addition if an IP address is already stored in the Clients Directory
@@ -365,7 +645,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
 
       if (existingIpClient) {
         res.status(409).json({
-          error: "Unable to create account. Please contact support if you need assistance.",
+          error: isAr ? "تم تسجيل حساب مسبقاً من هذا الجهاز/الشبكة. يرجى تسجيل الدخول أو التواصل مع الدعم." : "Unable to create account. Please contact support if you need assistance.",
         });
         return;
       }
@@ -380,8 +660,8 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
         username: cleanUsername,
         passwordHash,
         role: "client",
-        email: trimmedEmail,
-        notificationEmail: trimmedEmail,
+        email: cleanEmail,
+        notificationEmail: cleanEmail,
         lastLoginIp: clientIp,
       })
       .returning();
@@ -396,7 +676,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       id: newUser.id,
       name: newUser.name,
       username: newUser.username,
-      email: (newUser as any).email || newUser.notificationEmail || null,
+      email: newUser.email || newUser.notificationEmail || null,
       ip: clientIp || null,
       mac: null,
       source: "self_registration",

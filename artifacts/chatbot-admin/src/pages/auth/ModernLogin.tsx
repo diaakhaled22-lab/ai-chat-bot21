@@ -19,11 +19,14 @@ import {
   Sun,
   Moon,
   ArrowLeft,
+  ArrowRight,
   ShieldCheck,
   Building2,
   UserPlus,
   Mail,
   AlertCircle,
+  CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -82,13 +85,25 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
   // New Client Registration state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [regStep, setRegStep] = useState<"details" | "otp">("details");
   const [regName, setRegName] = useState("");
   const [regUsername, setRegUsername] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regOtp, setRegOtp] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
 
   // Mutations
   const adminLogin = useAdminLogin();
@@ -237,13 +252,22 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
     );
   };
 
-  // Submit New Client Registration
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regName.trim() || !regUsername.trim() || !regPassword.trim()) {
+  // Step 1: Request OTP code to verify real email
+  const handleRequestOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!regName.trim() || !regUsername.trim() || !regEmail.trim() || !regPassword.trim()) {
       toast({
         title: lang === "ar" ? "بيانات ناقصة" : "Missing fields",
-        description: lang === "ar" ? "يرجى تعبئة جميع الحقول المطلوبة" : "Please fill in all required fields",
+        description: lang === "ar" ? "يرجى تعبئة جميع الحقول المطلوبة بما فيها البريد الإلكتروني" : "Please fill in all required fields including email",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim())) {
+      toast({
+        title: lang === "ar" ? "بريد غير صالح" : "Invalid Email",
+        description: lang === "ar" ? "يرجى إدخال بريد إلكتروني صحيح مثل yourname@gmail.com" : "Please enter a valid email address",
         variant: "destructive",
       });
       return;
@@ -259,6 +283,68 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
     }
 
     setRegError(null);
+    setIsSendingOtp(true);
+    try {
+      const res = await fetch("/api/auth/send-registration-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: regName.trim(),
+          username: regUsername.trim(),
+          email: regEmail.trim(),
+          lang,
+        }),
+      });
+
+      let errorMsg = "";
+      try {
+        const text = await res.text();
+        try {
+          const parsed = JSON.parse(text);
+          errorMsg = parsed.error || parsed.message || "";
+        } catch {
+          errorMsg = text.slice(0, 150);
+        }
+      } catch {}
+
+      if (!res.ok) {
+        throw new Error(errorMsg || (lang === "ar" ? "فشل إرسال رمز التحقق" : "Failed to send verification code"));
+      }
+
+      setRegStep("otp");
+      setOtpCooldown(60);
+      toast({
+        title: lang === "ar" ? "تم إرسال كود التحقق" : "Verification Code Sent",
+        description:
+          lang === "ar"
+            ? `تم إرسال رمز تحقق مكوّن من 6 أرقام إلى بريدك: ${regEmail.trim()}`
+            : `A 6-digit verification code was sent to ${regEmail.trim()}`,
+      });
+    } catch (err: any) {
+      setRegError(err.message);
+      toast({
+        title: lang === "ar" ? "تعذر إرسال الرمز" : "Could Not Send Code",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  // Step 2: Submit New Client Registration with OTP code
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regOtp.trim() || regOtp.trim().length !== 6) {
+      toast({
+        title: lang === "ar" ? "رمز التحقق مطلوب" : "OTP Code Required",
+        description: lang === "ar" ? "يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك" : "Please enter the 6-digit verification code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRegError(null);
     setIsRegistering(true);
     try {
       const res = await fetch("/api/auth/client/register", {
@@ -267,8 +353,9 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         body: JSON.stringify({
           name: regName.trim(),
           username: regUsername.trim(),
-          email: regEmail.trim() || undefined,
+          email: regEmail.trim(),
           password: regPassword,
+          otpCode: regOtp.trim(),
           lang,
         }),
         credentials: "include",
@@ -297,11 +384,13 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       toast({
-        title: lang === "ar" ? "تم إنشاء الحساب بنجاح" : "Account Created",
-        description: lang === "ar" ? "مرحباً بك! تم تسجيل الدخول بنجاح إلى بوابة العميل." : "Welcome! You are now logged in.",
+        title: lang === "ar" ? "تم التحقق وإنشاء الحساب بنجاح" : "Account Created",
+        description: lang === "ar" ? "تم التحقق من بريدك الإلكتروني بنجاح! مرحباً بك في لوحة العميل." : "Welcome! Your email has been verified and you are now logged in.",
       });
 
       setIsRegisterOpen(false);
+      setRegStep("details");
+      setRegOtp("");
       setRegName("");
       setRegUsername("");
       setRegEmail("");
@@ -731,154 +820,251 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         </div>
       </div>
 
-      {/* New Client Registration Modal */}
+      {/* New Client Registration Modal with OTP Verification */}
       <Dialog
         open={isRegisterOpen}
         onOpenChange={(open) => {
           setIsRegisterOpen(open);
-          if (!open) setRegError(null);
+          if (!open) {
+            setRegError(null);
+            setRegStep("details");
+            setRegOtp("");
+          }
         }}
       >
         <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <UserPlus className="w-5 h-5" />
+                {regStep === "otp" ? <Mail className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
               </div>
               <div className="text-start">
                 <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  {lang === "ar" ? "تسجيل عميل جديد (New Client)" : "New Client Registration"}
+                  {regStep === "otp"
+                    ? lang === "ar" ? "تأكيد رمز التحقق (Email OTP)" : "Verify Email (OTP)"
+                    : lang === "ar" ? "تسجيل عميل جديد (New Client)" : "New Client Registration"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {lang === "ar"
-                    ? "أدخل بياناتك لإنشاء حساب عميل جديد والبدء في استخدام لوحة التحكم."
-                    : "Create a new client account to manage your chatbot deployment."}
+                  {regStep === "otp"
+                    ? lang === "ar"
+                      ? `تم إرسال رمز التحقق إلى: ${regEmail}`
+                      : `A 6-digit verification code was sent to ${regEmail}`
+                    : lang === "ar"
+                      ? "أدخل بياناتك وسيتم إرسال كود تحقق إلى بريدك الإلكتروني لتفعيل الحساب."
+                      : "Enter your details. A verification code will be sent to your email."}
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleRegisterSubmit} className="space-y-3.5 mt-2">
-            {regError && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs flex items-start gap-2.5 shadow-sm">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-                <span className="leading-relaxed font-medium">{regError}</span>
+          {regError && (
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs flex items-start gap-2.5 shadow-sm mt-1">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+              <span className="leading-relaxed font-medium">{regError}</span>
+            </div>
+          )}
+
+          {regStep === "details" ? (
+            <form onSubmit={handleRequestOtp} className="space-y-3.5 mt-2">
+              <div className="text-start">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === "ar" ? "الاسم الكامل *" : "Full Name *"}
+                </label>
+                <div className="relative">
+                  <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                    <User className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder={lang === "ar" ? "مثال: أحمد محمد" : "e.g. John Doe"}
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                  />
+                </div>
               </div>
-            )}
-            <div className="text-start">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {lang === "ar" ? "الاسم الكامل *" : "Full Name *"}
-              </label>
-              <div className="relative">
-                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
-                  <User className="w-4 h-4" />
-                </span>
+
+              <div className="text-start">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === "ar" ? "اسم المستخدم *" : "Username *"}
+                </label>
+                <div className="relative">
+                  <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                    <KeyRound className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder={lang === "ar" ? "مثال: johndoe" : "e.g. johndoe"}
+                    value={regUsername}
+                    onChange={(e) => setRegUsername(e.target.value)}
+                    className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                  />
+                </div>
+              </div>
+
+              <div className="text-start">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === "ar" ? "البريد الإلكتروني (Gmail) *" : "Gmail / Email Address *"}
+                </label>
+                <div className="relative">
+                  <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    placeholder="client@gmail.com"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {lang === "ar" ? "سيتم إرسال كود تحقق إلى هذا البريد للتأكد من ملكيته" : "A verification code will be sent to confirm this email"}
+                </p>
+              </div>
+
+              <div className="text-start">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {lang === "ar" ? "كلمة المرور *" : "Password *"}
+                </label>
+                <div className="relative">
+                  <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
+                    <Lock className="w-4 h-4" />
+                  </span>
+                  <input
+                    type={showRegPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className={`w-full ${lang === "ar" ? "pr-9 pl-10 text-right" : "pl-9 pr-10 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className={`absolute inset-y-0 ${lang === "ar" ? "left-0 pl-3" : "right-0 pr-3"} flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer`}
+                  >
+                    {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {lang === "ar" ? "6 أحرف أو أكثر" : "6 characters or more"}
+                </p>
+              </div>
+
+              <DialogFooter className="pt-3 gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsRegisterOpen(false)}
+                  disabled={isSendingOtp}
+                  className="rounded-xl cursor-pointer"
+                >
+                  {lang === "ar" ? "إلغاء" : "Cancel"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSendingOtp}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isSendingOtp ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{lang === "ar" ? "جاري إرسال الرمز..." : "Sending Code..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{lang === "ar" ? "متابعة وإرسال رمز التحقق" : "Send Verification Code"}</span>
+                      {lang === "ar" ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <form onSubmit={handleRegisterSubmit} className="space-y-4 mt-2">
+              <div className="text-center py-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  {lang === "ar" ? "أدخل رمز التحقق (6 أرقام) *" : "Enter Verification Code (6 digits) *"}
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder={lang === "ar" ? "مثال: أحمد محمد" : "e.g. John Doe"}
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
+                  maxLength={6}
+                  autoFocus
+                  placeholder="123456"
+                  value={regOtp}
+                  onChange={(e) => setRegOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full py-3.5 text-center text-2xl font-bold tracking-[8px] bg-slate-50 dark:bg-slate-800 border-2 border-blue-500/30 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all"
                 />
+                <p className="text-[11px] text-slate-500 mt-2">
+                  {lang === "ar"
+                    ? "صلاحية رمز التحقق 10 دقائق فقط لحماية حسابك"
+                    : "Verification code is valid for 10 minutes only"}
+                </p>
               </div>
-            </div>
 
-            <div className="text-start">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {lang === "ar" ? "اسم المستخدم *" : "Username *"}
-              </label>
-              <div className="relative">
-                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
-                  <KeyRound className="w-4 h-4" />
-                </span>
-                <input
-                  type="text"
-                  required
-                  placeholder={lang === "ar" ? "مثال: johndoe" : "e.g. johndoe"}
-                  value={regUsername}
-                  onChange={(e) => setRegUsername(e.target.value)}
-                  className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
-                />
-              </div>
-            </div>
-
-            <div className="text-start">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {lang === "ar" ? "بريد Gmail / البريد الإلكتروني (اختياري)" : "Gmail / Email (Optional)"}
-              </label>
-              <div className="relative">
-                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
-                  <Mail className="w-4 h-4" />
-                </span>
-                <input
-                  type="email"
-                  placeholder="client@gmail.com"
-                  value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
-                  className={`w-full ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
-                />
-              </div>
-            </div>
-
-            <div className="text-start">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                {lang === "ar" ? "كلمة المرور *" : "Password *"}
-              </label>
-              <div className="relative">
-                <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
-                  <Lock className="w-4 h-4" />
-                </span>
-                <input
-                  type={showRegPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  className={`w-full ${lang === "ar" ? "pr-9 pl-10 text-right" : "pl-9 pr-10 text-left"} py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all`}
-                />
+              <div className="flex items-center justify-between text-xs px-1">
                 <button
                   type="button"
-                  onClick={() => setShowRegPassword(!showRegPassword)}
-                  className={`absolute inset-y-0 ${lang === "ar" ? "left-0 pl-3" : "right-0 pr-3"} flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer`}
+                  onClick={() => {
+                    setRegStep("details");
+                    setRegError(null);
+                  }}
+                  className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline cursor-pointer"
                 >
-                  {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {lang === "ar" ? "تعديل البيانات أو الإيميل" : "Edit details or email"}
                 </button>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {lang === "ar" ? "6 أحرف أو أكثر" : "6 characters or more"}
-              </p>
-            </div>
-
-            <DialogFooter className="pt-3 gap-2 sm:gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsRegisterOpen(false)}
-                disabled={isRegistering}
-                className="rounded-xl cursor-pointer"
-              >
-                {lang === "ar" ? "إلغاء" : "Cancel"}
-              </Button>
-              <Button
-                type="submit"
-                disabled={isRegistering}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isRegistering ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{lang === "ar" ? "جاري الإنشاء..." : "Creating..."}</span>
-                  </>
+                {otpCooldown > 0 ? (
+                  <span className="text-slate-400 font-medium">
+                    {lang === "ar" ? `إعادة الإرسال بعد ${otpCooldown} ث` : `Resend in ${otpCooldown}s`}
+                  </span>
                 ) : (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>{lang === "ar" ? "إنشاء الحساب والدخول" : "Create Account & Sign In"}</span>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => handleRequestOtp()}
+                    disabled={isSendingOtp}
+                    className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer flex items-center gap-1"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSendingOtp ? "animate-spin" : ""}`} />
+                    {lang === "ar" ? "إعادة إرسال الرمز" : "Resend Code"}
+                  </button>
                 )}
-              </Button>
-            </DialogFooter>
-          </form>
+              </div>
+
+              <DialogFooter className="pt-3 gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRegStep("details")}
+                  disabled={isRegistering}
+                  className="rounded-xl cursor-pointer"
+                >
+                  {lang === "ar" ? "رجوع" : "Back"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isRegistering || regOtp.length !== 6}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isRegistering ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{lang === "ar" ? "جاري التحقق والإنشاء..." : "Verifying & Creating..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{lang === "ar" ? "تأكيد وإنشاء الحساب" : "Verify & Create Account"}</span>
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
