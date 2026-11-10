@@ -273,10 +273,10 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       return;
     }
 
-    if (regPassword.length < 6) {
+    if (regPassword.length < 8) {
       toast({
         title: lang === "ar" ? "كلمة المرور قصيرة" : "Weak Password",
-        description: lang === "ar" ? "يجب أن تكون كلمة المرور 6 أحرف على الأقل" : "Password must be at least 6 characters",
+        description: lang === "ar" ? "يجب أن تكون كلمة المرور 8 أحرف على الأقل" : "Password must be at least 8 characters long",
         variant: "destructive",
       });
       return;
@@ -927,9 +927,14 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               </div>
 
               <div className="text-start">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {lang === "ar" ? "كلمة المرور *" : "Password *"}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {lang === "ar" ? "كلمة المرور *" : "Password *"}
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    {lang === "ar" ? "8 أحرف على الأقل" : "Password must be at least 8 characters long"}
+                  </span>
+                </div>
                 <div className="relative">
                   <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none text-slate-400`}>
                     <Lock className="w-4 h-4" />
@@ -951,7 +956,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {lang === "ar" ? "6 أحرف أو أكثر" : "6 characters or more"}
+                  {lang === "ar" ? "يجب أن تحتوي على 8 أحرف على الأقل (حرف كبير، حرف صغير، ورقم)" : "Password must be at least 8 characters long (uppercase, lowercase & number)"}
                 </p>
               </div>
 
