@@ -1572,8 +1572,8 @@ export default function ClientPackages() {
             </h4>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {lang === "ar"
-                ? "ندعم التحويل البنكي المباشر، البطاقات الائتمانية (Visa / Mastercard)، وبطاقات مدى / Apple Pay في المملكة ودول الخليج ومصر."
-                : "We support direct bank transfer, credit cards (Visa/Mastercard), Mada, and Apple Pay."}
+                ? "ندعم البطاقات الائتمانية، فودافون كاش (Vodafone Cash)، وإنستاباي (InstaPay)."
+                : "We support credit cards, Vodafone Cash, and InstaPay."}
             </p>
           </div>
         </div>
