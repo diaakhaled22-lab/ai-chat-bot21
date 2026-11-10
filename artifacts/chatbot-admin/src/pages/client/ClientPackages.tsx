@@ -1259,7 +1259,7 @@ export default function ClientPackages() {
               {/* Features List */}
               <div className="p-6 flex-1 flex flex-col justify-between space-y-6">
                 <ul className="space-y-3">
-                  {(lang === "ar" ? plan.featuresAr : plan.featuresEn).map((feat, i) => (
+                  {(lang === "ar" ? (plan.featuresAr || []) : (plan.featuresEn || plan.featuresAr || [])).map((feat, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
                       <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
@@ -1268,6 +1268,98 @@ export default function ClientPackages() {
                     </li>
                   ))}
                 </ul>
+
+                {/* Additional Feature Categories matching Admin View */}
+                <div className="space-y-2.5 pt-3 border-t border-border/40">
+                  {/* Allowed Pages Badge */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
+                      <span>{lang === "ar" ? "الصفحات المتاحة:" : "Allowed Pages:"}</span>
+                    </span>
+                    <span className="bg-primary/5 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      {Array.isArray(plan.allowedPages) ? plan.allowedPages.length : CLIENT_PAGES_META.length} / {CLIENT_PAGES_META.length}
+                    </span>
+                  </div>
+
+                  {/* Channels Badges */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                      <span>{lang === "ar" ? "قنوات التواصل:" : "Channels:"}</span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {COMMUNICATION_CHANNELS.map((ch) => {
+                        const Icon = ch.icon;
+                        const isIncluded = Array.isArray(plan.channels)
+                          ? plan.channels.includes(ch.id)
+                          : ch.id !== "webhook";
+                        if (!isIncluded) return null;
+                        return (
+                          <div
+                            key={ch.id}
+                            className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${ch.color}`}
+                            title={lang === "ar" ? ch.titleAr : ch.titleEn}
+                          >
+                            <Icon className="w-3 h-3" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Tools Badges */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                      <Wrench className="w-3.5 h-3.5 text-blue-500" />
+                      <span>{lang === "ar" ? "الأدوات والتكاملات:" : "Tools:"}</span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {SYSTEM_TOOLS.map((tl) => {
+                        const Icon = tl.icon;
+                        const isIncluded = Array.isArray(plan.tools)
+                          ? plan.tools.includes(tl.id)
+                          : tl.id !== "voice";
+                        if (!isIncluded) return null;
+                        return (
+                          <div
+                            key={tl.id}
+                            className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${tl.color}`}
+                            title={lang === "ar" ? tl.titleAr : tl.titleEn}
+                          >
+                            <Icon className="w-3 h-3" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Data Sources Badges */}
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                      <Database className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>{lang === "ar" ? "مصادر البيانات:" : "Data Sources:"}</span>
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {DATA_SOURCE_PERMISSIONS.map((ds) => {
+                        const Icon = ds.icon;
+                        const isIncluded = Array.isArray(plan.dataSources)
+                          ? plan.dataSources.includes(ds.id)
+                          : ds.id === "website" || ds.id === "files";
+                        if (!isIncluded) return null;
+                        return (
+                          <div
+                            key={ds.id}
+                            className={`w-5 h-5 rounded flex items-center justify-center border text-[9px] ${ds.color}`}
+                            title={lang === "ar" ? ds.titleAr : ds.titleEn}
+                          >
+                            <Icon className="w-3 h-3" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
 
                 <Button
                   onClick={() => handleOpenSubscribe(plan)}
