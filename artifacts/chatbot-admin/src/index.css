@@ -190,13 +190,13 @@
     @apply border-border;
   }
   html {
-    @apply h-full overflow-hidden;
+    @apply h-full;
   }
   body {
-    @apply h-full overflow-hidden font-sans antialiased bg-background text-foreground;
+    @apply min-h-full font-sans antialiased bg-background text-foreground;
   }
   #root {
-    @apply h-full;
+    @apply min-h-full;
   }
 }
 

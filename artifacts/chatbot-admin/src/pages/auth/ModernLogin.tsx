@@ -433,36 +433,45 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
   return (
     <div className="modern-login-wrapper">
-      {/* Top Floating Controls (Language & Theme) */}
-      <div className="fixed sm:absolute top-3 right-3 sm:top-5 sm:right-6 flex items-center gap-2 z-50">
-        <button
-          type="button"
-          onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-          title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
-        >
-          <Globe className="w-3.5 h-3.5 text-blue-500" />
-          <span>{lang === "ar" ? "English" : "العربية"}</span>
-        </button>
+      {/* Top Bar with Language & Theme Controls */}
+      <div className="w-full max-w-[440px] md:max-w-3xl lg:max-w-4xl flex items-center justify-between px-2 mb-2 sm:mb-4 shrink-0 z-20">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-600/30 md:hidden">
+            <i className="fa-solid fa-robot text-sm"></i>
+          </div>
+          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 md:hidden">Bot Manager</span>
+        </div>
 
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="p-2 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-          title={theme === "dark" ? "Light Mode" : "Dark Mode"}
-          aria-label="Toggle Theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="w-3.5 h-3.5 text-amber-400" />
-          ) : (
-            <Moon className="w-3.5 h-3.5 text-blue-500" />
-          )}
-        </button>
+        <div className="flex items-center gap-2 ms-auto">
+          <button
+            type="button"
+            onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+            title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
+          >
+            <Globe className="w-3.5 h-3.5 text-blue-500" />
+            <span>{lang === "ar" ? "English" : "العربية"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-1.5 sm:p-2 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+            title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+            aria-label="Toggle Theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <Moon className="w-3.5 h-3.5 text-blue-500" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 2. Main Container */}
       <div
-        className={`relative w-full max-w-[440px] md:max-w-3xl lg:max-w-4xl min-h-[520px] sm:min-h-[540px] md:min-h-[580px] lg:min-h-[600px] my-auto bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-400/25 dark:shadow-black/50 overflow-hidden flex flex-col md:flex-row border border-slate-200/60 dark:border-slate-800 transition-all ${
+        className={`relative w-full max-w-[440px] md:max-w-3xl lg:max-w-4xl min-h-0 md:min-h-[580px] lg:min-h-[600px] my-auto bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-400/25 dark:shadow-black/50 overflow-hidden flex flex-col md:flex-row border border-slate-200/60 dark:border-slate-800 transition-all ${
           isRightPanelActive ? "active" : ""
         }`}
         id="container"
@@ -470,18 +479,22 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       >
         {/* Mobile Header (Rendered on small screens < 768px) */}
         <div
-          className="md:hidden w-full flex flex-col items-center px-4 py-6 sm:py-7 text-center text-white"
+          className="md:hidden w-full flex flex-col items-center px-4 pt-5 pb-4 text-center text-white"
           style={{ background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)" }}
         >
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-2.5 shadow-inner">
-            <i className="fa-solid fa-robot text-2xl text-white"></i>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-inner">
+              <i className="fa-solid fa-robot text-lg text-white"></i>
+            </div>
+            <div className="text-left">
+              <h1 className="text-base font-bold tracking-tight leading-tight">Bot Manager</h1>
+              <p className="text-[10px] text-white/80 leading-tight">
+                {lang === "ar" ? "منصة إدارة وتخصيص روبوتات الدردشة" : "AI Chatbot Portal"}
+              </p>
+            </div>
           </div>
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight">Bot Manager</h1>
-          <p className="text-[11px] sm:text-xs text-white/80 mt-0.5 mb-3.5 max-w-[260px]">
-            {lang === "ar"
-              ? "منصة إدارة روبوتات الدردشة الذكية"
-              : "AI Chatbot Management Portal"}
-          </p>
+
+          {/* Tab Switcher */}
           <div className="w-full max-w-[280px] grid grid-cols-2 bg-black/25 backdrop-blur-md p-1 rounded-full border border-white/15 shadow-inner">
             <button
               type="button"
@@ -512,7 +525,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
         {/* LEFT SIDE: Admin Login Form */}
         <div
-          className={`w-full md:w-1/2 md:absolute md:top-0 md:left-0 min-h-[380px] sm:min-h-[400px] md:min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-10 xl:px-12 py-7 sm:py-9 transition-all duration-[600ms] ease-in-out ${
+          className={`w-full md:w-1/2 md:absolute md:top-0 md:left-0 min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-10 xl:px-12 py-5 sm:py-8 transition-all duration-[600ms] ease-in-out ${
             !isRightPanelActive
               ? "z-10 opacity-100 pointer-events-auto"
               : "md:z-0 md:opacity-0 md:pointer-events-none hidden md:flex"
@@ -521,14 +534,14 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           {!tempToken ? (
             <div className="w-full max-w-sm flex flex-col items-center text-center">
               {/* Admin Shield Icon */}
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-2.5 sm:mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
-                <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="hidden md:flex w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 items-center justify-center mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
+                <ShieldCheck className="w-6 h-6" />
               </div>
 
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                 {lang === "ar" ? "تسجيل دخول المسؤول" : "Admin Login"}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5 sm:mb-6">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 md:mb-6">
                 {lang === "ar"
                   ? "المصادقة للوصول إلى لوحة الإدارة الرئيسية"
                   : "Authenticate to access the admin portal"}
@@ -665,7 +678,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
         {/* RIGHT SIDE: Client Login Form */}
         <div
-          className={`w-full md:w-1/2 md:absolute md:top-0 md:right-0 min-h-[380px] sm:min-h-[400px] md:min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-10 xl:px-12 py-7 sm:py-9 transition-all duration-[600ms] ease-in-out ${
+          className={`w-full md:w-1/2 md:absolute md:top-0 md:right-0 min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-10 xl:px-12 py-5 sm:py-8 transition-all duration-[600ms] ease-in-out ${
             isRightPanelActive
               ? "z-10 opacity-100 pointer-events-auto"
               : "md:z-0 md:opacity-0 md:pointer-events-none hidden md:flex"
@@ -673,14 +686,14 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         >
           <div className="w-full max-w-sm flex flex-col items-center text-center">
             {/* Client Building Icon */}
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-2.5 sm:mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
-              <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="hidden md:flex w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 items-center justify-center mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
+              <Building2 className="w-6 h-6" />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {lang === "ar" ? "تسجيل دخول العميل" : "Client Login"}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-5 sm:mb-6">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 md:mb-6">
               {lang === "ar"
                 ? "سجل الدخول لإدارة روبوت الذكاء الاصطناعي الخاص بك"
                 : "Manage your chatbot deployment portal"}
