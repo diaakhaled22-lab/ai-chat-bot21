@@ -4181,7 +4181,18 @@ router.patch("/client/leads/:id", async (req, res) => {
           .sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
         const activeTopups = (Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks)
-          .filter((tp: any) => tp.isActive !== false);
+          .filter((tp: any) => tp.isActive !== false)
+          .map((tp: any) => ({
+            ...tp,
+            formatted:
+              tp.formatted === "+1000K" ||
+              tp.formatted === "1000K" ||
+              tp.formatted?.toLowerCase() === "+1000k" ||
+              tp.formatted?.toLowerCase() === "1000k" ||
+              Number(tp.tokens) === 1_000_000
+                ? "1m"
+                : tp.formatted,
+          }));
 
         res.json({
           packages: activePackages,

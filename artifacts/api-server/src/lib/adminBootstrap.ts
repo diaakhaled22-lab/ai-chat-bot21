@@ -191,6 +191,24 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
             }
           });
 
+          // Ensure any +1000K top-up pack is converted to 1m
+          if (Array.isArray(parsed.topupPacks)) {
+            parsed.topupPacks.forEach((tp: any) => {
+              if (
+                tp.formatted === "+1000K" ||
+                tp.formatted === "1000K" ||
+                tp.formatted?.toLowerCase() === "+1000k" ||
+                tp.formatted?.toLowerCase() === "1000k" ||
+                Number(tp.tokens) === 1_000_000
+              ) {
+                if (tp.formatted !== "1m") {
+                  tp.formatted = "1m";
+                  modified = true;
+                }
+              }
+            });
+          }
+
           if (modified) {
             parsed.updatedAt = new Date().toISOString();
             await db

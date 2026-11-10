@@ -814,10 +814,16 @@ export default function ClientPackages() {
 
   const handleConfirmTopup = () => {
     if (!topupPack) return;
+    const badge =
+      topupPack.formatted === "+1000K" ||
+      topupPack.formatted === "1000K" ||
+      topupPack.tokens === 1_000_000
+        ? "1m"
+        : topupPack.formatted;
     const price = Math.round(topupPack.priceUsd * currencyCfg.exchangeRate);
-    const title = `[طلب شحن رصيد إضافي] ${topupPack.formatted} رموز`;
+    const title = `[طلب شحن رصيد إضافي] ${badge} رموز`;
     const description = [
-      `طلب شحن حزمة رموز إضافية: ${topupPack.formatted} (${topupPack.tokens.toLocaleString()} Tokens)`,
+      `طلب شحن حزمة رموز إضافية: ${badge} (${topupPack.tokens.toLocaleString()} Tokens)`,
       `السعر: ${price} ${currencyCfg.symbol}`,
       topupNotes ? `ملاحظات العميل:\n${topupNotes}` : null,
       `اسم الشركة: ${(company as any)?.name ?? "غير محدد"}`,
@@ -1480,7 +1486,7 @@ export default function ClientPackages() {
                       {lang === "ar" ? "حزمة إضافية" : "Top-up"}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                      {pack.formatted}
+                      {pack.formatted === "+1000K" || pack.formatted === "1000K" || pack.tokens === 1_000_000 ? "1m" : pack.formatted}
                     </span>
                   </div>
                   <div className="mt-3 flex items-baseline gap-1">
@@ -1831,7 +1837,7 @@ export default function ClientPackages() {
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
                 <div>
                   <h4 className="font-bold text-sm text-foreground">
-                    {topupPack.formatted} Tokens
+                    {topupPack.formatted === "+1000K" || topupPack.formatted === "1000K" || topupPack.tokens === 1_000_000 ? "1m" : topupPack.formatted} Tokens
                   </h4>
                   <p className="text-xs text-muted-foreground">
                     {topupPack.tokens.toLocaleString()} {lang === "ar" ? "رمز ذكاء اصطناعي" : "tokens"}

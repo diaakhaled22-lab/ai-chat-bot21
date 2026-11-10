@@ -759,7 +759,11 @@ export default function AdminTickets() {
 
     const topups = packagesCatalog?.topupPacks || [];
     const matched = topups.find((p: any) => p.tokens === tokens);
-    const formatted = matched?.formatted || (tokens >= 1_000_000 ? `${tokens / 1_000_000}M+` : `${tokens / 1000}K+`);
+    let rawFormatted = matched?.formatted || (tokens >= 1_000_000 ? (tokens === 1_000_000 ? "1m" : `${tokens / 1_000_000}m`) : `${tokens / 1000}K+`);
+    if (rawFormatted === "+1000K" || rawFormatted === "1000K" || rawFormatted?.toLowerCase() === "+1000k" || rawFormatted?.toLowerCase() === "1000k" || tokens === 1_000_000) {
+      rawFormatted = "1m";
+    }
+    const formatted = rawFormatted;
     const priceUsd = matched?.priceUsd || Math.max(5, Math.round((tokens / 25000) * 5));
 
     return { tokens, formatted, priceUsd };

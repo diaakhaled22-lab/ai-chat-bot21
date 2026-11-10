@@ -167,6 +167,7 @@ function parseTokenQuota(val: string | number | null | undefined): number | null
 function formatQuotaToKM(val: number | string | null | undefined): string {
   if (val === null || val === undefined || val === "") return "";
   const str = String(val).trim().toLowerCase();
+  if (str === "+1000k" || str === "1000k") return "1m";
   if (str.endsWith("k") || str.endsWith("m")) return str;
   const num = typeof val === "number" ? val : parseFloat(str.replace(/,/g, ""));
   if (isNaN(num) || num <= 0) return "";

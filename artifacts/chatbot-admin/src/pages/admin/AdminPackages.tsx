@@ -524,11 +524,22 @@ export default function AdminPackages() {
 
   const handleSaveTopup = () => {
     if (!editingTopup) return;
+    let formatted = (editingTopup.formatted || "").trim();
+    if (
+      formatted === "+1000K" ||
+      formatted === "1000K" ||
+      formatted.toLowerCase() === "+1000k" ||
+      formatted.toLowerCase() === "1000k" ||
+      editingTopup.tokens === 1_000_000
+    ) {
+      formatted = "1m";
+    }
+    const packToSave = { ...editingTopup, formatted };
     let updatedTopups = [...topupPacks];
     if (isNewTopup) {
-      updatedTopups.push(editingTopup);
+      updatedTopups.push(packToSave);
     } else {
-      updatedTopups = updatedTopups.map((tp) => (tp.id === editingTopup.id ? editingTopup : tp));
+      updatedTopups = updatedTopups.map((tp) => (tp.id === editingTopup.id ? packToSave : tp));
     }
     updateMutation.mutate({ packages, topupPacks: updatedTopups });
   };
@@ -981,7 +992,7 @@ export default function AdminPackages() {
                       {lang === "ar" ? "حزمة شحن" : "Top-up"}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
-                      {pack.formatted}
+                      {pack.formatted === "+1000K" || pack.formatted === "1000K" || pack.tokens === 1_000_000 ? "1m" : pack.formatted}
                     </span>
                   </div>
 
@@ -1918,10 +1929,16 @@ export default function AdminPackages() {
                   value={editingTopup.tokens}
                   onChange={(e) => {
                     const tokens = parseInt(e.target.value) || 0;
+                    let formatted = `+${Math.round(tokens / 1000)}K`;
+                    if (tokens === 1_000_000 || Math.round(tokens / 1000) === 1000 || formatted === "+1000K" || formatted === "1000K") {
+                      formatted = "1m";
+                    } else if (tokens >= 1_000_000) {
+                      formatted = `${tokens / 1_000_000}m`;
+                    }
                     setEditingTopup({
                       ...editingTopup,
                       tokens,
-                      formatted: `+${Math.round(tokens / 1000)}K`,
+                      formatted,
                     });
                   }}
                   className="rounded-xl text-xs font-bold tabular-nums"

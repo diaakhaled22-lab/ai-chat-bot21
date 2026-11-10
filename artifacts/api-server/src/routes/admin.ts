@@ -6786,9 +6786,22 @@ async function handleGetPackages(req: any, res: any) {
 
     try {
       const parsed = JSON.parse(row.value);
+      const rawTopups = Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks;
+      const normalizedTopups = rawTopups.map((tp: any) => ({
+        ...tp,
+        formatted:
+          tp.formatted === "+1000K" ||
+          tp.formatted === "1000K" ||
+          tp.formatted?.toLowerCase() === "+1000k" ||
+          tp.formatted?.toLowerCase() === "1000k" ||
+          Number(tp.tokens) === 1_000_000
+            ? "1m"
+            : tp.formatted,
+      }));
+
       res.json({
         packages: Array.isArray(parsed.packages) ? parsed.packages : DEFAULT_PACKAGES_CATALOG.packages,
-        topupPacks: Array.isArray(parsed.topupPacks) ? parsed.topupPacks : DEFAULT_PACKAGES_CATALOG.topupPacks,
+        topupPacks: normalizedTopups,
         updatedAt: row.updatedAt?.toISOString() || new Date().toISOString(),
       });
     } catch {
@@ -6860,13 +6873,26 @@ async function handleUpdatePackages(req: any, res: any) {
     });
 
     const cleanedTopups: TopupPackItem[] = Array.isArray(topupPacks)
-      ? topupPacks.map((tp, idx) => ({
-          id: tp.id ? String(tp.id).trim() : `topup-${idx + 1}`,
-          tokens: Number(tp.tokens) >= 0 ? Number(tp.tokens) : 10000,
-          formatted: tp.formatted ? String(tp.formatted).trim() : `+${Math.round((Number(tp.tokens) || 0) / 1000)}K`,
-          priceUsd: Number(tp.priceUsd) >= 0 ? Number(tp.priceUsd) : 5,
-          isActive: tp.isActive !== false,
-        }))
+      ? topupPacks.map((tp, idx) => {
+          const tokens = Number(tp.tokens) >= 0 ? Number(tp.tokens) : 10000;
+          let formatted = tp.formatted ? String(tp.formatted).trim() : `+${Math.round(tokens / 1000)}K`;
+          if (
+            formatted === "+1000K" ||
+            formatted === "1000K" ||
+            formatted.toLowerCase() === "+1000k" ||
+            formatted.toLowerCase() === "1000k" ||
+            tokens === 1_000_000
+          ) {
+            formatted = "1m";
+          }
+          return {
+            id: tp.id ? String(tp.id).trim() : `topup-${idx + 1}`,
+            tokens,
+            formatted,
+            priceUsd: Number(tp.priceUsd) >= 0 ? Number(tp.priceUsd) : 5,
+            isActive: tp.isActive !== false,
+          };
+        })
       : DEFAULT_PACKAGES_CATALOG.topupPacks;
 
     const payload: PackagesCatalog = {

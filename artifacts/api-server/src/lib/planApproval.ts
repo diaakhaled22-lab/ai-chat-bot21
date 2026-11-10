@@ -169,18 +169,30 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
       tokens = 1_000_000;
     }
 
-    const matchedPack =
+    const basePack =
       activeTopupPacks.find((p) => p.tokens === tokens) || {
         id: `custom-${tokens}`,
         tokens,
         priceUsd: explicitPrice || Math.max(5, Math.round((tokens / 25000) * 5)),
-        formatted: `${tokens >= 1_000_000 ? tokens / 1_000_000 + "M" : tokens / 1000 + "K"}+`,
+        formatted: tokens === 1_000_000 ? "1m" : `${tokens >= 1_000_000 ? tokens / 1_000_000 + "m" : tokens / 1000 + "K"}+`,
       };
+
+    let packFormatted = basePack.formatted || "";
+    if (
+      packFormatted === "+1000K" ||
+      packFormatted === "1000K" ||
+      packFormatted.toLowerCase() === "+1000k" ||
+      packFormatted.toLowerCase() === "1000k" ||
+      tokens === 1_000_000
+    ) {
+      packFormatted = "1m";
+    }
 
     // If explicit price was recorded in the ticket when requested, honor it
     const finalPack: TopupPackItem = {
-      ...matchedPack,
-      priceUsd: explicitPrice !== null ? explicitPrice : matchedPack.priceUsd,
+      ...basePack,
+      formatted: packFormatted,
+      priceUsd: explicitPrice !== null ? explicitPrice : basePack.priceUsd,
     };
 
     return {
