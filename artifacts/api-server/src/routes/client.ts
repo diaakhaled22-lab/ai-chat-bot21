@@ -22,7 +22,7 @@ import { requireClient } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language";
 import { syncCompanyWebsite } from "../lib/websiteSync";
-import { sendNewTicketNotification, sendPlanRequestAdminNotification, sendMalfunctionNotification } from "../lib/email";
+import { sendNewTicketNotification, sendPlanRequestAdminNotification, sendMalfunctionNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, buildOpenRouterChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
 import { maskApiKey, preserveMaskedSecret } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
@@ -2881,10 +2881,12 @@ router.post("/client/send-test-notification", async (req, res) => {
         : user.resendApiKey?.trim() || company?.resendApiKey?.trim();
 
     const { apiKey, fromEmail } = await getResendConfig(customKey);
+    const smtpCfg = await getEmailConfig();
+    const smtpReady = isSmtpConfigured(smtpCfg);
 
-    if (!apiKey) {
+    if (!apiKey && !smtpReady) {
       res.status(400).json({
-        error: "RESEND_API_KEY is missing. Please enter your Resend API Key (re_...) in Client Settings or set the RESEND_API_KEY environment variable.",
+        error: "No email provider configured. Please enter your Resend API Key (re_...) or configure Admin SMTP in Settings.",
       });
       return;
     }
@@ -2897,31 +2899,69 @@ router.post("/client/send-test-notification", async (req, res) => {
       dateTime: new Date(),
       customerDetails: {
         "Recipient Email": recipient,
-        "Sender Address": fromEmail,
-        "Delivery Status": "Verified via Resend API",
+        "Sender Address": fromEmail || smtpCfg.smtpUser,
+        "Delivery Status": "Verified",
       },
       eventDetails:
-        "Congratulations! Your Resend API Key and notification settings are properly configured. Live alerts (such as new conversations, captured leads, customer handoffs, orders, and malfunctions) will now be delivered to this email address.",
+        "Congratulations! Your notification settings are properly configured. Live alerts (such as new conversations, captured leads, customer handoffs, orders, and malfunctions) will now be delivered to this email address.",
     });
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [recipient],
-        subject: `[Test] Email Notification Verified - ${companyName}`,
-        html: testHtml,
-      }),
-    });
+    let sentVia = "";
+    let resendId: string | null = null;
+    let deliveryError = "";
 
-    if (resendRes.ok) {
-      const data = (await resendRes.json()) as { id?: string };
-      logger.info({ recipient, fromEmail, resendId: data.id }, "Test notification email sent successfully");
+    // 1. Try Resend if key exists
+    if (apiKey) {
+      try {
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: [recipient],
+            subject: `[Test] Email Notification Verified - ${companyName}`,
+            html: testHtml,
+          }),
+        });
 
+        if (resendRes.ok) {
+          const data = (await resendRes.json()) as { id?: string };
+          resendId = data.id || null;
+          sentVia = "resend";
+          logger.info({ recipient, fromEmail, resendId: data.id }, "Test notification email sent successfully via Resend");
+        } else {
+          const errorText = await resendRes.text();
+          deliveryError = errorText;
+          logger.warn({ status: resendRes.status, errorText }, "Resend test email failed, attempting SMTP fallback");
+        }
+      } catch (rErr: any) {
+        deliveryError = rErr?.message || "Resend error";
+        logger.warn({ err: rErr }, "Resend exception during test, attempting SMTP fallback");
+      }
+    }
+
+    // 2. Try SMTP Fallback
+    if (!sentVia && smtpReady) {
+      try {
+        const transporter = buildTransporter(smtpCfg);
+        await transporter.sendMail({
+          from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
+          to: recipient,
+          subject: `[Test] Email Notification Verified - ${companyName}`,
+          html: testHtml,
+        });
+        sentVia = "smtp";
+        logger.info({ recipient, via: "SMTP" }, "Test notification email sent successfully via SMTP");
+      } catch (smtpErr: any) {
+        deliveryError = smtpErr?.message || "SMTP error";
+        logger.error({ err: smtpErr, recipient }, "SMTP test email failed");
+      }
+    }
+
+    if (sentVia) {
       // Auto-save verified email and Resend API key so automatic notifications work immediately
       try {
         const userUpdates: Record<string, any> = { notificationEmail: recipient };
@@ -2941,32 +2981,20 @@ router.post("/client/send-test-notification", async (req, res) => {
 
       res.json({
         ok: true,
-        id: data.id,
+        id: resendId || "smtp",
         recipient,
-        from: fromEmail,
+        from: fromEmail || smtpCfg.smtpUser,
         message: `Test email sent successfully to ${recipient}!`,
       });
     } else {
-      const errorText = await resendRes.text();
-      let parsedMsg = errorText;
+      let parsedMsg = deliveryError;
       try {
-        const parsed = JSON.parse(errorText);
+        const parsed = JSON.parse(deliveryError);
         if (parsed.message) parsedMsg = parsed.message;
       } catch {}
 
-      logger.warn({ status: resendRes.status, parsedMsg }, "Resend test notification email failed");
-
-      let userFriendlyAdvice = parsedMsg;
-      if (resendRes.status === 403 && parsedMsg.toLowerCase().includes("only send testing emails to your own email address")) {
-        userFriendlyAdvice = `Resend Free Tier Restriction: In Resend free tier, onboarding@resend.dev can only send emails to the email address registered with your Resend account (${parsedMsg}). To send to other Gmail addresses, either set your notification email to your Resend account email, or verify a custom domain in Resend Dashboard (resend.com/domains).`;
-      } else if (resendRes.status === 401) {
-        userFriendlyAdvice = "Invalid RESEND_API_KEY. Please make sure you copied the correct API Key starting with 're_' from your Resend Dashboard (resend.com/api-keys).";
-      }
-
       res.status(400).json({
-        error: userFriendlyAdvice,
-        resendStatus: resendRes.status,
-        rawError: parsedMsg,
+        error: parsedMsg || "Failed to deliver test email via Resend or SMTP.",
       });
     }
   } catch (err: any) {

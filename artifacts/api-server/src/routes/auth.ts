@@ -7,7 +7,7 @@ import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { getResendConfig } from "../lib/companyNotification";
-import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured } from "../lib/email";
+import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
 import {
   authLimiter,
   sensitiveLimiter,
@@ -382,13 +382,16 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       }
     }
 
-    // Check Resend Configuration
+    // Check Email Delivery Providers: Prefer Resend, fallback to Admin SMTP (Gmail)
     const { apiKey, fromEmail } = await getResendConfig();
-    if (!apiKey) {
+    const smtpCfg = await getEmailConfig();
+    const smtpReady = isSmtpConfigured(smtpCfg);
+
+    if (!apiKey && !smtpReady) {
       res.status(503).json({
         error: isAr
-          ? "خدمة تأكيد البريد الإلكتروني غير مهيأة حالياً (مفتاح RESEND_API_KEY غير موجود). يرجى التواصل مع إدارة النظام."
-          : "Email verification service is not configured (RESEND_API_KEY missing).",
+          ? "خدمة تأكيد البريد الإلكتروني غير مهيأة حالياً. يرجى التواصل مع إدارة النظام."
+          : "Email verification service is not configured. Please contact support.",
       });
       return;
     }
@@ -405,8 +408,8 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       expiresAt,
     });
 
-    // Send email via Resend
-    const sender = fromEmail || "Bot Manager <onboarding@resend.dev>";
+    // Email content
+    const sender = fromEmail || (smtpReady ? `"Bot Manager" <${smtpCfg.smtpUser}>` : "Bot Manager <onboarding@resend.dev>");
     const subject = isAr
       ? `رمز التحقق الخاص بك: ${otpCode} | منصة المساعد الذكي`
       : `Your Verification Code: ${otpCode} | AI Chatbot`;
@@ -438,34 +441,65 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       </div>
     `;
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: sender,
-        to: [email.trim()],
-        subject,
-        html,
-      }),
-    });
+    let emailSent = false;
+    let lastError = "";
 
-    if (!resendRes.ok) {
-      const errText = await resendRes.text();
-      logger.error({ status: resendRes.status, err: errText }, "Resend failed to send OTP");
-      let friendlyError = isAr ? "فشل إرسال كود التحقق عبر البريد الإلكتروني." : "Failed to send verification code.";
+    // 1. Try Resend if configured
+    if (apiKey) {
       try {
-        const parsed = JSON.parse(errText);
-        if (parsed?.message && parsed.message.includes("testing emails")) {
-          friendlyError = isAr
-            ? "تنبيه: حساب Resend الحالي في الخطة التجريبية ويتطلب تفعيل الدومين الخاص بك في لوحة Resend (resend.com/domains) لإرسال الإيميلات للعملاء."
-            : "Resend Free Tier restriction: please verify your custom domain in Resend Dashboard to send to external recipients.";
-        } else if (parsed?.message) {
-          friendlyError += ` (${parsed.message})`;
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: sender,
+            to: [email.trim()],
+            subject,
+            html,
+          }),
+        });
+
+        if (resendRes.ok) {
+          emailSent = true;
+          logger.info({ email: cleanEmail }, "Registration OTP sent successfully via Resend");
+        } else {
+          const errText = await resendRes.text();
+          lastError = errText;
+          logger.warn({ status: resendRes.status, err: errText }, "Resend OTP send failed, attempting SMTP fallback");
         }
-      } catch {}
+      } catch (rErr: any) {
+        lastError = rErr?.message || "Resend network error";
+        logger.warn({ err: rErr }, "Resend exception while sending OTP, attempting SMTP fallback");
+      }
+    }
+
+    // 2. Fallback to Admin SMTP (Gmail) if Resend failed or not configured
+    if (!emailSent && smtpReady) {
+      try {
+        const transporter = buildTransporter(smtpCfg);
+        await transporter.sendMail({
+          from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
+          to: email.trim(),
+          subject,
+          html,
+        });
+        emailSent = true;
+        logger.info({ email: cleanEmail, via: "SMTP" }, "Registration OTP sent successfully via SMTP (Gmail)");
+      } catch (smtpErr: any) {
+        lastError = smtpErr?.message || "SMTP error";
+        logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration OTP");
+      }
+    }
+
+    if (!emailSent) {
+      let friendlyError = isAr ? "فشل إرسال كود التحقق عبر البريد الإلكتروني." : "Failed to send verification code.";
+      if (lastError.includes("testing emails")) {
+        friendlyError = isAr
+          ? "يرجى التأكد من إعدادات الـ SMTP في لوحة التحكم أو توثيق الدومين في Resend."
+          : "Delivery restriction: Please configure Admin SMTP or verify custom domain in Resend.";
+      }
       res.status(500).json({ error: friendlyError });
       return;
     }

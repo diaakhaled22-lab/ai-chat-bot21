@@ -1,6 +1,7 @@
 import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, usersTable, pool } from "@workspace/db";
 import { eq, inArray, and, sql } from "drizzle-orm";
 import { logger } from "./logger";
+import { getEmailConfig, isSmtpConfigured, buildTransporter } from "./email";
 
 /**
  * Ensures the notification_email column on companies table and
@@ -429,53 +430,71 @@ export async function sendCompanyNotification(
       return { ok: false, error: "No notification email configured" };
     }
 
-    // 2. Fetch Resend credentials (custom company key prioritized)
+    // 2. Fetch Resend & Admin SMTP credentials
     const { apiKey, fromEmail } = await getResendConfig(companyResendKey);
+    const smtpCfg = await getEmailConfig();
+    const smtpReady = isSmtpConfigured(smtpCfg);
 
-    if (!apiKey) {
-      const errorMsg = "RESEND_API_KEY is not configured (check environment variables or admin settings)";
-      logger.warn({ companyId, recipient }, errorMsg);
+    let sentVia = "";
+    let resendId: string | null = null;
+    let deliveryError = "";
 
+    // 3. First priority: Send email via Resend REST API if apiKey available
+    if (apiKey) {
       try {
-        await db.insert(emailLogsTable).values({
-          companyId,
-          recipientEmail: recipient,
-          subject,
-          eventType: options?.eventType || null,
-          status: "failed",
-          error: errorMsg,
+        logger.info({ companyId, recipient, subject, fromEmail }, "Sending notification email via Resend");
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: [recipient],
+            subject,
+            html,
+          }),
         });
-      } catch (logErr) {
-        logger.warn({ logErr }, "Failed to log email attempt");
-      }
 
-      return { ok: false, error: errorMsg };
+        if (res.ok) {
+          const data = (await res.json()) as { id?: string };
+          resendId = data.id || null;
+          sentVia = "resend";
+          logger.info(
+            { companyId, recipient, resendId: data.id, subject },
+            "Notification email successfully sent via Resend"
+          );
+        } else {
+          const errorText = await res.text();
+          deliveryError = `Resend HTTP ${res.status}: ${errorText}`;
+          logger.warn({ companyId, status: res.status, errorText }, "Resend failed, attempting fallback to SMTP");
+        }
+      } catch (rErr: any) {
+        deliveryError = rErr?.message || "Resend connection error";
+        logger.warn({ err: rErr, companyId }, "Resend exception, attempting fallback to SMTP");
+      }
     }
 
-    // 3. Send email via Resend REST API
-    logger.info({ companyId, recipient, subject, fromEmail }, "Sending notification email via Resend");
+    // 4. Fallback: Send email via Admin SMTP (e.g. Gmail) if Resend failed or not configured
+    if (!sentVia && smtpReady) {
+      try {
+        const transporter = buildTransporter(smtpCfg);
+        const info = await transporter.sendMail({
+          from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
+          to: recipient,
+          subject,
+          html,
+        });
+        sentVia = "smtp";
+        logger.info({ companyId, recipient, messageId: info?.messageId, subject }, "Notification email successfully sent via SMTP");
+      } catch (smtpErr: any) {
+        deliveryError = smtpErr?.message || "SMTP error";
+        logger.error({ err: smtpErr, companyId, recipient }, "SMTP failed to send company notification email");
+      }
+    }
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [recipient],
-        subject,
-        html,
-      }),
-    });
-
-    if (res.ok) {
-      const data = (await res.json()) as { id?: string };
-      logger.info(
-        { companyId, recipient, resendId: data.id, subject },
-        "Notification email successfully sent via Resend"
-      );
-
+    if (sentVia) {
       try {
         await db.insert(emailLogsTable).values({
           companyId,
@@ -483,20 +502,15 @@ export async function sendCompanyNotification(
           subject,
           eventType: options?.eventType || null,
           status: "sent",
-          resendId: data.id || null,
+          resendId,
         });
       } catch (logErr) {
         logger.warn({ logErr }, "Failed to insert sent email log");
       }
 
-      return { ok: true, id: data.id };
+      return { ok: true, id: resendId || "smtp" };
     } else {
-      const errorText = await res.text();
-      logger.error(
-        { companyId, status: res.status, errorText },
-        "Resend API returned error when sending company notification"
-      );
-
+      const finalError = deliveryError || "No working email provider configured (Resend / SMTP)";
       try {
         await db.insert(emailLogsTable).values({
           companyId,
@@ -504,13 +518,13 @@ export async function sendCompanyNotification(
           subject,
           eventType: options?.eventType || null,
           status: "failed",
-          error: `HTTP ${res.status}: ${errorText.slice(0, 500)}`,
+          error: finalError.slice(0, 500),
         });
       } catch (logErr) {
         logger.warn({ logErr }, "Failed to insert failed email log");
       }
 
-      return { ok: false, error: `Resend error (${res.status}): ${errorText}` };
+      return { ok: false, error: finalError };
     }
   } catch (err: any) {
     logger.error({ err, companyId, subject }, "Unhandled error in sendCompanyNotification");
