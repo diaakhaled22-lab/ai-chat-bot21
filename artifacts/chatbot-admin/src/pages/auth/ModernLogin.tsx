@@ -954,23 +954,21 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     {lang === "ar" ? "كلمة المرور *" : "Password *"}
                   </label>
-                  <span className={`text-[11px] font-medium transition-colors ${
-                    regPasswordStrength === "strong"
-                      ? "text-emerald-500 font-semibold"
-                      : regPasswordStrength === "medium"
-                      ? "text-amber-500 font-semibold"
-                      : regPasswordStrength === "weak"
-                      ? "text-rose-500 font-semibold"
-                      : "text-slate-400"
-                  }`}>
-                    {regPasswordStrength === "strong"
-                      ? (lang === "ar" ? "✓ كلمة مرور قوية" : "✓ Strong password")
-                      : regPasswordStrength === "medium"
-                      ? (lang === "ar" ? "⚠️ كلمة مرور متوسطة" : "⚠️ Medium strength")
-                      : regPasswordStrength === "weak"
-                      ? (lang === "ar" ? "ضعيفة (8 أحرف على الأقل)" : "Weak: Password must be at least 8 characters long")
-                      : (lang === "ar" ? "8 أحرف على الأقل" : "Password must be at least 8 characters long")}
-                  </span>
+                  {regPassword && (
+                    <span className={`text-[11px] font-medium transition-colors ${
+                      regPasswordStrength === "strong"
+                        ? "text-emerald-500 font-semibold"
+                        : regPasswordStrength === "medium"
+                        ? "text-amber-500 font-semibold"
+                        : "text-rose-500 font-semibold"
+                    }`}>
+                      {regPasswordStrength === "strong"
+                        ? (lang === "ar" ? "✓ كلمة مرور قوية" : "✓ Strong password")
+                        : regPasswordStrength === "medium"
+                        ? (lang === "ar" ? "⚠️ كلمة مرور متوسطة" : "⚠️ Medium strength")
+                        : (lang === "ar" ? "ضعيفة" : "Weak")}
+                    </span>
+                  )}
                 </div>
                 <div className="relative">
                   <span className={`absolute inset-y-0 ${lang === "ar" ? "right-0 pr-3" : "left-0 pl-3"} flex items-center pointer-events-none ${
