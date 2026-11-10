@@ -1044,7 +1044,11 @@ export default function ClientPackages() {
                   </span>
                 </div>
               ) : currentTokens && currentTokens > 0 ? (
-                `${(currentTokens / 1_000).toFixed(0)}K Tokens`
+                currentTokens >= 1_000_000 || Math.round(currentTokens / 1_000) === 1000 ? (
+                  "1m Tokens"
+                ) : (
+                  `${(currentTokens / 1_000).toFixed(0)}K Tokens`
+                )
               ) : (company as any)?.aiExecutionMode === "tokens" ? (
                 lang === "ar" ? "مفتاح API خاص" : "Own API Key"
               ) : (

@@ -60,7 +60,7 @@ const CHANNEL_COLORS: Record<string, string> = {
 const FALLBACK_COLORS = ["#6366f1", "#f59e0b", "#ec4899", "#14b8a6"];
 
 function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000_000 || Math.round(n / 1_000) === 1000) return "1m";
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
