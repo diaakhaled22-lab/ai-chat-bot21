@@ -1079,7 +1079,7 @@ export default function ClientCompany() {
                           )}
                         </div>
                         <div className="font-mono text-[11px] truncate font-medium text-foreground/90">
-                          {quotaProvider.toUpperCase()} · {quotaModel}
+                          {quotaProvider.toUpperCase()}
                         </div>
                       </div>
 
