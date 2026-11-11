@@ -6,6 +6,10 @@
   padding: 1rem 0.75rem;
   box-sizing: border-box;
   font-family: 'Montserrat', 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -14,7 +18,6 @@
   flex-direction: column;
   background-color: #c9d6ff;
   background: linear-gradient(135deg, #e2e8f0 0%, #c9d6ff 50%, #dbeafe 100%);
-  position: relative;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
