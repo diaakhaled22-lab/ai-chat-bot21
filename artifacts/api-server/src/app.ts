@@ -13,11 +13,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
-const trustedProxies = (process.env.TRUSTED_PROXIES || "")
-  .split(",")
-  .map((proxy) => proxy.trim())
-  .filter(Boolean);
-app.set("trust proxy", trustedProxies.length > 0 ? trustedProxies : false);
+
+// ── Trust Proxy Configuration ───────────────────────────────────────────
+// Essential for deployments behind reverse proxies (Replit, Cloud Run, Render, Cloudflare, Nginx).
+// Without this, req.ip resolves to the internal proxy IP for all users, breaking rate limits,
+// IP-based blocking, and Secure cookie flags.
+const rawTrustedProxies = process.env.TRUSTED_PROXIES?.trim();
+if (rawTrustedProxies) {
+  if (rawTrustedProxies === "false" || rawTrustedProxies === "0") {
+    app.set("trust proxy", false);
+  } else if (rawTrustedProxies === "true" || rawTrustedProxies === "1") {
+    app.set("trust proxy", 1);
+  } else {
+    const proxiesList = rawTrustedProxies.split(",").map((p) => p.trim()).filter(Boolean);
+    app.set("trust proxy", proxiesList.length === 1 ? proxiesList[0] : (proxiesList.length > 0 ? proxiesList : 1));
+  }
+} else {
+  // Default: Trust the immediate front-facing reverse proxy (1 hop)
+  // This is required for Replit, Cloud Run, Render, Railway, Docker, and Nginx.
+  app.set("trust proxy", 1);
+}
 
 // ── Security Headers ─────────────────────────────────────────────────────
 app.use(securityHeaders);

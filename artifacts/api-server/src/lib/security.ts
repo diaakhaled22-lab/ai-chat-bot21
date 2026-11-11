@@ -36,7 +36,8 @@ setInterval(() => {
  */
 export function rateLimit(windowMs: number, maxRequests: number, keyPrefix = "rl") {
   return (req: Request, res: Response, next: NextFunction) => {
-    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const rawIp = req.ip || req.socket.remoteAddress || "unknown";
+    const ip = rawIp.replace(/^::ffff:/i, "").trim() || "unknown";
     const key = `${keyPrefix}:${ip}`;
     const now = Date.now();
 
