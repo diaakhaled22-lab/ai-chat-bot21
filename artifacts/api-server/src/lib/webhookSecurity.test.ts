@@ -78,4 +78,15 @@ describe("Meta webhook signature middleware", () => {
     assert.equal(result.nextCalled, true);
     assert.equal(result.statusCode, undefined);
   });
+
+  it("strictly rejects deprecated sha1 algorithm in signature", async () => {
+    const sha1Sig = `sha1=${crypto.createHmac("sha1", appSecret).update(requestBody).digest("hex")}`;
+    const result = await invokeMiddleware({
+      getAppSecret: async () => appSecret,
+      rawBody: requestBody,
+      signature: sha1Sig,
+    });
+    assert.equal(result.statusCode, 401);
+    assert.equal(result.nextCalled, false);
+  });
 });

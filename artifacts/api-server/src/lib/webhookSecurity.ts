@@ -58,7 +58,8 @@ export async function getMetaAppSecret(): Promise<string | null> {
 }
 
 /**
- * Verify HMAC-SHA256 (or HMAC-SHA1) signature sent by Meta in X-Hub-Signature-256 header.
+ * Verify HMAC-SHA256 signature sent by Meta in X-Hub-Signature-256 header.
+ * Strictly restricted to sha256 (rejects deprecated/weak sha1) to prevent collision and downgrade attacks.
  * Uses crypto.timingSafeEqual to prevent side-channel timing attacks.
  */
 export function verifyMetaSignature(
@@ -72,7 +73,8 @@ export function verifyMetaSignature(
   if (parts.length !== 2) return false;
 
   const [algo, receivedHex] = parts;
-  if (algo !== "sha256" && algo !== "sha1") return false;
+  // Strictly enforce sha256 only — reject deprecated and insecure sha1
+  if (algo.toLowerCase() !== "sha256") return false;
 
   let bodyBuffer: Buffer;
   if (Buffer.isBuffer(rawBody)) {
@@ -85,7 +87,7 @@ export function verifyMetaSignature(
 
   try {
     const expectedHex = crypto
-      .createHmac(algo, appSecret)
+      .createHmac("sha256", appSecret)
       .update(bodyBuffer)
       .digest("hex");
 
@@ -158,9 +160,8 @@ export function createMetaSignatureMiddleware(options?: {
       return;
     }
 
-    const sigHeader =
-      (req.headers["x-hub-signature-256"] as string | undefined) ||
-      (req.headers["x-hub-signature"] as string | undefined);
+    // Strictly require X-Hub-Signature-256 header; reject deprecated X-Hub-Signature (sha1)
+    const sigHeader = req.headers["x-hub-signature-256"] as string | undefined;
 
     if (!sigHeader) {
       logger.warn(
