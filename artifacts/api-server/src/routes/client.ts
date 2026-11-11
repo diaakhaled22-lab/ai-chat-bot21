@@ -2606,23 +2606,14 @@ router.delete(["/client/tickets/:id", "/tickets/:id"], async (req, res) => {
       .limit(1);
 
     if (!existingTicket) {
-      // If the ticket was already removed or doesn't exist, treat as success so UI clears it
-      res.json({ ok: true, id, success: true, message: "Ticket already removed" });
+      res.status(404).json({ error: "Ticket not found" });
       return;
     }
 
-    // If client, verify ownership (or company association)
+    // If not admin, strictly verify that the ticket belongs to this user
     if (req.session.role !== "admin" && existingTicket.clientId !== userId) {
-      const [company] = await db
-        .select({ id: companiesTable.id })
-        .from(companiesTable)
-        .where(eq(companiesTable.clientId, userId))
-        .limit(1);
-
-      if (!company && req.session.role !== "client") {
-        res.status(403).json({ error: "Unauthorized to delete this ticket" });
-        return;
-      }
+      res.status(403).json({ error: "Unauthorized to delete this ticket" });
+      return;
     }
 
     await db
