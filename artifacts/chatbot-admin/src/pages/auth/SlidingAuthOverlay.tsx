@@ -56,7 +56,7 @@ export const SlidingAuthOverlay: React.FC = () => {
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">Admin Login</h2>
             <p className="text-xs text-slate-500 mt-1 mb-6">Enter administrative credentials</p>
 
-            <form onSubmit={handleAdminSubmit} className="w-full flex flex-col gap-3.5" novalidate>
+            <form onSubmit={handleAdminSubmit} className="w-full flex flex-col gap-3.5" noValidate>
               {/* Username Input */}
               <div className="relative w-full text-left">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
@@ -145,7 +145,7 @@ export const SlidingAuthOverlay: React.FC = () => {
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">Client Login</h2>
             <p className="text-xs text-slate-500 mt-1 mb-6">Manage your chatbot deployment portal</p>
 
-            <form onSubmit={handleClientSubmit} className="w-full flex flex-col gap-3.5" novalidate>
+            <form onSubmit={handleClientSubmit} className="w-full flex flex-col gap-3.5" noValidate>
               {/* Username Input */}
               <div className="relative w-full text-left">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">

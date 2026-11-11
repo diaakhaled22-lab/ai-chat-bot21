@@ -1314,7 +1314,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           }
 
           if (link.isAction || link.onClick) {
-            const isNotifActive = notifOpen && link.notifBadge;
+            const isNotifActive = Boolean(isActive && link.notifBadge);
             return (
               <button
                 key={link.href}

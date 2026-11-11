@@ -275,7 +275,7 @@ export async function sendCompanyNotification(
   companyId: number,
   subject: string,
   html: string,
-  options?: { eventType?: string; inAppTitle?: string; inAppMessage?: string }
+  options?: { eventType?: string; inAppTitle?: string; inAppMessage?: string; inAppType?: string }
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
     if (!companyId || isNaN(companyId)) {
@@ -309,7 +309,7 @@ export async function sendCompanyNotification(
         try {
           const inAppTitle = options.inAppTitle || `[${options.eventType}] ${company.name}`;
           const inAppMessage = options.inAppMessage || subject;
-          const notifType = (options as any)?.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+          const notifType = options.inAppType || options.eventType.toLowerCase().replace(/[^a-z0-9]+/g, "_");
 
           // Deduplication guard: prevent duplicate in-app notifications if identical notification was sent within 5 minutes
           const [existingDup] = await db

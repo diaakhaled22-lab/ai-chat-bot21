@@ -735,8 +735,8 @@ router.get(
         return;
       }
 
-      // Single-use restriction: If ticket is already resolved or closed, reject duplicate approval
-      if (ticket.status === "resolved" || ticket.status === "closed") {
+      // Single-use restriction: If ticket is already resolved, reject duplicate approval
+      if (ticket.status === "resolved") {
         res.status(409).send(`
           <!DOCTYPE html>
           <html dir="rtl" lang="ar">

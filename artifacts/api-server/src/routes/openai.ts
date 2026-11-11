@@ -126,7 +126,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
           content: "You are a helpful AI assistant for a chatbot platform. Answer clearly and concisely.",
         },
         ...chatMessages,
-      ], { maxTokens: 8192, stream: true }) as any
+      ], { maxTokens: 8192, stream: true })
     );
 
     for await (const chunk of stream) {

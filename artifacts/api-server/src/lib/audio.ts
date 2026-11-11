@@ -220,7 +220,7 @@ export async function sendTelegramVoiceNote(
     const formData = new FormData();
     formData.append("chat_id", String(chatId));
 
-    const blob = new Blob([audioBuffer], { type: "audio/ogg" });
+    const blob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/ogg" });
     formData.append("voice", blob, "voice.ogg");
     if (caption) {
       formData.append("caption", caption.slice(0, 1024));
@@ -253,7 +253,7 @@ export async function sendWhatsAppVoiceNote(
   try {
     // Step 1: Upload audio media to WhatsApp Cloud API
     const formData = new FormData();
-    const blob = new Blob([audioBuffer], { type: "audio/ogg; codecs=opus" });
+    const blob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/ogg; codecs=opus" });
     formData.append("file", blob, "voice.ogg");
     formData.append("type", "audio/ogg");
     formData.append("messaging_product", "whatsapp");

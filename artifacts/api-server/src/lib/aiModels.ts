@@ -1,5 +1,6 @@
 import { db, adminConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import type OpenAI from "openai";
 import { logger } from "./logger";
 
 export type AiProviderId = "openai" | "anthropic" | "google" | "openrouter";
@@ -280,16 +281,19 @@ export function isOpenAiReasoningModel(modelId?: string | null): boolean {
 
 export function buildOpenAiChatParams(
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  messages: Array<{ role: string; content?: any }>,
+  options: { maxTokens?: number; stream: true; temperature?: number }
+): OpenAI.Chat.ChatCompletionCreateParamsStreaming;
+export function buildOpenAiChatParams(
+  model: string,
+  messages: Array<{ role: string; content?: any }>,
+  options?: { maxTokens?: number; stream?: false; temperature?: number }
+): OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
+export function buildOpenAiChatParams(
+  model: string,
+  messages: Array<{ role: string; content?: any }>,
   options?: { maxTokens?: number; stream?: boolean; temperature?: number }
-): {
-  model: string;
-  messages: Array<any>;
-  max_tokens?: number;
-  max_completion_tokens?: number;
-  stream?: boolean;
-  temperature?: number;
-} {
+): OpenAI.Chat.ChatCompletionCreateParams {
   const effectiveModel = sanitizeOpenAiModel(model);
   const isReasoning = isOpenAiReasoningModel(effectiveModel);
 
@@ -620,16 +624,19 @@ export function isOpenRouterReasoningModel(modelId?: string | null): boolean {
 
 export function buildOpenRouterChatParams(
   model: string,
-  messages: Array<{ role: string; content: string }>,
+  messages: Array<{ role: string; content?: any }>,
+  options: { maxTokens?: number; stream: true; temperature?: number }
+): OpenAI.Chat.ChatCompletionCreateParamsStreaming;
+export function buildOpenRouterChatParams(
+  model: string,
+  messages: Array<{ role: string; content?: any }>,
+  options?: { maxTokens?: number; stream?: false; temperature?: number }
+): OpenAI.Chat.ChatCompletionCreateParamsNonStreaming;
+export function buildOpenRouterChatParams(
+  model: string,
+  messages: Array<{ role: string; content?: any }>,
   options?: { maxTokens?: number; stream?: boolean; temperature?: number }
-): {
-  model: string;
-  messages: Array<any>;
-  max_tokens?: number;
-  max_completion_tokens?: number;
-  stream?: boolean;
-  temperature?: number;
-} {
+): OpenAI.Chat.ChatCompletionCreateParams {
   const effectiveModel = sanitizeOpenRouterModel(model);
   const isReasoning = isOpenRouterReasoningModel(effectiveModel);
   const isOpenAiReasoning = isOpenAiReasoningModel(effectiveModel);

@@ -114,7 +114,7 @@ export async function getQuotaAiSettings(): Promise<{
       : rawModel;
 
     // Resolve API key
-    let key = cfg["quota_ai_api_key"]?.trim();
+    let key: string | undefined = cfg["quota_ai_api_key"]?.trim();
     if (!key) {
       if (provider === "openai" && process.env.OPENAI_API_KEY) key = process.env.OPENAI_API_KEY;
       else if (provider === "google" && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;

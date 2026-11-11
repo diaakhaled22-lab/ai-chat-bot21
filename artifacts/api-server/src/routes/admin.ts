@@ -5328,7 +5328,7 @@ router.get("/admin/quota-ai-status", async (req, res) => {
     const rawModel = cfg["quota_ai_model"]    || defaultModel;
     const model    = provider === "openrouter" ? sanitizeOpenRouterModel(rawModel) : rawModel;
 
-    let apiKey = cfg["quota_ai_api_key"]?.trim();
+    let apiKey: string | undefined = cfg["quota_ai_api_key"]?.trim();
     if (!apiKey) {
       if (provider === "openai" && process.env.OPENAI_API_KEY) apiKey = process.env.OPENAI_API_KEY;
       else if (provider === "google" && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)) apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;

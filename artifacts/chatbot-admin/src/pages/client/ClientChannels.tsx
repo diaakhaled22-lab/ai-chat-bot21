@@ -205,7 +205,7 @@ export default function ClientChannels() {
       data.voiceReplyVoice = values.voiceReplyVoice || "alloy";
     }
 
-    updateCompany.mutate({ data }, {
+    updateCompany.mutate({ data: data as any }, {
       onSuccess: () => {
         setTelegramOn(telegramOn);
         setWhatsappOn(whatsappOn);

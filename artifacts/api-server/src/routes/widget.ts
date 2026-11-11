@@ -247,9 +247,9 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
           .where(and(eq(leadsTable.companyId, company.id), eq(leadsTable.sessionId, sessionId)))
           .limit(1);
 
-        knownCustomerContext = buildKnownCustomerContext(knownLead, history);
+        knownCustomerContext = buildKnownCustomerContext(knownLead, conversationHistory);
       } catch {
-        knownCustomerContext = buildKnownCustomerContext(null, history);
+        knownCustomerContext = buildKnownCustomerContext(null, conversationHistory);
       }
     }
 

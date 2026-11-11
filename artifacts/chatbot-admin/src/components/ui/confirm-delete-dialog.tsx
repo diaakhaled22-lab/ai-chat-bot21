@@ -16,6 +16,7 @@ interface ConfirmDeleteDialogProps {
   onConfirm: () => void;
   title?: string;
   description?: string;
+  confirmLabel?: string;
   children: ReactNode;
 }
 
@@ -23,6 +24,7 @@ export function ConfirmDeleteDialog({
   onConfirm,
   title,
   description,
+  confirmLabel,
   children,
 }: ConfirmDeleteDialogProps) {
   const { lang } = useLanguage();
@@ -52,7 +54,7 @@ export function ConfirmDeleteDialog({
             }}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {lang === "ar" ? "حذف" : "Delete"}
+            {confirmLabel || (lang === "ar" ? "حذف" : "Delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

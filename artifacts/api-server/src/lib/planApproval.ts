@@ -697,7 +697,7 @@ export async function processApprovedPlanRequest(
 
   if (
     (options.channel === "email_button" || options.channel === "email_reply") &&
-    (ticket.status === "resolved" || ticket.status === "closed")
+    ticket.status === "resolved"
   ) {
     throw new Error(`Ticket #${ticketId} has already been approved and resolved. Duplicate approval rejected.`);
   }

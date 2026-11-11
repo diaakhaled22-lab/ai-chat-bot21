@@ -306,7 +306,7 @@ const DEFAULT_TOPUP_PACKS: TopupItemDef[] = [
   { id: "topup-250k", tokens: 250_000, formatted: "+250K", priceUsd: 40 },
 ];
 
-function formatPlanFeature(feat: string, plan: PackageItem, isAr: boolean): string {
+function formatPlanFeature(feat: string, plan: PlanDef, isAr: boolean): string {
   if (!plan.tokensMonthly) return feat;
   const formattedTokens = plan.tokensFormatted || Number(plan.tokensMonthly).toLocaleString();
   const isTokenLine = /^[\d,kKmM.]+\s*(?:monthly AI Tokens|tokens?|رمز شهرياً|رمز مجاني|رموز|رمز)/i.test(feat.trim())
@@ -807,7 +807,7 @@ export default function ClientPackages() {
     );
   };
 
-  const handleOpenTopup = (pack: (typeof TOPUP_PACKS)[0]) => {
+  const handleOpenTopup = (pack: TopupItemDef) => {
     setTopupPack(pack);
     setTopupDialogOpen(true);
   };

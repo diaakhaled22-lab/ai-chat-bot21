@@ -167,8 +167,8 @@ export default function ClientTools() {
   });
 
   // A tool is allowed if admin enabled it
-  const isCalAllowed = company?.googleCalendarEnabled !== undefined
-    ? Boolean(company.googleCalendarEnabled)
+  const isCalAllowed = (company as any)?.googleCalendarEnabled !== undefined
+    ? Boolean((company as any).googleCalendarEnabled)
     : Boolean(calConfig?.googleCalendarEnabled);
 
   const isSheetsAllowed = company?.googleSheetsEnabled !== undefined

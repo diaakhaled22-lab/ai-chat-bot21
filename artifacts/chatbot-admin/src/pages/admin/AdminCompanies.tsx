@@ -636,7 +636,7 @@ export default function AdminCompanies() {
   }, [packagesCatalog]);
 
   const openManageCompanyDialog = (company: Company) => {
-    const freshCompany = companies?.find((c) => c.id === company.id) || company;
+    const freshCompany = (companies?.find((c) => c.id === company.id) || company) as Company & Record<string, any>;
     setManageCompanyTarget(freshCompany);
     setManageActiveTab("subscription");
 
@@ -1984,7 +1984,7 @@ export default function AdminCompanies() {
                             variant="default"
                             size="sm"
                             onClick={() => {
-                              setManageCompanyModalOpen(false);
+                              setManageCompanyTarget(null);
                               setLocation("/admin/packages");
                             }}
                             className="text-xs h-8 px-3 gap-1.5 bg-[#2D5BE3] hover:bg-[#254ec2] text-white cursor-pointer font-bold shadow-sm"

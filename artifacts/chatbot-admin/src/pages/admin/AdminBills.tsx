@@ -166,7 +166,7 @@ function drawRoundRect(
   ctx.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
   ctx.lineTo(x + bl, y + h);
   ctx.quadraticCurveTo(x, y + h, x, y + h - bl);
-  ctx.lineTo(x + tl);
+  ctx.lineTo(x, y + tl);
   ctx.quadraticCurveTo(x, y, x + tl, y);
   ctx.closePath();
 }

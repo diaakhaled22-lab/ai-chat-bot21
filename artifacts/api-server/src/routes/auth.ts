@@ -340,14 +340,13 @@ export function normalizeEmail(email: string): string {
 }
 
 router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) => {
+  const isAr = (req.body as { lang?: string } | undefined)?.lang !== "en";
   try {
-    const { email, username, name, lang } = req.body as {
+    const { email, username, name } = req.body as {
       email?: string;
       username?: string;
       name?: string;
-      lang?: string;
     };
-    const isAr = lang !== "en";
     const clientIp = extractClientIp(req);
 
     if (isIpBlocked(clientIp)) {

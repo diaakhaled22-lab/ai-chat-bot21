@@ -562,7 +562,7 @@ router.post(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, verifyMe
  */
 router.get(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumberId"], async (req, res) => {
   try {
-    const { phoneNumberId } = req.params;
+    const phoneNumberId = String(req.params.phoneNumberId || "");
     const mode        = req.query["hub.mode"];
     const verifyToken = req.query["hub.verify_token"];
     const challenge   = req.query["hub.challenge"];
@@ -606,7 +606,7 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
   res.sendStatus(200);
   let company: typeof companiesTable.$inferSelect | undefined;
   try {
-    const { phoneNumberId } = req.params;
+    const phoneNumberId = String(req.params.phoneNumberId || "");
     const body = req.body as {
       entry?: {
         changes?: {
@@ -783,7 +783,7 @@ router.post(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumber
           if (isHandoffRequested(userText, rawReply, aiReply)) {
       aiReply = localizedChannelMessage(userText, "سيتم وضعك في قائمة الانتظار.", "You will be placed on the waiting list.");
       isHandoff = true;
-      await triggerHandoffNotification(company, sessionId, "whatsapp").catch((err) => logger.warn({ err, companyId: company.id }, "WhatsApp handoff notification failed"));
+      await triggerHandoffNotification(currentCompany, sessionId, "whatsapp").catch((err) => logger.warn({ err, companyId: currentCompany.id }, "WhatsApp handoff notification failed"));
     }
 
           if (leadData && sessionId && typeof sessionId === "string") {

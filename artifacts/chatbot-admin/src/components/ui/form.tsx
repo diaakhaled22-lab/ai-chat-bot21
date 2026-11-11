@@ -49,12 +49,13 @@ const useFormField = () => {
       formItemId: "form-item",
       formDescriptionId: "form-item-description",
       formMessageId: "form-item-message",
+      error: undefined as any,
     }
   }
 
   const fieldState = formContext?.getFieldState
     ? formContext.getFieldState(fieldContext.name, formContext.formState)
-    : {}
+    : { error: undefined as any }
 
   const { id } = itemContext
 

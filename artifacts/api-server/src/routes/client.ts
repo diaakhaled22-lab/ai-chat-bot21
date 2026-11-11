@@ -214,7 +214,7 @@ router.get("/client/company", async (req, res) => {
         .where(
           and(
             eq(ticketsTable.clientId, company.clientId),
-            or(eq(ticketsTable.status, "open"), eq(ticketsTable.status, "pending"), eq(ticketsTable.status, "in_progress"))
+            sql`${ticketsTable.status} IN ('open', 'pending', 'in_progress')`
           )
         )
         .orderBy(desc(ticketsTable.createdAt));
@@ -836,7 +836,7 @@ router.put("/client/company", async (req, res) => {
         .where(
           and(
             eq(ticketsTable.clientId, company.clientId),
-            or(eq(ticketsTable.status, "open"), eq(ticketsTable.status, "pending"), eq(ticketsTable.status, "in_progress"))
+            sql`${ticketsTable.status} IN ('open', 'pending', 'in_progress')`
           )
         )
         .orderBy(desc(ticketsTable.createdAt));
@@ -958,7 +958,11 @@ router.all("/client/company/execution-mode", async (req, res, next) => {
     }
 
     const [existingCompany] = await db
-      .select({ id: companiesTable.id, aiExecutionMode: companiesTable.aiExecutionMode })
+      .select({
+        id: companiesTable.id,
+        aiExecutionMode: companiesTable.aiExecutionMode,
+        monthlyTokenQuota: companiesTable.monthlyTokenQuota,
+      })
       .from(companiesTable)
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
@@ -1562,7 +1566,7 @@ router.post("/client/tools/sheets/test", async (req, res) => {
         fields: "properties.title,sheets.properties.title",
       });
 
-      const tabTitles = (data.sheets ?? []).map((s) => s.properties?.title).filter((t) => !!t);
+      const tabTitles = (data.sheets ?? []).map((s) => s.properties?.title).filter((t): t is string => !!t);
       const trimmedPage = targetPage?.trim();
 
       if (trimmedPage) {
@@ -1586,7 +1590,7 @@ router.post("/client/tools/sheets/test", async (req, res) => {
           ? `Connected successfully! Found page "${trimmedPage}" in "${data.properties?.title ?? "the spreadsheet"}".`
           : `Connected successfully to "${data.properties?.title ?? "the spreadsheet"}". Available pages: ${tabTitles.join(", ")}.`,
       });
-    } catch (apiErr) {
+    } catch (apiErr: any) {
       const status = apiErr?.code ?? apiErr?.response?.status;
       if (status === 404) {
         res.status(400).json({ success: false, message: "Spreadsheet not found. Check the URL and try again." });
@@ -3550,7 +3554,7 @@ router.post("/client/chatbot-trial", async (req, res) => {
           role: m.role as "user" | "assistant",
           content: m.content,
         })),
-      ], { maxTokens: 1024, stream: true }) as any
+      ], { maxTokens: 1024, stream: true })
     );
 
     let fullResponse = "";
@@ -3713,7 +3717,7 @@ router.post("/client/multi-ai/chat", async (req, res) => {
         buildOpenAiChatParams(model, [{ role: "system", content: SYSTEM }, ...formatted], {
           maxTokens: 2048,
           stream: true,
-        }) as any
+        })
       );
       for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content;
