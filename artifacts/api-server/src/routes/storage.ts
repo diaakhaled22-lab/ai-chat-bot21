@@ -1,3 +1,6 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { Readable } from 'stream';
 import { Router, type IRouter, type Request, type Response } from 'express';
 import multer from 'multer';
@@ -13,10 +16,33 @@ import { isAllowedFileType } from '../lib/security';
 import { setSafeObjectResponseHeaders } from '../lib/knowledgeFileSecurity';
 import { db, companiesTable, companyKnowledgeFilesTable } from '@workspace/db';
 import { eq, and } from 'drizzle-orm';
+import { logger } from '../lib/logger';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+// Stream uploads to disk instead of memoryStorage to prevent memory exhaustion
+const storageTempDir = path.join(os.tmpdir(), 'bot-manager-storage-uploads');
+if (!fs.existsSync(storageTempDir)) {
+  try {
+    fs.mkdirSync(storageTempDir, { recursive: true });
+  } catch (err) {
+    logger.warn({ err }, 'Could not create storageTempDir');
+  }
+}
+
+const storageDisk = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, storageTempDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    cb(null, `${uniqueSuffix}-${safeName}`);
+  },
+});
+
+const upload = multer({ storage: storageDisk, limits: { fileSize: 50 * 1024 * 1024 } });
 
 /**
  * POST /storage/uploads
@@ -35,8 +61,11 @@ router.post(
       return;
     }
 
+    const filePath = req.file.path;
+
     // Validate file type — only allow safe MIME types
     if (!isAllowedFileType(req.file.mimetype)) {
+      if (filePath) fs.promises.unlink(filePath).catch(() => {});
       res.status(400).json({ error: `File type "${req.file.mimetype}" is not allowed. Allowed: CSV, JSON, Excel, and raster images.` });
       return;
     }
@@ -54,7 +83,9 @@ router.post(
       const bucket = objectStorageClient.bucket(bucketName);
       const gcsFile = bucket.file(objectName);
 
-      await gcsFile.save(req.file.buffer, {
+      const fileBuffer = await fs.promises.readFile(filePath);
+
+      await gcsFile.save(fileBuffer, {
         metadata: {
           contentType: req.file.mimetype || 'application/octet-stream',
           metadata: { uploadedByUserId: String(req.session.userId) },
@@ -67,6 +98,10 @@ router.post(
     } catch (error) {
       req.log.error({ err: error }, 'Error uploading file');
       res.status(500).json({ error: 'Failed to upload file' });
+    } finally {
+      if (filePath) {
+        fs.promises.unlink(filePath).catch(() => {});
+      }
     }
   },
 );

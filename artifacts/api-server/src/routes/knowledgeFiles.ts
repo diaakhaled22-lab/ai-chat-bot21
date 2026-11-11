@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { Router } from "express";
 import multer from "multer";
 import { db, companiesTable, companyKnowledgeFilesTable } from "@workspace/db";
@@ -11,7 +14,30 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { isKnowledgeUploadPath, isOwnedKnowledgeUpload } from "../lib/knowledgeFileSecurity";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+
+// Use diskStorage instead of memoryStorage to stream files directly to disk.
+// This prevents high-concurrency memory exhaustion (DoS / Out-Of-Memory) from 100MB files.
+const tempUploadsDir = path.join(os.tmpdir(), "bot-manager-knowledge-uploads");
+if (!fs.existsSync(tempUploadsDir)) {
+  try {
+    fs.mkdirSync(tempUploadsDir, { recursive: true });
+  } catch (err) {
+    logger.warn({ err }, "Could not create tempUploadsDir");
+  }
+}
+
+const diskStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, tempUploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_");
+    cb(null, `${uniqueSuffix}-${safeName}`);
+  },
+});
+
+const upload = multer({ storage: diskStorage, limits: { fileSize: 100 * 1024 * 1024 } });
 const objectStorageService = new ObjectStorageService();
 
 const FILE_TYPE_BY_EXTENSION: Record<string, KnowledgeFileType> = {
@@ -94,8 +120,10 @@ router.post(
       return;
     }
 
+    const filePath = req.file.path;
     try {
-      const text = await extractTextFromBuffer(fileType, req.file.buffer, req.file.originalname);
+      const fileBuffer = await fs.promises.readFile(filePath);
+      const text = await extractTextFromBuffer(fileType, fileBuffer, req.file.originalname);
       const trimmed = text.trim();
       if (!trimmed) {
         res.status(422).json({
@@ -124,6 +152,11 @@ router.post(
     } catch (err) {
       logger.error({ err }, "Upload knowledge file error");
       res.status(422).json({ error: err instanceof Error ? err.message : "Failed to process file" });
+    } finally {
+      // Always delete temporary file from disk to avoid disk space leaks
+      if (filePath) {
+        fs.promises.unlink(filePath).catch(() => {});
+      }
     }
   },
 );
