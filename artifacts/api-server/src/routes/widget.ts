@@ -26,25 +26,55 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATI
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
-import { isWidgetOriginAllowed } from "../lib/widgetSecurity";
+import { isWidgetOriginAllowed, validateWidgetRequest, isValidWidgetSessionId, checkSessionRateLimit } from "../lib/widgetSecurity";
 
 const router = Router();
 
-const WIDGET_CORS = (req: any, res: any, next: any) => {
-  const requestOrigin = req.headers?.origin;
-  if (requestOrigin) {
-    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
-    res.setHeader("Vary", "Origin");
+const WIDGET_OPTIONS_PATHS = [
+  "/widget/:key/config",
+  "/widget/:key/chat",
+  "/widget/:key/contact",
+  "/widget/:key/order",
+];
+
+router.options(WIDGET_OPTIONS_PATHS, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const [company] = await db
+      .select({
+        widgetAllowedDomains: companiesTable.widgetAllowedDomains,
+        websiteDataUrl: companiesTable.websiteDataUrl,
+        widgetEnabled: companiesTable.widgetEnabled,
+      })
+      .from(companiesTable)
+      .where(eq(companiesTable.websiteChatbotKey, key as string))
+      .limit(1);
+
+    if (!company || company.widgetEnabled === false) {
+      res.sendStatus(403);
+      return;
+    }
+
+    const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const origin = typeof req.headers.origin === "string" ? req.headers.origin.trim() : undefined;
+
+    if (origin && isWidgetOriginAllowed(origin, company.widgetAllowedDomains, company.websiteDataUrl, serverHost)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Max-Age", "86400");
+      res.sendStatus(204);
+      return;
+    }
+
+    res.sendStatus(403);
+  } catch {
+    res.sendStatus(500);
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  next();
-};
+});
 
-router.options("/widget/:key/config", WIDGET_CORS, (_req, res) => { res.sendStatus(204); });
-router.options("/widget/:key/chat", WIDGET_CORS, (_req, res) => { res.sendStatus(204); });
-
-router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => {
+router.get("/widget/:key/config", chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
     const [company] = await db.select().from(companiesTable).where(eq(companiesTable.websiteChatbotKey, key as string)).limit(1);
@@ -54,14 +84,16 @@ router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => 
       return;
     }
 
-    if (company.widgetEnabled === false) {
-      res.status(403).json({ error: "Website widget is disabled by administration" });
+    const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const check = validateWidgetRequest(req, company, serverHost);
+    if (!check.valid) {
+      res.status(check.status).json({ error: check.error });
       return;
     }
 
-    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
-      res.status(403).json({ error: "Origin not allowed for this widget" });
-      return;
+    if (check.allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", check.allowedOrigin);
+      res.setHeader("Vary", "Origin");
     }
 
     res.json({
@@ -76,13 +108,18 @@ router.get("/widget/:key/config", WIDGET_CORS, chatLimiter, async (req, res) => 
   }
 });
 
-router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
+router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
     const { message, sessionId, lang } = req.body;
 
     if (!message || typeof message !== "string" || !message.trim()) {
       res.status(400).json({ error: "message is required" });
+      return;
+    }
+
+    if (!sessionId || !isValidWidgetSessionId(sessionId)) {
+      res.status(400).json({ error: "Valid sessionId is required" });
       return;
     }
 
@@ -95,13 +132,29 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
       return;
     }
 
-    if (company.widgetEnabled === false) {
-      res.status(403).json({ error: "Website widget is disabled by administration" });
+    const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const check = validateWidgetRequest(req, company, serverHost);
+    if (!check.valid) {
+      res.status(check.status).json({ error: check.error });
       return;
     }
 
-    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
-      res.status(403).json({ error: "Origin not allowed for this widget" });
+    if (check.allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", check.allowedOrigin);
+      res.setHeader("Vary", "Origin");
+    }
+
+    const sessionRate = checkSessionRateLimit(sessionId);
+    if (!sessionRate.allowed) {
+      res.status(429).json({
+        error: localizedChannelMessage(
+          message,
+          "تم إرسال عدد كبير من الرسائل بسرعة. يرجى الانتظار قليلاً قبل المحاولة مرة أخرى.",
+          "Too many messages sent in this session. Please wait a moment before sending another message.",
+          explicitLang
+        ),
+        retryAfter: sessionRate.retryAfterSeconds,
+      });
       return;
     }
 
@@ -486,7 +539,7 @@ router.post("/widget/:key/chat", WIDGET_CORS, chatLimiter, async (req, res) => {
 });
 
 // Event 4: Contact form submission endpoint
-router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) => {
+router.post("/widget/:key/contact", chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
     const { name, email, phone, subject, message, channel } = req.body;
@@ -497,20 +550,21 @@ router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) =
       .where(eq(companiesTable.websiteChatbotKey, key as string))
       .limit(1);
 
-    if (company && company.widgetEnabled === false) {
-      res.setHeader("Content-Type", "application/javascript");
-      res.send("/* Website widget is disabled by administration */");
-      return;
-    }
-
     if (!company) {
       res.status(404).json({ error: "Widget not found" });
       return;
     }
 
-    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
-      res.status(403).json({ error: "Origin not allowed for this widget" });
+    const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const check = validateWidgetRequest(req, company, serverHost);
+    if (!check.valid) {
+      res.status(check.status).json({ error: check.error });
       return;
+    }
+
+    if (check.allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", check.allowedOrigin);
+      res.setHeader("Vary", "Origin");
     }
 
     // Save as lead
@@ -539,7 +593,7 @@ router.post("/widget/:key/contact", WIDGET_CORS, chatLimiter, async (req, res) =
 });
 
 // Event 5: Direct order submission endpoint
-router.post("/widget/:key/order", WIDGET_CORS, chatLimiter, async (req, res) => {
+router.post("/widget/:key/order", chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
     const { customerName, customerEmail, customerPhone, items, total, notes, channel } = req.body;
@@ -555,9 +609,16 @@ router.post("/widget/:key/order", WIDGET_CORS, chatLimiter, async (req, res) => 
       return;
     }
 
-    if (!isWidgetOriginAllowed(req.headers.origin, company.widgetAllowedDomains)) {
-      res.status(403).json({ error: "Origin not allowed for this widget" });
+    const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const check = validateWidgetRequest(req, company, serverHost);
+    if (!check.valid) {
+      res.status(check.status).json({ error: check.error });
       return;
+    }
+
+    if (check.allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", check.allowedOrigin);
+      res.setHeader("Vary", "Origin");
     }
 
     // Event 5: New order notification

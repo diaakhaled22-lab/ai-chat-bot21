@@ -308,6 +308,7 @@ router.get("/client/company", async (req, res) => {
       voiceReplyVoice: company.voiceReplyVoice ?? "alloy",
       websiteChatbotKey: company.websiteChatbotKey,
       widgetEnabled: company.widgetEnabled ?? false,
+      widgetAllowedDomains: company.widgetAllowedDomains ?? null,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,
@@ -726,6 +727,9 @@ router.put("/client/company", async (req, res) => {
     if (data.messengerEnabled !== undefined) updates.messengerEnabled = data.messengerEnabled;
     if (data.websiteChatbotKey !== undefined) updates.websiteChatbotKey = data.websiteChatbotKey;
     if (data.widgetEnabled !== undefined) updates.widgetEnabled = data.widgetEnabled;
+    if ((data as any).widgetAllowedDomains !== undefined) {
+      updates.widgetAllowedDomains = (data as any).widgetAllowedDomains ? String((data as any).widgetAllowedDomains).trim() : null;
+    }
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
     if (data.websiteAutoSync !== undefined) updates.websiteAutoSync = data.websiteAutoSync;
     if (data.fabEnabled !== undefined) updates.fabEnabled = data.fabEnabled;
@@ -913,6 +917,7 @@ router.put("/client/company", async (req, res) => {
       messengerEnabled: company.messengerEnabled ?? false,
       websiteChatbotKey: company.websiteChatbotKey,
       widgetEnabled: company.widgetEnabled ?? false,
+      widgetAllowedDomains: company.widgetAllowedDomains ?? null,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,
