@@ -60,40 +60,109 @@ app.use(
   }),
 );
 
-// ── CORS — restrict to known origins ─────────────────────────────────────
+// ── CORS & CSRF Origin Whitelist ─────────────────────────────────────────
+// Restrict strictly to configured origins, same-host requests, and THIS specific Repl.
+// NEVER wildcard-trust *.replit.app / *.repl.co / *.replit.dev because any Replit user can host code there.
+const REPLIT_DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN?.toLowerCase().trim();
+const REPL_SLUG = process.env.REPL_SLUG?.toLowerCase().trim();
+const REPL_OWNER = process.env.REPL_OWNER?.toLowerCase().trim();
+
+const specificReplitHosts = new Set<string>();
+if (REPLIT_DEV_DOMAIN) {
+  specificReplitHosts.add(REPLIT_DEV_DOMAIN);
+}
+if (REPL_SLUG && REPL_OWNER) {
+  specificReplitHosts.add(`${REPL_SLUG}.${REPL_OWNER}.replit.app`);
+  specificReplitHosts.add(`${REPL_SLUG}.${REPL_OWNER}.repl.co`);
+  specificReplitHosts.add(`${REPL_SLUG}-${REPL_OWNER}.replit.app`);
+  specificReplitHosts.add(`${REPL_SLUG}--${REPL_OWNER}.replit.dev`);
+}
+
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (curl, server-to-server, mobile apps)
-    if (!origin) return callback(null, true);
-    // If specific origins are configured, enforce them regardless of env
+/**
+ * Validates whether an origin is allowed for CORS and CSRF protection.
+ * Prevents multi-tenant subdomain bypasses on Replit/Cloud providers.
+ */
+function isAllowedOrigin(origin: string | undefined, reqHost?: string): boolean {
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    const originHost = url.host.toLowerCase();
+    const originHostname = url.hostname.toLowerCase();
+
+    // 1. Explicitly configured ALLOWED_ORIGINS (env var)
     if (ALLOWED_ORIGINS.length > 0) {
-      if (ALLOWED_ORIGINS.includes(origin)) {
-        return callback(null, true);
+      if (
+        ALLOWED_ORIGINS.some((allowed) => {
+          try {
+            const allowedUrl = new URL(allowed);
+            return allowedUrl.host.toLowerCase() === originHost;
+          } catch {
+            return allowed.toLowerCase() === origin.toLowerCase() || allowed.toLowerCase() === originHost;
+          }
+        })
+      ) {
+        return true;
       }
-      callback(new Error("Not allowed by CORS"));
-      return;
     }
-    // No origins configured — allow same-host origins and Replit/localhost dev origins
-    try {
-      const url = new URL(origin);
-      const hostname = url.hostname.toLowerCase();
-      if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".repl.co") || hostname.endsWith(".replit.dev") || hostname.endsWith(".replit.app")) {
-        return callback(null, true);
+
+    // 2. Same-host origin: matches the incoming request's Host header
+    if (reqHost) {
+      const cleanReqHost = reqHost.toLowerCase().trim();
+      const reqHostname = cleanReqHost.split(":")[0];
+      if (originHost === cleanReqHost || originHostname === reqHostname) {
+        return true;
       }
-    } catch {}
-    // In development mode with no origins configured, allow all (backward compatible)
+    }
+
+    // 3. Localhost in development mode
+    if (originHostname === "localhost" || originHostname === "127.0.0.1") {
+      return true;
+    }
+
+    // 4. Exact Replit domains belonging to THIS specific Repl only
+    if (specificReplitHosts.has(originHostname) || specificReplitHosts.has(originHost)) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+app.use(
+  cors((req, callback) => {
+    const origin = req.headers.origin;
+    const reqHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+
+    // Allow requests with no origin (curl, server-to-server, mobile apps)
+    if (!origin) {
+      return callback(null, { origin: true, credentials: true });
+    }
+
+    if (isAllowedOrigin(origin, reqHost)) {
+      return callback(null, { origin: true, credentials: true });
+    }
+
+    // In development mode with no specific origins configured, allow localhost
     if (process.env.NODE_ENV !== "production") {
-      return callback(null, true);
+      try {
+        const url = new URL(origin);
+        if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+          return callback(null, { origin: true, credentials: true });
+        }
+      } catch {}
     }
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-}));
+
+    logger.warn({ origin, reqHost, path: req.url }, "CORS: blocked cross-origin request from untrusted origin");
+    callback(null, { origin: false });
+  })
+);
 
 declare global {
   namespace Express {
@@ -168,39 +237,65 @@ app.use((req, res, next) => {
   if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
     return next();
   }
-  // Skip CSRF check for webhook endpoints (external services send POST without origin)
+
   const urlPath = req.path || req.url?.split("?")[0] || "";
-  if (
-    urlPath.startsWith("/api/webhook") || urlPath.startsWith("/webhook") ||
-    urlPath.startsWith("/api/whatsapp") || urlPath.startsWith("/whatsapp") ||
-    urlPath.startsWith("/api/telegram") || urlPath.startsWith("/telegram") ||
-    urlPath.startsWith("/api/messenger") || urlPath.startsWith("/messenger") ||
-    urlPath.startsWith("/api/widget")   || urlPath.startsWith("/widget")
-  ) {
+
+  // 1. Identify session-sensitive routes that must NEVER be exempted from CSRF
+  // (e.g. /telegram/register-webhook, client and admin actions)
+  const isSessionSensitive =
+    urlPath.includes("register-webhook") ||
+    urlPath.includes("webhook-info") ||
+    urlPath.startsWith("/api/client") ||
+    urlPath.startsWith("/client") ||
+    urlPath.startsWith("/api/admin") ||
+    urlPath.startsWith("/admin");
+
+  // 2. Skip CSRF ONLY for true external webhook ingestion and public widget endpoints
+  const isPublicWebhookOrWidget =
+    !isSessionSensitive &&
+    (urlPath === "/api/telegram/webhook" ||
+      urlPath === "/telegram/webhook" ||
+      urlPath === "/webhook/telegram" ||
+      urlPath.startsWith("/api/whatsapp/webhook") ||
+      urlPath.startsWith("/whatsapp/webhook") ||
+      urlPath.startsWith("/webhook/whatsapp") ||
+      urlPath.startsWith("/api/messenger/webhook") ||
+      urlPath.startsWith("/messenger/webhook") ||
+      urlPath.startsWith("/webhook/messenger") ||
+      urlPath === "/api/webhook/message" ||
+      urlPath === "/webhook/message" ||
+      urlPath === "/api/webhook" ||
+      urlPath === "/webhook" ||
+      urlPath.startsWith("/api/webhook/") ||
+      urlPath.startsWith("/webhook/") ||
+      urlPath.startsWith("/api/widget/") ||
+      urlPath.startsWith("/widget/"));
+
+  if (isPublicWebhookOrWidget) {
     return next();
   }
-  // If request has no session (not authenticated), skip CSRF
+
+  // 3. If request has no session (not authenticated), skip CSRF
   if (!req.session?.userId) {
     return next();
   }
-  const origin = req.headers.origin || req.headers.referer;
-  if (!origin) {
-    // Allow requests with no origin (curl, mobile apps, server-to-server)
+
+  // 4. Authenticated state-changing request: verify Origin or Referer strictly
+  const originHeader = req.headers.origin || req.headers.referer;
+  if (!originHeader) {
+    // Browsers always send Origin or Referer on cross-site and fetch/form submissions.
     return next();
   }
-  try {
-    const url = new URL(origin);
-    const hostname = url.hostname.toLowerCase();
-    // Allow same-host, localhost, and Replit
-    if (
-      hostname === "localhost" || hostname === "127.0.0.1" ||
-      hostname.endsWith(".repl.co") || hostname.endsWith(".replit.dev") || hostname.endsWith(".replit.app") ||
-      (ALLOWED_ORIGINS.length > 0 && ALLOWED_ORIGINS.some(o => { try { return new URL(o).hostname === hostname; } catch { return false; } }))
-    ) {
-      return next();
-    }
-  } catch {}
-  logger.warn({ origin, path: urlPath, method: req.method, userId: req.session.userId }, "CSRF: blocked request from unexpected origin");
+
+  const reqHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+  if (isAllowedOrigin(originHeader, reqHost)) {
+    return next();
+  }
+
+  logger.warn(
+    { origin: originHeader, path: urlPath, method: req.method, userId: req.session.userId },
+    "CSRF: blocked request from unauthorized origin"
+  );
   res.status(403).json({ error: "Forbidden: cross-origin request blocked" });
 });
 
