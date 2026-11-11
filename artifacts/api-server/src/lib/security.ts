@@ -238,6 +238,7 @@ export interface AttackMonitoringSnapshot {
   };
 }
 
+const accountLoginAttempts = new Map<string, LoginAttempt>();
 const loginAttempts = new Map<string, LoginAttempt>();
 const blockedIps = new Map<string, number>();
 const blockedMacs = new Map<string, number>();
@@ -486,6 +487,16 @@ function getLoginAttemptKey(username: string, ip: string): string {
   return `${username.trim().toLowerCase()}\u0000${normalizeIp(ip)}`;
 }
 
+function getOrCreateAccountAttempt(username: string): LoginAttempt {
+  const key = username.trim().toLowerCase();
+  let entry = accountLoginAttempts.get(key);
+  if (!entry) {
+    entry = { failureTimes: [], lockedUntil: null, postLockoutFailures: 0, warningSent: false };
+    accountLoginAttempts.set(key, entry);
+  }
+  return entry;
+}
+
 function getOrCreateLoginAttempt(username: string, ip: string): LoginAttempt {
   const key = getLoginAttemptKey(username, ip);
   let entry = loginAttempts.get(key);
@@ -499,6 +510,22 @@ function getOrCreateLoginAttempt(username: string, ip: string): LoginAttempt {
 // Clean up old failure windows and expired account lockouts every 30 minutes.
 setInterval(() => {
   const now = Date.now();
+  for (const [key, entry] of accountLoginAttempts) {
+    entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
+    if (entry.failureTimes.length < WARNING_LOGIN_ATTEMPTS) {
+      entry.warningSent = false;
+    }
+    if (entry.lockedUntil && now > entry.lockedUntil) {
+      entry.lockedUntil = null;
+      entry.failureTimes = [];
+      entry.postLockoutFailures = 0;
+      entry.warningSent = false;
+    }
+    if (!entry.lockedUntil && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
+      accountLoginAttempts.delete(key);
+    }
+  }
+
   for (const [key, entry] of loginAttempts) {
     entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
     if (entry.failureTimes.length < WARNING_LOGIN_ATTEMPTS) {
@@ -527,14 +554,31 @@ setInterval(() => {
 }, 30 * 60 * 1000);
 
 /**
- * Checks if a username is currently locked out.
+ * Checks if a username or (username + IP) pair is currently locked out.
  * Returns the remaining lockout time in seconds, or 0 if not locked.
+ * Checks both account-wide failed attempts (across all IPs) and IP-scoped attempts.
  */
-export function isAccountLocked(username: string, ip: string): number {
-  const entry = loginAttempts.get(getLoginAttemptKey(username, ip));
-  if (!entry?.lockedUntil) return 0;
-  const remaining = entry.lockedUntil - Date.now();
-  return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+export function isAccountLocked(username: string, ip?: string): number {
+  const normUser = username.trim().toLowerCase();
+  const now = Date.now();
+
+  // 1. Account-level lockout (protects against distributed brute-force across different IPs)
+  const accountEntry = accountLoginAttempts.get(normUser);
+  if (accountEntry?.lockedUntil) {
+    const remaining = accountEntry.lockedUntil - now;
+    if (remaining > 0) return Math.ceil(remaining / 1000);
+  }
+
+  // 2. IP-scoped lockout
+  if (ip) {
+    const pairEntry = loginAttempts.get(getLoginAttemptKey(username, ip));
+    if (pairEntry?.lockedUntil) {
+      const remaining = pairEntry.lockedUntil - now;
+      if (remaining > 0) return Math.ceil(remaining / 1000);
+    }
+  }
+
+  return 0;
 }
 
 /**
@@ -556,12 +600,15 @@ export function isMacBlocked(macAddress?: string | null): boolean {
  * attempts trigger a source-IP block.
  */
 export function recordBlockedLoginAttempt(username: string, ip: string): boolean {
-  const entry = getOrCreateLoginAttempt(username, ip);
-  entry.postLockoutFailures++;
-  const attempts = MAX_LOGIN_ATTEMPTS + entry.postLockoutFailures;
+  const normUser = username.trim().toLowerCase();
+  const accountEntry = getOrCreateAccountAttempt(normUser);
+  const pairEntry = getOrCreateLoginAttempt(username, ip);
+  accountEntry.postLockoutFailures++;
+  pairEntry.postLockoutFailures++;
+  const attempts = MAX_LOGIN_ATTEMPTS + Math.max(accountEntry.postLockoutFailures, pairEntry.postLockoutFailures);
   appendAttackLog(ip, username, attempts, "blocked_attempt");
 
-  if (entry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
+  if (accountEntry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS || pairEntry.postLockoutFailures >= MAX_LOGIN_ATTEMPTS) {
     const normalizedIp = normalizeIp(ip);
     let newlyBlocked = false;
 
@@ -575,7 +622,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
       void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
       appendAttackLog(ip, username, attempts, "ip_blocked");
       logger.warn(
-        { username: username.toLowerCase(), ip: normalizedIp, attempts },
+        { username: normUser, ip: normalizedIp, attempts },
         "IP address blocked after suspicious activity during login lockout",
       );
     }
@@ -589,6 +636,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
  * Records a failed login attempt. Returns true if the account is now locked.
  * Automatically triggers warning notification (bell icon + email) when consecutive
  * failed attempts reach the warning threshold (3 attempts).
+ * Maintains counters both globally per-account (across all IPs) and per (account, IP) pair.
  */
 export function recordFailedLogin(username: string, ip: string): FailedLoginResult {
   const cleanUsername = username.trim() || "(unknown)";
@@ -596,13 +644,19 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
   const normalizedIp = normalizeIp(ip);
   const now = Date.now();
 
-  // 1. Account-level tracking
-  const entry = getOrCreateLoginAttempt(normUser, normalizedIp);
-  entry.failureTimes = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
-  entry.failureTimes.push(now);
-  const userAttempts = entry.failureTimes.length;
+  // 1. Account-level tracking (global counter per username regardless of IP)
+  const accountEntry = getOrCreateAccountAttempt(normUser);
+  accountEntry.failureTimes = accountEntry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
+  accountEntry.failureTimes.push(now);
+  const accountAttempts = accountEntry.failureTimes.length;
 
-  // 2. IP-level tracking
+  // 2. Account + IP pair tracking
+  const pairEntry = getOrCreateLoginAttempt(normUser, normalizedIp);
+  pairEntry.failureTimes = pairEntry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS);
+  pairEntry.failureTimes.push(now);
+  const pairAttempts = pairEntry.failureTimes.length;
+
+  // 3. IP-level tracking
   let ipEntry = ipLoginAttempts.get(normalizedIp);
   if (!ipEntry) {
     ipEntry = { failureTimes: [], warningSent: false };
@@ -612,9 +666,9 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
   ipEntry.failureTimes.push(now);
   const ipAttempts = ipEntry.failureTimes.length;
 
-  const currentAttempts = Math.max(userAttempts, ipAttempts);
+  const currentAttempts = Math.max(accountAttempts, pairAttempts, ipAttempts);
   appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "failed_attempt", now);
-  logger.warn({ username: normUser, ip: normalizedIp, userAttempts, ipAttempts }, "Failed login attempt");
+  logger.warn({ username: normUser, ip: normalizedIp, accountAttempts, pairAttempts, ipAttempts }, "Failed login attempt");
 
   const recentFailedAttempts = attackLogs.filter(
     (log) => log.event === "failed_attempt" && now - new Date(log.time).getTime() <= FAILURE_WINDOW_MS,
@@ -630,12 +684,14 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     );
   }
 
-  // 3. Early Warning: Trigger bell notification + email upon reaching WARNING_LOGIN_ATTEMPTS (3 attempts)
-  const shouldWarnUser = userAttempts >= WARNING_LOGIN_ATTEMPTS && !entry.warningSent;
+  // Early Warning: Trigger bell notification + email upon reaching WARNING_LOGIN_ATTEMPTS (3 attempts)
+  const shouldWarnAccount = accountAttempts >= WARNING_LOGIN_ATTEMPTS && !accountEntry.warningSent;
+  const shouldWarnPair = pairAttempts >= WARNING_LOGIN_ATTEMPTS && !pairEntry.warningSent;
   const shouldWarnIp = ipAttempts >= WARNING_LOGIN_ATTEMPTS && !ipEntry.warningSent;
 
-  if (shouldWarnUser || shouldWarnIp) {
-    if (shouldWarnUser) entry.warningSent = true;
+  if (shouldWarnAccount || shouldWarnPair || shouldWarnIp) {
+    if (shouldWarnAccount) accountEntry.warningSent = true;
+    if (shouldWarnPair) pairEntry.warningSent = true;
     if (shouldWarnIp) ipEntry.warningSent = true;
 
     appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now);
@@ -646,17 +702,17 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     );
   }
 
-  // 4. Account Lockout: Trigger account lockout upon reaching MAX_LOGIN_ATTEMPTS (5 attempts)
-  const accountLocked = userAttempts >= MAX_LOGIN_ATTEMPTS;
+  // Account Lockout: Trigger account lockout upon reaching MAX_LOGIN_ATTEMPTS (5 attempts)
+  const accountLocked = accountAttempts >= MAX_LOGIN_ATTEMPTS || pairAttempts >= MAX_LOGIN_ATTEMPTS;
 
   if (accountLocked) {
-    // Only send the email on the EXACT attempt that triggers the lock (so we don't spam it)
-    if (userAttempts === MAX_LOGIN_ATTEMPTS) {
-      void sendSecurityEventEmail("account_locked", normalizedIp, cleanUsername, userAttempts);
+    if (accountAttempts === MAX_LOGIN_ATTEMPTS || pairAttempts === MAX_LOGIN_ATTEMPTS) {
+      void sendSecurityEventEmail("account_locked", normalizedIp, cleanUsername, Math.max(accountAttempts, pairAttempts));
     }
     
-    entry.lockedUntil = now + LOCKOUT_DURATION_MS;
-    appendAttackLog(normalizedIp, cleanUsername, userAttempts, "account_locked", now);
+    accountEntry.lockedUntil = now + LOCKOUT_DURATION_MS;
+    pairEntry.lockedUntil = now + LOCKOUT_DURATION_MS;
+    appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "account_locked", now);
     logger.warn({ username: normUser, ip: normalizedIp, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
   }
 
@@ -737,9 +793,13 @@ export function getAttackMonitoringSnapshot(): AttackMonitoringSnapshot {
 /**
  * Resets the failed login counter on successful login.
  */
-export function resetLoginAttempts(username: string, ip: string): void {
-  loginAttempts.delete(getLoginAttemptKey(username, ip));
-  ipLoginAttempts.delete(normalizeIp(ip));
+export function resetLoginAttempts(username: string, ip?: string): void {
+  const normUser = username.trim().toLowerCase();
+  accountLoginAttempts.delete(normUser);
+  if (ip) {
+    loginAttempts.delete(getLoginAttemptKey(username, ip));
+    ipLoginAttempts.delete(normalizeIp(ip));
+  }
 }
 
 export function manualBlockIp(ip: string): void {

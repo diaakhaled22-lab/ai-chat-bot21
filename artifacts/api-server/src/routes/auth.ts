@@ -59,7 +59,7 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     const lockSeconds = isAccountLocked(username, clientIp);
     if (lockSeconds > 0) {
       recordBlockedLoginAttempt(username, clientIp);
-      res.status(429).json({ error: `Too many failed attempts for this account from your IP. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      res.status(429).json({ error: `Account locked due to too many failed attempts. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
 
@@ -205,7 +205,7 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     const lockSeconds = isAccountLocked(username, clientIp);
     if (lockSeconds > 0) {
       recordBlockedLoginAttempt(username, clientIp);
-      res.status(429).json({ error: `Too many failed attempts for this account from your IP. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      res.status(429).json({ error: `Account locked due to too many failed attempts. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
       return;
     }
 
