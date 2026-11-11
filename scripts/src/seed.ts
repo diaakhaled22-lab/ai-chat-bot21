@@ -195,7 +195,7 @@ async function seed() {
     }
     console.log("✅ Tables verified.");
 
-    // Seed default admin user
+    // Seed default admin user (only if not already created; never overwrite existing password)
     const configuredAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
     if (configuredAdminPassword && (configuredAdminPassword === "admin123" || configuredAdminPassword.length < 16)) {
       throw new Error("DEFAULT_ADMIN_PASSWORD must not be admin123 and must be at least 16 characters.");
@@ -205,24 +205,24 @@ async function seed() {
     await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+       ON CONFLICT (username) DO NOTHING`,
       ["System Admin", "admin", adminPasswordHash, "admin"]
     );
     console.log(
-      `✅ Admin user ready (username: admin / ${configuredAdminPassword ? "password configured via DEFAULT_ADMIN_PASSWORD" : "random password generated; use the secure recovery process"})`,
+      `✅ Admin user ready (existing credentials preserved if already present)`,
     );
 
-    // Seed default demo client user
+    // Seed default demo client user (only if not already created; never overwrite existing password)
     const defaultClientPassword = process.env.DEFAULT_CLIENT_PASSWORD || crypto.randomBytes(16).toString('hex');
     const clientPasswordHash = await bcrypt.hash(defaultClientPassword, 12);
     await client.query(
       `INSERT INTO users (name, username, password_hash, role)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+       ON CONFLICT (username) DO NOTHING`,
       ["Demo Client", "client", clientPasswordHash, "client"]
     );
     console.log(
-      `✅ Default Client user & company ready (username: client / password: ${process.env.DEFAULT_CLIENT_PASSWORD ? "configured via DEFAULT_CLIENT_PASSWORD" : defaultClientPassword})`,
+      `✅ Default Client user ready (existing credentials preserved if already present)`,
     );
 
     const q = await client.query(`SELECT id FROM users WHERE username = 'client' LIMIT 1;`);

@@ -49,6 +49,10 @@ function extractClientIp(req: Request): string {
   return raw.replace(/^::ffff:/i, "").trim() || "unknown";
 }
 
+// Precomputed bcrypt hash (cost 12) used for dummy password comparison when a user does not exist.
+// Guarantees constant-time login response (~100-200ms), eliminating username enumeration via timing attacks.
+const DUMMY_BCRYPT_HASH = "$2a$12$e8uq5/WwB0e49zN2N771q.kGqZ7zXvPzXq7f7eK6Z9C9K5G7D5O6i";
+
 const router = Router();
 
 router.post("/auth/admin/login", authLimiter, async (req, res) => {
@@ -81,6 +85,8 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       .limit(1);
 
     if (!user || user.role !== "admin") {
+      // Execute dummy bcrypt check to prevent timing-based username enumeration
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
       if (username) {
         const result = recordFailedLogin(username, clientIp);
         if (result.spikeDetected) {
@@ -94,7 +100,8 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const valid = password !== "admin123" && await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const valid = password !== "admin123" && isMatch;
     if (!valid) {
       const result = recordFailedLogin(username, clientIp);
       if (result.spikeDetected) {
@@ -269,6 +276,8 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       .limit(1);
 
     if (!user || user.role !== "client") {
+      // Execute dummy bcrypt check to prevent timing-based username enumeration
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
       if (username) {
         const result = recordFailedLogin(username, clientIp);
         if (result.spikeDetected) {
