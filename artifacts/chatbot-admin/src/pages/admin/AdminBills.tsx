@@ -1248,10 +1248,10 @@ export default function AdminBills() {
   };
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-4 sm:space-y-6 pb-16">
       {/* ── Top Header Banner ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-emerald-600/10 border border-white/10"
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 sm:p-8 text-white shadow-xl shadow-emerald-600/10 border border-white/10"
         style={{
           background: "linear-gradient(135deg, #091e2f 0%, #0c334d 50%, #065f46 100%)",
         }}
@@ -1259,23 +1259,23 @@ export default function AdminBills() {
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-56 h-56 bg-teal-400/15 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold">
               <Receipt className="w-3.5 h-3.5" />
               <span>{lang === "ar" ? "إدارة الفواتير والاشتراكات" : "Bills & Invoices Center"}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
               {lang === "ar" ? "الفواتير وسندات القبض" : "Billing & Invoices"}
             </h1>
-            <p className="text-emerald-100/80 text-sm leading-relaxed">
+            <p className="text-emerald-100/80 text-xs sm:text-sm leading-relaxed">
               {lang === "ar"
                 ? "كشف شامل لكافة فواتير الاشتراكات، شحن الرصيد، واستهلاك الحصص. يمكنك إرسال نسخة رسمية من أي فاتورة للعميل عبر البريد الإلكتروني أو الواتساب بنقرة واحدة."
                 : "Manage and inspect all subscription plan, top-up, and quota usage invoices. Send a copy of any invoice via Email or WhatsApp instantly."}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Global Send Copy Button */}
             <Button
               onClick={() => {
@@ -1288,60 +1288,62 @@ export default function AdminBills() {
                   });
                 }
               }}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs h-9 px-4 gap-2 shadow-lg shadow-emerald-500/25 rounded-xl transition-all"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs h-9 px-3.5 sm:px-4 gap-2 shadow-lg shadow-emerald-500/25 rounded-xl transition-all w-full sm:w-auto justify-center cursor-pointer"
             >
               <Send className="w-4 h-4" />
               <span>{lang === "ar" ? "إرسال نسخة من فاتورة" : "Send Invoice Copy"}</span>
             </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportToCSV}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm"
-              title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
-            >
-              <Download className="w-4 h-4 text-emerald-300" />
-              <span className="hidden sm:inline">{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
-            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToCSV}
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm flex-1 sm:flex-initial justify-center cursor-pointer"
+                title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
+              >
+                <Download className="w-4 h-4 text-emerald-300" />
+                <span>{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrint}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm"
-              title={lang === "ar" ? "طباعة الكشف" : "Print summary"}
-            >
-              <Printer className="w-4 h-4 text-teal-300" />
-              <span className="hidden sm:inline">{lang === "ar" ? "طباعة" : "Print"}</span>
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm flex-1 sm:flex-initial justify-center cursor-pointer"
+                title={lang === "ar" ? "طباعة الكشف" : "Print summary"}
+              >
+                <Printer className="w-4 h-4 text-teal-300" />
+                <span>{lang === "ar" ? "طباعة" : "Print"}</span>
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isRefetching}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isRefetching}
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 px-3 rounded-xl backdrop-blur-sm shrink-0 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── KPI Overview Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5 [direction:ltr]">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-              <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-3.5 [direction:ltr]">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+              <Receipt className="w-4 h-4 sm:w-6 sm:h-6 text-emerald-500" />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0" dir={lang === "ar" ? "rtl" : "ltr"}>
-              <p className="text-xs text-muted-foreground font-medium text-center truncate max-w-full">
+              <p className="text-[11px] sm:text-xs text-muted-foreground font-medium text-center truncate max-w-full">
                 {lang === "ar" ? "إجمالي الفواتير" : "Total Invoices"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.totalCount}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
+              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.totalCount}</h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
                 {lang === "ar" ? `${stats.paidCount} مسددة • ${stats.unpaidCount} غير مسددة` : `${stats.paidCount} Paid • ${stats.unpaidCount} Unpaid`}
               </p>
             </div>
@@ -1349,19 +1351,19 @@ export default function AdminBills() {
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5 [direction:ltr]">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-              <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-3.5 [direction:ltr]">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+              <DollarSign className="w-4 h-4 sm:w-6 sm:h-6 text-blue-500" />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0" dir={lang === "ar" ? "rtl" : "ltr"}>
-              <p className="text-xs text-muted-foreground font-medium text-center truncate max-w-full">
+              <p className="text-[11px] sm:text-xs text-muted-foreground font-medium text-center truncate max-w-full">
                 {lang === "ar" ? "القيمة الإجمالية" : "Total Value"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">
+              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">
                 ${stats.totalUsd.toLocaleString()}{" "}
-                <span className="text-xs font-semibold text-muted-foreground">USD</span>
+                <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground">USD</span>
               </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
                 ≈ {stats.totalLocal.toLocaleString()} {currencyInfo.symbol}
               </p>
             </div>
@@ -1369,16 +1371,16 @@ export default function AdminBills() {
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5 [direction:ltr]">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-violet-500" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-3.5 [direction:ltr]">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 sm:w-6 sm:h-6 text-violet-500" />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0" dir={lang === "ar" ? "rtl" : "ltr"}>
-              <p className="text-xs text-muted-foreground font-medium text-center truncate max-w-full">
+              <p className="text-[11px] sm:text-xs text-muted-foreground font-medium text-center truncate max-w-full">
                 {lang === "ar" ? "الشركات المسجلة" : "Companies"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.uniqueCompanies}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
+              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">{stats.uniqueCompanies}</h3>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
                 {lang === "ar" ? "شركات مسجلة بالفواتير" : "Companies with invoices"}
               </p>
             </div>
@@ -1386,18 +1388,18 @@ export default function AdminBills() {
         </Card>
 
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5 [direction:ltr]">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-              <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-2.5 sm:gap-3.5 [direction:ltr]">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Coins className="w-4 h-4 sm:w-6 sm:h-6 text-amber-500" />
             </div>
             <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0" dir={lang === "ar" ? "rtl" : "ltr"}>
-              <p className="text-xs text-muted-foreground font-medium text-center truncate max-w-full">
+              <p className="text-[11px] sm:text-xs text-muted-foreground font-medium text-center truncate max-w-full">
                 {lang === "ar" ? "الباقات والشحن" : "Plans & Top-ups"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">
+              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 text-center tabular-nums">
                 {stats.planCount + stats.topupCount}
               </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 text-center font-medium truncate max-w-full">
                 {lang === "ar" ? `${stats.planCount} باقة • ${stats.topupCount} شحن` : `${stats.planCount} plans • ${stats.topupCount} topups`}
               </p>
             </div>
@@ -1406,7 +1408,7 @@ export default function AdminBills() {
       </div>
 
       {/* ── Search & Filter Controls ── */}
-      <div className="flex flex-col gap-3 bg-card/60 backdrop-blur-sm border border-border/60 rounded-2xl p-4 shadow-sm">
+      <div className="flex flex-col gap-3 bg-card/60 backdrop-blur-sm border border-border/60 rounded-2xl p-3.5 sm:p-4 shadow-sm">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           <div className="flex-1 relative">
             <Search className="w-4 h-4 text-muted-foreground absolute right-3.5 rtl:right-3.5 ltr:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1423,13 +1425,13 @@ export default function AdminBills() {
           </div>
 
           {/* View Mode Toggle: Grouped by Company vs Flat Table */}
-          <div className="flex items-center rounded-xl bg-background border border-border/60 p-1 shrink-0 self-start md:self-auto">
+          <div className="w-full sm:w-auto grid grid-cols-2 sm:flex items-center rounded-xl bg-background border border-border/60 p-1 shrink-0">
             <Button
               type="button"
               variant={viewMode === "grouped" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("grouped")}
-              className={`h-8 px-3 text-xs gap-1.5 rounded-lg font-semibold transition-all ${
+              className={`h-8 px-3 text-xs gap-1.5 rounded-lg font-semibold transition-all justify-center ${
                 viewMode === "grouped"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -1443,7 +1445,7 @@ export default function AdminBills() {
               variant={viewMode === "flat" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("flat")}
-              className={`h-8 px-3 text-xs gap-1.5 rounded-lg font-semibold transition-all ${
+              className={`h-8 px-3 text-xs gap-1.5 rounded-lg font-semibold transition-all justify-center ${
                 viewMode === "flat"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -1459,7 +1461,7 @@ export default function AdminBills() {
         <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/40">
           {/* Company Filter */}
           <Select value={selectedCompanyFilter} onValueChange={setSelectedCompanyFilter}>
-            <SelectTrigger className="w-[180px] h-9 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-full sm:w-[170px] h-9 text-xs bg-background rounded-xl border-border/60">
               <Building2 className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
               <SelectValue placeholder={lang === "ar" ? "الشركة" : "Company"} />
             </SelectTrigger>
@@ -1475,7 +1477,7 @@ export default function AdminBills() {
 
           {/* Type Filter */}
           <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
-            <SelectTrigger className="w-[140px] h-9 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-[130px] h-9 text-xs bg-background rounded-xl border-border/60">
               <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder={lang === "ar" ? "نوع الفاتورة" : "Type"} />
             </SelectTrigger>
@@ -1489,7 +1491,7 @@ export default function AdminBills() {
 
           {/* State Filter (Active / Pending only) */}
           <Select value={stateFilter} onValueChange={(v: any) => setStateFilter(v)}>
-            <SelectTrigger className="w-[130px] h-9 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-[120px] h-9 text-xs bg-background rounded-xl border-border/60">
               <SelectValue placeholder={lang === "ar" ? "الحالة" : "State"} />
             </SelectTrigger>
             <SelectContent>
@@ -1501,7 +1503,7 @@ export default function AdminBills() {
 
           {/* Paid Filter (Paid / Unpaid) */}
           <Select value={paidFilter} onValueChange={(v: any) => setPaidFilter(v)}>
-            <SelectTrigger className="w-[130px] h-9 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-[120px] h-9 text-xs bg-background rounded-xl border-border/60">
               <SelectValue placeholder={lang === "ar" ? "السداد" : "Paid"} />
             </SelectTrigger>
             <SelectContent>
@@ -1513,7 +1515,7 @@ export default function AdminBills() {
 
           {/* Date Filter */}
           <Select value={dateFilter} onValueChange={setDateFilter}>
-            <SelectTrigger className="w-[160px] h-9 text-xs bg-background rounded-xl border-border/60">
+            <SelectTrigger className="w-[calc(50%-0.25rem)] sm:w-[150px] h-9 text-xs bg-background rounded-xl border-border/60">
               <CalendarRange className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
               <SelectValue placeholder={allDaysLabel} />
             </SelectTrigger>
@@ -1529,7 +1531,7 @@ export default function AdminBills() {
 
           {/* Currency Switcher */}
           <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-            <SelectTrigger className="w-[120px] h-9 text-xs bg-background rounded-xl border-border/60 font-semibold text-emerald-600 dark:text-emerald-400">
+            <SelectTrigger className="w-full sm:w-[110px] h-9 text-xs bg-background rounded-xl border-border/60 font-semibold text-emerald-600 dark:text-emerald-400">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1554,7 +1556,7 @@ export default function AdminBills() {
                 setDateFilter("all");
                 setSearchQuery("");
               }}
-              className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              className="w-full sm:w-auto h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground justify-center cursor-pointer"
             >
               {lang === "ar" ? "إعادة ضبط الفلاتر" : "Reset Filters"}
             </Button>
@@ -1781,11 +1783,11 @@ export default function AdminBills() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-8 h-8 p-0 rounded-xl text-muted-foreground hover:text-foreground"
+                          className="w-8 h-8 p-0 rounded-xl text-muted-foreground hover:text-foreground cursor-pointer"
                           title={isCollapsed ? (lang === "ar" ? "توسيع الفواتير" : "Expand") : (lang === "ar" ? "طي الفواتير" : "Collapse")}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleCompany(group.companyKey);
+                            toggleCompanyCollapse(group.companyKey);
                           }}
                         >
                           {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -1794,10 +1796,12 @@ export default function AdminBills() {
                     </div>
                   </div>
 
-                  {/* Company Invoices Table (Expanded) */}
+                  {/* Company Invoices (Expanded) */}
                   {!isCollapsed && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[700px] text-xs">
+                    <>
+                      {/* Desktop Table View (>= md) */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full min-w-[700px] text-xs">
                         <thead>
                           <tr className="border-b border-border/50 bg-muted/25 text-muted-foreground font-semibold">
                             <th className="p-3 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
@@ -2178,7 +2182,310 @@ export default function AdminBills() {
                         </tfoot>
                       </table>
                     </div>
-                  )}
+
+                    {/* Mobile Cards View (< md) */}
+                    <div className="block md:hidden divide-y divide-border/40 bg-background/50">
+                      {group.invoices.map((inv) => {
+                        const localPrice = convertPrice(inv.priceUsd);
+                        const invoiceEndDate = resolveInvoiceEndDate(inv);
+
+                        return (
+                          <div key={inv.id} className="p-3.5 space-y-3 hover:bg-muted/15 transition-colors">
+                            {/* Top Row: Invoice #, item type, state */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono text-xs font-bold text-foreground">#{inv.invoiceNumber}</span>
+                                {inv.itemType === "plan" && (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
+                                    {lang === "ar" ? "باقة" : "Plan"}
+                                  </Badge>
+                                )}
+                                {inv.itemType === "topup" && (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
+                                    {lang === "ar" ? "شحن" : "Topup"}
+                                  </Badge>
+                                )}
+                                {inv.itemType === "quota_usage" && (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                                    {lang === "ar" ? "حصة" : "Quota"}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="shrink-0">
+                                {inv.isVoided || inv.state === "voided" ? (
+                                  <Badge variant="outline" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1">
+                                    <Ban className="w-2.5 h-2.5" />
+                                    <span>{lang === "ar" ? "ملغاة" : "Voided"}</span>
+                                  </Badge>
+                                ) : inv.isPaused || inv.state === "paused" ? (
+                                  <Badge variant="outline" className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-semibold gap-1">
+                                    <Pause className="w-2.5 h-2.5" />
+                                    <span>{lang === "ar" ? "معلقة مؤقتاً" : "Paused"}</span>
+                                  </Badge>
+                                ) : inv.state === "active" ? (
+                                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>{lang === "ar" ? "نشطة" : "Active"}</span>
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-semibold gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    <span>{lang === "ar" ? "معلقة" : "Pending"}</span>
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Title & Cycle Details */}
+                            <div>
+                              <h4 className="font-bold text-sm text-foreground">
+                                {lang === "ar" ? inv.titleAr : inv.titleEn}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground mt-0.5">
+                                <span>{inv.billingCycleAr}</span>
+                                {inv.retentionDays && <span>• حفظ {inv.retentionDays} يوم</span>}
+                                {invoiceEndDate && (
+                                  <span className="text-blue-600 dark:text-blue-400 font-medium inline-flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5 shrink-0" />
+                                    <span>{lang === "ar" ? "ينتهي:" : "Exp:"} {invoiceEndDate}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Key Metrics: Amount, Tokens, Date */}
+                            <div className="grid grid-cols-2 gap-2 bg-muted/30 border border-border/50 rounded-xl p-2.5 text-xs">
+                              <div>
+                                <span className="text-[10px] text-muted-foreground block font-medium">
+                                  {lang === "ar" ? "المبلغ المستحق:" : "Amount:"}
+                                </span>
+                                {inv.isVoided || inv.state === "voided" ? (
+                                  <div>
+                                    <span className="line-through text-muted-foreground/60 text-xs font-mono">${inv.priceUsd} USD</span>
+                                    <span className="text-[10px] text-rose-500 font-bold block">{lang === "ar" ? "ملغاة ومخصومة" : "Voided"}</span>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                                      ${inv.priceUsd} USD
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground font-mono block">
+                                      ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="border-s border-border/50 ps-2.5">
+                                <span className="text-[10px] text-muted-foreground block font-medium">
+                                  {lang === "ar" ? "رصيد الرموز:" : "Tokens:"}
+                                </span>
+                                <div className="font-mono font-bold text-sm text-blue-500 mt-0.5">
+                                  {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground block mt-0.5">
+                                  📅 {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Action Row: Paid Switcher & Buttons */}
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePaid(inv)}
+                                disabled={togglingInvoice === inv.invoiceNumber}
+                                title={
+                                  inv.isPaid
+                                    ? (lang === "ar" ? "مسددة (انقر لإلغاء السداد)" : "Paid (Click to mark unpaid)")
+                                    : (lang === "ar" ? "غير مسددة (انقر للتحديد كمسددة)" : "Unpaid (Click to mark paid)")
+                                }
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none ${
+                                  inv.isPaid
+                                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                                    : "bg-muted/50 border-border/70 text-muted-foreground"
+                                }`}
+                              >
+                                <span
+                                  className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-all ${
+                                    inv.isPaid
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : "border-2 border-muted-foreground/40 bg-background"
+                                  }`}
+                                >
+                                  {inv.isPaid && <Check className="w-3 h-3 stroke-[3]" />}
+                                </span>
+                                <span className="text-[11px]">
+                                  {inv.isPaid ? (lang === "ar" ? "مسددة" : "Paid") : (lang === "ar" ? "غير مسددة" : "Unpaid")}
+                                </span>
+                              </button>
+
+                              <div className="flex items-center gap-1.5">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleOpenSendCopy(inv)}
+                                  title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-2.5 gap-1 shadow-sm rounded-lg cursor-pointer"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>{lang === "ar" ? "إرسال" : "Send"}</span>
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setViewingInvoice(inv);
+                                    setViewInvoiceModalOpen(true);
+                                  }}
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                                  title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </Button>
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg cursor-pointer"
+                                      title={lang === "ar" ? "المزيد من الإجراءات" : "More Actions"}
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                      <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-xl border border-border/80">
+                                    <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1.5">
+                                      <span className="font-mono font-bold text-foreground">#{inv.invoiceNumber}</span>
+                                      <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                        {inv.companyName}
+                                      </span>
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setViewingInvoice(inv);
+                                        setViewInvoiceModalOpen(true);
+                                      }}
+                                      className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                    >
+                                      <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
+                                      <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenSendCopy(inv)}
+                                      className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                    >
+                                      <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                                      <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleCopySummary(inv)}
+                                      className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                    >
+                                      {copiedId === inv.id ? (
+                                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                      ) : (
+                                        <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                                      )}
+                                      <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleDownloadInvoiceCard(inv)}
+                                      className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                                    >
+                                      <Download className="w-4 h-4 text-blue-500 shrink-0" />
+                                      <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleTogglePaid(inv)}
+                                      disabled={togglingInvoice === inv.invoiceNumber}
+                                      className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                                    >
+                                      {inv.isPaid ? (
+                                        <>
+                                          <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                                          <span>{lang === "ar" ? "تحديد كـ غير مسددة" : "Mark as Unpaid"}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                          <span>{lang === "ar" ? "تأكيد السداد (مسددة)" : "Mark as Paid"}</span>
+                                        </>
+                                      )}
+                                    </DropdownMenuItem>
+                                    {!inv.isVoided && inv.state !== "voided" && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        {inv.isPaused || inv.state === "paused" ? (
+                                          <DropdownMenuItem
+                                            onClick={() => handleOpenResumeDialog(inv)}
+                                            className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-600 focus:bg-emerald-500/10"
+                                          >
+                                            <Play className="w-4 h-4 text-emerald-500 fill-current shrink-0" />
+                                            <span>{lang === "ar" ? "استئناف العملية والرموز" : "Resume Transaction"}</span>
+                                          </DropdownMenuItem>
+                                        ) : (
+                                          <DropdownMenuItem
+                                            onClick={() => handleOpenPauseDialog(inv)}
+                                            className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-blue-600 dark:text-blue-400 focus:text-blue-600 focus:bg-blue-500/10"
+                                          >
+                                            <Pause className="w-4 h-4 text-blue-500 shrink-0" />
+                                            <span>{lang === "ar" ? "إيقاف مؤقت وتجميد الرموز" : "Pause & Freeze Tokens"}</span>
+                                          </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem
+                                          onClick={() => handleOpenVoidDialog(inv)}
+                                          className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10"
+                                        >
+                                          <Ban className="w-4 h-4 text-amber-500 shrink-0" />
+                                          <span>{lang === "ar" ? "إلغاء حجز العملية وخصم الرموز" : "Cancel Booking & Void"}</span>
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenDeleteDialog(inv)}
+                                      className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+                                      <span>{lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Mobile Company Summary Box */}
+                      <div className="p-3 bg-muted/40 text-xs flex flex-col gap-1.5 font-medium border-t border-border/50">
+                        <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                          <span>{lang === "ar" ? "إجمالي فواتير الشركة:" : "Total invoices:"}</span>
+                          <span className="font-bold text-foreground">{group.totalInvoices}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                          <span>{lang === "ar" ? "إجمالي الرموز:" : "Total Tokens:"}</span>
+                          <span className="font-mono font-bold text-blue-500">{group.totalTokens > 0 ? group.totalTokens.toLocaleString() : "—"}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                          <span>{lang === "ar" ? "المجموع الكلي:" : "Total Amount:"}</span>
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            ${group.totalUsd.toLocaleString()} USD (~ {groupLocalTotal.toLocaleString()} {currencyInfo.symbol})
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                          <span>{lang === "ar" ? "حالة السداد:" : "Payment status:"}</span>
+                          <span className="font-bold text-foreground">{group.paidCount}/{group.totalInvoices} {lang === "ar" ? "مسددة" : "Paid"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
                 </Card>
               );
             })
@@ -2187,7 +2494,8 @@ export default function AdminBills() {
       ) : (
         /* ── FLAT TABLE VIEW (ALTERNATIVE VIEW) ── */
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden rounded-2xl">
-          <div className="overflow-x-auto">
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[750px] text-xs">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-semibold">
@@ -2543,6 +2851,323 @@ export default function AdminBills() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Flat Cards View (< md) */}
+          <div className="block md:hidden">
+            {isLoading ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
+                <span className="text-xs">{lang === "ar" ? "جاري تحميل الفواتير..." : "Loading invoices..."}</span>
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="font-semibold text-xs">{lang === "ar" ? "لا توجد فواتير مطابقة للبحث" : "No invoices found"}</p>
+                <p className="text-[11px] text-muted-foreground/80 mt-1">
+                  {lang === "ar" ? "جرّب تغيير فلاتر البحث أو حدد فترة أخرى." : "Try adjusting your search filters."}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/40 bg-background/50">
+                {filteredInvoices.map((inv) => {
+                  const localPrice = convertPrice(inv.priceUsd);
+                  const invoiceEndDate = resolveInvoiceEndDate(inv);
+
+                  return (
+                    <div key={inv.id} className="p-3.5 space-y-3 hover:bg-muted/15 transition-colors">
+                      {/* Row 1: Invoice # + type badge + state */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-foreground">#{inv.invoiceNumber}</span>
+                          {inv.itemType === "plan" && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
+                              {lang === "ar" ? "باقة" : "Plan"}
+                            </Badge>
+                          )}
+                          {inv.itemType === "topup" && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
+                              {lang === "ar" ? "شحن" : "Topup"}
+                            </Badge>
+                          )}
+                          {inv.itemType === "quota_usage" && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                              {lang === "ar" ? "حصة" : "Quota"}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="shrink-0">
+                          {inv.isVoided || inv.state === "voided" ? (
+                            <Badge variant="outline" className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1">
+                              <Ban className="w-2.5 h-2.5" />
+                              <span>{lang === "ar" ? "ملغاة" : "Voided"}</span>
+                            </Badge>
+                          ) : inv.isPaused || inv.state === "paused" ? (
+                            <Badge variant="outline" className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-semibold gap-1">
+                              <Pause className="w-2.5 h-2.5" />
+                              <span>{lang === "ar" ? "معلقة مؤقتاً" : "Paused"}</span>
+                            </Badge>
+                          ) : inv.state === "active" ? (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>{lang === "ar" ? "نشطة" : "Active"}</span>
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-semibold gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              <span>{lang === "ar" ? "معلقة" : "Pending"}</span>
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 2: Company & Client Name */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <span className="font-bold text-foreground flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          {inv.companyName}
+                        </span>
+                        {inv.clientName && (
+                          <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                            <User className="w-3 h-3 text-muted-foreground/70 shrink-0" />
+                            {inv.clientName}
+                          </span>
+                        )}
+                        {inv.clientPhone && (
+                          <span className="text-muted-foreground font-mono text-[11px] flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3 text-emerald-500/70 shrink-0" />
+                            {inv.clientPhone}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Row 3: Title & Cycle Details */}
+                      <div>
+                        <h4 className="font-bold text-sm text-foreground">
+                          {lang === "ar" ? inv.titleAr : inv.titleEn}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground mt-0.5">
+                          <span>{inv.billingCycleAr}</span>
+                          {inv.retentionDays && <span>• حفظ {inv.retentionDays} يوم</span>}
+                          {invoiceEndDate && (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium inline-flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                              <span>{lang === "ar" ? "ينتهي:" : "Exp:"} {invoiceEndDate}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Row 4: Key Metrics: Amount, Tokens, Date */}
+                      <div className="grid grid-cols-2 gap-2 bg-muted/30 border border-border/50 rounded-xl p-2.5 text-xs">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block font-medium">
+                            {lang === "ar" ? "المبلغ المستحق:" : "Amount:"}
+                          </span>
+                          {inv.isVoided || inv.state === "voided" ? (
+                            <div>
+                              <span className="line-through text-muted-foreground/60 text-xs font-mono">${inv.priceUsd} USD</span>
+                              <span className="text-[10px] text-rose-500 font-bold block">{lang === "ar" ? "ملغاة ومخصومة" : "Voided"}</span>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                                ${inv.priceUsd} USD
+                              </div>
+                              <span className="text-[10px] text-muted-foreground font-mono block">
+                                ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-s border-border/50 ps-2.5">
+                          <span className="text-[10px] text-muted-foreground block font-medium">
+                            {lang === "ar" ? "رصيد الرموز:" : "Tokens:"}
+                          </span>
+                          <div className="font-mono font-bold text-sm text-blue-500 mt-0.5">
+                            {inv.tokenQuota ? inv.tokenQuota.toLocaleString() : "—"}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground block mt-0.5">
+                            📅 {new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Row 5: Action Row: Paid Switcher & Buttons */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePaid(inv)}
+                          disabled={togglingInvoice === inv.invoiceNumber}
+                          title={
+                            inv.isPaid
+                              ? (lang === "ar" ? "مسددة (انقر لإلغاء السداد)" : "Paid (Click to mark unpaid)")
+                              : (lang === "ar" ? "غير مسددة (انقر للتحديد كمسددة)" : "Unpaid (Click to mark paid)")
+                          }
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none ${
+                            inv.isPaid
+                              ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                              : "bg-muted/50 border-border/70 text-muted-foreground"
+                          }`}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-[4px] flex items-center justify-center transition-all ${
+                              inv.isPaid
+                                ? "bg-emerald-600 text-white shadow-xs"
+                                : "border-2 border-muted-foreground/40 bg-background"
+                            }`}
+                          >
+                            {inv.isPaid && <Check className="w-3 h-3 stroke-[3]" />}
+                          </span>
+                          <span className="text-[11px]">
+                            {inv.isPaid ? (lang === "ar" ? "مسددة" : "Paid") : (lang === "ar" ? "غير مسددة" : "Unpaid")}
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenSendCopy(inv)}
+                            title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-2.5 gap-1 shadow-sm rounded-lg cursor-pointer"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>{lang === "ar" ? "إرسال" : "Send"}</span>
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setViewingInvoice(inv);
+                              setViewInvoiceModalOpen(true);
+                            }}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                            title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg cursor-pointer"
+                                title={lang === "ar" ? "المزيد من الإجراءات" : "More Actions"}
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                                <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-xl border border-border/80">
+                              <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1.5">
+                                <span className="font-mono font-bold text-foreground">#{inv.invoiceNumber}</span>
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                  {inv.companyName}
+                                </span>
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setViewingInvoice(inv);
+                                  setViewInvoiceModalOpen(true);
+                                }}
+                                className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              >
+                                <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenSendCopy(inv)}
+                                className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              >
+                                <Mail className="w-4 h-4 text-amber-500 shrink-0" />
+                                <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleCopySummary(inv)}
+                                className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              >
+                                {copiedId === inv.id ? (
+                                  <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                ) : (
+                                  <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                                )}
+                                <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDownloadInvoiceCard(inv)}
+                                className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              >
+                                <Download className="w-4 h-4 text-blue-500 shrink-0" />
+                                <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleTogglePaid(inv)}
+                                disabled={togglingInvoice === inv.invoiceNumber}
+                                className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
+                              >
+                                {inv.isPaid ? (
+                                  <>
+                                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                                    <span>{lang === "ar" ? "تحديد كـ غير مسددة" : "Mark as Unpaid"}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span>{lang === "ar" ? "تأكيد السداد (مسددة)" : "Mark as Paid"}</span>
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              {!inv.isVoided && inv.state !== "voided" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  {inv.isPaused || inv.state === "paused" ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenResumeDialog(inv)}
+                                      className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-600 focus:bg-emerald-500/10"
+                                    >
+                                      <Play className="w-4 h-4 text-emerald-500 fill-current shrink-0" />
+                                      <span>{lang === "ar" ? "استئناف العملية والرموز" : "Resume Transaction"}</span>
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() => handleOpenPauseDialog(inv)}
+                                      className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-blue-600 dark:text-blue-400 focus:text-blue-600 focus:bg-blue-500/10"
+                                    >
+                                      <Pause className="w-4 h-4 text-blue-500 shrink-0" />
+                                      <span>{lang === "ar" ? "إيقاف مؤقت وتجميد الرموز" : "Pause & Freeze Tokens"}</span>
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenVoidDialog(inv)}
+                                    className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10"
+                                  >
+                                    <Ban className="w-4 h-4 text-amber-500 shrink-0" />
+                                    <span>{lang === "ar" ? "إلغاء حجز العملية وخصم الرموز" : "Cancel Booking & Void"}</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleOpenDeleteDialog(inv)}
+                                className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
+                              >
+                                <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
+                                <span>{lang === "ar" ? "حذف الفاتورة نهائياً" : "Delete Invoice"}</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </Card>
       )}
