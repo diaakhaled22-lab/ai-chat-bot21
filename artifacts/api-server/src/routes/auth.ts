@@ -20,6 +20,8 @@ import {
   regenerateSession,
   getTotpSecret,
   isTotpSecretUnavailable,
+  isTotpCodeUsed,
+  markTotpCodeUsed,
 } from "../lib/security";
 import { authenticator } from "otplib";
 
@@ -31,7 +33,15 @@ declare module "express-session" {
   }
 }
 
-export const temp2faTokens = new Map<string, { userId: number; name: string; expiresAt: number }>();
+export interface Temp2FaSession {
+  userId: number;
+  username: string;
+  name: string;
+  expiresAt: number;
+  attempts: number;
+}
+
+export const temp2faTokens = new Map<string, Temp2FaSession>();
 
 function extractClientIp(req: Request): string {
   const raw = req.ip || req.socket.remoteAddress || "unknown";
@@ -105,9 +115,15 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
 
     const totpSecret = getTotpSecret(user.id);
     if (totpSecret) {
-      // Create a temporary token
+      // Create a temporary token scoped to user with attempt limits
       const tempToken = crypto.randomBytes(32).toString("hex");
-      temp2faTokens.set(tempToken, { userId: user.id, name: user.name, expiresAt: Date.now() + 5 * 60 * 1000 });
+      temp2faTokens.set(tempToken, {
+        userId: user.id,
+        username: user.username,
+        name: user.name,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        attempts: 0,
+      });
       res.json({ requires2FA: true, tempToken });
       return;
     }
@@ -153,19 +169,55 @@ router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
       return;
     }
 
+    const clientIp = extractClientIp(req);
+
+    // 1. Check account lockout before verifying code
+    const lockSeconds = isAccountLocked(tokenData.username, clientIp);
+    if (lockSeconds > 0) {
+      temp2faTokens.delete(tempToken);
+      recordBlockedLoginAttempt(tokenData.username, clientIp);
+      res.status(429).json({ error: `Account locked due to too many failed attempts. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      return;
+    }
+
     const secret = getTotpSecret(tokenData.userId);
     if (!secret) {
+      temp2faTokens.delete(tempToken);
       res.status(400).json({ error: "2FA is not enabled for this user" });
       return;
     }
 
-    const isValid = authenticator.verify({ token: code, secret });
-    if (!isValid) {
-      res.status(401).json({ error: "Invalid verification code" });
+    const cleanCode = code.trim();
+
+    // 2. Prevent replay attacks: check if this code was already used
+    if (isTotpCodeUsed(tokenData.userId, cleanCode)) {
+      res.status(401).json({ error: "This verification code has already been used. Please wait for the next code." });
       return;
     }
 
+    const isValid = authenticator.verify({ token: cleanCode, secret });
+    if (!isValid) {
+      tokenData.attempts = (tokenData.attempts || 0) + 1;
+      const failedResult = recordFailedLogin(tokenData.username, clientIp);
+
+      // Invalidate tempToken after 3 failed attempts or if account gets locked
+      if (tokenData.attempts >= 3 || failedResult.accountLocked) {
+        temp2faTokens.delete(tempToken);
+        res.status(401).json({ error: "Too many failed 2FA verification attempts. Session invalidated. Please log in again." });
+        return;
+      }
+
+      const remainingAttempts = 3 - tokenData.attempts;
+      res.status(401).json({
+        error: `Invalid verification code. ${remainingAttempts} attempt${remainingAttempts > 1 ? "s" : ""} remaining.`,
+      });
+      return;
+    }
+
+    // Mark code as used to prevent replay
+    markTotpCodeUsed(tokenData.userId, cleanCode);
     temp2faTokens.delete(tempToken);
+    resetLoginAttempts(tokenData.username, clientIp);
 
     await regenerateSession(req);
 
@@ -877,6 +929,59 @@ router.get("/auth/me", async (req, res) => {
           resendApiKey = comp.resendApiKey;
         }
       }
+    }
+
+    // Global fallbacks for notification email and resend api key (e.g. for admin or shared config)
+    if (!notificationEmail) {
+      try {
+        const [compWithEmail] = await db
+          .select({ notificationEmail: companiesTable.notificationEmail })
+          .from(companiesTable)
+          .where(and(sql`${companiesTable.notificationEmail} IS NOT NULL`, sql`${companiesTable.notificationEmail} != ''`))
+          .limit(1);
+        if (compWithEmail?.notificationEmail?.trim()) {
+          notificationEmail = compWithEmail.notificationEmail.trim();
+        }
+      } catch {}
+    }
+
+    if (!notificationEmail) {
+      try {
+        const [uWithEmail] = await db
+          .select({ notificationEmail: usersTable.notificationEmail })
+          .from(usersTable)
+          .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
+          .limit(1);
+        if (uWithEmail?.notificationEmail?.trim()) {
+          notificationEmail = uWithEmail.notificationEmail.trim();
+        }
+      } catch {}
+    }
+
+    if (!resendApiKey) {
+      try {
+        const [compWithKey] = await db
+          .select({ resendApiKey: companiesTable.resendApiKey })
+          .from(companiesTable)
+          .where(and(sql`${companiesTable.resendApiKey} IS NOT NULL`, sql`${companiesTable.resendApiKey} != ''`))
+          .limit(1);
+        if (compWithKey?.resendApiKey?.trim()) {
+          resendApiKey = compWithKey.resendApiKey.trim();
+        }
+      } catch {}
+    }
+
+    if (!resendApiKey) {
+      try {
+        const [uWithKey] = await db
+          .select({ resendApiKey: usersTable.resendApiKey })
+          .from(usersTable)
+          .where(and(sql`${usersTable.resendApiKey} IS NOT NULL`, sql`${usersTable.resendApiKey} != ''`))
+          .limit(1);
+        if (uWithKey?.resendApiKey?.trim()) {
+          resendApiKey = uWithKey.resendApiKey.trim();
+        }
+      } catch {}
     }
 
     res.json({

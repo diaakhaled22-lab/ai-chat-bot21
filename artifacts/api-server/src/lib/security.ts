@@ -439,6 +439,34 @@ export function removeTotpSecret(userId: number): void {
   void saveTotpSecretsToDb();
 }
 
+// ── TOTP Replay Prevention ──────────────────────────────────────────────
+const usedTotpCodes = new Map<string, number>();
+
+export function isTotpCodeUsed(userId: number, code: string): boolean {
+  const key = `${userId}:${code.trim()}`;
+  const expiry = usedTotpCodes.get(key);
+  if (!expiry) return false;
+  if (Date.now() > expiry) {
+    usedTotpCodes.delete(key);
+    return false;
+  }
+  return true;
+}
+
+export function markTotpCodeUsed(userId: number, code: string): void {
+  const key = `${userId}:${code.trim()}`;
+  // Keep in used cache for 90 seconds (covers current 30s step + +/- 1 window drift)
+  usedTotpCodes.set(key, Date.now() + 90 * 1000);
+}
+
+// Clean up expired used codes every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, expiry] of usedTotpCodes) {
+    if (now >= expiry) usedTotpCodes.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 const WARNING_LOGIN_ATTEMPTS = 3;
 const MAX_LOGIN_ATTEMPTS = 5;
 const FAILURE_WINDOW_MS = 5 * 60 * 1000;

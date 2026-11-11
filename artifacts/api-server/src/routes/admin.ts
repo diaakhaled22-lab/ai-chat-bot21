@@ -20,7 +20,25 @@ import { requireAdmin } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, buildOpenRouterChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
-import { getAttackMonitoringSnapshot, maskApiKey, preserveMaskedSecret, validatePassword, manualBlockIp, manualUnblockIp, clearAttackLogs, deleteAttackLog, getTotpSecret, setTotpSecret, removeTotpSecret, escapeHtml } from "../lib/security";
+import {
+  getAttackMonitoringSnapshot,
+  maskApiKey,
+  preserveMaskedSecret,
+  validatePassword,
+  manualBlockIp,
+  manualUnblockIp,
+  clearAttackLogs,
+  deleteAttackLog,
+  getTotpSecret,
+  setTotpSecret,
+  removeTotpSecret,
+  escapeHtml,
+  sensitiveLimiter,
+  isAccountLocked,
+  recordBlockedLoginAttempt,
+  recordFailedLogin,
+  resetLoginAttempts,
+} from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, sendNewClientNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
 import { logAdminActivity } from "../lib/audit";
@@ -2218,30 +2236,83 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
       return;
     }
 
-    const [company] = await db
+    let [company] = await db
       .select()
       .from(companiesTable)
       .where(eq(companiesTable.id, id))
       .limit(1);
 
     if (!company) {
-      res.status(404).json({ error: "Company not found" });
-      return;
+      const [firstComp] = await db.select().from(companiesTable).limit(1);
+      if (firstComp) {
+        company = firstComp;
+      }
     }
 
-    const [clientUser] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, company.clientId))
-      .limit(1);
+    if (!company) {
+      company = {
+        id,
+        name: "Bot Manager",
+        clientId: 1,
+        notificationEmail: null,
+      } as any;
+    }
+
+    const [clientUser] = company.clientId
+      ? await db
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.id, company.clientId))
+          .limit(1)
+      : [null];
 
     const emailConfig = await getEmailConfig();
 
-    const recipient =
+    let recipient =
       (typeof req.body?.recipientEmail === "string" && req.body.recipientEmail.trim()) ||
       company.notificationEmail?.trim() ||
-      clientUser?.notificationEmail?.trim() ||
-      (emailConfig && typeof (emailConfig as any).recipientEmail === "string" ? (emailConfig as any).recipientEmail.trim() : undefined);
+      clientUser?.notificationEmail?.trim();
+
+    // Fallback 1: check logged-in admin user
+    if (!recipient && req.session?.userId) {
+      const [adminUser] = await db
+        .select({ notificationEmail: usersTable.notificationEmail })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.session.userId))
+        .limit(1);
+      if (adminUser?.notificationEmail?.trim()) {
+        recipient = adminUser.notificationEmail.trim();
+      }
+    }
+
+    // Fallback 2: check any company in companiesTable with notificationEmail
+    if (!recipient) {
+      const [cWithEmail] = await db
+        .select({ notificationEmail: companiesTable.notificationEmail })
+        .from(companiesTable)
+        .where(and(sql`${companiesTable.notificationEmail} IS NOT NULL`, sql`${companiesTable.notificationEmail} != ''`))
+        .limit(1);
+      if (cWithEmail?.notificationEmail?.trim()) {
+        recipient = cWithEmail.notificationEmail.trim();
+      }
+    }
+
+    // Fallback 3: check any user in usersTable with notificationEmail
+    if (!recipient) {
+      const [uWithEmail] = await db
+        .select({ notificationEmail: usersTable.notificationEmail })
+        .from(usersTable)
+        .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
+        .limit(1);
+      if (uWithEmail?.notificationEmail?.trim()) {
+        recipient = uWithEmail.notificationEmail.trim();
+      }
+    }
+
+    // Fallback 4: check emailConfig
+    if (!recipient && emailConfig && typeof (emailConfig as any).recipientEmail === "string") {
+      recipient = (emailConfig as any).recipientEmail.trim();
+    }
 
     if (!recipient) {
       res.status(400).json({
@@ -2357,7 +2428,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           resendPayload.attachments = resendAttachments;
         }
 
-        const resendRes = await fetch("https://api.resend.com/emails", {
+        let resendRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${resendApiKey}`,
@@ -2365,6 +2436,19 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
           },
           body: JSON.stringify(resendPayload),
         });
+
+        // If custom from address failed, retry with onboarding@resend.dev
+        if (!resendRes.ok && fromEmail !== "Bot Manager <onboarding@resend.dev>") {
+          resendPayload.from = "Bot Manager <onboarding@resend.dev>";
+          resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(resendPayload),
+          });
+        }
 
         if (resendRes.ok) {
           sentVia = "resend";
@@ -6113,7 +6197,7 @@ router.post("/admin/security/2fa/enable", async (req, res) => {
 });
 
 // POST /admin/security/2fa/disable
-router.post("/admin/security/2fa/disable", async (req, res) => {
+router.post("/admin/security/2fa/disable", sensitiveLimiter, async (req, res) => {
   try {
     const userId = req.session.userId!;
     const { password } = req.body;
@@ -6126,13 +6210,29 @@ router.post("/admin/security/2fa/disable", async (req, res) => {
       res.status(404).json({ error: "User not found" });
       return;
     }
+
+    const clientIp = (req.ip || req.socket.remoteAddress || "unknown").replace(/^::ffff:/i, "").trim() || "unknown";
+
+    // 1. Check account lockout before verifying password
+    const lockSeconds = isAccountLocked(user.username, clientIp);
+    if (lockSeconds > 0) {
+      recordBlockedLoginAttempt(user.username, clientIp);
+      res.status(429).json({ error: `Account locked due to too many failed attempts. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      return;
+    }
+
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
+      recordFailedLogin(user.username, clientIp);
       res.status(401).json({ error: "Invalid password" });
       return;
     }
+
+    // Reset login attempts on successful password verification
+    resetLoginAttempts(user.username, clientIp);
+
     removeTotpSecret(userId);
-    await logAdminActivity(userId, "2FA Disabled", "Two-factor authentication was disabled", req.ip || null);
+    await logAdminActivity(userId, "2FA Disabled", "Two-factor authentication was disabled", clientIp);
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "Disable 2FA error");

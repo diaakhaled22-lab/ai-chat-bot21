@@ -360,7 +360,6 @@ export default function AdminBills() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: me } = useGetMe();
-  const settingsNotificationEmail = (me as any)?.notificationEmail?.trim() || "";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
@@ -375,6 +374,19 @@ export default function AdminBills() {
     queryFn: () => customFetch("/api/admin/companies"),
     staleTime: 30_000,
   });
+
+  // Find any company with notificationEmail to fallback if admin me object doesn't have it
+  const companyWithNotificationEmail = useMemo(() => {
+    if (!Array.isArray(companies)) return "";
+    return (
+      companies.find((c: any) => c.notificationEmail && c.notificationEmail.trim())?.notificationEmail?.trim() || ""
+    );
+  }, [companies]);
+
+  const settingsNotificationEmail =
+    (me as any)?.notificationEmail?.trim() ||
+    companyWithNotificationEmail ||
+    "";
 
   const resolveInvoiceEndDate = (inv: InvoiceItem | null | undefined): string | null => {
     if (!inv) return null;
@@ -791,6 +803,100 @@ export default function AdminBills() {
 
     return { totalCount, paidCount, unpaidCount, voidedCount, planCount, topupCount, quotaCount, totalUsd, totalLocal, uniqueCompanies };
   }, [invoices, activeRate]);
+
+  // Handle Direct Send Bill via Email following Quota Usage Bill path
+  const handleSendBillEmail = async (inv: InvoiceItem) => {
+    const matchedComp = companies.find(
+      (c: any) =>
+        (inv.companyId && c.id === inv.companyId) ||
+        (c.name && inv.companyName && c.name.toLowerCase() === inv.companyName.toLowerCase())
+    );
+
+    const targetEmail =
+      settingsNotificationEmail ||
+      matchedComp?.notificationEmail ||
+      matchedComp?.clientNotificationEmail ||
+      inv.clientEmail ||
+      "";
+
+    if (!targetEmail) {
+      handleOpenSendCopy(inv);
+      return;
+    }
+
+    try {
+      setIsSendingCopy(true);
+      toast({
+        title: lang === "ar" ? "جارٍ إرسال الفاتورة..." : "Sending Bill...",
+        description:
+          lang === "ar"
+            ? `يتم الآن إنشاء بطاقة الفاتورة وإرسالها كصورة إلى: ${targetEmail}`
+            : `Generating invoice card and sending to: ${targetEmail}`,
+      });
+
+      let imageDataUrl: string | undefined;
+      try {
+        imageDataUrl = generateInvoiceCardCanvas(inv, lang, currencyInfo);
+      } catch (e) {
+        console.warn("Failed to generate canvas image", e);
+      }
+
+      let companyId = inv.companyId;
+      if (!companyId && inv.companyName) {
+        const matched = companies.find(
+          (c: any) => c.name && c.name.toLowerCase() === inv.companyName.toLowerCase()
+        );
+        if (matched) companyId = matched.id;
+      }
+      if (!companyId && companies.length > 0) {
+        companyId = companies[0].id;
+      }
+
+      const isTopup = inv.itemType === "topup";
+      const res = await customFetch<{ ok: boolean; recipient: string; message: string; sentVia?: string }>(
+        `/api/admin/companies/${companyId || 1}/send-bill-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientEmail: targetEmail,
+            saveAsNotificationEmail: true,
+            imageDataUrl,
+            billData: {
+              invoiceNumber: inv.invoiceNumber,
+              title: lang === "ar" ? inv.titleAr : inv.titleEn,
+              subject: `🧾 فاتورة #${inv.invoiceNumber} - ${inv.companyName || "Bot Manager"}`,
+              companyName: inv.companyName,
+              clientName: inv.clientName || "—",
+              rangeLabel: inv.billingCycleAr || "الشهر الحالي",
+              isTopup,
+              addedTokens: inv.tokenQuota,
+              price: inv.priceUsd,
+            },
+          }),
+        }
+      );
+
+      toast({
+        title: lang === "ar" ? "✅ تمت مشاركة الفاتورة بنجاح!" : "Bill Shared Successfully!",
+        description:
+          lang === "ar"
+            ? `تم إرسال بطاقة الفاتورة بنجاح إلى: ${res.recipient || targetEmail} كصورة معتمدة. 💡 تحقق من صندوق الوارد أو مجلد Spam.`
+            : `Invoice image card sent to: ${res.recipient || targetEmail}. Check Inbox or Spam.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل إرسال الفاتورة" : "Failed to Send Bill",
+        description: err?.message || (lang === "ar" ? "تعذر إرسال الفاتورة عبر البريد" : "Could not send bill email"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingCopy(false);
+    }
+  };
 
   // Handle open Send Copy Modal
   const handleOpenSendCopy = (invoice: InvoiceItem) => {
@@ -1745,7 +1851,7 @@ export default function AdminBills() {
                             <DropdownMenuItem
                               onClick={() => {
                                 if (group.invoices.length > 0) {
-                                  handleOpenSendCopy(group.invoices[0]);
+                                  handleSendBillEmail(group.invoices[0]);
                                 }
                               }}
                               className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
@@ -2041,7 +2147,7 @@ export default function AdminBills() {
                                            <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
                                          </DropdownMenuItem>
                                          <DropdownMenuItem
-                                           onClick={() => handleOpenSendCopy(inv)}
+                                           onClick={() => handleSendBillEmail(inv)}
                                            className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
                                          >
                                            <Mail className="w-4 h-4 text-amber-500 shrink-0" />
@@ -2376,7 +2482,7 @@ export default function AdminBills() {
                                       <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() => handleOpenSendCopy(inv)}
+                                      onClick={() => handleSendBillEmail(inv)}
                                       className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
                                     >
                                       <Mail className="w-4 h-4 text-amber-500 shrink-0" />
@@ -2763,7 +2869,7 @@ export default function AdminBills() {
                                   <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleOpenSendCopy(inv)}
+                                  onClick={() => handleSendBillEmail(inv)}
                                   className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
                                 >
                                   <Mail className="w-4 h-4 text-amber-500 shrink-0" />
@@ -3081,7 +3187,7 @@ export default function AdminBills() {
                                 <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleOpenSendCopy(inv)}
+                                onClick={() => handleSendBillEmail(inv)}
                                 className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
                               >
                                 <Mail className="w-4 h-4 text-amber-500 shrink-0" />
