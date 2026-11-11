@@ -81,8 +81,8 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
-!artifacts/api-server/dist/
-!artifacts/chatbot-admin/dist/
+dist/
+**/dist/
 .output
 
 # Gatsby files
@@ -93,8 +93,6 @@ dist
 
 # vuepress build output
 .vuepress/dist
-!artifacts/api-server/dist/
-!artifacts/chatbot-admin/dist/
 
 # vuepress v2.x temp directory
 .temp
@@ -104,8 +102,6 @@ dist
 
 # vitepress build output
 **/.vitepress/dist
-!artifacts/api-server/dist/
-!artifacts/chatbot-admin/dist/
 
 # vitepress cache directory
 **/.vitepress/cache
@@ -152,3 +148,13 @@ vite.config.ts.timestamp-*
 zipFile.zip
 .agents/
 powershell.cmd
+
+# Ad-hoc / scratch debugging and test scripts
+test-*.ts
+test-*.js
+test-*.cjs
+test-*.mjs
+test_*.ts
+test_*.js
+test_*.cjs
+test_*.mjs
