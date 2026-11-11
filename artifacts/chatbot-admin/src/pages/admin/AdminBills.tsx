@@ -1797,7 +1797,7 @@ export default function AdminBills() {
                   {/* Company Invoices Table (Expanded) */}
                   {!isCollapsed && (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full min-w-[700px] text-xs">
                         <thead>
                           <tr className="border-b border-border/50 bg-muted/25 text-muted-foreground font-semibold">
                             <th className="p-3 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
@@ -2188,7 +2188,7 @@ export default function AdminBills() {
         /* ── FLAT TABLE VIEW (ALTERNATIVE VIEW) ── */
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden rounded-2xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[750px] text-xs">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/40 text-muted-foreground font-semibold">
                   <th className="p-3.5 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
@@ -2551,13 +2551,16 @@ export default function AdminBills() {
       {/* ── MODAL: SEND INVOICE COPY (إرسال نسخة من الفاتورة) ── */}
       {/* ───────────────────────────────────────────────────────────────── */}
       <Dialog open={sendCopyModalOpen} onOpenChange={setSendCopyModalOpen}>
-        <DialogContent className="max-w-lg w-[95vw] rounded-2xl p-6">
+        <DialogContent
+          className="max-w-lg w-[calc(100vw-1.5rem)] sm:w-[92vw] sm:max-w-lg rounded-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        >
           <DialogHeader className="border-b border-border/50 pb-4">
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
-              <Send className="w-5 h-5 text-emerald-500" />
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold text-foreground">
+              <Send className="w-5 h-5 text-emerald-500 shrink-0" />
               <span>{lang === "ar" ? "إرسال نسخة من الفاتورة" : "Send Invoice Copy"}</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
               {lang === "ar"
                 ? "إرسال نسخة رسمية ومعتمدة من الفاتورة إلى العميل أو أي بريد/واتساب مخصص."
                 : "Send an official certified copy of this invoice to the client or custom recipient."}
@@ -2568,7 +2571,7 @@ export default function AdminBills() {
             <div className="space-y-4 py-2">
               {/* Selected Invoice Banner */}
               <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1">
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
                   <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                     #{selectedInvoice.invoiceNumber}
                   </span>
@@ -2582,7 +2585,7 @@ export default function AdminBills() {
                 <div className="text-xs font-semibold text-foreground">
                   {lang === "ar" ? selectedInvoice.titleAr : selectedInvoice.titleEn}
                 </div>
-                <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-2">
                   <span>🏢 {selectedInvoice.companyName}</span>
                   <span>•</span>
                   <span>👤 {selectedInvoice.clientName}</span>
@@ -2591,15 +2594,15 @@ export default function AdminBills() {
 
               {/* Channel 1: Email Dispatch */}
               <div className="space-y-2.5 border border-border/60 rounded-xl p-3.5 bg-card">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer">
                     <input
                       type="checkbox"
                       checked={sendViaEmail}
                       onChange={(e) => setSendViaEmail(e.target.checked)}
-                      className="rounded border-border text-emerald-600 focus:ring-emerald-500"
+                      className="rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                     />
-                    <Mail className="w-4 h-4 text-blue-500" />
+                    <Mail className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>{lang === "ar" ? "إرسال بطاقة الفاتورة كصورة (Gmail / Email)" : "Send invoice card as image (Gmail / Email)"}</span>
                   </label>
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">{lang === "ar" ? "بطاقة صورة معتمدة 📷" : "Visual Image Card 📷"}</span>
@@ -2607,7 +2610,7 @@ export default function AdminBills() {
 
                 {sendViaEmail && (
                   <div className="pt-1.5 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
                       <span className="text-[11px] text-muted-foreground block">
                         {lang === "ar" ? "البريد الإلكتروني للمستلم:" : "Recipient Email:"}
                       </span>
@@ -2615,7 +2618,7 @@ export default function AdminBills() {
                         <button
                           type="button"
                           onClick={() => setRecipientEmail(settingsNotificationEmail)}
-                          className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                          className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer break-all"
                           title={lang === "ar" ? "استخدام بريد الإعدادات" : "Use settings email"}
                         >
                           <span>🔑 {settingsNotificationEmail}</span>
@@ -2630,10 +2633,10 @@ export default function AdminBills() {
                       className="h-9 text-xs bg-background"
                     />
                     {settingsNotificationEmail && (
-                      <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/40 text-blue-900 dark:text-blue-200">
-                        <span className="flex items-center gap-1.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] px-2.5 py-1.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/40 text-blue-900 dark:text-blue-200">
+                        <span className="flex items-center gap-1.5 min-w-0">
                           <Mail className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          <span>
+                          <span className="break-all">
                             {lang === "ar"
                               ? "البريد المرتبط بـ RESEND_API_KEY في الإعدادات: "
                               : "Email linked with RESEND_API_KEY: "}
@@ -2644,7 +2647,7 @@ export default function AdminBills() {
                           <button
                             type="button"
                             onClick={() => setRecipientEmail(settingsNotificationEmail)}
-                            className="text-xs font-bold text-blue-700 dark:text-blue-300 underline hover:text-blue-950 dark:hover:text-white shrink-0 ml-2"
+                            className="text-xs font-bold text-blue-700 dark:text-blue-300 underline hover:text-blue-950 dark:hover:text-white shrink-0 self-start sm:self-auto cursor-pointer"
                           >
                             {lang === "ar" ? "استخدامه الآن" : "Apply"}
                           </button>
@@ -2657,15 +2660,15 @@ export default function AdminBills() {
 
               {/* Channel 2: WhatsApp Dispatch */}
               <div className="space-y-2.5 border border-border/60 rounded-xl p-3.5 bg-card">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground cursor-pointer">
                     <input
                       type="checkbox"
                       checked={sendViaWhatsApp}
                       onChange={(e) => setSendViaWhatsApp(e.target.checked)}
-                      className="rounded border-border text-emerald-600 focus:ring-emerald-500"
+                      className="rounded border-border text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                     />
-                    <MessageCircle className="w-4 h-4 text-emerald-500" />
+                    <MessageCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                     <span>{lang === "ar" ? "إرسال نسخة عبر الواتساب (WhatsApp)" : "Send copy via WhatsApp"}</span>
                   </label>
                   <span className="text-[10px] text-muted-foreground">WhatsApp API & Link</span>
@@ -2713,7 +2716,7 @@ export default function AdminBills() {
               size="sm"
               onClick={() => setSendCopyModalOpen(false)}
               disabled={isSendingCopy}
-              className="text-xs"
+              className="text-xs w-full sm:w-auto cursor-pointer"
             >
               {lang === "ar" ? "إلغاء" : "Cancel"}
             </Button>
@@ -2722,7 +2725,7 @@ export default function AdminBills() {
               size="sm"
               onClick={handleSendCopySubmit}
               disabled={isSendingCopy || (!sendViaEmail && !sendViaWhatsApp)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm w-full sm:w-auto cursor-pointer"
             >
               {isSendingCopy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               <span>{lang === "ar" ? "إرسال النسخة الآن" : "Send Copy Now"}</span>
@@ -2734,7 +2737,7 @@ export default function AdminBills() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* ── Pause Invoice & Token Quota Confirmation Dialog ── */}
       <Dialog open={pauseDialogOpen} onOpenChange={setPauseDialogOpen}>
-        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-[92vw] sm:max-w-md rounded-2xl p-4 sm:p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-2">
               <Pause className="w-6 h-6" />
@@ -2831,7 +2834,7 @@ export default function AdminBills() {
 
       {/* ── Resume Invoice & Token Quota Confirmation Dialog ── */}
       <Dialog open={resumeDialogOpen} onOpenChange={setResumeDialogOpen}>
-        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-[92vw] sm:max-w-md rounded-2xl p-4 sm:p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2">
               <Play className="w-6 h-6 fill-current" />
@@ -2911,7 +2914,7 @@ export default function AdminBills() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* ── Void / Cancel Booking Confirmation Dialog ── */}
       <Dialog open={voidDialogOpen} onOpenChange={setVoidDialogOpen}>
-        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-[92vw] sm:max-w-md rounded-2xl p-4 sm:p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-2">
               <Ban className="w-6 h-6" />
@@ -3002,7 +3005,7 @@ export default function AdminBills() {
 
       {/* ── Delete Invoice Confirmation Dialog ── */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-w-md p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <DialogContent className="max-w-md w-[calc(100vw-1.5rem)] sm:w-[92vw] sm:max-w-md rounded-2xl p-4 sm:p-6" dir={lang === "ar" ? "rtl" : "ltr"}>
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-2">
               <Trash2 className="w-6 h-6" />
@@ -3054,21 +3057,24 @@ export default function AdminBills() {
       {/* ── MODAL: VIEW INVOICE FULL DETAILS ── */}
       {/* ───────────────────────────────────────────────────────────────── */}
       <Dialog open={viewInvoiceModalOpen} onOpenChange={setViewInvoiceModalOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl w-[calc(100vw-1.5rem)] sm:w-[92vw] sm:max-w-2xl rounded-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        >
           {viewingInvoice && (() => {
             const localAmount = convertPrice(viewingInvoice.priceUsd);
             const invoiceEndDate = resolveInvoiceEndDate(viewingInvoice);
 
             return (
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Invoice Branded Header */}
-                <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-2xl p-6 border border-white/10 shadow-md">
-                  <div className="flex items-center justify-between gap-4">
+                <div className="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-2xl p-4 sm:p-6 border border-white/10 shadow-md">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <div className="inline-block px-3 py-1 bg-blue-500/20 border border-blue-400/30 rounded-full text-[11px] font-semibold text-blue-200 mb-2">
                         BOT MANAGER • OFFICIAL INVOICE
                       </div>
-                      <h2 className="text-xl font-extrabold">
+                      <h2 className="text-lg sm:text-xl font-extrabold">
                         {lang === "ar" ? "فاتورة معتمدة ورسمية" : "Official Certified Invoice"}
                       </h2>
                       <p className="text-xs text-blue-200/80 mt-1 font-mono">
@@ -3076,12 +3082,12 @@ export default function AdminBills() {
                       </p>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <div className="text-right rtl:text-right ltr:text-left bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-3 py-2">
+                    <div className="flex flex-row sm:flex-col items-stretch sm:items-end flex-wrap gap-2 shrink-0">
+                      <div className="text-right rtl:text-right ltr:text-left bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-3 py-1.5 sm:py-2 flex-1 sm:flex-initial">
                         <span className="block text-[10px] uppercase tracking-wider text-emerald-300 font-bold">
                           {lang === "ar" ? "الحالة" : "Status"}
                         </span>
-                        <strong className="text-sm text-emerald-400">
+                        <strong className="text-xs sm:text-sm text-emerald-400">
                           {viewingInvoice.status === "paid" || viewingInvoice.status === "activated"
                             ? (lang === "ar" ? "✅ مسددة ومفعلة" : "✅ Paid & Active")
                             : (lang === "ar" ? "⏳ بانتظار الاعتماد" : "⏳ Pending")}
@@ -3089,9 +3095,9 @@ export default function AdminBills() {
                       </div>
 
                       {/* Prominent End Date Header Badge */}
-                      <div className="bg-blue-500/25 border border-blue-400/40 rounded-xl px-3 py-1.5 text-right rtl:text-right ltr:text-left">
+                      <div className="bg-blue-500/25 border border-blue-400/40 rounded-xl px-3 py-1.5 text-right rtl:text-right ltr:text-left flex-1 sm:flex-initial">
                         <span className="block text-[9px] uppercase tracking-wider text-blue-200 font-semibold">
-                          {lang === "ar" ? "تاريخ انتهاء الصلاحية (End Date)" : "Expiration End Date"}
+                          {lang === "ar" ? "تاريخ انتهاء الصلاحية" : "Expiration End Date"}
                         </span>
                         <strong className="text-xs text-blue-100 font-mono">
                           📅 {invoiceEndDate || (lang === "ar" ? "حسب دورة الاشتراك" : "Per Active Cycle")}
@@ -3102,23 +3108,23 @@ export default function AdminBills() {
                 </div>
 
                 {/* Billed To / Details */}
-                <div className="grid grid-cols-2 gap-4 bg-muted/20 border border-border/60 rounded-xl p-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-muted/20 border border-border/60 rounded-xl p-3.5 sm:p-4 text-xs">
                   <div>
                     <span className="text-muted-foreground block text-[11px]">{lang === "ar" ? "العميل:" : "Client:"}</span>
-                    <strong className="text-foreground text-sm">{viewingInvoice.clientName}</strong>
-                    <span className="block text-muted-foreground mt-1">{viewingInvoice.clientEmail}</span>
-                    {viewingInvoice.clientPhone && <span className="block text-muted-foreground">{viewingInvoice.clientPhone}</span>}
+                    <strong className="text-foreground text-sm block mt-0.5">{viewingInvoice.clientName}</strong>
+                    <span className="block text-muted-foreground mt-1 break-all">{viewingInvoice.clientEmail}</span>
+                    {viewingInvoice.clientPhone && <span className="block text-muted-foreground font-mono mt-0.5">{viewingInvoice.clientPhone}</span>}
                   </div>
                   <div>
                     <span className="text-muted-foreground block text-[11px]">{lang === "ar" ? "الشركة:" : "Company:"}</span>
-                    <strong className="text-foreground text-sm">{viewingInvoice.companyName}</strong>
+                    <strong className="text-foreground text-sm block mt-0.5">{viewingInvoice.companyName}</strong>
                     <span className="block text-muted-foreground mt-1">
-                      {lang === "ar" ? "تاريخ الإصدار:" : "Date:"} {new Date(viewingInvoice.issueDate).toLocaleDateString()}
+                      {lang === "ar" ? "تاريخ الإصدار:" : "Date:"} {new Date(viewingInvoice.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}
                     </span>
                   </div>
 
                   {/* Prominent Full-Width End Date Card */}
-                  <div className="col-span-2 p-3 bg-blue-500/10 border border-blue-500/25 rounded-xl flex items-center justify-between text-xs">
+                  <div className="col-span-1 sm:col-span-2 p-3 bg-blue-500/10 border border-blue-500/25 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
                     <div className="flex items-center gap-2.5">
                       <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
                       <div>
@@ -3130,7 +3136,7 @@ export default function AdminBills() {
                         </strong>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                    <Badge variant="outline" className="text-[10px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 self-start sm:self-auto">
                       {viewingInvoice.itemType === "topup"
                         ? (lang === "ar" ? "شحن رصيد إضافي ⚡" : "Top-up Allowance ⚡")
                         : (lang === "ar" ? "اشتراك باقة معتمدة ✓" : "Active Subscription ✓")}
@@ -3139,8 +3145,8 @@ export default function AdminBills() {
                 </div>
 
                 {/* Items Breakdown Table */}
-                <div className="border border-border/60 rounded-xl overflow-hidden">
-                  <table className="w-full text-xs">
+                <div className="border border-border/60 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[460px] sm:min-w-full text-xs">
                     <thead>
                       <tr className="bg-muted/40 border-b border-border/60 text-muted-foreground">
                         <th className="p-3 text-right rtl:text-right ltr:text-left">{lang === "ar" ? "البند" : "Item"}</th>
@@ -3170,7 +3176,7 @@ export default function AdminBills() {
                           )}
                           {viewingInvoice.retentionDays && (
                             <span className="text-[11px] text-muted-foreground block mt-1">
-                              سياسة الحفظ: {viewingInvoice.retentionDays} يوم
+                              {lang === "ar" ? `سياسة الحفظ: ${viewingInvoice.retentionDays} يوم` : `Retention: ${viewingInvoice.retentionDays} days`}
                             </span>
                           )}
                         </td>
@@ -3193,7 +3199,7 @@ export default function AdminBills() {
 
                 {/* Payment Details for Unpaid Invoice */}
                 {viewingInvoice.isPaid === false && (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 sm:p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -3211,13 +3217,13 @@ export default function AdminBills() {
                       <div className="bg-card/90 border border-border/70 rounded-lg p-3 flex flex-col justify-between gap-2 shadow-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
-                            <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
+                            <Smartphone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                             {lang === "ar" ? "رقم الهاتف / كاش:" : "Phone / Cash Wallet:"}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleCopyPayment(viewingInvoice.paymentPhone || "01000000000", "phone")}
-                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium cursor-pointer"
                           >
                             {copiedPayment === "phone" ? (
                               <Check className="w-3 h-3 text-emerald-500" />
@@ -3227,7 +3233,7 @@ export default function AdminBills() {
                             <span>{copiedPayment === "phone" ? (lang === "ar" ? "تم النسخ" : "Copied") : (lang === "ar" ? "نسخ" : "Copy")}</span>
                           </button>
                         </div>
-                        <div className="font-mono font-bold text-sm text-foreground bg-muted/50 px-2.5 py-1.5 rounded-md select-all" dir="ltr">
+                        <div className="font-mono font-bold text-sm text-foreground bg-muted/50 px-2.5 py-1.5 rounded-md select-all overflow-x-auto" dir="ltr">
                           {viewingInvoice.paymentPhone || "01000000000"}
                         </div>
                       </div>
@@ -3236,13 +3242,13 @@ export default function AdminBills() {
                       <div className="bg-card/90 border border-border/70 rounded-lg p-3 flex flex-col justify-between gap-2 shadow-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
-                            <CreditCard className="w-3.5 h-3.5 text-purple-500" />
+                            <CreditCard className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                             {lang === "ar" ? "عنوان إنستاباي (IPA):" : "InstaPay Address (IPA):"}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleCopyPayment(viewingInvoice.paymentInstaPay || "username@instapay", "instapay")}
-                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium cursor-pointer"
                           >
                             {copiedPayment === "instapay" ? (
                               <Check className="w-3 h-3 text-emerald-500" />
@@ -3252,7 +3258,7 @@ export default function AdminBills() {
                             <span>{copiedPayment === "instapay" ? (lang === "ar" ? "تم النسخ" : "Copied") : (lang === "ar" ? "نسخ" : "Copy")}</span>
                           </button>
                         </div>
-                        <div className="font-mono font-bold text-sm text-foreground bg-muted/50 px-2.5 py-1.5 rounded-md select-all" dir="ltr">
+                        <div className="font-mono font-bold text-xs sm:text-sm text-foreground bg-muted/50 px-2.5 py-1.5 rounded-md select-all overflow-x-auto break-all" dir="ltr">
                           {viewingInvoice.paymentInstaPay || "username@instapay"}
                         </div>
                       </div>
@@ -3267,15 +3273,15 @@ export default function AdminBills() {
                 )}
 
                 {/* Footer Actions */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/60">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-border/60">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                     <Button
                       size="sm"
                       onClick={() => {
                         setViewInvoiceModalOpen(false);
                         handleOpenSendCopy(viewingInvoice);
                       }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1.5 shadow-sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1.5 shadow-sm w-full sm:w-auto justify-center cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>{lang === "ar" ? "إرسال نسخة من الفاتورة" : "Send Copy"}</span>
@@ -3285,7 +3291,7 @@ export default function AdminBills() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleCopySummary(viewingInvoice)}
-                      className="text-xs gap-1.5"
+                      className="text-xs gap-1.5 w-full sm:w-auto justify-center cursor-pointer"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>{lang === "ar" ? "نسخ التفاصيل" : "Copy"}</span>
@@ -3296,7 +3302,7 @@ export default function AdminBills() {
                     variant="outline"
                     size="sm"
                     onClick={() => setViewInvoiceModalOpen(false)}
-                    className="text-xs"
+                    className="text-xs w-full sm:w-auto justify-center cursor-pointer"
                   >
                     {lang === "ar" ? "إغلاق" : "Close"}
                   </Button>
