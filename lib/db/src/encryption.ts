@@ -13,8 +13,18 @@ function getEncryptionKey(): Buffer {
     return crypto.createHash('sha256').update(envKey).digest();
   }
   
-  // Fallback to hashing the DATABASE_URL to keep it consistent across restarts 
-  // if no ENCRYPTION_KEY is set.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "FATAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production. " +
+      "Refusing to derive encryption key from DATABASE_URL. Please configure ENCRYPTION_KEY."
+    );
+  }
+
+  // Fallback ONLY in non-production environments with a prominent warning
+  console.warn(
+    "[SECURITY WARNING] ENCRYPTION_KEY is not set. Using insecure fallback derived from DATABASE_URL. " +
+    "Set ENCRYPTION_KEY in production to protect stored secrets."
+  );
   const fallbackSource = process.env.DATABASE_URL || "default-unsafe-fallback-key";
   return crypto.createHash('sha256').update(fallbackSource).digest();
 }
@@ -42,7 +52,10 @@ export function decrypt(text: string | null | undefined): string | null {
   
   try {
     const parts = text.split(':');
-    if (parts.length !== 4) return text;
+    if (parts.length !== 4) {
+      console.error("Malformed encrypted field format (expected 4 parts)");
+      return null;
+    }
     
     const [_, ivHex, authTagHex, encryptedHex] = parts;
     const decipher = crypto.createDecipheriv(
@@ -58,8 +71,8 @@ export function decrypt(text: string | null | undefined): string | null {
     return decrypted;
   } catch (err) {
     console.error("Failed to decrypt field (invalid key or tampered data)");
-    // Fallback to original text to prevent application crash
-    return text;
+    // Fail closed: return null instead of leaking raw ciphertext
+    return null;
   }
 }
 
