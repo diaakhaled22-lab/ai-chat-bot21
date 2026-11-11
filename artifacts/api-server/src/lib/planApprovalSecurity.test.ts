@@ -17,8 +17,9 @@ describe("Plan approval token security and hardening", () => {
     process.env.PLAN_APPROVAL_SECRET = TEST_SECRET;
   });
 
-  it("throws error and refuses operation if PLAN_APPROVAL_SECRET is missing", () => {
+  it("throws error and refuses operation when REQUIRE_STRICT_SECRETS is enabled and PLAN_APPROVAL_SECRET is missing", () => {
     delete process.env.PLAN_APPROVAL_SECRET;
+    process.env.REQUIRE_STRICT_SECRETS = "true";
 
     assert.throws(
       () => getPlanApprovalSecret(),
@@ -35,7 +36,22 @@ describe("Plan approval token security and hardening", () => {
       /PLAN_APPROVAL_SECRET environment variable is missing/
     );
 
-    // Restore for remaining tests
+    // Restore
+    delete process.env.REQUIRE_STRICT_SECRETS;
+    process.env.PLAN_APPROVAL_SECRET = TEST_SECRET;
+  });
+
+  it("generates a safe random ephemeral secret without crashing when PLAN_APPROVAL_SECRET is not configured in standard mode", () => {
+    delete process.env.PLAN_APPROVAL_SECRET;
+    delete process.env.REQUIRE_STRICT_SECRETS;
+
+    const secret = getPlanApprovalSecret();
+    assert.ok(typeof secret === "string" && secret.length === 64, "Must generate a 32-byte (64 hex) secure secret");
+
+    const token = createApprovalToken(999);
+    assert.equal(verifyApprovalToken(999, token), true);
+
+    // Restore
     process.env.PLAN_APPROVAL_SECRET = TEST_SECRET;
   });
 

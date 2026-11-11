@@ -16,26 +16,54 @@ const usedApprovalTokens = new Set<string>();
  */
 export const DEFAULT_APPROVAL_EXPIRY_MS = 48 * 60 * 60 * 1000;
 
+let ephemeralSecret: string | null = null;
+
 /**
  * Returns the dedicated PLAN_APPROVAL_SECRET environment variable.
- * Refuses default/hardcoded salts and refuses fallback to session keys.
+ * If not set in the environment, generates an ephemeral cryptographically secure 256-bit
+ * secret at runtime so that:
+ * 1. The hardcoded salt is NEVER used.
+ * 2. Attackers CANNOT forge tokens.
+ * 3. The server NEVER crashes on startup if the variable hasn't been set yet.
  */
 export function getPlanApprovalSecret(): string {
-  const secret = process.env.PLAN_APPROVAL_SECRET?.trim();
-  if (!secret) {
+  if (process.env.PLAN_APPROVAL_SECRET?.trim()) {
+    return process.env.PLAN_APPROVAL_SECRET.trim();
+  }
+
+  if (process.env.REQUIRE_STRICT_SECRETS === "true") {
     throw new Error(
       "FATAL SECURITY CONFIGURATION: PLAN_APPROVAL_SECRET environment variable is missing. " +
       "Plan approval links require a dedicated, independent secret to prevent forging."
     );
   }
-  return secret;
+
+  if (!ephemeralSecret) {
+    ephemeralSecret = crypto.randomBytes(32).toString("hex");
+    logger.warn(
+      "SECURITY: PLAN_APPROVAL_SECRET is not set in environment. " +
+      "Generated an ephemeral cryptographically secure random secret for plan approvals. " +
+      "Approval links will be secure but will not survive server restarts. " +
+      "Set PLAN_APPROVAL_SECRET in environment variables to persist approval links across restarts."
+    );
+  }
+  return ephemeralSecret;
 }
 
 /**
- * Asserts that PLAN_APPROVAL_SECRET is properly configured on application startup.
- * Halts server boot if missing.
+ * Asserts that PLAN_APPROVAL_SECRET is properly configured or initialized on application startup.
+ * When REQUIRE_STRICT_SECRETS=true, halts server boot if missing.
  */
 export function assertPlanApprovalSecretConfigured(): void {
+  if (process.env.PLAN_APPROVAL_SECRET?.trim()) {
+    return;
+  }
+  if (process.env.REQUIRE_STRICT_SECRETS === "true") {
+    throw new Error(
+      "FATAL SECURITY CONFIGURATION: PLAN_APPROVAL_SECRET environment variable is missing. " +
+      "Plan approval links require a dedicated, independent secret."
+    );
+  }
   getPlanApprovalSecret();
 }
 
