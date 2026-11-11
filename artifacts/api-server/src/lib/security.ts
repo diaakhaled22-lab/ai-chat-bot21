@@ -901,9 +901,11 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   // Content Security Policy — prevents XSS, clickjacking, data injection
+  // 'unsafe-inline' is removed from script-src to prevent execution of injected inline scripts (XSS).
+  // Exact sha256 hashes are whitelisted for static pre-hydration theme/lang bootstrap scripts.
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'sha256-MIBkNA2os92j8uFEzhx3JczceGUTqVgfk5MByxO3w+I=' 'sha256-3l2JKxQ7uzdqKk0vtTtTcKXPwrENosFM12o5W0lnSak='; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
   );
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
