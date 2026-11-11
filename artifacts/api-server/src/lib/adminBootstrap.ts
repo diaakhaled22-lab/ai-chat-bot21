@@ -90,6 +90,8 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS mac_address TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key TEXT;
 
       -- Ensure all companies have an active monthly token quota assigned (default: 500,000)
       UPDATE companies

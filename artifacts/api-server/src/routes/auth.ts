@@ -564,7 +564,11 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
     });
   } catch (err: any) {
     logger.error({ err }, "Error in send-registration-otp");
-    res.status(500).json({ error: err.message || "Failed to process verification request" });
+    res.status(500).json({
+      error: isAr
+        ? "حدث خطأ أثناء معالجة طلب التحقق. يرجى المحاولة لاحقاً."
+        : "Failed to process verification request. Please try again later.",
+    });
   }
 });
 
@@ -677,14 +681,6 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     // Code is valid! Delete verification records for this email
     await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail));
 
-    // Ensure columns exist on users table
-    await db.execute(sql`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_ip TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS mac_address TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email TEXT;
-    `).catch((e) => logger.warn({ err: e }, "Failed to ensure users columns in register"));
-
     const [existing] = await db
       .select({ id: usersTable.id })
       .from(usersTable)
@@ -777,7 +773,12 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     });
   } catch (err: any) {
     logger.error({ err }, "Client registration error");
-    res.status(500).json({ error: err?.message || "Failed to create account" });
+    const isAr = (req.body as any)?.lang !== "en";
+    res.status(500).json({
+      error: isAr
+        ? "حدث خطأ غير متوقع أثناء إنشاء الحساب. يرجى المحاولة لاحقاً."
+        : "An unexpected error occurred while creating your account. Please try again later.",
+    });
   }
 });
 
