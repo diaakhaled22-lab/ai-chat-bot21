@@ -9,6 +9,7 @@ import { logger } from "../lib/logger";
 import { getResendConfig } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
 import {
+  maskApiKey,
   authLimiter,
   sensitiveLimiter,
   isAccountLocked,
@@ -990,7 +991,7 @@ router.get("/auth/me", async (req, res) => {
       username: user.username,
       id: user.id,
       notificationEmail,
-      resendApiKey,
+      resendApiKey: maskApiKey(resendApiKey),
     });
   } catch (err) {
     logger.error({ err }, "Get me error");
