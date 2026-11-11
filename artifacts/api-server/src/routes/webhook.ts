@@ -45,7 +45,7 @@ import { detectResponseLanguage, enforceResponseLanguage, getLanguageInstruction
 import { rateLimit, webhookLimiter, escapeHtml } from "../lib/security";
 import { timingSafeCompare } from "../lib/webhookSecurity";
 import { getEmailConfig } from "../lib/email";
-import { verifyApprovalToken, processApprovedPlanRequest } from "../lib/planApproval";
+import { verifyApprovalToken, markApprovalTokenUsed, processApprovedPlanRequest } from "../lib/planApproval";
 
 const router = Router();
 
@@ -705,10 +705,58 @@ router.get(
               <div style="font-size:48px;margin-bottom:16px;">❌</div>
               <h2 style="margin:0 0 10px;font-size:20px;">رابط التحقق غير صالح أو منتهي الصلاحية</h2>
               <p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 20px;">
-                تعذر اعتماد هذا الطلب عبر الرابط. يرجى تسجيل الدخول إلى لوحة تحكم الإدارة لمراجعته يدوياً.
+                تعذر اعتماد هذا الطلب عبر الرابط لأن رمزه غير صالح أو منتهي الصلاحية أو تم استخدامه مسبقاً. يرجى تسجيل الدخول إلى لوحة تحكم الإدارة لمراجعته يدوياً.
               </p>
               <a href="/admin/tickets" style="display:inline-block;padding:10px 22px;background:#dc2626;color:#ffffff;text-decoration:none;font-weight:700;border-radius:8px;font-size:14px;">
                 الانتقال إلى لوحة التحكم
+              </a>
+            </div>
+          </body>
+          </html>
+        `);
+        return;
+      }
+
+      const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
+
+      if (!ticket) {
+        res.status(404).send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head><meta charset="utf-8"><title>الطلب غير موجود</title></head>
+          <body style="font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:40px 20px;background:#fef2f2;color:#991b1b;text-align:center;">
+            <div style="max-width:500px;margin:0 auto;background:#ffffff;border-radius:14px;padding:32px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid #fecaca;">
+              <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+              <h2 style="margin:0 0 10px;font-size:20px;">الطلب رقم #${ticketId} غير موجود</h2>
+            </div>
+          </body>
+          </html>
+        `);
+        return;
+      }
+
+      // Single-use restriction: If ticket is already resolved or closed, reject duplicate approval
+      if (ticket.status === "resolved" || ticket.status === "closed") {
+        res.status(409).send(`
+          <!DOCTYPE html>
+          <html dir="rtl" lang="ar">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>تم اعتماد هذا الطلب مسبقاً</title>
+          </head>
+          <body style="margin:0;padding:40px 20px;background:#f8fafc;font-family:'Segoe UI',Tahoma,sans-serif;color:#0f172a;text-align:center;">
+            <div style="max-width:540px;margin:0 auto;background:#ffffff;border-radius:18px;padding:36px 32px;box-shadow:0 10px 30px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">
+              <div style="width:68px;height:68px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;border:2px solid #bfdbfe;">
+                ℹ️
+              </div>
+              <h1 style="margin:0 0 10px;font-size:22px;color:#1e3a8a;font-weight:800;">تم اعتماد ومعالجة هذا الطلب مسبقاً</h1>
+              <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6;">
+                طلب رقم <strong>#${ticketId}</strong> تمت معالجته واعتماده مسبقاً وحالته الحالية <strong>مكتمل (${escapeHtml(ticket.status)})</strong>.<br>
+                هذا الرابط مخصص للاستخدام لمرة واحدة فقط (Single-use) لمنع تكرار شحن الرصيد أو تكرار إصدار الفواتير.
+              </p>
+              <a href="/admin/tickets" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:14px;">
+                الانتقال إلى تذاكر الإدارة
               </a>
             </div>
           </body>
@@ -721,8 +769,7 @@ router.get(
 
       // If payment status (Paid vs Unpaid) is not specified yet, display interactive choice page
       if (isPaidParam === undefined) {
-        const [ticket] = await db.select().from(ticketsTable).where(eq(ticketsTable.id, ticketId)).limit(1);
-        const [clientUser] = ticket ? await db.select().from(usersTable).where(eq(usersTable.id, ticket.clientId)).limit(1) : [null];
+        const [clientUser] = await db.select().from(usersTable).where(eq(usersTable.id, ticket.clientId)).limit(1);
         const clientDisplayName = clientUser?.name || "العميل";
 
         res.send(`
@@ -783,6 +830,9 @@ router.get(
         channel: "email_button",
         isPaid,
       });
+
+      // Mark token as consumed for single-use guarantee
+      markApprovalTokenUsed(ticketId, token);
 
       res.send(`
         <!DOCTYPE html>

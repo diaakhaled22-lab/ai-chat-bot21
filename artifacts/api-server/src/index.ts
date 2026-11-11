@@ -24,6 +24,10 @@ import { ensureEmailNotificationSchema, notifySubscriptionExpiringSoon, notifySu
 import { ensureRagSchema } from "./lib/knowledgeRag";
 import { ensureVoiceSchema } from "./lib/audio";
 import { getExchangeRates } from "./lib/currencyRates";
+import { assertPlanApprovalSecretConfigured } from "./lib/planApproval";
+
+// Early security sanity check: prevent server startup if PLAN_APPROVAL_SECRET is not configured
+assertPlanApprovalSecretConfigured();
 
 const rawPort = process.env["API_PORT"] || (process.env["PORT"] && process.env["PORT"] !== "3000" && process.env["PORT"] !== "5173" ? process.env["PORT"] : "8080");
 const port = Number(rawPort) || 8080;

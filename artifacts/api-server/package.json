@@ -7,7 +7,7 @@
         "dev": "pnpm run build && pnpm run start",
         "build": "node ./build.mjs",
         "start": "node ./dist/index.mjs",
-        "test": "NODE_ENV=production node --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts ./src/lib/widgetSecurity.test.ts",
+        "test": "NODE_ENV=production PLAN_APPROVAL_SECRET=test-plan-approval-secret-32-chars-long node --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts ./src/lib/widgetSecurity.test.ts ./src/lib/planApprovalSecurity.test.ts",
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {

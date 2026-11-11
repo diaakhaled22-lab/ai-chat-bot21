@@ -6,28 +6,142 @@ import { getExchangeRates } from "./currencyRates";
 import { sendInvoiceToClient, getInvoicePaymentConfig, type InvoiceData } from "./invoice";
 import { logger } from "./logger";
 
-const APPROVAL_SALT = process.env.SESSION_SECRET || "bot-manager-plan-approval-secret-salt-2026";
+/**
+ * In-memory set of consumed approval tokens to enforce single-use restrictions.
+ */
+const usedApprovalTokens = new Set<string>();
 
 /**
- * Generate a cryptographic HMAC token for 1-click email approval links.
+ * Default validity period for 1-click plan approval tokens: 48 hours.
  */
-export function createApprovalToken(ticketId: number): string {
-  return crypto
-    .createHmac("sha256", APPROVAL_SALT)
-    .update(`approve-plan-ticket-${ticketId}`)
-    .digest("hex");
+export const DEFAULT_APPROVAL_EXPIRY_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Returns the dedicated PLAN_APPROVAL_SECRET environment variable.
+ * Refuses default/hardcoded salts and refuses fallback to session keys.
+ */
+export function getPlanApprovalSecret(): string {
+  const secret = process.env.PLAN_APPROVAL_SECRET?.trim();
+  if (!secret) {
+    throw new Error(
+      "FATAL SECURITY CONFIGURATION: PLAN_APPROVAL_SECRET environment variable is missing. " +
+      "Plan approval links require a dedicated, independent secret to prevent forging."
+    );
+  }
+  return secret;
 }
 
 /**
- * Verify HMAC token for 1-click email approval.
+ * Asserts that PLAN_APPROVAL_SECRET is properly configured on application startup.
+ * Halts server boot if missing.
+ */
+export function assertPlanApprovalSecretConfigured(): void {
+  getPlanApprovalSecret();
+}
+
+/**
+ * Marks an approval token as consumed so it cannot be used again.
+ */
+export function markApprovalTokenUsed(ticketId: number, token: string): void {
+  const trimmed = String(token || "").trim();
+  const parts = trimmed.split(".");
+  const sig = parts[1] || trimmed;
+  usedApprovalTokens.add(`${ticketId}:${sig}`);
+}
+
+/**
+ * Checks whether an approval token has already been consumed.
+ */
+export function isApprovalTokenUsed(ticketId: number, token: string): boolean {
+  const trimmed = String(token || "").trim();
+  const parts = trimmed.split(".");
+  const sig = parts[1] || trimmed;
+  return usedApprovalTokens.has(`${ticketId}:${sig}`);
+}
+
+/**
+ * Generate a cryptographic HMAC token for 1-click email approval links.
+ * Incorporates:
+ * - A dedicated PLAN_APPROVAL_SECRET (independent of session secret).
+ * - Expiration timestamp (default 48 hours).
+ * Format: `${expiresAt}.${hmacSignature}`
+ */
+export function createApprovalToken(ticketId: number, expiresInMs: number = DEFAULT_APPROVAL_EXPIRY_MS): string {
+  if (!ticketId || typeof ticketId !== "number" || ticketId <= 0) {
+    throw new Error("A valid positive ticketId is required to generate an approval token");
+  }
+
+  const secret = getPlanApprovalSecret();
+  const expiresAt = Date.now() + expiresInMs;
+  const payload = `approve-plan-ticket-${ticketId}:${expiresAt}`;
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex");
+
+  return `${expiresAt}.${signature}`;
+}
+
+/**
+ * Verify HMAC token for 1-click email approval:
+ * 1. Checks single-use constraint (rejects if already used).
+ * 2. Parses and verifies expiration timestamp (rejects if expired).
+ * 3. Verifies constant-time HMAC signature using PLAN_APPROVAL_SECRET.
  */
 export function verifyApprovalToken(ticketId: number, token: string): boolean {
-  if (!ticketId || !token) return false;
-  const expected = createApprovalToken(ticketId);
+  if (!ticketId || !token || typeof token !== "string") return false;
+
+  const trimmed = token.trim();
+
+  // 1. Single-use check
+  if (isApprovalTokenUsed(ticketId, trimmed)) {
+    logger.warn({ ticketId }, "Plan approval token rejected: already used (single-use constraint)");
+    return false;
+  }
+
+  // 2. Parse expiration and signature
+  const parts = trimmed.split(".");
+  if (parts.length !== 2) {
+    return false;
+  }
+
+  const [expiresAtStr, signature] = parts;
+  const expiresAt = Number(expiresAtStr);
+  if (!Number.isFinite(expiresAt) || isNaN(expiresAt)) {
+    return false;
+  }
+
+  // 3. Expiration check
+  const now = Date.now();
+  if (now > expiresAt) {
+    logger.warn({ ticketId, expiresAt, now }, "Plan approval token rejected: expired");
+    return false;
+  }
+
+  // 4. HMAC Signature check with dedicated secret
+  let secret: string;
   try {
-    return crypto.timingSafeEqual(Buffer.from(token, "hex"), Buffer.from(expected, "hex"));
+    secret = getPlanApprovalSecret();
+  } catch (err) {
+    logger.error({ err }, "Cannot verify approval token: PLAN_APPROVAL_SECRET is missing");
+    return false;
+  }
+
+  const payload = `approve-plan-ticket-${ticketId}:${expiresAt}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex");
+
+  try {
+    const sigBuffer = Buffer.from(signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    if (sigBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
   } catch {
-    return token === expected;
+    return false;
   }
 }
 
@@ -551,6 +665,13 @@ export async function processApprovedPlanRequest(
 
   if (!ticket) {
     throw new Error(`Ticket #${ticketId} not found`);
+  }
+
+  if (
+    (options.channel === "email_button" || options.channel === "email_reply") &&
+    (ticket.status === "resolved" || ticket.status === "closed")
+  ) {
+    throw new Error(`Ticket #${ticketId} has already been approved and resolved. Duplicate approval rejected.`);
   }
 
   // 2. Parse details from ticket using dynamic catalog from DB

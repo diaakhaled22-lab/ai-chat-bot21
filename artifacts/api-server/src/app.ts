@@ -193,6 +193,12 @@ app.use(
 // ── Session — require SESSION_SECRET in production ───────────────────────
 import pgSession from "connect-pg-simple";
 import { pool } from "@workspace/db"; // Assuming pool is exported from db
+import { assertPlanApprovalSecretConfigured } from "./lib/planApproval";
+
+// In production, ensure PLAN_APPROVAL_SECRET is configured before accepting any requests
+if (process.env.NODE_ENV === "production") {
+  assertPlanApprovalSecretConfigured();
+}
 
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
 if (!process.env.SESSION_SECRET) {
