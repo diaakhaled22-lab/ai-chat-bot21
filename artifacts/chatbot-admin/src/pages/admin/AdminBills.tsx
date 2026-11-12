@@ -235,8 +235,9 @@ function generateInvoiceCardCanvas(
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
+  const cardTitle = (lang === "ar" ? inv.titleAr : inv.titleEn) || inv.titleAr || inv.titleEn || (lang === "ar" ? "فاتورة رسمية معتمدة" : "Official Certified Invoice");
   ctx.fillText(
-    lang === "ar" ? "فاتورة رسمية معتمدة — Bot Manager" : "Official Invoice Card — Bot Manager",
+    `${cardTitle} — Bot Manager`,
     width / 2,
     40
   );

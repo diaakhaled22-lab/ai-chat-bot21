@@ -4595,12 +4595,7 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         : ""
     }
 
-    <!-- Hero Image Card ("صورة مش كلام" - Same Quality As Quota Usage Bill) -->
-    <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
-      <img src="cid:invoice-copy-image" alt="بطاقة الفاتورة #${escapeHtml(invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
-    </div>
-
-    <!-- Meta Details Grid (Matches Quota Usage Bill structure) -->
+    <!-- Meta Details Grid -->
     <div style="padding: 16px 20px; background: #ffffff; text-align: right;">
       <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 12px;">
         <tr>
@@ -4686,8 +4681,8 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
 
     <!-- Footer -->
     <div style="padding: 16px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff; line-height: 1.5;">
-      <p style="margin: 0;">تم إرسال بطاقة الفاتورة كصورة رسمية معتمدة من نظام <strong>Bot Manager</strong> إلى بريدك الإلكتروني.</p>
-      <p style="margin: 4px 0 0;">يمكنك أيضاً تحميل الصورة كملف مرفق عالي الدقة (PNG) من هذا البريد.</p>
+      <p style="margin: 0;">تم إصدار هذه الفاتورة الرسمية المعتمدة من نظام <strong>Bot Manager</strong> إلى بريدك الإلكتروني.</p>
+      <p style="margin: 4px 0 0;">يمكنك أيضاً تحميل نسخة الفاتورة كملف مرفق عالي الدقة (PNG) من هذا البريد.</p>
     </div>
 
   </div>
@@ -4712,7 +4707,6 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
               {
                 filename: `Invoice-${invoiceNumber}.png`,
                 content: base64Data,
-                content_id: "invoice-copy-image",
               },
             ];
           }
@@ -4773,9 +4767,8 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
               const base64Data = imageDataUrl.split(",")[1];
               mailOptions.attachments = [
                 {
-                  filename: `invoice-${invoiceNumber}.png`,
+                  filename: `Invoice-${invoiceNumber}.png`,
                   content: Buffer.from(base64Data, "base64"),
-                  cid: "invoice-copy-image",
                 },
               ];
             }
