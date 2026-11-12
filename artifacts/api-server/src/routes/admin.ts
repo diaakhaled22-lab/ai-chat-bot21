@@ -4854,12 +4854,14 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     }
 
     // 3. Log Admin Activity
-    await logAdminActivity(
-      req.session.userId!,
-      "Send Invoice Copy",
-      `Admin sent a copy of invoice #${invoiceNumber} to ${recipientEmail || cleanPhone || "client"}`,
-      req.ip || null
-    );
+    if (req.session?.userId) {
+      await logAdminActivity(
+        req.session.userId,
+        "Send Invoice Copy",
+        `Admin sent a copy of invoice #${invoiceNumber} to ${recipientEmail || cleanPhone || "client"}`,
+        req.ip || null
+      );
+    }
 
     res.json({
       ok: true,
