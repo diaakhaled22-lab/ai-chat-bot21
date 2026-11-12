@@ -17,7 +17,19 @@ const app: Express = express();
 // ── Trust Proxy Configuration ───────────────────────────────────────────
 // Essential for deployments behind reverse proxies (Replit, Cloud Run, Render, Cloudflare, Nginx).
 // Without this, req.ip resolves to the internal proxy IP for all users, breaking rate limits,
-// IP-based blocking, and Secure cookie flags.
+// IP-based blocking, and Secure cookie flags. In standalone/direct environments without proxies,
+// trusting proxies blindly allows client-spoofed X-Forwarded-For and X-Forwarded-Host headers.
+const isBehindKnownReverseProxy = Boolean(
+  process.env.REPLIT_DEV_DOMAIN ||
+  process.env.REPLIT_CLUSTER ||
+  process.env.K_SERVICE || // Google Cloud Run
+  process.env.RENDER || // Render
+  process.env.RAILWAY_ENVIRONMENT || // Railway
+  process.env.VERCEL || // Vercel
+  process.env.HEROKU_APP_ID || // Heroku
+  process.env.FLY_ALLOC_ID // Fly.io
+);
+
 const rawTrustedProxies = process.env.TRUSTED_PROXIES?.trim();
 if (rawTrustedProxies) {
   if (rawTrustedProxies === "false" || rawTrustedProxies === "0") {
@@ -28,10 +40,12 @@ if (rawTrustedProxies) {
     const proxiesList = rawTrustedProxies.split(",").map((p) => p.trim()).filter(Boolean);
     app.set("trust proxy", proxiesList.length === 1 ? proxiesList[0] : (proxiesList.length > 0 ? proxiesList : 1));
   }
-} else {
-  // Default: Trust the immediate front-facing reverse proxy (1 hop)
-  // This is required for Replit, Cloud Run, Render, Railway, Docker, and Nginx.
+} else if (isBehindKnownReverseProxy) {
+  // Known cloud PaaS/container ingress automatically terminates TLS and routes through 1 hop
   app.set("trust proxy", 1);
+} else {
+  // Standalone/direct VPS deployments default to untrusted to prevent header spoofing
+  app.set("trust proxy", false);
 }
 
 // ── Security Headers ─────────────────────────────────────────────────────
@@ -138,7 +152,8 @@ function isAllowedOrigin(origin: string | undefined, reqHost?: string): boolean 
 app.use(
   cors((req, callback) => {
     const origin = req.headers.origin;
-    const reqHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const isProxyTrusted = app.get("trust proxy") !== false;
+  const reqHost = (isProxyTrusted ? (req.headers["x-forwarded-host"] as string) : undefined) || req.headers.host;
 
     // Allow requests with no origin (curl, server-to-server, mobile apps)
     if (!origin) {
@@ -293,7 +308,8 @@ app.use((req, res, next) => {
     return next();
   }
 
-  const reqHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+  const isProxyTrusted = app.get("trust proxy") !== false;
+  const reqHost = (isProxyTrusted ? (req.headers["x-forwarded-host"] as string) : undefined) || req.headers.host;
   if (isAllowedOrigin(originHeader, reqHost)) {
     return next();
   }

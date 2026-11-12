@@ -3,7 +3,6 @@ import crypto from "crypto";
 import { logger } from "./logger";
 import { db, adminConfigTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { sendSecurityEventEmail } from "./email";
 import { isSafeUrl } from "./urlSecurity";
 import { decryptTotpValue, encryptTotpValue } from "./totpEncryption";
 
@@ -26,7 +25,7 @@ setInterval(() => {
   for (const [key, entry] of rateLimitStore) {
     if (now > entry.resetAt) rateLimitStore.delete(key);
   }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 /**
  * Creates a rate-limiting middleware.
@@ -106,6 +105,21 @@ const HTML_ESCAPE_MAP: Record<string, string> = {
  */
 export function escapeHtml(str: string): string {
   return String(str).replace(/[&<>"'/]/g, (char) => HTML_ESCAPE_MAP[char] || char);
+}
+
+function dispatchSecurityEventEmail(
+  eventType: "ip_blocked" | "account_locked" | "failed_attempts_warning",
+  ip: string,
+  username?: string,
+  attemptCount?: number
+): void {
+  import("./email")
+    .then(({ sendSecurityEventEmail }) => {
+      void sendSecurityEventEmail(eventType, ip, username || "unknown", attemptCount || 0);
+    })
+    .catch((err) => {
+      logger.error({ err, eventType, ip }, "Failed to send security event email notification");
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -465,7 +479,7 @@ setInterval(() => {
   for (const [key, expiry] of usedTotpCodes) {
     if (now >= expiry) usedTotpCodes.delete(key);
   }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 const WARNING_LOGIN_ATTEMPTS = 3;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -579,7 +593,7 @@ setInterval(() => {
       ipLoginAttempts.delete(ipKey);
     }
   }
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000).unref();
 
 /**
  * Checks if a username or (username + IP) pair is currently locked out.
@@ -590,18 +604,19 @@ export function isAccountLocked(username: string, ip?: string): number {
   const normUser = username.trim().toLowerCase();
   const now = Date.now();
 
-  // 1. Account-level lockout (protects against distributed brute-force across different IPs)
-  const accountEntry = accountLoginAttempts.get(normUser);
-  if (accountEntry?.lockedUntil) {
-    const remaining = accountEntry.lockedUntil - now;
-    if (remaining > 0) return Math.ceil(remaining / 1000);
-  }
-
-  // 2. IP-scoped lockout
+  // 1. IP-scoped lockout (locks the specific IP attempting this username)
+  // Scoping to (username + IP) prevents Denial-of-Service / remote account lockout of legitimate admins/users
   if (ip) {
     const pairEntry = loginAttempts.get(getLoginAttemptKey(username, ip));
     if (pairEntry?.lockedUntil) {
       const remaining = pairEntry.lockedUntil - now;
+      if (remaining > 0) return Math.ceil(remaining / 1000);
+    }
+  } else {
+    // If no IP is provided, check account-level record
+    const accountEntry = accountLoginAttempts.get(normUser);
+    if (accountEntry?.lockedUntil) {
+      const remaining = accountEntry.lockedUntil - now;
       if (remaining > 0) return Math.ceil(remaining / 1000);
     }
   }
@@ -647,7 +662,7 @@ export function recordBlockedLoginAttempt(username: string, ip: string): boolean
 
     if (newlyBlocked) {
       void saveBlockedIpsToDb();
-      void sendSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
+      dispatchSecurityEventEmail("ip_blocked", normalizedIp, username, attempts);
       appendAttackLog(ip, username, attempts, "ip_blocked");
       logger.warn(
         { username: normUser, ip: normalizedIp, attempts },
@@ -723,25 +738,31 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     if (shouldWarnIp) ipEntry.warningSent = true;
 
     appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now);
-    void sendSecurityEventEmail("failed_attempts_warning", normalizedIp, cleanUsername, currentAttempts);
+    dispatchSecurityEventEmail("failed_attempts_warning", normalizedIp, cleanUsername, currentAttempts);
     logger.warn(
       { username: normUser, ip: normalizedIp, attempts: currentAttempts },
       "Consecutive failed login warning triggered (bell notification + email dispatched)",
     );
   }
 
-  // Account Lockout: Trigger account lockout upon reaching MAX_LOGIN_ATTEMPTS (5 attempts)
-  const accountLocked = accountAttempts >= MAX_LOGIN_ATTEMPTS || pairAttempts >= MAX_LOGIN_ATTEMPTS;
+  // Lockout logic:
+  // - The specific (username, ip) pair is locked out when pairAttempts >= MAX_LOGIN_ATTEMPTS (5 attempts).
+  // - If accountAttempts (across multiple IPs) >= MAX_LOGIN_ATTEMPTS, alert admin and record attack log,
+  //   without globally locking out the account for other IPs (prevents remote DoS).
+  const pairLocked = pairAttempts >= MAX_LOGIN_ATTEMPTS;
+  const accountThresholdReached = accountAttempts >= MAX_LOGIN_ATTEMPTS;
+  const accountLocked = pairLocked;
 
-  if (accountLocked) {
-    if (accountAttempts === MAX_LOGIN_ATTEMPTS || pairAttempts === MAX_LOGIN_ATTEMPTS) {
-      void sendSecurityEventEmail("account_locked", normalizedIp, cleanUsername, Math.max(accountAttempts, pairAttempts));
-    }
-    
-    accountEntry.lockedUntil = now + LOCKOUT_DURATION_MS;
+  if (pairLocked) {
     pairEntry.lockedUntil = now + LOCKOUT_DURATION_MS;
     appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "account_locked", now);
-    logger.warn({ username: normUser, ip: normalizedIp, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "Account locked due to too many failed attempts");
+    logger.warn({ username: normUser, ip: normalizedIp, lockoutMinutes: LOCKOUT_DURATION_MS / 60000 }, "IP locked out for user due to repeated failed attempts");
+    dispatchSecurityEventEmail("account_locked", normalizedIp, cleanUsername, pairAttempts);
+  } else if (accountThresholdReached && !accountEntry.warningSent) {
+    accountEntry.warningSent = true;
+    appendAttackLog(normalizedIp, cleanUsername, currentAttempts, "warning_triggered", now);
+    logger.warn({ username: normUser, totalAttempts: accountAttempts }, "Distributed failed login attempts across multiple IPs detected for account");
+    dispatchSecurityEventEmail("failed_attempts_warning", normalizedIp, cleanUsername, accountAttempts);
   }
 
   return {

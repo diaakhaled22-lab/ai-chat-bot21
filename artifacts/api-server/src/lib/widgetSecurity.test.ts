@@ -6,6 +6,7 @@ import {
   isAutomatedOrNonBrowserAgent,
   isValidWidgetSessionId,
   checkSessionRateLimit,
+  checkWidgetRateLimit,
   validateWidgetRequest,
 } from "./widgetSecurity";
 
@@ -109,7 +110,7 @@ describe("widget session ID validation", () => {
   });
 });
 
-describe("session sliding-window rate limiter", () => {
+describe("session and IP sliding-window rate limiter", () => {
   it("enforces a maximum of 15 messages per minute per session", () => {
     const testSessionId = "ws_" + "f".repeat(64);
     for (let i = 0; i < 15; i++) {
@@ -120,6 +121,21 @@ describe("session sliding-window rate limiter", () => {
     // 16th message in the same minute must be throttled
     const blocked = checkSessionRateLimit(testSessionId);
     assert.equal(blocked.allowed, false);
+    assert.ok(blocked.retryAfterSeconds && blocked.retryAfterSeconds > 0);
+  });
+
+  it("enforces IP-based rate limiting (max 30 msgs/min) when an attacker rotates session IDs", () => {
+    const attackerIp = "198.51.100.42";
+    for (let i = 0; i < 30; i++) {
+      const uniqueSession = `ws_${i.toString().padStart(64, "0")}`;
+      const res = checkWidgetRateLimit(uniqueSession, attackerIp);
+      assert.equal(res.allowed, true);
+    }
+
+    // 31st request with yet another session ID from the same IP must be rejected
+    const blocked = checkWidgetRateLimit("ws_rotating_session_31", attackerIp);
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.reason, "ip");
     assert.ok(blocked.retryAfterSeconds && blocked.retryAfterSeconds > 0);
   });
 });

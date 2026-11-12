@@ -24,7 +24,7 @@ import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendPlanRequestAdminNotification, sendMalfunctionNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, buildOpenRouterChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
-import { maskApiKey, preserveMaskedSecret } from "../lib/security";
+import { maskApiKey, preserveMaskedSecret, sensitiveLimiter } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
@@ -2844,7 +2844,7 @@ router.put("/client/settings", async (req, res) => {
 });
 
 // POST /client/send-test-notification
-router.post("/client/send-test-notification", async (req, res) => {
+router.post("/client/send-test-notification", requireClient, sensitiveLimiter, async (req, res) => {
   try {
     const [user] = await db
       .select()
@@ -2863,10 +2863,27 @@ router.post("/client/send-test-notification", async (req, res) => {
       .where(eq(companiesTable.clientId, req.session.userId!))
       .limit(1);
 
-    const recipient =
-      (typeof req.body?.email === "string" && req.body.email.trim()) ||
-      user.notificationEmail?.trim() ||
-      company?.notificationEmail?.trim();
+    // Validate that recipient belongs strictly to the client's own registered or configured emails to prevent open relay
+    const allowedEmails = new Set(
+      [user.email, user.notificationEmail, company?.notificationEmail]
+        .filter((e): e is string => typeof e === "string" && e.trim().length > 0)
+        .map((e) => e.trim().toLowerCase())
+    );
+
+    const requestedRecipient = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    let recipient: string | null = null;
+
+    if (requestedRecipient) {
+      if (!allowedEmails.has(requestedRecipient)) {
+        res.status(400).json({
+          error: "Test notification can only be sent to your account's registered or notification email address.",
+        });
+        return;
+      }
+      recipient = requestedRecipient;
+    } else {
+      recipient = user.notificationEmail?.trim() || company?.notificationEmail?.trim() || user.email?.trim() || null;
+    }
 
     if (!recipient) {
       res.status(400).json({

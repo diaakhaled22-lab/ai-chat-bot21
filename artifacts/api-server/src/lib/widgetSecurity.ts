@@ -162,50 +162,88 @@ export function isValidWidgetSessionId(sessionId: unknown): boolean {
 }
 
 /**
- * In-memory sliding-window rate limiter per sessionId.
- * Prevents rapid automated spamming within a single conversation session from exhausting AI quota.
+ * In-memory sliding-window rate limiter per sessionId and client IP.
+ * Prevents rapid automated spamming within a single conversation session
+ * and prevents rotating session IDs from a single IP to exhaust AI quota.
  */
-interface SessionRateRecord {
+interface RateRecord {
   timestamps: number[];
 }
 
-const sessionRates = new Map<string, SessionRateRecord>();
-const SESSION_RATE_WINDOW_MS = 60 * 1000; // 1 minute
+const sessionRates = new Map<string, RateRecord>();
+const ipRates = new Map<string, RateRecord>();
+
+const RATE_WINDOW_MS = 60 * 1000; // 1 minute
 const SESSION_MAX_MESSAGES_PER_WINDOW = 15; // Max 15 messages per minute per session
-const SESSION_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const IP_MAX_MESSAGES_PER_WINDOW = 30; // Max 30 messages per minute per client IP
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 let lastCleanup = Date.now();
 
-export function checkSessionRateLimit(sessionId: string): { allowed: boolean; retryAfterSeconds?: number } {
+function pruneRates(map: Map<string, RateRecord>, now: number) {
+  for (const [key, record] of map.entries()) {
+    record.timestamps = record.timestamps.filter((ts) => now - ts < RATE_WINDOW_MS);
+    if (record.timestamps.length === 0) {
+      map.delete(key);
+    }
+  }
+}
+
+export function checkWidgetRateLimit(
+  sessionId: string,
+  clientIp?: string | null
+): { allowed: boolean; retryAfterSeconds?: number; reason?: "session" | "ip" } {
   const now = Date.now();
 
   // Periodic cleanup of stale entries
-  if (now - lastCleanup > SESSION_CLEANUP_INTERVAL_MS) {
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
     lastCleanup = now;
-    for (const [sid, record] of sessionRates.entries()) {
-      record.timestamps = record.timestamps.filter((ts) => now - ts < SESSION_RATE_WINDOW_MS);
-      if (record.timestamps.length === 0) {
-        sessionRates.delete(sid);
-      }
+    pruneRates(sessionRates, now);
+    pruneRates(ipRates, now);
+  }
+
+  // 1. IP-level rate limit check (prevents rotating session ID attacks)
+  const cleanIp = (clientIp || "").replace(/^::ffff:/i, "").trim();
+  if (cleanIp && cleanIp !== "unknown") {
+    let ipRecord = ipRates.get(cleanIp);
+    if (!ipRecord) {
+      ipRecord = { timestamps: [] };
+      ipRates.set(cleanIp, ipRecord);
+    }
+    ipRecord.timestamps = ipRecord.timestamps.filter((ts) => now - ts < RATE_WINDOW_MS);
+    if (ipRecord.timestamps.length >= IP_MAX_MESSAGES_PER_WINDOW) {
+      const oldest = ipRecord.timestamps[0];
+      const retryAfterSeconds = Math.max(1, Math.ceil((oldest + RATE_WINDOW_MS - now) / 1000));
+      return { allowed: false, retryAfterSeconds, reason: "ip" };
     }
   }
 
+  // 2. Session-level rate limit check
   let record = sessionRates.get(sessionId);
   if (!record) {
     record = { timestamps: [] };
     sessionRates.set(sessionId, record);
   }
 
-  record.timestamps = record.timestamps.filter((ts) => now - ts < SESSION_RATE_WINDOW_MS);
+  record.timestamps = record.timestamps.filter((ts) => now - ts < RATE_WINDOW_MS);
 
   if (record.timestamps.length >= SESSION_MAX_MESSAGES_PER_WINDOW) {
     const oldest = record.timestamps[0];
-    const retryAfterSeconds = Math.max(1, Math.ceil((oldest + SESSION_RATE_WINDOW_MS - now) / 1000));
-    return { allowed: false, retryAfterSeconds };
+    const retryAfterSeconds = Math.max(1, Math.ceil((oldest + RATE_WINDOW_MS - now) / 1000));
+    return { allowed: false, retryAfterSeconds, reason: "session" };
   }
 
+  // Record attempts
   record.timestamps.push(now);
+  if (cleanIp && cleanIp !== "unknown") {
+    ipRates.get(cleanIp)?.timestamps.push(now);
+  }
+
   return { allowed: true };
+}
+
+export function checkSessionRateLimit(sessionId: string): { allowed: boolean; retryAfterSeconds?: number } {
+  return checkWidgetRateLimit(sessionId);
 }
 
 /**

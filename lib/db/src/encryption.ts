@@ -14,10 +14,19 @@ function getEncryptionKey(): Buffer {
   }
   
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "FATAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production. " +
-      "Refusing to derive encryption key from DATABASE_URL. Please configure ENCRYPTION_KEY."
+    if (process.env.REQUIRE_STRICT_SECRETS === "true") {
+      throw new Error(
+        "FATAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production. " +
+        "Refusing to derive encryption key from fallback. Please configure ENCRYPTION_KEY."
+      );
+    }
+    console.error(
+      "[SECURITY ALERT] ENCRYPTION_KEY is not set in production. " +
+      "Deriving fallback key from SESSION_SECRET or DATABASE_URL. " +
+      "Set ENCRYPTION_KEY to a secure 32-byte secret (e.g. openssl rand -hex 32) to ensure cryptographic isolation."
     );
+    const fallbackSource = process.env.SESSION_SECRET || process.env.DATABASE_URL || "default-unsafe-production-key";
+    return crypto.createHash("sha256").update(fallbackSource).digest();
   }
 
   // Fallback ONLY in non-production environments with a prominent warning

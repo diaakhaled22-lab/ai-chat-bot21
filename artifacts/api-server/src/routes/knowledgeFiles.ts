@@ -102,26 +102,26 @@ router.post(
       return;
     }
 
-    const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
-    const fileType = FILE_TYPE_BY_EXTENSION[ext];
-    if (!fileType) {
-      res.status(400).json({ error: `صيغة الملف .${ext} غير مدعومة. الصيغ المسموحة: PDF, Excel, CSV, JSON, TXT.` });
-      return;
-    }
-
-    const company = await getOwnedCompany(req.session.userId!);
-    if (!company) {
-      res.status(400).json({ error: "يرجى إعداد بيانات شركتك قبل إضافة ملفات المعرفة" });
-      return;
-    }
-
-    if (company.allowSourceFiles === false) {
-      res.status(403).json({ error: "Knowledge files source is disabled by administrator." });
-      return;
-    }
-
     const filePath = req.file.path;
     try {
+      const ext = req.file.originalname.split(".").pop()?.toLowerCase() ?? "";
+      const fileType = FILE_TYPE_BY_EXTENSION[ext];
+      if (!fileType) {
+        res.status(400).json({ error: `صيغة الملف .${ext} غير مدعومة. الصيغ المسموحة: PDF, Excel, CSV, JSON, TXT.` });
+        return;
+      }
+
+      const company = await getOwnedCompany(req.session.userId!);
+      if (!company) {
+        res.status(400).json({ error: "يرجى إعداد بيانات شركتك قبل إضافة ملفات المعرفة" });
+        return;
+      }
+
+      if (company.allowSourceFiles === false) {
+        res.status(403).json({ error: "Knowledge files source is disabled by administrator." });
+        return;
+      }
+
       const fileBuffer = await fs.promises.readFile(filePath);
       const text = await extractTextFromBuffer(fileType, fileBuffer, req.file.originalname);
       const trimmed = text.trim();

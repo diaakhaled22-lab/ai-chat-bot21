@@ -25,6 +25,7 @@ import { ensureRagSchema } from "./lib/knowledgeRag";
 import { ensureVoiceSchema } from "./lib/audio";
 import { getExchangeRates } from "./lib/currencyRates";
 import { assertPlanApprovalSecretConfigured } from "./lib/planApproval";
+import { ensureEmailVerificationSchema } from "./routes/auth";
 
 // Early security sanity check: prevent server startup if PLAN_APPROVAL_SECRET is not configured
 assertPlanApprovalSecretConfigured();
@@ -365,6 +366,7 @@ async function startServer() {
   try {
     await ensureAdminExists();
     await ensureEmailNotificationSchema();
+    await ensureEmailVerificationSchema();
     await ensureRagSchema();
     await ensureVoiceSchema();
     await ensureRestApiSchema();

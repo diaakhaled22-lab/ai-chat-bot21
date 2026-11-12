@@ -26,7 +26,7 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATI
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
-import { isWidgetOriginAllowed, validateWidgetRequest, isValidWidgetSessionId, checkSessionRateLimit } from "../lib/widgetSecurity";
+import { isWidgetOriginAllowed, validateWidgetRequest, isValidWidgetSessionId, checkSessionRateLimit, checkWidgetRateLimit } from "../lib/widgetSecurity";
 
 const router = Router();
 
@@ -144,7 +144,9 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       res.setHeader("Vary", "Origin");
     }
 
-    const sessionRate = checkSessionRateLimit(sessionId);
+    const rawIp = req.ip || req.socket?.remoteAddress || "unknown";
+    const clientIp = typeof rawIp === "string" ? rawIp.replace(/^::ffff:/i, "").trim() : "unknown";
+    const sessionRate = checkWidgetRateLimit(sessionId, clientIp);
     if (!sessionRate.allowed) {
       res.status(429).json({
         error: localizedChannelMessage(

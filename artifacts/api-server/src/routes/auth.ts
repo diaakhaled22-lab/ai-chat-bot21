@@ -6,7 +6,7 @@ import { db, usersTable, passwordResetTokensTable, companiesTable, notifications
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
-import { getResendConfig } from "../lib/companyNotification";
+import { getResendConfig, escapeHtml } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
 import {
   maskApiKey,
@@ -43,6 +43,42 @@ export interface Temp2FaSession {
 }
 
 export const temp2faTokens = new Map<string, Temp2FaSession>();
+
+// Periodic cleanup of expired 2FA temporary sessions to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of temp2faTokens.entries()) {
+    if (now > data.expiresAt) {
+      temp2faTokens.delete(token);
+    }
+  }
+}, 60 * 1000).unref();
+
+export function hashOtpCode(email: string, code: string): string {
+  const pepper = process.env.SESSION_SECRET || "bot-manager-otp-pepper";
+  return crypto
+    .createHash("sha256")
+    .update(`${email.toLowerCase().trim()}:${code.trim()}:${pepper}`)
+    .digest("hex");
+}
+
+export async function ensureEmailVerificationSchema(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS email_verification_codes (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL,
+        attempts INT NOT NULL DEFAULT 0,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_email_verification_codes_email ON email_verification_codes(email);
+    `);
+  } catch (err) {
+    logger.warn({ err }, "Could not ensure email_verification_codes table schema");
+  }
+}
 
 function extractClientIp(req: Request): string {
   const raw = req.ip || req.socket.remoteAddress || "unknown";
@@ -114,8 +150,6 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
-    resetLoginAttempts(username, clientIp);
-
     if (isTotpSecretUnavailable(user.id)) {
       res.status(503).json({ error: "Admin two-factor credentials require secure re-enrollment. Contact the system operator." });
       return;
@@ -123,6 +157,13 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
 
     const totpSecret = getTotpSecret(user.id);
     if (totpSecret) {
+      // Invalidate any existing pending 2FA token for this user
+      for (const [key, data] of temp2faTokens.entries()) {
+        if (data.userId === user.id) {
+          temp2faTokens.delete(key);
+        }
+      }
+
       // Create a temporary token scoped to user with attempt limits
       const tempToken = crypto.randomBytes(32).toString("hex");
       temp2faTokens.set(tempToken, {
@@ -135,6 +176,9 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       res.json({ requires2FA: true, tempToken });
       return;
     }
+
+    // Only reset login attempts when 2FA is not enabled (full login completed)
+    resetLoginAttempts(username, clientIp);
 
     // Regenerate session ID to prevent session fixation attacks
     await regenerateSession(req);
@@ -361,6 +405,8 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
 
     const cleanEmail = normalizeEmail(email);
 
+    // Unify username & email collision check to prevent account enumeration (N6)
+    let isTaken = false;
     if (username && typeof username === "string") {
       const cleanUsername = username.trim().toLowerCase();
       const [existingUser] = await db
@@ -368,46 +414,34 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         .from(usersTable)
         .where(eq(usersTable.username, cleanUsername))
         .limit(1);
-      if (existingUser) {
-        res.status(409).json({ error: isAr ? "اسم المستخدم مستخدم بالفعل. يرجى اختيار اسم آخر." : "Username already taken." });
-        return;
-      }
+      if (existingUser) isTaken = true;
     }
 
-    // Check if email already registered
-    const [existingEmail] = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(
-        and(
-          eq(usersTable.role, "client"),
-          or(
-            eq(usersTable.email, cleanEmail),
-            eq(usersTable.notificationEmail, cleanEmail)
+    if (!isTaken) {
+      const [existingEmail] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.role, "client"),
+            or(
+              eq(usersTable.email, cleanEmail),
+              eq(usersTable.notificationEmail, cleanEmail)
+            )
           )
         )
-      )
-      .limit(1);
+        .limit(1);
+      if (existingEmail) isTaken = true;
+    }
 
-    if (existingEmail) {
+    if (isTaken) {
       res.status(409).json({
-        error: isAr ? "هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول مباشرة." : "This email is already registered. Please sign in.",
+        error: isAr
+          ? "بيانات الحساب غير متاحة للتسجيل (اسم المستخدم أو البريد مسجل بالفعل). يرجى تسجيل الدخول أو استخدام بيانات أخرى."
+          : "Registration details unavailable. The username or email may already be registered. Please sign in or use different details.",
       });
       return;
     }
-
-    // Ensure email_verification_codes table exists
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS email_verification_codes (
-        id SERIAL PRIMARY KEY,
-        email TEXT NOT NULL,
-        code TEXT NOT NULL,
-        attempts INT NOT NULL DEFAULT 0,
-        expires_at TIMESTAMPTZ NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE INDEX IF NOT EXISTS idx_email_verification_codes_email ON email_verification_codes(email);
-    `).catch(() => {});
 
     // Cooldown check (60 seconds) & Hourly limit (5 max)
     const recentCodes = await db
@@ -461,15 +495,16 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
     const otpCode = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes TTL
 
-    // Insert new OTP record
+    // Store cryptographically hashed code instead of plaintext (N7)
     await db.insert(emailVerificationCodesTable).values({
       email: cleanEmail,
-      code: otpCode,
+      code: hashOtpCode(cleanEmail, otpCode),
       attempts: 0,
       expiresAt,
     });
 
-    // Email content
+    // Email content with HTML escaping on caller-supplied name (N2)
+    const safeName = name ? escapeHtml(name.trim()) : "";
     const sender = fromEmail || (smtpReady ? `"Bot Manager" <${smtpCfg.smtpUser}>` : "Bot Manager <onboarding@resend.dev>");
     const subject = isAr
       ? `رمز التحقق الخاص بك: ${otpCode} | منصة المساعد الذكي`
@@ -480,7 +515,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         <div style="text-align: center; margin-bottom: 24px;">
           <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تأكيد البريد الإلكتروني" : "Verify Your Email"}</h2>
           <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
-            ${isAr ? `مرحباً ${name ? name.trim() : ""}، استخدم الرمز التالي لتفعيل حسابك الجديد:` : `Hello ${name ? name.trim() : ""}, use the code below to complete your registration:`}
+            ${isAr ? `مرحباً ${safeName}، استخدم الرمز التالي لتفعيل حسابك الجديد:` : `Hello ${safeName}, use the code below to complete your registration:`}
           </p>
         </div>
 
@@ -672,7 +707,18 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       return;
     }
 
-    if (verificationRecord.code !== otpCode.trim()) {
+    const expectedHash = verificationRecord.code;
+    const providedHash = hashOtpCode(cleanEmail, otpCode.trim());
+    let isCodeValid = false;
+    try {
+      const expBuf = Buffer.from(expectedHash, "utf-8");
+      const provBuf = Buffer.from(providedHash, "utf-8");
+      isCodeValid = expBuf.length === provBuf.length && crypto.timingSafeEqual(expBuf, provBuf);
+    } catch {
+      isCodeValid = false;
+    }
+
+    if (!isCodeValid) {
       await db
         .update(emailVerificationCodesTable)
         .set({ attempts: verificationRecord.attempts + 1 })
@@ -686,7 +732,27 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
       return;
     }
 
-    // Code is valid! Delete verification records for this email
+    // Code is valid! Perform atomic deletion to eliminate race conditions / replay attacks
+    const deleted = await db
+      .delete(emailVerificationCodesTable)
+      .where(
+        and(
+          eq(emailVerificationCodesTable.id, verificationRecord.id),
+          eq(emailVerificationCodesTable.code, verificationRecord.code)
+        )
+      )
+      .returning({ id: emailVerificationCodesTable.id });
+
+    if (!deleted || deleted.length === 0) {
+      res.status(400).json({
+        error: isAr
+          ? "تم استخدام رمز التحقق بالفعل أو انتهت صلاحيته."
+          : "Verification code has already been used or expired.",
+      });
+      return;
+    }
+
+    // Clean up any remaining verification records for this email
     await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail));
 
     const [existing] = await db
@@ -939,59 +1005,6 @@ router.get("/auth/me", async (req, res) => {
           resendApiKey = comp.resendApiKey;
         }
       }
-    }
-
-    // Global fallbacks for notification email and resend api key (e.g. for admin or shared config)
-    if (!notificationEmail) {
-      try {
-        const [compWithEmail] = await db
-          .select({ notificationEmail: companiesTable.notificationEmail })
-          .from(companiesTable)
-          .where(and(sql`${companiesTable.notificationEmail} IS NOT NULL`, sql`${companiesTable.notificationEmail} != ''`))
-          .limit(1);
-        if (compWithEmail?.notificationEmail?.trim()) {
-          notificationEmail = compWithEmail.notificationEmail.trim();
-        }
-      } catch {}
-    }
-
-    if (!notificationEmail) {
-      try {
-        const [uWithEmail] = await db
-          .select({ notificationEmail: usersTable.notificationEmail })
-          .from(usersTable)
-          .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
-          .limit(1);
-        if (uWithEmail?.notificationEmail?.trim()) {
-          notificationEmail = uWithEmail.notificationEmail.trim();
-        }
-      } catch {}
-    }
-
-    if (!resendApiKey) {
-      try {
-        const [compWithKey] = await db
-          .select({ resendApiKey: companiesTable.resendApiKey })
-          .from(companiesTable)
-          .where(and(sql`${companiesTable.resendApiKey} IS NOT NULL`, sql`${companiesTable.resendApiKey} != ''`))
-          .limit(1);
-        if (compWithKey?.resendApiKey?.trim()) {
-          resendApiKey = compWithKey.resendApiKey.trim();
-        }
-      } catch {}
-    }
-
-    if (!resendApiKey) {
-      try {
-        const [uWithKey] = await db
-          .select({ resendApiKey: usersTable.resendApiKey })
-          .from(usersTable)
-          .where(and(sql`${usersTable.resendApiKey} IS NOT NULL`, sql`${usersTable.resendApiKey} != ''`))
-          .limit(1);
-        if (uWithKey?.resendApiKey?.trim()) {
-          resendApiKey = uWithKey.resendApiKey.trim();
-        }
-      } catch {}
     }
 
     res.json({
