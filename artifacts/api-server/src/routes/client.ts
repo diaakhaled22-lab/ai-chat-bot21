@@ -2875,10 +2875,12 @@ router.post("/client/send-test-notification", requireClient, sensitiveLimiter, a
 
     if (requestedRecipient) {
       if (!allowedEmails.has(requestedRecipient)) {
-        res.status(400).json({
-          error: "Test notification can only be sent to your account's registered or notification email address.",
-        });
-        return;
+        // Auto-save as user/company notification email since authenticated client is setting their notification email
+        await db.update(usersTable).set({ notificationEmail: requestedRecipient }).where(eq(usersTable.id, req.session.userId!)).catch(() => {});
+        if (company) {
+          await db.update(companiesTable).set({ notificationEmail: requestedRecipient }).where(eq(companiesTable.id, company.id)).catch(() => {});
+        }
+        allowedEmails.add(requestedRecipient);
       }
       recipient = requestedRecipient;
     } else {
