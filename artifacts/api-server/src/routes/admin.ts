@@ -4555,6 +4555,17 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
 
       // High-quality Hero Card presentation matching Quota Usage Bill
       const displayTitle = itemNameAr || title || (isPaidBoolean ? "فاتورة معتمدة ومسددة" : "فاتورة معتمدة غير مسددة");
+      const formatEmailDate = (d: any) => {
+        if (!d) return "";
+        try {
+          const dt = new Date(d);
+          if (!isNaN(dt.getTime())) return dt.toLocaleDateString();
+        } catch {}
+        return String(d).split("T")[0];
+      };
+      const startStr = formatEmailDate(invoiceData.issueDate);
+      const endStr = formatEmailDate(invoiceData.endDate);
+      const validityPeriodEmail = startStr && endStr ? `${startStr} → ${endStr}` : (endStr || startStr);
       const heroEmailHtml = `
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -4613,10 +4624,10 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
           </td>
         </tr>
         ${
-          invoiceData.endDate
+          validityPeriodEmail
             ? `<tr>
                 <td colspan="2" style="background: #f0fdf4; padding: 10px 14px; border-radius: 10px; border: 1px solid #dcfce7; text-align: center; font-size: 12px;">
-                  <span style="color: #166534; font-weight: 700;">📅 فترة صلاحية الحصة: <strong>${escapeHtml(invoiceData.endDate)}</strong></span>
+                  <span style="color: #166534; font-weight: 700;">📅 فترة صلاحية الحصة: <strong>${escapeHtml(validityPeriodEmail)}</strong></span>
                 </td>
               </tr>`
             : ""

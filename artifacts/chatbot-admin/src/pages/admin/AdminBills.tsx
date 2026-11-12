@@ -3925,20 +3925,20 @@ export default function AdminBills() {
                     </span>
                   </div>
 
-                  {/* Prominent Full-Width End Date Card */}
-                  <div className="col-span-1 sm:col-span-2 p-3 bg-blue-500/10 border border-blue-500/25 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                  {/* Prominent Full-Width End Date Card (Matching Image 2) */}
+                  <div className="col-span-1 sm:col-span-2 p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
                     <div className="flex items-center gap-2.5">
-                      <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+                      <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
                       <div>
                         <span className="text-muted-foreground text-[10px] block font-medium">
-                          {lang === "ar" ? "تاريخ انتهاء صلاحية الفاتورة (End Date):" : "Official Expiration End Date:"}
+                          {lang === "ar" ? "فترة صلاحية الحصة (Quota Validity Period):" : "Quota Validity Period:"}
                         </span>
-                        <strong className="text-foreground text-sm font-mono block mt-0.5">
-                          📅 {invoiceEndDate || (lang === "ar" ? "ساري المفعول (حسب دورة الاشتراك)" : "Active (Per Subscription)")}
+                        <strong className="text-emerald-800 dark:text-emerald-200 text-sm font-mono block mt-0.5">
+                          📅 {new Date(viewingInvoice.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")} → {invoiceEndDate || (lang === "ar" ? "ساري المفعول" : "Active")}
                         </strong>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 self-start sm:self-auto">
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 self-start sm:self-auto">
                       {viewingInvoice.itemType === "topup"
                         ? (lang === "ar" ? "شحن رصيد إضافي ⚡" : "Top-up Allowance ⚡")
                         : (lang === "ar" ? "اشتراك باقة معتمدة ✓" : "Active Subscription ✓")}
