@@ -541,6 +541,10 @@ export default function AdminBills() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedPayment, setCopiedPayment] = useState<string | null>(null);
 
+  // View Company Statement Modal state
+  const [viewStatementModalOpen, setViewStatementModalOpen] = useState(false);
+  const [viewingCompanyStatement, setViewingCompanyStatement] = useState<CompanyInvoiceGroup | null>(null);
+
   
   const handleDownloadInvoiceCard = (inv: InvoiceItem) => {
     try {
@@ -1105,6 +1109,202 @@ export default function AdminBills() {
       });
     } finally {
       setIsSendingCopy(false);
+    }
+  };
+
+  // Copy consolidated statement of all invoices for a company
+  const handleCopyCompanyStatement = (group: CompanyInvoiceGroup) => {
+    if (!group || !group.invoices || group.invoices.length === 0) return;
+    const convertedLocal = convertPrice(group.totalUsd);
+    const paidUsd = group.invoices
+      .filter((i) => i.isPaid || i.status === "paid" || i.status === "activated")
+      .reduce((s, i) => s + Number(i.priceUsd || 0), 0);
+    const unpaidUsd = Math.max(0, group.totalUsd - paidUsd);
+    const issueDate = new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
+
+    const matchedComp = companies.find(
+      (c: any) =>
+        (group.companyId && c.id === group.companyId) ||
+        (c.name && group.companyName && c.name.toLowerCase() === group.companyName.toLowerCase())
+    );
+    const payPhone = group.invoices[0]?.paymentPhone || matchedComp?.whatsappNumber || "01110891521";
+    const payInsta = group.invoices[0]?.paymentInstaPay || "eng-diaakhaled@instapay";
+
+    const lines = [
+      lang === "ar" ? `📋 كشف حساب فواتير معتمد — Bot Manager` : `📋 Official Account Statement — Bot Manager`,
+      lang === "ar" ? `🏢 الشركة: ${group.companyName}` : `🏢 Company: ${group.companyName}`,
+      lang === "ar" ? `👤 العميل: ${group.clientName}` : `👤 Client: ${group.clientName}`,
+      lang === "ar" ? `📅 تاريخ الكشف: ${issueDate}` : `📅 Date: ${issueDate}`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      lang === "ar" ? `📊 الملخص المالي:` : `📊 Financial Summary:`,
+      lang === "ar"
+        ? `• إجمالي الفواتير: ${group.invoices.length} فواتير`
+        : `• Total Invoices: ${group.invoices.length}`,
+      lang === "ar"
+        ? `• المبلغ الإجمالي: $${group.totalUsd.toLocaleString()} USD (~ ${convertedLocal.toLocaleString()} ${currencyInfo.symbol})`
+        : `• Total Amount: $${group.totalUsd.toLocaleString()} USD (~ ${convertedLocal.toLocaleString()} ${currencyInfo.symbol})`,
+      lang === "ar"
+        ? `• المسدد (Paid): $${paidUsd.toLocaleString()} USD`
+        : `• Paid: $${paidUsd.toLocaleString()} USD`,
+      lang === "ar"
+        ? `• المستحق المتبقي (Due): $${unpaidUsd.toLocaleString()} USD ${unpaidUsd === 0 ? "✅ (خالص)" : "⏳ (بانتظار السداد)"}`
+        : `• Remaining Due: $${unpaidUsd.toLocaleString()} USD ${unpaidUsd === 0 ? "✅ (Settled)" : "⏳ (Pending)"}`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      lang === "ar" ? `🧾 تفاصيل الفواتير:` : `🧾 Invoices Breakdown:`,
+      ...group.invoices.map((inv, idx) => {
+        const isPaid = inv.isPaid || inv.status === "paid" || inv.status === "activated";
+        const title = lang === "ar" ? inv.titleAr : inv.titleEn;
+        const statusStr = isPaid ? (lang === "ar" ? "✅ مسددة" : "✅ Paid") : (lang === "ar" ? "⏳ غير مسددة" : "⏳ Unpaid");
+        return `${idx + 1}. #${inv.invoiceNumber} | ${title} | $${inv.priceUsd} USD | ${statusStr}`;
+      }),
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      unpaidUsd > 0
+        ? (lang === "ar"
+            ? `💳 بيانات السداد المعتمدة:\n📱 فودافون كاش ومحافظ الهاتف: ${payPhone}\n⚡ إنستاباي (IPA): ${payInsta}\nℹ️ يُرجى إرسال إشعار أو لقطة شاشة التحويل بعد السداد للتأكيد والتفعيل الفوري.`
+            : `💳 Approved Payment Details:\n📱 Vodafone Cash / Wallets: ${payPhone}\n⚡ InstaPay (IPA): ${payInsta}`)
+        : (lang === "ar" ? `✅ الحساب مسدد بالكامل ولا توجد أي مستحقات معلقة. شكراً لتعاملكم معنا!` : `✅ Account fully settled. Thank you!`),
+    ];
+
+    navigator.clipboard.writeText(lines.filter(Boolean).join("\n"));
+    toast({
+      title: lang === "ar" ? "✅ تم نسخ كشف الحساب الشامل بنجاح!" : "Account Statement Copied!",
+      description: lang === "ar" ? `تم نسخ تفاصيل جميع (${group.invoices.length}) فواتير إلى الحافظة.` : `Copied all ${group.invoices.length} invoices summary to clipboard.`,
+    });
+  };
+
+  // Download printable standalone HTML statement of all invoices for a company
+  const handleDownloadCompanyStatement = (group: CompanyInvoiceGroup) => {
+    if (!group || !group.invoices || group.invoices.length === 0) return;
+    try {
+      const convertedLocal = convertPrice(group.totalUsd);
+      const paidUsd = group.invoices
+        .filter((i) => i.isPaid || i.status === "paid" || i.status === "activated")
+        .reduce((s, i) => s + Number(i.priceUsd || 0), 0);
+      const unpaidUsd = Math.max(0, group.totalUsd - paidUsd);
+      const isAllPaid = unpaidUsd <= 0;
+      const issueDate = new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
+
+      const matchedComp = companies.find(
+        (c: any) =>
+          (group.companyId && c.id === group.companyId) ||
+          (c.name && group.companyName && c.name.toLowerCase() === group.companyName.toLowerCase())
+      );
+      const payPhone = group.invoices[0]?.paymentPhone || matchedComp?.whatsappNumber || "01110891521";
+      const payInsta = group.invoices[0]?.paymentInstaPay || "eng-diaakhaled@instapay";
+
+      const rows = group.invoices.map((inv, idx) => {
+        const isPaid = inv.isPaid || inv.status === "paid" || inv.status === "activated";
+        const title = lang === "ar" ? inv.titleAr : inv.titleEn;
+        const local = convertPrice(inv.priceUsd);
+        const endDate = resolveInvoiceEndDate(inv) || inv.endDate;
+        const dateStr = inv.issueDate + (endDate ? ` → ${endDate}` : "");
+        const statusBadge = isPaid
+          ? `<span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">✅ مسددة</span>`
+          : `<span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">⏳ غير مسددة</span>`;
+
+        return `
+          <tr style="border-bottom: 1px solid #e2e8f0; background: ${idx % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+            <td style="padding: 10px 12px; font-family: monospace; font-weight: bold; text-align: right;">#${inv.invoiceNumber}</td>
+            <td style="padding: 10px 12px; text-align: right;">
+              <div style="font-weight: 700; color: #1e40af;">${title}</div>
+              <div style="font-size: 11px; color: #64748b;">${dateStr}</div>
+            </td>
+            <td style="padding: 10px 12px; text-align: center; color: #059669; font-weight: 600;">${(inv.tokenQuota || 0).toLocaleString()} رمز</td>
+            <td style="padding: 10px 12px; text-align: left; direction: ltr;">
+              <strong style="font-family: monospace;">$${inv.priceUsd} USD</strong>
+              <div style="font-size: 10px; color: #64748b;">≈ ${local.toLocaleString()} ${currencyInfo.symbol}</div>
+            </td>
+            <td style="padding: 10px 12px; text-align: center;">${statusBadge}</td>
+          </tr>
+        `;
+      }).join("");
+
+      const html = `<!DOCTYPE html>
+<html dir="${lang === "ar" ? "rtl" : "ltr"}" lang="${lang === "ar" ? "ar" : "en"}">
+<head>
+  <meta charset="utf-8">
+  <title>كشف حساب فواتير معتمد - ${group.companyName}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 24px; }
+    .card { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; overflow: hidden; }
+    .header { background: ${isAllPaid ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #d97706 0%, #b45309 100%)"}; color: white; padding: 24px; text-align: center; }
+    .header h1 { margin: 0 0 6px 0; font-size: 22px; }
+    .kpi-table { width: 100%; border-collapse: separate; border-spacing: 8px; margin: 16px 0; }
+    .kpi-cell { background: #f1f5f9; padding: 12px; border-radius: 10px; text-align: center; }
+    .inv-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .inv-table th { background: #0f172a; color: #fff; padding: 10px 12px; font-size: 12px; text-align: right; }
+    .print-btn { display: inline-block; background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0; cursor: pointer; border: none; }
+    @media print { .no-print { display: none; } body { padding: 0; background: #fff; } .card { box-shadow: none; border: none; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>📋 كشف حساب فواتير معتمد</h1>
+      <p style="margin: 0; opacity: 0.9;">Bot Manager Financial Statement • ${group.companyName}</p>
+    </div>
+    <div style="padding: 20px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: #475569; margin-bottom: 12px;">
+        <div>👤 العميل: <strong>${group.clientName}</strong></div>
+        <div>📅 تاريخ الإصدار: <strong>${issueDate}</strong></div>
+      </div>
+      <table class="kpi-table">
+        <tr>
+          <td class="kpi-cell"><span style="font-size: 11px; color: #64748b;">عدد الفواتير</span><br><strong style="font-size: 16px;">${group.invoices.length}</strong></td>
+          <td class="kpi-cell"><span style="font-size: 11px; color: #64748b;">الإجمالي الكلي</span><br><strong style="font-size: 16px;">$${group.totalUsd} USD</strong></td>
+          <td class="kpi-cell" style="background: #dcfce7;"><span style="font-size: 11px; color: #166534;">المسدد</span><br><strong style="font-size: 16px; color: #166534;">$${paidUsd} USD</strong></td>
+          <td class="kpi-cell" style="background: ${unpaidUsd > 0 ? "#fef3c7" : "#f1f5f9"};"><span style="font-size: 11px; color: #92400e;">المستحق المتبقي</span><br><strong style="font-size: 16px; color: #b45309;">$${unpaidUsd} USD</strong></td>
+        </tr>
+      </table>
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>رقم الفاتورة</th>
+            <th>البند / الباقة</th>
+            <th style="text-align: center;">الرصيد</th>
+            <th style="text-align: left;">المبلغ</th>
+            <th style="text-align: center;">الحالة</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${unpaidUsd > 0 ? `
+        <div style="margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px; text-align: right;">
+          <strong style="color: #92400e; font-size: 13px;">💳 طرق السداد المعتمدة:</strong>
+          <div style="margin-top: 8px; font-size: 12px; color: #1e293b;">
+            📱 فودافون كاش ومحافظ الهاتف: <strong>${payPhone}</strong><br>
+            ⚡ عنوان إنستاباي IPA: <strong>${payInsta}</strong>
+          </div>
+        </div>
+      ` : ""}
+      <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button class="print-btn" onclick="window.print()">🖨️ طباعة / حفظ كـ PDF</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Statement-${group.companyName.replace(/\s+/g, "_")}-${new Date().toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: lang === "ar" ? "✅ تم تحميل كشف الحساب المالي بنجاح!" : "Account Statement Downloaded!",
+        description: lang === "ar" ? `تم حفظ ملف كشف الحساب (${group.invoices.length} فواتير). يمكنك فتحه وطباعته أو حفظه PDF.` : `Downloaded statement HTML file with ${group.invoices.length} bills.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل تحميل كشف الحساب" : "Download Failed",
+        description: err?.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -2017,36 +2217,57 @@ export default function AdminBills() {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
 
-                            {/* Option 2: Send Consolidated Statement for ALL Invoices */}
+                            {/* Section 1: All Company Invoices (Statement Level) */}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setViewingCompanyStatement(group);
+                                setViewStatementModalOpen(true);
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-700"
+                            >
+                              <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <div className="flex flex-col text-right">
+                                <span className="font-bold">{lang === "ar" ? "عرض كشف الحساب الشامل" : "View Statement (All Bills)"}</span>
+                                <span className="text-[10px] text-muted-foreground font-normal">{lang === "ar" ? `معاينة كافة (${group.invoices.length}) فواتير` : `View all ${group.invoices.length} bills`}</span>
+                              </div>
+                            </DropdownMenuItem>
+
                             <DropdownMenuItem
                               onClick={() => {
                                 handleSendCompanyStatement(group);
                               }}
-                              className="text-xs cursor-pointer gap-2.5 py-2 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-700 dark:focus:text-emerald-300 focus:bg-emerald-50 dark:focus:bg-emerald-950/40"
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium text-blue-600 dark:text-blue-400 focus:text-blue-700"
                             >
-                              <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <Mail className="w-4 h-4 text-blue-500 shrink-0" />
                               <div className="flex flex-col text-right">
-                                <span className="font-bold">{lang === "ar" ? "إرسال كشف حساب مجمّع (كافة الفواتير)" : "Send Statement (All Invoices)"}</span>
-                                <span className="text-[10px] text-muted-foreground font-normal">
-                                  {lang === "ar" ? `إرسال ملف مالي بجميع (${group.invoices.length}) فواتير والمستحقات` : `Consolidated statement with all ${group.invoices.length} bills`}
-                                </span>
+                                <span className="font-bold">{lang === "ar" ? "إرسال كشف حساب مجمّع" : "Send Statement via Email"}</span>
+                                <span className="text-[10px] text-muted-foreground font-normal">{lang === "ar" ? "إرسال كافة الفواتير لبريد العميل" : "Email all bills to client"}</span>
                               </div>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                handleCopyCompanyStatement(group);
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
+                              <span>{lang === "ar" ? "نسخ ملخص كشف الحساب" : "Copy Statement Summary"}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                handleDownloadCompanyStatement(group);
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Download className="w-4 h-4 text-indigo-500 shrink-0" />
+                              <span>{lang === "ar" ? "تحميل كشف الحساب (HTML/PDF)" : "Download Statement (HTML)"}</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuSeparator />
 
-                            <DropdownMenuItem
-                              onClick={() => {
-                                if (group.invoices.length > 0) {
-                                  handleSendBillEmail(group.invoices[0]);
-                                }
-                              }}
-                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
-                            >
-                              <Mail className="w-4 h-4 text-amber-500 shrink-0" />
-                              <span>{lang === "ar" ? "إرسال أحدث فاتورة فقط عبر البريد" : "Send Latest Bill via Email"}</span>
-                            </DropdownMenuItem>
-
+                            {/* Section 2: Latest Single Invoice */}
                             <DropdownMenuItem
                               onClick={() => {
                                 if (group.invoices.length > 0) {
@@ -2054,22 +2275,22 @@ export default function AdminBills() {
                                   setViewInvoiceModalOpen(true);
                                 }
                               }}
-                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              className="text-xs cursor-pointer gap-2.5 py-1 text-muted-foreground hover:text-foreground"
                             >
-                              <Receipt className="w-4 h-4 text-blue-500 shrink-0" />
-                              <span>{lang === "ar" ? "عرض أحدث فاتورة" : "View Latest Invoice"}</span>
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-[11px]">{lang === "ar" ? "معاينة أحدث فاتورة منفردة" : "View Latest Single Invoice"}</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
                               onClick={() => {
                                 if (group.invoices.length > 0) {
-                                  handleCopySummary(group.invoices[0]);
+                                  handleSendBillEmail(group.invoices[0]);
                                 }
                               }}
-                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              className="text-xs cursor-pointer gap-2.5 py-1 text-muted-foreground hover:text-foreground"
                             >
-                              <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
-                              <span>{lang === "ar" ? "نسخ ملخص أحدث فاتورة" : "Copy Latest Bill Summary"}</span>
+                              <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-[11px]">{lang === "ar" ? "إرسال أحدث فاتورة فقط عبر البريد" : "Send Latest Single Invoice"}</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
@@ -2078,10 +2299,10 @@ export default function AdminBills() {
                                   handleDownloadInvoiceCard(group.invoices[0]);
                                 }
                               }}
-                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              className="text-xs cursor-pointer gap-2.5 py-1 text-muted-foreground hover:text-foreground"
                             >
-                              <Download className="w-4 h-4 text-indigo-500 shrink-0" />
-                              <span>{lang === "ar" ? "تحميل بطاقة أحدث فاتورة" : "Download Latest Invoice Card"}</span>
+                              <Download className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-[11px]">{lang === "ar" ? "تحميل بطاقة أحدث فاتورة (PNG)" : "Download Latest Card (PNG)"}</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -4340,6 +4561,265 @@ export default function AdminBills() {
                     size="sm"
                     onClick={() => setViewInvoiceModalOpen(false)}
                     className="text-xs w-full sm:w-auto justify-center cursor-pointer"
+                  >
+                    {lang === "ar" ? "إغلاق" : "Close"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Company Statement Modal */}
+      <Dialog open={viewStatementModalOpen} onOpenChange={setViewStatementModalOpen}>
+        <DialogContent
+          className="max-w-3xl w-[calc(100vw-1.5rem)] sm:w-[94vw] sm:max-w-3xl rounded-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
+          dir={lang === "ar" ? "rtl" : "ltr"}
+        >
+          {viewingCompanyStatement && (() => {
+            const convertedTotal = convertPrice(viewingCompanyStatement.totalUsd);
+            const paidTotal = viewingCompanyStatement.invoices
+              .filter((i) => i.isPaid || i.status === "paid" || i.status === "activated")
+              .reduce((s, i) => s + Number(i.priceUsd || 0), 0);
+            const unpaidTotal = Math.max(0, viewingCompanyStatement.totalUsd - paidTotal);
+            const isAllSettled = unpaidTotal <= 0;
+            const issueDate = new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
+
+            const matchedComp = companies.find(
+              (c: any) =>
+                (viewingCompanyStatement.companyId && c.id === viewingCompanyStatement.companyId) ||
+                (c.name && viewingCompanyStatement.companyName && c.name.toLowerCase() === viewingCompanyStatement.companyName.toLowerCase())
+            );
+            const payPhone = viewingCompanyStatement.invoices[0]?.paymentPhone || matchedComp?.whatsappNumber || "01110891521";
+            const payInsta = viewingCompanyStatement.invoices[0]?.paymentInstaPay || "eng-diaakhaled@instapay";
+
+            return (
+              <div className="space-y-4 sm:space-y-5">
+                {/* Statement Branded Header */}
+                <div className={`text-white rounded-2xl p-4 sm:p-6 shadow-md border border-white/10 ${
+                  isAllSettled
+                    ? "bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900"
+                    : "bg-gradient-to-r from-amber-950 via-slate-900 to-amber-900"
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="inline-block px-3 py-1 bg-white/10 border border-white/20 rounded-full text-[11px] font-semibold text-emerald-200 mb-2">
+                        BOT MANAGER • CONSOLIDATED STATEMENT
+                      </div>
+                      <h2 className="text-lg sm:text-xl font-extrabold flex items-center gap-2">
+                        <span>📋</span>
+                        <span>{lang === "ar" ? "كشف حساب فواتير معتمد" : "Official Account Statement"}</span>
+                      </h2>
+                      <p className="text-xs text-white/80 mt-1 font-mono">
+                        {viewingCompanyStatement.companyName} • {viewingCompanyStatement.clientName}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-row sm:flex-col items-stretch sm:items-end flex-wrap gap-2 shrink-0">
+                      <div className={`px-3 py-1.5 rounded-xl border text-right rtl:text-right ltr:text-left ${
+                        isAllSettled
+                          ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-300"
+                          : "bg-amber-500/20 border-amber-400/30 text-amber-300"
+                      }`}>
+                        <span className="block text-[10px] uppercase tracking-wider font-bold">
+                          {lang === "ar" ? "حالة الحساب" : "Account Status"}
+                        </span>
+                        <strong className="text-xs sm:text-sm">
+                          {isAllSettled
+                            ? (lang === "ar" ? "✅ مسدد بالكامل" : "✅ Fully Settled")
+                            : (lang === "ar" ? `⏳ مستحقات: $${unpaidTotal.toLocaleString()}` : `⏳ Due: $${unpaidTotal.toLocaleString()}`)}
+                        </strong>
+                      </div>
+                      <div className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-right rtl:text-right ltr:text-left">
+                        <span className="block text-[9px] uppercase tracking-wider text-slate-300 font-semibold">
+                          {lang === "ar" ? "تاريخ الإصدار" : "Issue Date"}
+                        </span>
+                        <strong className="text-xs text-slate-100 font-mono">
+                          📅 {issueDate}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI Financial Overview Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="bg-muted/40 border border-border/80 rounded-xl p-3 text-center">
+                    <span className="text-[11px] text-muted-foreground block mb-1">
+                      {lang === "ar" ? "إجمالي الفواتير" : "Total Bills"}
+                    </span>
+                    <strong className="text-base sm:text-lg font-bold font-mono">
+                      {viewingCompanyStatement.invoices.length} {lang === "ar" ? "فواتير" : "bills"}
+                    </strong>
+                  </div>
+
+                  <div className="bg-muted/40 border border-border/80 rounded-xl p-3 text-center">
+                    <span className="text-[11px] text-muted-foreground block mb-1">
+                      {lang === "ar" ? "إجمالي المبالغ" : "Total Amount"}
+                    </span>
+                    <strong className="text-base sm:text-lg font-bold text-foreground font-mono">
+                      ${viewingCompanyStatement.totalUsd.toLocaleString()}
+                    </strong>
+                    <span className="text-[10px] text-muted-foreground block font-mono">
+                      ≈ {convertedTotal.toLocaleString()} {currencyInfo.symbol}
+                    </span>
+                  </div>
+
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl p-3 text-center">
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mb-1">
+                      {lang === "ar" ? "المسدد (Paid)" : "Paid"}
+                    </span>
+                    <strong className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                      ${paidTotal.toLocaleString()}
+                    </strong>
+                  </div>
+
+                  <div className={`border rounded-xl p-3 text-center ${
+                    unpaidTotal > 0
+                      ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-400"
+                      : "bg-muted/40 border-border/80 text-muted-foreground"
+                  }`}>
+                    <span className="text-[11px] block mb-1">
+                      {lang === "ar" ? "المستحق المتبقي (Due)" : "Remaining Due"}
+                    </span>
+                    <strong className="text-base sm:text-lg font-bold font-mono">
+                      ${unpaidTotal.toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Table of Invoices */}
+                <div className="border border-border/80 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-muted/60 px-4 py-2 border-b border-border/80 flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">
+                      {lang === "ar" ? "تفاصيل الفواتير المدرجة بالكشف:" : "Statement Invoices Breakdown:"}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {viewingCompanyStatement.invoices.length} {lang === "ar" ? "عنصر" : "items"}
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                    <table className="w-full text-xs text-right rtl:text-right ltr:text-left">
+                      <thead className="bg-muted/30 text-muted-foreground text-[11px] sticky top-0 backdrop-blur-sm border-b">
+                        <tr>
+                          <th className="p-2.5 font-semibold">{lang === "ar" ? "رقم الفاتورة" : "Invoice #"}</th>
+                          <th className="p-2.5 font-semibold">{lang === "ar" ? "البند / الصلاحية" : "Item / Validity"}</th>
+                          <th className="p-2.5 font-semibold text-center">{lang === "ar" ? "الرصيد" : "Quota"}</th>
+                          <th className="p-2.5 font-semibold text-left rtl:text-left ltr:text-right">{lang === "ar" ? "المبلغ" : "Amount"}</th>
+                          <th className="p-2.5 font-semibold text-center">{lang === "ar" ? "الحالة" : "Status"}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {viewingCompanyStatement.invoices.map((inv, idx) => {
+                          const isPaid = inv.isPaid || inv.status === "paid" || inv.status === "activated";
+                          const title = lang === "ar" ? inv.titleAr : inv.titleEn;
+                          const endDate = resolveInvoiceEndDate(inv) || inv.endDate;
+                          return (
+                            <tr key={inv.id || idx} className="hover:bg-muted/30 transition-colors">
+                              <td className="p-2.5 font-mono font-bold text-foreground whitespace-nowrap">
+                                #{inv.invoiceNumber}
+                              </td>
+                              <td className="p-2.5">
+                                <div className="font-semibold text-primary">{title}</div>
+                                <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                  {inv.issueDate} {endDate ? `→ ${endDate}` : ""}
+                                </div>
+                              </td>
+                              <td className="p-2.5 text-center font-mono text-emerald-600 dark:text-emerald-400">
+                                {inv.tokenQuota ? `${Number(inv.tokenQuota).toLocaleString()} Tokens` : "—"}
+                              </td>
+                              <td className="p-2.5 text-left rtl:text-left ltr:text-right font-mono whitespace-nowrap">
+                                <span className="font-bold">${inv.priceUsd} USD</span>
+                                <span className="block text-[10px] text-muted-foreground">
+                                  ≈ {convertPrice(inv.priceUsd).toLocaleString()} {currencyInfo.symbol}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-center whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  isPaid
+                                    ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                                    : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                                }`}>
+                                  {isPaid ? (lang === "ar" ? "✅ مسددة" : "✅ Paid") : (lang === "ar" ? "⏳ غير مسددة" : "⏳ Unpaid")}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Unpaid Payment Details Box */}
+                {unpaidTotal > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/60 rounded-xl p-3.5 text-xs text-right">
+                    <strong className="text-amber-900 dark:text-amber-200 font-bold block mb-2">
+                      💳 {lang === "ar" ? "بيانات وطرق سداد المستحقات المعتمدة:" : "Approved Payment Methods:"}
+                    </strong>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-amber-200 dark:border-amber-900/60">
+                        <span className="text-[10px] text-muted-foreground block mb-0.5">
+                          📱 {lang === "ar" ? "فودافون كاش ومحافظ الهاتف:" : "Vodafone Cash & Wallets:"}
+                        </span>
+                        <strong className="font-mono text-sm text-foreground">{payPhone}</strong>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-amber-200 dark:border-amber-900/60">
+                        <span className="text-[10px] text-muted-foreground block mb-0.5">
+                          ⚡ {lang === "ar" ? "عنوان إنستاباي (IPA):" : "InstaPay Address (IPA):"}
+                        </span>
+                        <strong className="font-mono text-xs text-blue-600 dark:text-blue-400">{payInsta}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons in Modal Footer */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/80">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        handleSendCompanyStatement(viewingCompanyStatement);
+                      }}
+                      className="text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>{lang === "ar" ? "إرسال بالبريد" : "Email Statement"}</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleCopyCompanyStatement(viewingCompanyStatement);
+                      }}
+                      className="text-xs gap-1.5 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-cyan-500" />
+                      <span>{lang === "ar" ? "نسخ الملخص" : "Copy"}</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleDownloadCompanyStatement(viewingCompanyStatement);
+                      }}
+                      className="text-xs gap-1.5 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 text-blue-500" />
+                      <span>{lang === "ar" ? "تحميل (HTML/PDF)" : "Download (HTML/PDF)"}</span>
+                    </Button>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewStatementModalOpen(false)}
+                    className="text-xs cursor-pointer"
                   >
                     {lang === "ar" ? "إغلاق" : "Close"}
                   </Button>
