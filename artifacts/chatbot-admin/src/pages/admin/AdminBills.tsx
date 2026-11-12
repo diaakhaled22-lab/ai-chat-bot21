@@ -511,6 +511,7 @@ export default function AdminBills() {
   const [sendViaWhatsApp, setSendViaWhatsApp] = useState(true);
   const [customNotes, setCustomNotes] = useState("");
   const [isSendingCopy, setIsSendingCopy] = useState(false);
+  const [sendingInvoiceNumber, setSendingInvoiceNumber] = useState<string | null>(null);
 
   // Pause / Resume Modal state
   const [pauseDialogOpen, setPauseDialogOpen] = useState(false);
@@ -914,6 +915,7 @@ export default function AdminBills() {
     }
 
     try {
+      setSendingInvoiceNumber(inv.invoiceNumber);
       setIsSendingCopy(true);
       toast({
         title: lang === "ar" ? "جارٍ إرسال الفاتورة..." : "Sending Bill...",
@@ -995,6 +997,7 @@ export default function AdminBills() {
       });
     } finally {
       setIsSendingCopy(false);
+      setSendingInvoiceNumber(null);
     }
   };
 
@@ -1138,6 +1141,7 @@ export default function AdminBills() {
       });
     } finally {
       setIsSendingCopy(false);
+      setSendingInvoiceNumber(null);
     }
   };
 
@@ -2162,18 +2166,36 @@ export default function AdminBills() {
                                 </td>
 
                                 {/* Actions */}
-                                <td className="p-3 text-center whitespace-nowrap min-w-[140px]">
+                                <td className="p-3 text-center whitespace-nowrap min-w-[170px]">
                                   <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+                                    {/* Direct 1-Click Share Button (Matches Quota Usage Bill) */}
                                     <Button
                                       size="sm"
-                                      onClick={() => handleOpenSendCopy(inv)}
-                                      title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
-                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg shrink-0"
+                                      onClick={() => handleSendBillEmail(inv)}
+                                      disabled={isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber}
+                                      title={lang === "ar" ? "مشاركة وإرسال الفاتورة كصورة فوراً إلى إيميل العميل (بنقرة واحدة)" : "Share invoice card image directly to client email (1-click)"}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1.5 shadow-sm rounded-lg shrink-0 cursor-pointer"
                                     >
-                                      <Send className="w-3 h-3" />
-                                      <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
+                                      {isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <Share2 className="w-3 h-3" />
+                                      )}
+                                      <span>{lang === "ar" ? "مشاركة الفاتورة" : "Share Bill"}</span>
                                     </Button>
 
+                                    {/* Download Invoice Card Button */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDownloadInvoiceCard(inv)}
+                                      className="h-7 w-7 p-0 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg shrink-0 cursor-pointer"
+                                      title={lang === "ar" ? "تحميل بطاقة الفاتورة (PNG)" : "Download Invoice Card (PNG)"}
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                    </Button>
+
+                                    {/* View Invoice Button */}
                                     <Button
                                       variant="outline"
                                       size="sm"
@@ -2181,7 +2203,7 @@ export default function AdminBills() {
                                         setViewingInvoice(inv);
                                         setViewInvoiceModalOpen(true);
                                       }}
-                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
+                                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0 cursor-pointer"
                                       title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
                                     >
                                       <Eye className="w-3.5 h-3.5" />
@@ -2499,14 +2521,31 @@ export default function AdminBills() {
                               </button>
 
                               <div className="flex items-center gap-1.5">
+                                {/* Direct 1-Click Share Button */}
                                 <Button
                                   size="sm"
-                                  onClick={() => handleOpenSendCopy(inv)}
-                                  title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-2.5 gap-1 shadow-sm rounded-lg cursor-pointer"
+                                  onClick={() => handleSendBillEmail(inv)}
+                                  disabled={isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber}
+                                  title={lang === "ar" ? "مشاركة وإرسال الفاتورة بنقرة واحدة" : "Share Bill (1-click)"}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-2.5 gap-1.5 shadow-sm rounded-lg cursor-pointer"
                                 >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>{lang === "ar" ? "إرسال" : "Send"}</span>
+                                  {isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Share2 className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>{lang === "ar" ? "مشاركة الفاتورة" : "Share"}</span>
+                                </Button>
+
+                                {/* Download Image */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownloadInvoiceCard(inv)}
+                                  className="h-8 w-8 p-0 text-emerald-600 dark:text-emerald-400 rounded-lg cursor-pointer"
+                                  title={lang === "ar" ? "تحميل بطاقة الفاتورة (PNG)" : "Download Card (PNG)"}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
                                 </Button>
 
                                 <Button
@@ -2884,18 +2923,36 @@ export default function AdminBills() {
                         </td>
 
                         {/* Actions */}
-                        <td className="p-3.5 text-center whitespace-nowrap min-w-[140px]">
+                        <td className="p-3.5 text-center whitespace-nowrap min-w-[170px]">
                           <div className="flex items-center justify-center gap-1.5 flex-nowrap">
+                            {/* Direct 1-Click Share Button (Matches Quota Usage Bill) */}
                             <Button
                               size="sm"
-                              onClick={() => handleOpenSendCopy(inv)}
-                              title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send a copy via Email or WhatsApp"}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1 shadow-sm rounded-lg shrink-0"
+                              onClick={() => handleSendBillEmail(inv)}
+                              disabled={isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber}
+                              title={lang === "ar" ? "مشاركة وإرسال الفاتورة كصورة فوراً إلى إيميل العميل (بنقرة واحدة)" : "Share invoice card image directly to client email (1-click)"}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] h-7 px-2.5 gap-1.5 shadow-sm rounded-lg shrink-0 cursor-pointer"
                             >
-                              <Send className="w-3 h-3" />
-                              <span>{lang === "ar" ? "إرسال نسخة" : "Send Copy"}</span>
+                              {isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Share2 className="w-3 h-3" />
+                              )}
+                              <span>{lang === "ar" ? "مشاركة الفاتورة" : "Share Bill"}</span>
                             </Button>
 
+                            {/* Download Invoice Card Button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadInvoiceCard(inv)}
+                              className="h-7 w-7 p-0 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg shrink-0 cursor-pointer"
+                              title={lang === "ar" ? "تحميل بطاقة الفاتورة (PNG)" : "Download Invoice Card (PNG)"}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+
+                            {/* View Invoice Button */}
                             <Button
                               variant="outline"
                               size="sm"
@@ -2903,7 +2960,7 @@ export default function AdminBills() {
                                 setViewingInvoice(inv);
                                 setViewInvoiceModalOpen(true);
                               }}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground rounded-lg shrink-0 cursor-pointer"
                               title={lang === "ar" ? "معاينة الفاتورة" : "View Invoice"}
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -3204,14 +3261,31 @@ export default function AdminBills() {
                         </button>
 
                         <div className="flex items-center gap-1.5">
+                          {/* Direct 1-Click Share Button */}
                           <Button
                             size="sm"
-                            onClick={() => handleOpenSendCopy(inv)}
-                            title={lang === "ar" ? "إرسال نسخة من الفاتورة عبر البريد أو الواتساب" : "Send copy via Email or WhatsApp"}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-2.5 gap-1 shadow-sm rounded-lg cursor-pointer"
+                            onClick={() => handleSendBillEmail(inv)}
+                            disabled={isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber}
+                            title={lang === "ar" ? "مشاركة وإرسال الفاتورة بنقرة واحدة" : "Share Bill (1-click)"}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 px-2.5 gap-1.5 shadow-sm rounded-lg cursor-pointer"
                           >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>{lang === "ar" ? "إرسال" : "Send"}</span>
+                            {isSendingCopy && sendingInvoiceNumber === inv.invoiceNumber ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Share2 className="w-3.5 h-3.5" />
+                            )}
+                            <span>{lang === "ar" ? "مشاركة الفاتورة" : "Share"}</span>
+                          </Button>
+
+                          {/* Download Image */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadInvoiceCard(inv)}
+                            className="h-8 w-8 p-0 text-emerald-600 dark:text-emerald-400 rounded-lg cursor-pointer"
+                            title={lang === "ar" ? "تحميل بطاقة الفاتورة (PNG)" : "Download Card (PNG)"}
+                          >
+                            <Download className="w-3.5 h-3.5" />
                           </Button>
 
                           <Button
@@ -4077,16 +4151,52 @@ export default function AdminBills() {
                 {/* Footer Actions */}
                 <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-border/60">
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                    {/* Direct 1-Click Share Button (Matches Quota Usage Bill) */}
                     <Button
+                      size="sm"
+                      onClick={() => handleSendBillEmail(viewingInvoice)}
+                      disabled={isSendingCopy}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1.5 shadow-sm w-full sm:w-auto justify-center cursor-pointer"
+                      title={lang === "ar" ? "مشاركة وإرسال الفاتورة كصورة فوراً إلى إيميل العميل (بنقرة واحدة)" : "Share invoice card directly to client email"}
+                    >
+                      {isSendingCopy ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>{lang === "ar" ? "جارٍ المشاركة..." : "Sharing..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>{lang === "ar" ? "مشاركة الفاتورة (إيميل)" : "Share Bill (Email)"}</span>
+                        </>
+                      )}
+                    </Button>
+
+                    {/* Download Image Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadInvoiceCard(viewingInvoice)}
+                      className="text-xs gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 w-full sm:w-auto justify-center cursor-pointer"
+                      title={lang === "ar" ? "تحميل بطاقة الفاتورة عالية الدقة PNG" : "Download PNG"}
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>{lang === "ar" ? "تحميل الصورة" : "Download Image"}</span>
+                    </Button>
+
+                    {/* Advanced Custom Send (WhatsApp / Custom Notes) */}
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => {
                         setViewInvoiceModalOpen(false);
                         handleOpenSendCopy(viewingInvoice);
                       }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1.5 shadow-sm w-full sm:w-auto justify-center cursor-pointer"
+                      className="text-xs gap-1.5 text-muted-foreground hover:text-foreground w-full sm:w-auto justify-center cursor-pointer"
+                      title={lang === "ar" ? "إرسال نسخة مخصصة عبر واتساب أو بريد إضافي" : "Send custom copy"}
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{lang === "ar" ? "إرسال نسخة من الفاتورة" : "Send Copy"}</span>
+                      <Send className="w-3.5 h-3.5 text-blue-500" />
+                      <span>{lang === "ar" ? "خيارات مخصصة" : "Custom Options"}</span>
                     </Button>
 
                     <Button
