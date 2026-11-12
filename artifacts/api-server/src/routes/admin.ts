@@ -48,7 +48,7 @@ import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { processApprovedPlanRequest, parseTicketPlanDetails, getActivePackagesCatalog, applyPlanTierToCompany } from "../lib/planApproval";
-import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, getInvoicePaymentConfig, type InvoiceData } from "../lib/invoice";
+import { generateInvoiceHtml, generateInvoiceWhatsAppText, normalizePhoneNumber, sendInvoiceToClient, getInvoicePaymentConfig, generateStatementHtml, type InvoiceData, type StatementData, type StatementInvoiceItem } from "../lib/invoice";
 import { sendWhatsAppMessage } from "./whatsapp";
 
 const router = Router();
@@ -4873,6 +4873,224 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     });
   } catch (err: any) {
     logger.error({ err }, "Send invoice copy error");
+    res.status(500).json({ error: err?.message || "Internal server error" });
+  }
+});
+
+// POST /admin/invoices/send-statement - Admin sends a consolidated account statement of all company invoices
+router.post("/admin/invoices/send-statement", async (req, res) => {
+  try {
+    const {
+      companyId,
+      companyName,
+      clientId,
+      clientName,
+      recipientEmail,
+      recipientPhone,
+      invoices = [],
+      customNotes,
+      currencySymbol = "EGP",
+      totalUsd,
+      totalLocal,
+      sendViaEmail = true,
+      sendViaWhatsApp = false,
+    } = req.body as {
+      companyId?: number | string | null;
+      companyName?: string;
+      clientId?: number | string | null;
+      clientName?: string;
+      recipientEmail?: string;
+      recipientPhone?: string;
+      invoices?: StatementInvoiceItem[];
+      customNotes?: string;
+      currencySymbol?: string;
+      totalUsd?: number;
+      totalLocal?: number;
+      sendViaEmail?: boolean;
+      sendViaWhatsApp?: boolean;
+    };
+
+    if (!Array.isArray(invoices) || invoices.length === 0) {
+      res.status(400).json({ error: "At least one invoice is required to generate a statement" });
+      return;
+    }
+
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    // Look up company and client for notification email and credentials
+    let matchedCompany: any = null;
+    let matchedClient: any = null;
+    let currentUser: any = null;
+
+    if (req.session?.userId) {
+      const [u] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+      currentUser = u || null;
+    }
+
+    if (companyId) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
+      matchedCompany = comp || null;
+    }
+    if (!matchedCompany && companyName) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.name, companyName)).limit(1);
+      matchedCompany = comp || null;
+    }
+    if (matchedCompany?.clientId) {
+      const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, matchedCompany.clientId)).limit(1);
+      matchedClient = cli || null;
+    } else if (clientId) {
+      const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
+      matchedClient = cli || null;
+    }
+
+    let fallbackEmail =
+      matchedCompany?.notificationEmail?.trim() ||
+      matchedClient?.notificationEmail?.trim() ||
+      matchedClient?.email?.trim() ||
+      currentUser?.notificationEmail?.trim() ||
+      "";
+
+    const targetEmail = (recipientEmail && recipientEmail.trim()) || fallbackEmail;
+    const payCfg = await getInvoicePaymentConfig();
+
+    // Calculate financials
+    const calcTotalUsd = totalUsd !== undefined ? Number(totalUsd) : invoices.reduce((s, i) => s + Number(i.priceUsd || 0), 0);
+    const calcTotalLocal = totalLocal !== undefined ? Number(totalLocal) : invoices.reduce((s, i) => s + Number(i.priceLocal || 0), 0);
+    const paidUsd = invoices
+      .filter((i) => i.isPaid || i.status === "paid" || i.status === "activated")
+      .reduce((s, i) => s + Number(i.priceUsd || 0), 0);
+    const unpaidUsd = Math.max(0, calcTotalUsd - paidUsd);
+
+    const statementData: StatementData = {
+      companyName: companyName || matchedCompany?.name || "Bot Manager",
+      clientName: clientName || matchedClient?.name || matchedClient?.username || "—",
+      clientEmail: targetEmail || matchedClient?.email || "",
+      clientPhone: recipientPhone || matchedClient?.whatsappNumber || null,
+      issueDate: new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }),
+      invoices,
+      totalUsd: calcTotalUsd,
+      totalLocal: calcTotalLocal,
+      paidUsd,
+      unpaidUsd,
+      currencySymbol: currencySymbol || "EGP",
+      paymentPhone: payCfg.paymentPhone,
+      paymentInstaPay: payCfg.paymentInstaPay,
+      customNotes: customNotes?.trim() || null,
+    };
+
+    const finalHtml = generateStatementHtml(statementData);
+
+    if (sendViaEmail) {
+      if (!targetEmail) {
+        emailError = "البريد الإلكتروني للمستلم مطلوب (يرجى إدخال بريد مستلم أو حفظ بريد الإشعارات في إعدادات الشركة).";
+      } else {
+        const customResendKey =
+          matchedCompany?.resendApiKey ||
+          matchedClient?.resendApiKey ||
+          currentUser?.resendApiKey ||
+          null;
+        const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
+
+        if (resendApiKey) {
+          try {
+            const resendRes = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: fromEmail || "Bot Manager Billing <onboarding@resend.dev>",
+                to: [targetEmail],
+                subject: `📋 كشف حساب فواتير معتمد - ${statementData.companyName}`,
+                html: finalHtml,
+              }),
+            });
+
+            if (resendRes.ok) {
+              emailSent = true;
+              emailError = null;
+              logger.info({ targetEmail, companyName: statementData.companyName }, "Statement email dispatched via Resend API");
+              await db
+                .insert(emailLogsTable)
+                .values({
+                  companyId: matchedCompany?.id || 1,
+                  recipientEmail: targetEmail,
+                  subject: `كشف حساب فواتير - ${statementData.companyName}`,
+                  eventType: "invoice_statement",
+                  status: "sent",
+                })
+                .catch(() => {});
+            } else {
+              const errBody = await resendRes.text();
+              let errMsg = errBody;
+              try {
+                const parsed = JSON.parse(errBody);
+                if (parsed?.message) errMsg = parsed.message;
+              } catch {}
+              emailError = `Resend: ${errMsg}`;
+              logger.warn({ targetEmail, errBody }, "Resend statement email failed; falling back to SMTP");
+            }
+          } catch (resendErr: any) {
+            emailError = resendErr?.message ?? "Resend error";
+            logger.warn({ err: resendErr, targetEmail }, "Resend statement exception; trying SMTP fallback");
+          }
+        }
+
+        if (!emailSent) {
+          const cfg = await getEmailConfig();
+          if (isSmtpConfigured(cfg)) {
+            try {
+              const transporter = buildTransporter(cfg);
+              await transporter.sendMail({
+                from: `"Bot Manager Billing" <${cfg.smtpUser}>`,
+                to: targetEmail,
+                subject: `📋 كشف حساب فواتير معتمد - ${statementData.companyName}`,
+                html: finalHtml,
+              });
+              emailSent = true;
+              emailError = null;
+              await db
+                .insert(emailLogsTable)
+                .values({
+                  companyId: matchedCompany?.id || 1,
+                  recipientEmail: targetEmail,
+                  subject: `كشف حساب فواتير - ${statementData.companyName}`,
+                  eventType: "invoice_statement",
+                  status: "sent",
+                })
+                .catch(() => {});
+            } catch (err: any) {
+              logger.error({ err, targetEmail }, "Failed to send statement email via SMTP");
+              emailError = (emailError ? emailError + " | " : "") + (err?.message || "SMTP send failure");
+            }
+          } else if (!emailError) {
+            emailError = "لم يتم العثور على خدمة بريد مهيأة (Resend أو SMTP).";
+          }
+        }
+      }
+    }
+
+    // 3. Log Admin Activity
+    if (req.session?.userId) {
+      await logAdminActivity(
+        req.session.userId,
+        "Send Company Statement",
+        `Admin sent consolidated statement of ${invoices.length} invoices for ${statementData.companyName} to ${targetEmail || "client"}`,
+        req.ip || null
+      );
+    }
+
+    res.json({
+      ok: true,
+      message: "Company statement processed successfully",
+      emailSent,
+      emailError,
+      invoicesCount: invoices.length,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Send company statement error");
     res.status(500).json({ error: err?.message || "Internal server error" });
   }
 });

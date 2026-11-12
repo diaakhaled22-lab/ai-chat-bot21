@@ -1002,6 +1002,112 @@ export default function AdminBills() {
     }
   };
 
+  // Handle sending a consolidated statement of ALL invoices for a company
+  const handleSendCompanyStatement = async (group: CompanyInvoiceGroup) => {
+    if (!group || !group.invoices || group.invoices.length === 0) {
+      toast({
+        title: lang === "ar" ? "لا توجد فواتير" : "No Invoices",
+        description: lang === "ar" ? "لا توجد فواتير لهذه الشركة لإرسال كشف حساب بها." : "No invoices found for this company.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const matchedComp = companies.find(
+      (c: any) =>
+        (group.companyId && c.id === group.companyId) ||
+        (c.name && group.companyName && c.name.toLowerCase() === group.companyName.toLowerCase())
+    );
+
+    const targetEmail =
+      matchedComp?.notificationEmail ||
+      matchedComp?.clientNotificationEmail ||
+      group.clientEmail ||
+      settingsNotificationEmail ||
+      "";
+
+    if (!targetEmail) {
+      toast({
+        title: lang === "ar" ? "تنبيه: لا يوجد بريد إلكتروني" : "No Email Configured",
+        description:
+          lang === "ar"
+            ? "يرجى تعيين بريد إلكتروني لإشعارات الشركة أولاً لإرسال كشف الحساب إليه."
+            : "Please configure a recipient email to send the statement.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSendingCopy(true);
+      toast({
+        title: lang === "ar" ? "جارٍ إرسال كشف الحساب..." : "Sending Statement...",
+        description:
+          lang === "ar"
+            ? `يتم الآن إرسال كشف حساب مجمّع يضم (${group.invoices.length}) فواتير إلى: ${targetEmail}`
+            : `Sending account statement (${group.invoices.length} bills) to: ${targetEmail}`,
+      });
+
+      const convertedLocal = convertPrice(group.totalUsd);
+
+      const res = await customFetch<{
+        ok: boolean;
+        emailSent?: boolean;
+        message?: string;
+        emailError?: string | null;
+        invoicesCount?: number;
+      }>("/api/admin/invoices/send-statement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: group.companyId,
+          companyName: group.companyName,
+          clientId: group.invoices[0]?.clientId,
+          clientName: group.clientName,
+          recipientEmail: targetEmail,
+          recipientPhone: group.clientPhone || matchedComp?.whatsappNumber || "",
+          invoices: group.invoices.map((inv) => ({
+            invoiceNumber: inv.invoiceNumber,
+            issueDate: inv.issueDate,
+            endDate: resolveInvoiceEndDate(inv) || inv.endDate,
+            titleAr: inv.titleAr,
+            titleEn: inv.titleEn,
+            itemNameAr: inv.titleAr,
+            tokenQuota: inv.tokenQuota,
+            priceUsd: inv.priceUsd,
+            priceLocal: convertPrice(inv.priceUsd),
+            isPaid: inv.isPaid,
+            status: inv.status,
+          })),
+          totalUsd: group.totalUsd,
+          totalLocal: convertedLocal,
+          currencySymbol: currencyInfo.symbol,
+          sendViaEmail: true,
+          sendViaWhatsApp: false,
+        }),
+      });
+
+      toast({
+        title: lang === "ar" ? "✅ تم إرسال كشف الحساب المجمّع بنجاح!" : "Statement Sent Successfully!",
+        description:
+          lang === "ar"
+            ? `تم إرسال كشف الحساب المجمّع الذي يضم (${res.invoicesCount || group.invoices.length}) فواتير بنجاح إلى: ${targetEmail}. 💡 يرجى مراجعة صندوق الوارد أو مجلد Spam.`
+            : `Consolidated statement with (${res.invoicesCount || group.invoices.length}) bills sent to: ${targetEmail}. Check Inbox or Spam.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "فشل إرسال كشف الحساب" : "Failed to Send Statement",
+        description: err?.message || (lang === "ar" ? "تعذر إرسال كشف الحساب المجمّع." : "Could not send account statement."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingCopy(false);
+    }
+  };
+
   // Handle open Send Copy Modal
   const handleOpenSendCopy = (invoice: InvoiceItem) => {
     setSelectedInvoice(invoice);
@@ -1902,7 +2008,7 @@ export default function AdminBills() {
                               <span className="sr-only">{lang === "ar" ? "الإجراءات" : "Actions"}</span>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-60 shadow-xl border border-border/80" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-64 shadow-xl border border-border/80" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenuLabel className="text-xs font-semibold flex items-center justify-between pb-1.5">
                               <span className="font-bold text-foreground truncate max-w-[140px]">{group.companyName}</span>
                               <span className="text-[10px] text-muted-foreground font-mono">
@@ -1911,18 +2017,23 @@ export default function AdminBills() {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
 
+                            {/* Option 2: Send Consolidated Statement for ALL Invoices */}
                             <DropdownMenuItem
                               onClick={() => {
-                                if (group.invoices.length > 0) {
-                                  setViewingInvoice(group.invoices[0]);
-                                  setViewInvoiceModalOpen(true);
-                                }
+                                handleSendCompanyStatement(group);
                               }}
-                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                              className="text-xs cursor-pointer gap-2.5 py-2 font-medium text-emerald-600 dark:text-emerald-400 focus:text-emerald-700 dark:focus:text-emerald-300 focus:bg-emerald-50 dark:focus:bg-emerald-950/40"
                             >
-                              <Receipt className="w-4 h-4 text-emerald-500 shrink-0" />
-                              <span>{lang === "ar" ? "عرض فاتورة الاستهلاك" : "View Usage Invoice"}</span>
+                              <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <div className="flex flex-col text-right">
+                                <span className="font-bold">{lang === "ar" ? "إرسال كشف حساب مجمّع (كافة الفواتير)" : "Send Statement (All Invoices)"}</span>
+                                <span className="text-[10px] text-muted-foreground font-normal">
+                                  {lang === "ar" ? `إرسال ملف مالي بجميع (${group.invoices.length}) فواتير والمستحقات` : `Consolidated statement with all ${group.invoices.length} bills`}
+                                </span>
+                              </div>
                             </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
 
                             <DropdownMenuItem
                               onClick={() => {
@@ -1933,7 +2044,20 @@ export default function AdminBills() {
                               className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
                             >
                               <Mail className="w-4 h-4 text-amber-500 shrink-0" />
-                              <span>{lang === "ar" ? "إرسال الفاتورة عبر البريد" : "Send Bill via Email"}</span>
+                              <span>{lang === "ar" ? "إرسال أحدث فاتورة فقط عبر البريد" : "Send Latest Bill via Email"}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (group.invoices.length > 0) {
+                                  setViewingInvoice(group.invoices[0]);
+                                  setViewInvoiceModalOpen(true);
+                                }
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
+                            >
+                              <Receipt className="w-4 h-4 text-blue-500 shrink-0" />
+                              <span>{lang === "ar" ? "عرض أحدث فاتورة" : "View Latest Invoice"}</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
@@ -1945,7 +2069,7 @@ export default function AdminBills() {
                               className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
                             >
                               <Copy className="w-4 h-4 text-cyan-500 shrink-0" />
-                              <span>{lang === "ar" ? "نسخ ملخص الفاتورة" : "Copy Bill Summary"}</span>
+                              <span>{lang === "ar" ? "نسخ ملخص أحدث فاتورة" : "Copy Latest Bill Summary"}</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
@@ -1956,8 +2080,8 @@ export default function AdminBills() {
                               }}
                               className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium"
                             >
-                              <Download className="w-4 h-4 text-blue-500 shrink-0" />
-                              <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                              <Download className="w-4 h-4 text-indigo-500 shrink-0" />
+                              <span>{lang === "ar" ? "تحميل بطاقة أحدث فاتورة" : "Download Latest Invoice Card"}</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

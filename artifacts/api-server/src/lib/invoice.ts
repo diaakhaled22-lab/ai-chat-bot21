@@ -647,3 +647,214 @@ export async function sendInvoiceToClient(
 
   return { emailSent, whatsappSent, whatsappUrl: waUrl, emailMethod, error: emailError };
 }
+
+export interface StatementInvoiceItem {
+  invoiceNumber: string;
+  issueDate: string;
+  endDate?: string | null;
+  titleAr?: string;
+  titleEn?: string;
+  itemNameAr?: string;
+  tokenQuota?: number;
+  priceUsd?: number;
+  priceLocal?: number;
+  currencySymbol?: string;
+  isPaid?: boolean;
+  status?: string;
+}
+
+export interface StatementData {
+  companyName: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  issueDate: string;
+  invoices: StatementInvoiceItem[];
+  totalUsd: number;
+  totalLocal: number;
+  paidUsd: number;
+  unpaidUsd: number;
+  currencySymbol: string;
+  paymentPhone?: string | null;
+  paymentInstaPay?: string | null;
+  customNotes?: string | null;
+}
+
+/**
+ * Render a high-conversion, consolidated HTML Account Statement email for all company invoices.
+ */
+export function generateStatementHtml(stmt: StatementData): string {
+  const isAllPaid = stmt.unpaidUsd <= 0;
+  const sym = stmt.currencySymbol || "EGP";
+
+  const rowsHtml = stmt.invoices
+    .map((inv, idx) => {
+      const isPaid = inv.isPaid || inv.status === "paid" || inv.status === "activated";
+      const statusBadge = isPaid
+        ? `<span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; border: 1px solid #bbf7d0;">✅ مسددة</span>`
+        : `<span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; border: 1px solid #fde68a;">⏳ بانتظار السداد</span>`;
+
+      const title = escapeHtml(inv.itemNameAr || inv.titleAr || "فاتورة اشتراك");
+      const num = escapeHtml(inv.invoiceNumber);
+      const dateStr = escapeHtml(inv.issueDate) + (inv.endDate ? ` → ${escapeHtml(inv.endDate)}` : "");
+      const quotaStr = inv.tokenQuota ? `${Number(inv.tokenQuota).toLocaleString()} رمز` : "—";
+      const usdStr = `$${Number(inv.priceUsd || 0).toLocaleString()} USD`;
+      const localStr = inv.priceLocal ? `≈ ${Number(inv.priceLocal || 0).toLocaleString()} ${escapeHtml(sym)}` : "";
+
+      const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+
+      return `
+        <tr style="background-color: ${bg}; border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 12px 14px; font-family: monospace; font-size: 12px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap;">
+            #${num}
+          </td>
+          <td style="padding: 12px 14px; font-size: 12px; color: #1e293b; text-align: right;">
+            <div style="font-weight: 700; color: #2563eb;">${title}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${dateStr}</div>
+          </td>
+          <td style="padding: 12px 14px; font-size: 12px; color: #059669; font-weight: 600; text-align: center;">
+            ${quotaStr}
+          </td>
+          <td style="padding: 12px 14px; font-size: 12px; text-align: left; direction: ltr; white-space: nowrap;">
+            <strong style="font-family: monospace; color: #0f172a;">${usdStr}</strong>
+            ${localStr ? `<div style="font-size: 10px; color: #64748b;">${localStr}</div>` : ""}
+          </td>
+          <td style="padding: 12px 14px; text-align: center; white-space: nowrap;">
+            ${statusBadge}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كشف حساب فواتير معتمد — ${escapeHtml(stmt.companyName)}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
+  <div style="max-width: 720px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+    
+    <!-- Header Banner -->
+    <div style="background: ${isAllPaid ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #d97706 0%, #b45309 100%)"}; padding: 26px 20px; text-align: center; color: #ffffff;">
+      <div style="font-size: 32px; margin-bottom: 6px;">📋</div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">كشف حساب فواتير معتمد</h1>
+      <p style="margin: 4px 0 0; font-size: 14px; opacity: 0.95;">${escapeHtml(stmt.companyName)} — Bot Manager Financial Statement</p>
+      <div style="margin-top: 10px; display: inline-block; background: rgba(255,255,255,0.22); padding: 5px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;">
+        ${isAllPaid ? "✅ الحساب مسدد بالكامل (لا توجد مستحقات معلقة)" : `⏳ بانتظار سداد المستحقات المتبقية: $${stmt.unpaidUsd.toLocaleString()} USD`}
+      </div>
+    </div>
+
+    ${
+      stmt.customNotes
+        ? `<div style="padding: 12px 20px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; text-align: right; font-size: 13px; color: #1e40af; line-height: 1.6;">
+            <strong style="color: #1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(stmt.customNotes)}
+          </div>`
+        : ""
+    }
+
+    <!-- Financial KPI Summary Cards -->
+    <div style="padding: 18px 20px 8px 20px; background: #ffffff;">
+      <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 8px;">
+        <tr>
+          <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center; width: 25%;">
+            <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">عدد الفواتير</span>
+            <strong style="font-size: 16px; color: #0f172a; font-family: monospace;">${stmt.invoices.length} فواتير</strong>
+          </td>
+          <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; text-align: center; width: 25%;">
+            <span style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">إجمالي المبالغ</span>
+            <strong style="font-size: 16px; color: #0f172a; font-family: monospace;">$${stmt.totalUsd.toLocaleString()}</strong>
+            <span style="font-size: 10px; color: #64748b; display: block;">≈ ${stmt.totalLocal.toLocaleString()} ${escapeHtml(sym)}</span>
+          </td>
+          <td style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px; text-align: center; width: 25%;">
+            <span style="font-size: 11px; color: #166534; display: block; margin-bottom: 2px;">المسدد (Paid)</span>
+            <strong style="font-size: 16px; color: #166534; font-family: monospace;">$${stmt.paidUsd.toLocaleString()}</strong>
+          </td>
+          <td style="background: ${stmt.unpaidUsd > 0 ? "#fffbeb" : "#f8fafc"}; border: 1px solid ${stmt.unpaidUsd > 0 ? "#fde68a" : "#e2e8f0"}; border-radius: 12px; padding: 12px; text-align: center; width: 25%;">
+            <span style="font-size: 11px; color: ${stmt.unpaidUsd > 0 ? "#92400e" : "#64748b"}; display: block; margin-bottom: 2px;">المستحق (Due)</span>
+            <strong style="font-size: 16px; color: ${stmt.unpaidUsd > 0 ? "#b45309" : "#0f172a"}; font-family: monospace;">$${stmt.unpaidUsd.toLocaleString()}</strong>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Client & Issue Info -->
+    <div style="padding: 0 20px 14px 20px; text-align: right;">
+      <table style="width: 100%; border-collapse: collapse; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+        <tr>
+          <td style="padding: 10px 14px; font-size: 12px; color: #475569; text-align: right;">
+            👤 العميل: <strong style="color: #0f172a;">${escapeHtml(stmt.clientName || "—")}</strong>
+          </td>
+          <td style="padding: 10px 14px; font-size: 12px; color: #475569; text-align: left;">
+            📅 تاريخ إصدار الكشف: <strong style="color: #0f172a;">${escapeHtml(stmt.issueDate)}</strong>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Invoices Breakdown Table -->
+    <div style="padding: 0 20px 18px 20px; text-align: right;">
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <thead>
+          <tr style="background: #0f172a; color: #ffffff;">
+            <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; text-align: right;">رقم الفاتورة</th>
+            <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; text-align: right;">البند / الباقة</th>
+            <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; text-align: center;">الرصيد</th>
+            <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; text-align: left;">المبلغ</th>
+            <th style="padding: 12px 14px; font-size: 12px; font-weight: 700; text-align: center;">الحالة</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    </div>
+
+    ${
+      stmt.unpaidUsd > 0
+        ? `<!-- Payment Details Callout -->
+        <div style="padding: 0 20px 20px 20px;">
+          <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 14px; padding: 18px 20px; text-align: right;">
+            <div style="font-weight: 800; color: #92400e; font-size: 14px; margin-bottom: 12px;">
+              💳 بيانات وطرق سداد المستحقات المعتمدة (Payment Details):
+            </div>
+            
+            <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 8px;">
+              <tr>
+                <td style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 10px; padding: 12px; width: 50%; text-align: right;">
+                  <div style="font-size: 11px; color: #c2410c; font-weight: 700; margin-bottom: 4px;">📱 فودافون كاش ومحافظ الهاتف:</div>
+                  <div style="font-family: monospace; font-size: 16px; font-weight: 800; color: #0f172a; direction: ltr; text-align: center; background: #fff7ed; padding: 8px; border-radius: 6px; border: 1px solid #ffedd5;">
+                    ${escapeHtml(stmt.paymentPhone || "01000000000")}
+                  </div>
+                </td>
+                <td style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px; width: 50%; text-align: right;">
+                  <div style="font-size: 11px; color: #2563eb; font-weight: 700; margin-bottom: 4px;">⚡ عنوان إنستاباي (InstaPay IPA):</div>
+                  <div style="font-family: monospace; font-size: 14px; font-weight: 800; color: #1d4ed8; direction: ltr; text-align: center; background: #eff6ff; padding: 8px; border-radius: 6px; border: 1px solid #dbeafe;">
+                    ${escapeHtml(stmt.paymentInstaPay || "username@instapay")}
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <div style="font-size: 11px; color: #92400e; text-align: center; margin-top: 10px;">
+              ℹ️ يُرجى إرسال إشعار أو لقطة شاشة التحويل بعد السداد لتأكيد الفواتير المعلقة وتحديث الحساب فوراً.
+            </div>
+          </div>
+        </div>`
+        : ""
+    }
+
+    <!-- Footer -->
+    <div style="padding: 18px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff; line-height: 1.6;">
+      <p style="margin: 0;">تم إصدار كشف الحساب المالي المعتمد من منصة <strong>Bot Manager</strong> إلى بريدك الإلكتروني.</p>
+      <p style="margin: 4px 0 0;">لأي استفسارات بخصوص الفواتير، يمكنك التواصل مباشرة مع إدارة الحسابات.</p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `.trim();
+}
