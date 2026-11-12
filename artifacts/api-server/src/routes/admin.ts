@@ -4615,8 +4615,8 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         ${
           invoiceData.endDate
             ? `<tr>
-                <td colspan="2" style="background: #eff6ff; padding: 10px 14px; border-radius: 10px; border: 1px solid #bfdbfe; text-align: center; font-size: 12px;">
-                  <span style="color: #1e40af;">📅 فترة صلاحية الحصة: <strong>${escapeHtml(invoiceData.endDate)}</strong></span>
+                <td colspan="2" style="background: #f0fdf4; padding: 10px 14px; border-radius: 10px; border: 1px solid #dcfce7; text-align: center; font-size: 12px;">
+                  <span style="color: #166534; font-weight: 700;">📅 فترة صلاحية الحصة: <strong>${escapeHtml(invoiceData.endDate)}</strong></span>
                 </td>
               </tr>`
             : ""
@@ -4642,11 +4642,32 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
 
       ${
         !isPaidBoolean
-          ? `<!-- Payment Details Callout -->
-          <div style="background: #fefce8; border: 1px dashed #fcd34d; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; font-size: 12px; color: #78350f;">
-            <div style="font-weight: 700; color: #92400e; margin-bottom: 6px; font-size: 12px;">💳 بيانات وطرق السداد المعتمدة:</div>
-            <div>📱 فودافون كاش / المحفظة: <strong style="font-family: monospace; font-size: 13px; color: #0f172a;">${escapeHtml(invoiceData.paymentPhone || "01000000000")}</strong></div>
-            <div style="margin-top: 4px;">⚡ عنوان إنستاباي IPA: <strong style="font-family: monospace; font-size: 13px; color: #2563eb;">${escapeHtml(invoiceData.paymentInstaPay || "username@instapay")}</strong></div>
+          ? `<!-- Payment Details Callout (High Quality Fintech) -->
+          <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; text-align: right;">
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 800; color: #92400e; font-size: 13px;">💳 بيانات وطرق السداد المعتمدة (Payment Details):</span>
+            </div>
+            
+            <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 8px;">
+              <tr>
+                <td style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 8px; padding: 10px 12px; width: 50%; text-align: right;">
+                  <div style="font-size: 11px; color: #c2410c; font-weight: 700; margin-bottom: 4px;">📱 فودافون كاش ومحافظ الهاتف:</div>
+                  <div style="font-family: monospace; font-size: 15px; font-weight: 800; color: #0f172a; direction: ltr; text-align: center; background: #fff7ed; padding: 6px; border-radius: 6px; border: 1px solid #ffedd5;">
+                    ${escapeHtml(invoiceData.paymentPhone || "01000000000")}
+                  </div>
+                </td>
+                <td style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; width: 50%; text-align: right;">
+                  <div style="font-size: 11px; color: #2563eb; font-weight: 700; margin-bottom: 4px;">⚡ عنوان إنستاباي (InstaPay IPA):</div>
+                  <div style="font-family: monospace; font-size: 13px; font-weight: 800; color: #1d4ed8; direction: ltr; text-align: center; background: #eff6ff; padding: 6px; border-radius: 6px; border: 1px solid #dbeafe;">
+                    ${escapeHtml(invoiceData.paymentInstaPay || "username@instapay")}
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <div style="font-size: 11px; color: #92400e; text-align: center; margin-top: 8px;">
+              ℹ️ يُرجى إرسال إشعار أو لقطة شاشة التحويل بعد السداد لتأكيد العملية وتفعيل الحساب فوراً.
+            </div>
           </div>`
           : ""
       }

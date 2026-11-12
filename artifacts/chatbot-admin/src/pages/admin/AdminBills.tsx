@@ -174,12 +174,32 @@ function drawRoundRect(
 function generateInvoiceCardCanvas(
   inv: InvoiceItem,
   lang: string,
-  currencyInfo: { code: string; symbol: string; rate: number }
+  currencyInfo: { code: string; symbol: string; rate: number },
+  customEndDate?: string | null
 ): string {
   const width = 640;
   const isUnpaid = inv.isPaid === false;
-  const hasPaymentDetails = isUnpaid && (inv.paymentPhone || inv.paymentInstaPay);
-  const height = hasPaymentDetails ? 680 : 610;
+  const hasPaymentDetails = isUnpaid && Boolean(inv.paymentPhone || inv.paymentInstaPay);
+
+  // Helper to format clean dates (matching small image / AdminAiQuota)
+  const formatCardDate = (d: any): string => {
+    if (!d) return "";
+    try {
+      const dt = new Date(d);
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString();
+      }
+    } catch {}
+    return String(d).split("T")[0];
+  };
+
+  const startStr = formatCardDate(inv.issueDate || inv.periodStart);
+  const rawEnd = customEndDate || inv.endDate || inv.periodEnd;
+  const endStr = formatCardDate(rawEnd);
+  const validityPeriod = startStr && endStr ? `${startStr} → ${endStr}` : (endStr || startStr || "ساري المفعول");
+
+  // Proportional snug height without large empty white voids
+  const height = hasPaymentDetails ? 550 : 396;
   const canvas = document.createElement("canvas");
   const scale = 2;
   canvas.width = width * scale;
@@ -269,26 +289,22 @@ function generateInvoiceCardCanvas(
 
   let currentY = startY + 116;
 
-  // Dates
-  ctx.fillStyle = "#f1f5f9";
-  ctx.strokeStyle = "#cbd5e1";
-  drawRoundRect(ctx, 20, currentY, 600, 32, 6);
+  // 1. Quota Validity Period pill (Matching small image / AdminAiQuota green box exactly)
+  ctx.fillStyle = "#f0fdf4";
+  ctx.strokeStyle = "#dcfce7";
+  drawRoundRect(ctx, 20, currentY, 600, 30, 6);
   ctx.fill();
   ctx.stroke();
 
   ctx.textAlign = "center";
-  ctx.font = "11px system-ui, sans-serif";
-  ctx.fillStyle = "#334155";
-  const issueDateFormatted = new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB");
-  const endDateFormatted = inv.endDate || inv.periodEnd;
-  const dateText = `${lang === "ar" ? "تاريخ الإصدار:" : "Issued:"} ${issueDateFormatted}${
-    endDateFormatted ? `  •  ${lang === "ar" ? "انتهاء الصلاحية:" : "Expires:"} ${endDateFormatted}` : ""
-  }`;
-  ctx.fillText(dateText, width / 2, currentY + 20);
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.fillStyle = "#166534";
+  const validityText = `📅 فترة صلاحية الحصة: ${validityPeriod}`;
+  ctx.fillText(validityText, width / 2, currentY + 19);
 
-  currentY += 44;
+  currentY += 38;
 
-  // Total Amount Box
+  // 2. Total Amount Box
   ctx.fillStyle = isUnpaid ? "#fffbeb" : "#f0fdf4";
   ctx.strokeStyle = isUnpaid ? "#fde68a" : "#bbf7d0";
   drawRoundRect(ctx, 20, currentY, 600, 72, 8);
@@ -318,38 +334,119 @@ function generateInvoiceCardCanvas(
   ctx.font = "bold 26px monospace";
   ctx.fillText(`${inv.priceUsd} USD`, 36, currentY + 44);
 
-  currentY += 84;
+  currentY += 80;
 
-  // Payment details if unpaid
+  // 3. Payment details if unpaid (High-Quality Fintech Presentation)
   if (hasPaymentDetails) {
-    ctx.fillStyle = "#fef3c7";
+    const boxH = 138;
+    // Outer Payment Box
+    ctx.fillStyle = "#fffbeb";
     ctx.strokeStyle = "#fcd34d";
-    drawRoundRect(ctx, 20, currentY, 600, 64, 8);
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, 20, currentY, 600, boxH, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Top Header: Title (right) + Status Pill (left)
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#92400e";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.fillText("💳 بيانات وطرق السداد المعتمدة (Payment Transfer Details):", 606, currentY + 20);
+
+    const badgeW = 144;
+    const badgeH = 20;
+    const badgeX = 32;
+    const badgeY = currentY + 6;
+    ctx.fillStyle = "rgba(217, 119, 6, 0.15)";
+    ctx.strokeStyle = "rgba(217, 119, 6, 0.35)";
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.fillStyle = "#b45309";
+    ctx.fillText("⏳ بانتظار تحويل العميل", badgeX + badgeW / 2, badgeY + 14);
+
+    // Two dedicated sub-cards (Side-by-Side)
+    const cardW_sub = 276;
+    const cardH_sub = 66;
+
+    // Sub-Card 1: Vodafone Cash / Mobile Wallet (Right side)
+    const card1X = 332;
+    const card1Y = currentY + 34;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#fed7aa";
+    drawRoundRect(ctx, card1X, card1Y, cardW_sub, cardH_sub, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.textAlign = "right";
+    ctx.fillStyle = "#c2410c";
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.fillText("📱 فودافون كاش ومحافظ الهاتف (Mobile Wallet):", card1X + cardW_sub - 10, card1Y + 17);
+
+    // Inner Phone Number box
+    ctx.fillStyle = "#fff7ed";
+    ctx.strokeStyle = "#ffedd5";
+    drawRoundRect(ctx, card1X + 8, card1Y + 25, cardW_sub - 16, 32, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.font = "bold 15px monospace";
+    ctx.fillStyle = "#0f172a";
+    ctx.fillText(inv.paymentPhone || "01000000000", card1X + cardW_sub / 2, card1Y + 47);
+
+    // Sub-Card 2: InstaPay IPA Address (Left side)
+    const card2X = 32;
+    const card2Y = currentY + 34;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#bfdbfe";
+    drawRoundRect(ctx, card2X, card2Y, cardW_sub, cardH_sub, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#2563eb";
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.fillText("⚡ عنوان إنستاباي (InstaPay IPA Address):", card2X + cardW_sub - 10, card2Y + 17);
+
+    // Inner InstaPay box
+    ctx.fillStyle = "#eff6ff";
+    ctx.strokeStyle = "#dbeafe";
+    drawRoundRect(ctx, card2X + 8, card2Y + 25, cardW_sub - 16, 32, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = "#1d4ed8";
+    ctx.fillText(inv.paymentInstaPay || "username@instapay", card2X + cardW_sub / 2, card2Y + 46);
+
+    // Bottom Instruction Note
+    ctx.textAlign = "center";
     ctx.fillStyle = "#92400e";
-    ctx.font = "bold 11px system-ui, sans-serif";
-    ctx.fillText("💳 بيانات التحويل وسداد الفاتورة (Payment Details):", 608, currentY + 20);
+    ctx.font = "10px system-ui, sans-serif";
+    ctx.fillText(
+      "ℹ️ يُرجى إرسال إشعار أو لقطة شاشة التحويل بعد السداد لتأكيد العملية وتفعيل الحساب فوراً",
+      width / 2,
+      currentY + 124
+    );
 
-    ctx.font = "11px monospace";
-    ctx.fillStyle = "#78350f";
-    const phoneTxt = `📱 الهاتف / كاش: ${inv.paymentPhone || "01000000000"}`;
-    const ipaTxt = `⚡ إنستاباي IPA: ${inv.paymentInstaPay || "username@instapay"}`;
-    ctx.fillText(`${phoneTxt}   |   ${ipaTxt}`, 608, currentY + 42);
-
-    currentY += 76;
+    currentY += boxH + 12;
   }
 
-  // Footer
+  // Footer text
   ctx.textAlign = "center";
   ctx.fillStyle = "#94a3b8";
   ctx.font = "10px system-ui, sans-serif";
   ctx.fillText(
     "نظام إدارة الفواتير والحسابات — Bot Manager Billing & Invoices System",
     width / 2,
-    height - 14
+    height - 12
   );
 
   return canvas.toDataURL("image/png");
@@ -445,7 +542,8 @@ export default function AdminBills() {
   
   const handleDownloadInvoiceCard = (inv: InvoiceItem) => {
     try {
-      const dataUrl = generateInvoiceCardCanvas(inv, lang, currencyInfo);
+      const invoiceEndDate = resolveInvoiceEndDate(inv);
+      const dataUrl = generateInvoiceCardCanvas(inv, lang, currencyInfo, invoiceEndDate);
       if (!dataUrl) {
         throw new Error("Failed to generate invoice image");
       }
@@ -825,15 +923,15 @@ export default function AdminBills() {
             : `Generating invoice card and sending to: ${targetEmail}`,
       });
 
+      const convertedLocal = convertPrice(inv.priceUsd);
+      const invoiceEndDate = resolveInvoiceEndDate(inv);
+
       let imageDataUrl: string | undefined;
       try {
-        imageDataUrl = generateInvoiceCardCanvas(inv, lang, currencyInfo);
+        imageDataUrl = generateInvoiceCardCanvas(inv, lang, currencyInfo, invoiceEndDate);
       } catch (e) {
         console.warn("Failed to generate canvas image", e);
       }
-
-      const convertedLocal = convertPrice(inv.priceUsd);
-      const invoiceEndDate = resolveInvoiceEndDate(inv);
 
       const res = await customFetch<{
         ok: boolean;
@@ -948,7 +1046,7 @@ export default function AdminBills() {
       // Generate invoice card image to send as image ("صورة مش كلام")
       let imageDataUrl: string | undefined;
       try {
-        imageDataUrl = generateInvoiceCardCanvas(selectedInvoice, lang, currencyInfo);
+        imageDataUrl = generateInvoiceCardCanvas(selectedInvoice, lang, currencyInfo, invoiceEndDate);
       } catch (e) {
         console.warn("Failed to generate canvas image", e);
       }
