@@ -4372,12 +4372,17 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
   try {
     const {
       invoiceNumber,
+      ticketId,
       itemType,
       companyId,
       clientId,
       title,
+      itemNameAr,
+      itemNameEn,
       recipientEmail,
       recipientPhone,
+      clientEmail,
+      clientPhone,
       sendViaEmail,
       sendViaWhatsApp,
       customNotes,
@@ -4389,17 +4394,31 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
       tokenQuota,
       retentionDays,
       channels,
+      tools,
       billingCycle,
+      billingCycleAr,
+      billingCycleEn,
+      issueDate,
+      endDate,
+      status,
+      isPaid,
+      paymentPhone,
+      paymentInstaPay,
       imageDataUrl,
       htmlContent,
     } = req.body as {
       invoiceNumber: string;
+      ticketId?: number | null;
       itemType?: string;
       companyId?: number | string | null;
       clientId?: number | string | null;
       title?: string;
+      itemNameAr?: string;
+      itemNameEn?: string;
       recipientEmail?: string;
       recipientPhone?: string;
+      clientEmail?: string;
+      clientPhone?: string;
       sendViaEmail?: boolean;
       sendViaWhatsApp?: boolean;
       customNotes?: string;
@@ -4411,7 +4430,16 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
       tokenQuota?: number;
       retentionDays?: number | null;
       channels?: string[];
+      tools?: string[];
       billingCycle?: string;
+      billingCycleAr?: string;
+      billingCycleEn?: string;
+      issueDate?: string;
+      endDate?: string | null;
+      status?: string;
+      isPaid?: boolean;
+      paymentPhone?: string | null;
+      paymentInstaPay?: string | null;
       imageDataUrl?: string;
       htmlContent?: string;
     };
@@ -4489,108 +4517,43 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         const { apiKey: resendApiKey, fromEmail } = await getResendConfig(customResendKey);
         const hasImage = Boolean(imageDataUrl && imageDataUrl.includes(","));
 
-      // Clean, centered visual invoice card HTML ("صورة مش كلام")
-      const finalHtml = htmlContent || (hasImage ? `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>فاتورة #${escapeHtml(invoiceNumber)}</title>
-        </head>
-        <body style="margin:0;padding:24px 12px;background-color:#f1f5f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#1e293b;text-align:center;">
-          <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
-            
-            <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:20px 24px;color:#ffffff;text-align:center;">
-              <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.25);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:11px;font-weight:700;color:#bfdbfe;margin-bottom:8px;">
-                BOT MANAGER • OFFICIAL INVOICE CARD
-              </div>
-              <h2 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">فاتورة رسمية #${escapeHtml(invoiceNumber)}</h2>
-              <p style="margin:4px 0 0;font-size:12px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
-            </div>
+      // Generate the exact same certified official invoice HTML as "View Invoices"
+      const payCfg = await getInvoicePaymentConfig();
+      const isPaidBoolean =
+        isPaid !== undefined
+          ? Boolean(isPaid)
+          : (status === "paid" || status === "activated");
 
-            ${
-              customNotes
-                ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 20px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
-                    <strong style="color:#1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(customNotes)}
-                  </div>`
-                : ""
-            }
+      const invoiceData: InvoiceData = {
+        invoiceNumber: String(invoiceNumber),
+        ticketId: Number(ticketId || 0),
+        clientName: String(clientName || matchedClient?.name || matchedClient?.username || "—"),
+        companyName: String(companyName || matchedCompany?.name || "Bot Manager"),
+        clientEmail: String(targetEmail || clientEmail || matchedClient?.email || ""),
+        clientPhone: clientPhone || recipientPhone || matchedClient?.whatsappNumber || null,
+        itemNameAr: itemNameAr || title || "اشتراك ذكاء اصطناعي",
+        itemNameEn: itemNameEn || "AI Subscription",
+        itemType: (itemType === "topup" ? "topup" : "plan"),
+        billingCycleAr: billingCycleAr || billingCycle || "شهري",
+        billingCycleEn: billingCycleEn || "Monthly",
+        tokenQuota: Number(tokenQuota || 0),
+        retentionDays: Number(retentionDays || 0),
+        priceUsd: pUsd,
+        priceLocal: pLocal,
+        currencySymbol: sym,
+        issueDate: issueDate || new Date().toISOString().split("T")[0],
+        endDate: endDate || null,
+        channels: Array.isArray(channels) ? channels : undefined,
+        tools: Array.isArray(tools) ? tools : undefined,
+        status: (status as any) || (isPaidBoolean ? "paid" : "pending"),
+        isPaid: isPaidBoolean,
+        paymentPhone: paymentPhone || payCfg.paymentPhone,
+        paymentInstaPay: paymentInstaPay || payCfg.paymentInstaPay,
+        customNotes: customNotes?.trim() || null,
+        hasImageAttachment: hasImage,
+      };
 
-            <!-- Primary Invoice Card Image ("صورة مش كلام") -->
-            <div style="padding:20px 16px;text-align:center;background:#f8fafc;">
-              <img src="cid:invoice-copy-image" alt="فاتورة #${escapeHtml(invoiceNumber)}" style="display:block;width:100%;max-width:608px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
-            </div>
-
-            <div style="padding:16px 20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #f1f5f9;background:#ffffff;">
-              <p style="margin:0;">منصة <strong>Bot Manager</strong> • تم إرسال الفاتورة أعلاه كصورة رسمية معتمدة ومرفقة كملف PNG عالي الدقة.</p>
-            </div>
-
-          </div>
-        </body>
-        </html>
-      `.trim() : `
-        <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;color:#1e293b;">
-          <div style="background:linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);padding:32px 28px;color:#ffffff;text-align:center;">
-            <div style="display:inline-block;padding:4px 14px;background:rgba(59,130,246,0.3);border:1px solid rgba(147,197,253,0.3);border-radius:20px;font-size:12px;font-weight:700;color:#bfdbfe;margin-bottom:10px;">
-              BOT MANAGER • INVOICE COPY / نسخة رسمية من الفاتورة
-            </div>
-            <h2 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">فاتورة #${escapeHtml(invoiceNumber)}</h2>
-            <p style="margin:6px 0 0;font-size:13px;color:#93c5fd;">مرسلة من إدارة منصة Bot Manager</p>
-          </div>
-
-          <div style="padding:28px 24px;">
-            ${
-              customNotes
-                ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;">
-                    <strong style="display:block;margin-bottom:4px;color:#1d4ed8;">ملاحظة من الإدارة:</strong>
-                    ${escapeHtml(customNotes)}
-                  </div>`
-                : ""
-            }
-
-            <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
-              <table style="width:100%;font-size:13px;border-collapse:collapse;line-height:1.8;">
-                <tr>
-                  <td style="color:#64748b;width:35%;">رقم الفاتورة:</td>
-                  <td style="font-weight:700;color:#0f172a;">#${escapeHtml(invoiceNumber)}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;">العميل / الشركة:</td>
-                  <td style="font-weight:600;color:#1e293b;">${escapeHtml(clientName || "العميل")} - ${escapeHtml(companyName || "")}</td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;">البند / الباقة:</td>
-                  <td style="font-weight:700;color:#2563eb;">${escapeHtml(title || "اشتراك ذكاء اصطناعي")}</td>
-                </tr>
-                ${
-                  tokenQuota
-                    ? `<tr>
-                        <td style="color:#64748b;">رصيد الرموز:</td>
-                        <td style="font-weight:700;color:#0f172a;">${tokenQuota.toLocaleString()} Tokens</td>
-                      </tr>`
-                    : ""
-                }
-                <tr>
-                  <td style="color:#64748b;">المبلغ الإجمالي:</td>
-                  <td style="font-weight:800;font-size:16px;color:#059669;direction:ltr;text-align:right;">
-                    ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${escapeHtml(sym)})` : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="color:#64748b;">الحالة:</td>
-                  <td style="font-weight:700;color:#16a34a;">✅ معتمدة ومسددة</td>
-                </tr>
-              </table>
-            </div>
-
-            <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5;">
-              تم إرسال هذه النسخة الرسمية من لوحة تحكم الإدارة.<br/>
-              شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي.
-            </p>
-          </div>
-        </div>
-      `);
+      const finalHtml = htmlContent || generateInvoiceHtml(invoiceData);
 
       // 1. Prioritize Resend API (as configured in Secret RESEND_API_KEY)
       if (resendApiKey) {
@@ -4698,24 +4661,43 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
       }
     }
 
-    // 2. Prepare WhatsApp message & direct link
-    const cleanPhone = normalizePhoneNumber(recipientPhone || "");
-    const waText = [
-      `🧾 *نسخة من فاتورة رسمية - Bot Manager*`,
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `🔹 *رقم الفاتورة:* #${invoiceNumber}`,
-      clientName ? `👤 *العميل:* ${clientName}` : null,
-      companyName ? `🏢 *الشركة:* ${companyName}` : null,
-      `📦 *البند / الباقة:* ${title || "اشتراك ذكاء اصطناعي"}`,
-      tokenQuota ? `• *رصيد الرموز:* ${tokenQuota.toLocaleString()} Tokens` : null,
-      `💰 *المبلغ:* ${pUsd} USD ${pLocal > 0 ? `(~ ${pLocal.toLocaleString()} ${sym})` : ""}`,
-      `⚡ *الحالة:* ✅ *معتمدة ومسددة*`,
-      customNotes ? `\n📝 *ملاحظة من الإدارة:*\n${customNotes}` : null,
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `شكراً لتعاملكم معنا! لأي استفسار نحن دائماً في خدمتكم.`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    // 2. Prepare WhatsApp message & direct link using official invoice text generator
+    const payCfgForWa = await getInvoicePaymentConfig();
+    const isPaidBooleanForWa =
+      isPaid !== undefined
+        ? Boolean(isPaid)
+        : (status === "paid" || status === "activated");
+
+    const invoiceDataForWa: InvoiceData = {
+      invoiceNumber: String(invoiceNumber),
+      ticketId: Number(ticketId || 0),
+      clientName: String(clientName || matchedClient?.name || matchedClient?.username || "—"),
+      companyName: String(companyName || matchedCompany?.name || "Bot Manager"),
+      clientEmail: String(targetEmail || clientEmail || matchedClient?.email || ""),
+      clientPhone: clientPhone || recipientPhone || matchedClient?.whatsappNumber || null,
+      itemNameAr: itemNameAr || title || "اشتراك ذكاء اصطناعي",
+      itemNameEn: itemNameEn || "AI Subscription",
+      itemType: (itemType === "topup" ? "topup" : "plan"),
+      billingCycleAr: billingCycleAr || billingCycle || "شهري",
+      billingCycleEn: billingCycleEn || "Monthly",
+      tokenQuota: Number(tokenQuota || 0),
+      retentionDays: Number(retentionDays || 0),
+      priceUsd: pUsd,
+      priceLocal: pLocal,
+      currencySymbol: sym,
+      issueDate: issueDate || new Date().toISOString().split("T")[0],
+      endDate: endDate || null,
+      channels: Array.isArray(channels) ? channels : undefined,
+      tools: Array.isArray(tools) ? tools : undefined,
+      status: (status as any) || (isPaidBooleanForWa ? "paid" : "pending"),
+      isPaid: isPaidBooleanForWa,
+      paymentPhone: paymentPhone || payCfgForWa.paymentPhone,
+      paymentInstaPay: paymentInstaPay || payCfgForWa.paymentInstaPay,
+      customNotes: customNotes?.trim() || null,
+    };
+
+    const cleanPhone = normalizePhoneNumber(recipientPhone || clientPhone || "");
+    const waText = generateInvoiceWhatsAppText(invoiceDataForWa);
 
     if (cleanPhone) {
       whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waText)}`;

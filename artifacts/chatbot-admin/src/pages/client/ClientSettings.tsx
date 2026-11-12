@@ -102,17 +102,6 @@ export default function ClientSettings() {
 
     setIsSendingTest(true);
     try {
-      // Auto-save the entered email and API key to settings so it persists and syncs immediately
-      await fetch("/api/client/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          notificationEmail: email,
-          resendApiKey: resendApiKey !== undefined ? resendApiKey : undefined,
-        }),
-      }).catch(() => {});
-
       const res = await fetch("/api/client/send-test-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

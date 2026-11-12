@@ -33,6 +33,8 @@ export interface InvoiceData {
   endDate?: string | null;
   paymentPhone?: string | null;
   paymentInstaPay?: string | null;
+  customNotes?: string | null;
+  hasImageAttachment?: boolean;
 }
 
 /**
@@ -121,6 +123,14 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
         </tr>
       </table>
     </div>
+
+    ${
+      inv.customNotes
+        ? `<div style="background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:14px 32px;font-size:13px;color:#1e40af;line-height:1.6;text-align:right;">
+            <strong style="color:#1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(inv.customNotes)}
+          </div>`
+        : ""
+    }
 
     <!-- Meta Bar -->
     <div style="background:#f1f5f9;padding:16px 32px;border-bottom:1px solid #e2e8f0;">
@@ -327,6 +337,17 @@ export function generateInvoiceHtml(inv: InvoiceData): string {
         : ""
     }
 
+    ${
+      inv.hasImageAttachment
+        ? `
+    <!-- Embedded Invoice Card Copy -->
+    <div style="margin:0;text-align:center;padding:24px 20px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+      <p style="font-size:12px;color:#64748b;margin:0 0 12px;font-weight:600;">📷 نسخة طبق الأصل من بطاقة الفاتورة المعتمدة:</p>
+      <img src="cid:invoice-copy-image" alt="بطاقة الفاتورة #${escapeHtml(inv.invoiceNumber)}" style="display:block;width:100%;max-width:580px;height:auto;margin:0 auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;" />
+    </div>`
+        : ""
+    }
+
     <!-- Footer -->
     <div style="background:#0f172a;color:#94a3b8;padding:24px 32px;font-size:12px;text-align:center;line-height:1.6;">
       <p style="margin:0 0 6px;color:#ffffff;font-weight:600;">شكراً لاختياركم Bot Manager لأنظمة الذكاء الاصطناعي</p>
@@ -387,6 +408,9 @@ export function generateInvoiceWhatsAppText(inv: InvoiceData): string {
           `• ℹ️ يُرجى إرسال إشعار التحويل لتأكيد السداد وشحن الرصيد فوراً.`,
         ]
       : []),
+    inv.customNotes
+      ? `━━━━━━━━━━━━━━━━━━━━━━\n📝 *ملاحظة من الإدارة:* ${inv.customNotes}`
+      : null,
     `شكراً لثقتكم بنا! في حال وجود أي استفسار، يسعدنا دائماً خدمتكم.`,
   ]
     .filter(Boolean)
