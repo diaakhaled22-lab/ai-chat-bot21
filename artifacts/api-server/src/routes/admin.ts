@@ -4553,7 +4553,116 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
         hasImageAttachment: hasImage,
       };
 
-      const finalHtml = htmlContent || generateInvoiceHtml(invoiceData);
+      // High-quality Hero Card presentation matching Quota Usage Bill
+      const displayTitle = itemNameAr || title || (isPaidBoolean ? "فاتورة معتمدة ومسددة" : "فاتورة معتمدة غير مسددة");
+      const heroEmailHtml = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(displayTitle)} #${escapeHtml(invoiceNumber)}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937; text-align: center;">
+  <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+    
+    <!-- Header Banner (Matches Quota Usage Bill) -->
+    <div style="background: ${isPaidBoolean ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #d97706 0%, #b45309 100%)"}; padding: 24px 20px; text-align: center; color: #ffffff;">
+      <div style="font-size: 28px; margin-bottom: 4px;">${isPaidBoolean ? "🧾" : "⏳"}</div>
+      <h1 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">${escapeHtml(displayTitle)} — Bot Manager</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95; font-family: monospace;">#${escapeHtml(invoiceNumber)} • ${escapeHtml(invoiceData.billingCycleAr || "الشهر الحالي")}</p>
+      <div style="margin-top: 10px; display: inline-block; background: rgba(255,255,255,0.22); padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+        ${isPaidBoolean ? "✅ فاتورة رسمية معتمدة ومسددة" : "⏳ فاتورة رسمية معتمدة بانتظار السداد"}
+      </div>
+    </div>
+
+    ${
+      customNotes
+        ? `<div style="padding: 12px 20px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; text-align: right; font-size: 13px; color: #1e40af; line-height: 1.6;">
+            <strong style="color: #1d4ed8;">ملاحظة من الإدارة:</strong> ${escapeHtml(customNotes)}
+          </div>`
+        : ""
+    }
+
+    <!-- Hero Image Card ("صورة مش كلام" - Same Quality As Quota Usage Bill) -->
+    <div style="padding: 20px 16px; text-align: center; background: #f8fafc;">
+      <img src="cid:invoice-copy-image" alt="بطاقة الفاتورة #${escapeHtml(invoiceNumber)}" style="display: block; width: 100%; max-width: 608px; height: auto; margin: 0 auto; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;" />
+    </div>
+
+    <!-- Meta Details Grid (Matches Quota Usage Bill structure) -->
+    <div style="padding: 16px 20px; background: #ffffff; text-align: right;">
+      <table style="width: 100%; border-collapse: separate; border-spacing: 8px; margin-bottom: 12px;">
+        <tr>
+          <td style="background: #f9fafb; padding: 10px 12px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">الشركة:</span>
+            <strong style="font-size: 13px; color: #111827;">${escapeHtml(invoiceData.companyName)}</strong>
+          </td>
+          <td style="background: #f9fafb; padding: 10px 12px; border-radius: 10px; border: 1px solid #f3f4f6; width: 50%;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">العميل:</span>
+            <strong style="font-size: 13px; color: #111827;">${escapeHtml(invoiceData.clientName)}</strong>
+          </td>
+        </tr>
+        <tr>
+          <td style="background: #f9fafb; padding: 10px 12px; border-radius: 10px; border: 1px solid #f3f4f6;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">البند / الباقة:</span>
+            <span style="font-size: 13px; color: #2563eb; font-weight: 700;">${escapeHtml(invoiceData.itemNameAr)}</span>
+          </td>
+          <td style="background: #f9fafb; padding: 10px 12px; border-radius: 10px; border: 1px solid #f3f4f6;">
+            <span style="display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px;">رصيد الرموز:</span>
+            <strong style="font-size: 13px; color: #059669;">${invoiceData.tokenQuota.toLocaleString()} tokens</strong>
+          </td>
+        </tr>
+        ${
+          invoiceData.endDate
+            ? `<tr>
+                <td colspan="2" style="background: #eff6ff; padding: 10px 14px; border-radius: 10px; border: 1px solid #bfdbfe; text-align: center; font-size: 12px;">
+                  <span style="color: #1e40af;">📅 فترة صلاحية الحصة: <strong>${escapeHtml(invoiceData.endDate)}</strong></span>
+                </td>
+              </tr>`
+            : ""
+        }
+      </table>
+
+      <!-- Total Amount Box -->
+      <table style="width: 100%; border-collapse: collapse; background: ${isPaidBoolean ? "#f0fdf4" : "#fffbeb"}; border: 1px solid ${isPaidBoolean ? "#bbf7d0" : "#fde68a"}; border-radius: 10px; margin-bottom: 12px;">
+        <tr>
+          <td style="padding: 12px 16px; font-weight: 700; color: ${isPaidBoolean ? "#166534" : "#92400e"}; font-size: 13px;">
+            ${isPaidBoolean ? "المبلغ الإجمالي المسدد:" : "المبلغ الإجمالي المستحق:"}
+          </td>
+          <td style="padding: 12px 16px; text-align: left; direction: ltr;">
+            <strong style="font-size: 18px; color: ${isPaidBoolean ? "#166534" : "#b45309"}; font-family: monospace;">$${invoiceData.priceUsd} USD</strong>
+            ${
+              invoiceData.currencySymbol && invoiceData.currencySymbol !== "$"
+                ? `<div style="font-size: 11px; color: #6b7280;">≈ ${invoiceData.priceLocal.toLocaleString()} ${escapeHtml(invoiceData.currencySymbol)}</div>`
+                : ""
+            }
+          </td>
+        </tr>
+      </table>
+
+      ${
+        !isPaidBoolean
+          ? `<!-- Payment Details Callout -->
+          <div style="background: #fefce8; border: 1px dashed #fcd34d; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; font-size: 12px; color: #78350f;">
+            <div style="font-weight: 700; color: #92400e; margin-bottom: 6px; font-size: 12px;">💳 بيانات وطرق السداد المعتمدة:</div>
+            <div>📱 فودافون كاش / المحفظة: <strong style="font-family: monospace; font-size: 13px; color: #0f172a;">${escapeHtml(invoiceData.paymentPhone || "01000000000")}</strong></div>
+            <div style="margin-top: 4px;">⚡ عنوان إنستاباي IPA: <strong style="font-family: monospace; font-size: 13px; color: #2563eb;">${escapeHtml(invoiceData.paymentInstaPay || "username@instapay")}</strong></div>
+          </div>`
+          : ""
+      }
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 16px 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #ffffff; line-height: 1.5;">
+      <p style="margin: 0;">تم إرسال بطاقة الفاتورة كصورة رسمية معتمدة من نظام <strong>Bot Manager</strong> إلى بريدك الإلكتروني.</p>
+      <p style="margin: 4px 0 0;">يمكنك أيضاً تحميل الصورة كملف مرفق عالي الدقة (PNG) من هذا البريد.</p>
+    </div>
+
+  </div>
+</body>
+</html>`.trim();
+
+      const finalHtml = htmlContent || (hasImage ? heroEmailHtml : generateInvoiceHtml(invoiceData));
 
       // 1. Prioritize Resend API (as configured in Secret RESEND_API_KEY)
       if (resendApiKey) {
