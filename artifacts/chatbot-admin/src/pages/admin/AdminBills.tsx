@@ -375,18 +375,9 @@ export default function AdminBills() {
     staleTime: 30_000,
   });
 
-  // Find any company with notificationEmail to fallback if admin me object doesn't have it
-  const companyWithNotificationEmail = useMemo(() => {
-    if (!Array.isArray(companies)) return "";
-    return (
-      companies.find((c: any) => c.notificationEmail && c.notificationEmail.trim())?.notificationEmail?.trim() || ""
-    );
-  }, [companies]);
-
+  // Admin notification email from settings/profile (used ONLY as optional manual fallback)
   const settingsNotificationEmail =
-    (me as any)?.notificationEmail?.trim() ||
-    companyWithNotificationEmail ||
-    "";
+    (me as any)?.notificationEmail?.trim() || "";
 
   const resolveInvoiceEndDate = (inv: InvoiceItem | null | undefined): string | null => {
     if (!inv) return null;
@@ -813,10 +804,10 @@ export default function AdminBills() {
     );
 
     const targetEmail =
-      settingsNotificationEmail ||
       matchedComp?.notificationEmail ||
       matchedComp?.clientNotificationEmail ||
       inv.clientEmail ||
+      settingsNotificationEmail ||
       "";
 
     if (!targetEmail) {
@@ -909,12 +900,12 @@ export default function AdminBills() {
         (c.name && invoice.companyName && c.name.toLowerCase() === invoice.companyName.toLowerCase())
     );
 
-    // Prioritize user's Settings Notification Email (linked with RESEND_API_KEY), then company notif, then client email
+    // Prioritize company dedicated notification email, then client notification/account email, then admin fallback
     const defaultEmail =
-      settingsNotificationEmail ||
       matchedComp?.notificationEmail ||
       matchedComp?.clientNotificationEmail ||
       invoice.clientEmail ||
+      settingsNotificationEmail ||
       "";
 
     setRecipientEmail(defaultEmail);

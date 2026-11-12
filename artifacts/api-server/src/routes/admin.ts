@@ -2271,9 +2271,10 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
     let recipient =
       (typeof req.body?.recipientEmail === "string" && req.body.recipientEmail.trim()) ||
       company.notificationEmail?.trim() ||
-      clientUser?.notificationEmail?.trim();
+      clientUser?.notificationEmail?.trim() ||
+      clientUser?.email?.trim();
 
-    // Fallback 1: check logged-in admin user
+    // Fallback 1: check logged-in admin user ONLY if company and client have no email configured
     if (!recipient && req.session?.userId) {
       const [adminUser] = await db
         .select({ notificationEmail: usersTable.notificationEmail })
@@ -2285,31 +2286,7 @@ router.post("/admin/companies/:id/send-bill-email", async (req, res) => {
       }
     }
 
-    // Fallback 2: check any company in companiesTable with notificationEmail
-    if (!recipient) {
-      const [cWithEmail] = await db
-        .select({ notificationEmail: companiesTable.notificationEmail })
-        .from(companiesTable)
-        .where(and(sql`${companiesTable.notificationEmail} IS NOT NULL`, sql`${companiesTable.notificationEmail} != ''`))
-        .limit(1);
-      if (cWithEmail?.notificationEmail?.trim()) {
-        recipient = cWithEmail.notificationEmail.trim();
-      }
-    }
-
-    // Fallback 3: check any user in usersTable with notificationEmail
-    if (!recipient) {
-      const [uWithEmail] = await db
-        .select({ notificationEmail: usersTable.notificationEmail })
-        .from(usersTable)
-        .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
-        .limit(1);
-      if (uWithEmail?.notificationEmail?.trim()) {
-        recipient = uWithEmail.notificationEmail.trim();
-      }
-    }
-
-    // Fallback 4: check emailConfig
+    // Fallback 2: check emailConfig
     if (!recipient && emailConfig && typeof (emailConfig as any).recipientEmail === "string") {
       recipient = (emailConfig as any).recipientEmail.trim();
     }
@@ -4482,9 +4459,10 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
       }
 
       let fallbackEmail =
-        currentUser?.notificationEmail ||
-        matchedCompany?.notificationEmail ||
-        matchedClient?.notificationEmail ||
+        matchedCompany?.notificationEmail?.trim() ||
+        matchedClient?.notificationEmail?.trim() ||
+        matchedClient?.email?.trim() ||
+        currentUser?.notificationEmail?.trim() ||
         "";
 
       if (!fallbackEmail) {

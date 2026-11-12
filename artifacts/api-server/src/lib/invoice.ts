@@ -443,7 +443,7 @@ export async function sendInvoiceToClient(
     }
   };
 
-  // 1. Company notification email (e.g. Al-Hamad Company's configured Gmail)
+  // 1. Company dedicated notification email
   addEmail(company?.notificationEmail);
   // 2. Invoice client email
   addEmail(invoice.clientEmail);
@@ -452,26 +452,28 @@ export async function sendInvoiceToClient(
   // 4. Client account email
   addEmail(client?.email);
 
-  // 5. System/Admin notification email from Settings (e.g. diaacursor@gmail.com)
-  try {
-    const usersWithNotif = await db
-      .select({ notificationEmail: usersTable.notificationEmail })
-      .from(usersTable)
-      .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
-      .limit(5);
-    for (const u of usersWithNotif) {
-      addEmail(u.notificationEmail);
+  // 5. Fallback ONLY if no company or client email is found: use system/admin notification email
+  if (recipients.length === 0) {
+    try {
+      const [adminWithNotif] = await db
+        .select({ notificationEmail: usersTable.notificationEmail })
+        .from(usersTable)
+        .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
+        .limit(1);
+      if (adminWithNotif?.notificationEmail) {
+        addEmail(adminWithNotif.notificationEmail);
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not load admin notificationEmail in invoice dispatcher");
     }
-  } catch (err) {
-    logger.warn({ err }, "Could not load users with notificationEmail in invoice dispatcher");
   }
 
-  // Auto-sync notification email to company if company has none
-  if (company && !company.notificationEmail && recipients.length > 0) {
-    const primaryNotif = recipients.find((r) => r.includes("@gmail.com")) || recipients[0];
+  // Auto-sync notification email to company ONLY if it came from the company's client or invoice (never overwrite with admin)
+  const clientOrInvoiceEmail = invoice.clientEmail || client?.notificationEmail || client?.email;
+  if (company && !company.notificationEmail && clientOrInvoiceEmail && recipients.includes(clientOrInvoiceEmail)) {
     await db
       .update(companiesTable)
-      .set({ notificationEmail: primaryNotif })
+      .set({ notificationEmail: clientOrInvoiceEmail })
       .where(eq(companiesTable.id, company.id))
       .catch(() => {});
   }

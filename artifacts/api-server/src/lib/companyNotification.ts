@@ -343,7 +343,7 @@ export async function sendCompanyNotification(
     let recipient = company.notificationEmail?.trim();
     let companyResendKey = company.resendApiKey?.trim();
 
-    // 1a. If company lacks notificationEmail or resendApiKey, fall back to owner user in usersTable
+    // 1a. If company lacks notificationEmail or resendApiKey, fall back ONLY to its own owner user in usersTable
     if ((!recipient || !companyResendKey) && company.clientId) {
       try {
         const [owner] = await db
@@ -368,39 +368,14 @@ export async function sendCompanyNotification(
       }
     }
 
-    // 1b. If still missing, check if any client user has configured notification credentials
-    if (!recipient || !companyResendKey) {
-      try {
-        const clientUsers = await db
-          .select({
-            notificationEmail: usersTable.notificationEmail,
-            resendApiKey: usersTable.resendApiKey,
-          })
-          .from(usersTable)
-          .where(eq(usersTable.role, "client"))
-          .limit(5);
-
-        for (const cu of clientUsers) {
-          if (!recipient && cu.notificationEmail?.trim()) {
-            recipient = cu.notificationEmail.trim();
-          }
-          if (!companyResendKey && cu.resendApiKey?.trim()) {
-            companyResendKey = cu.resendApiKey.trim();
-          }
-        }
-      } catch (clientErr) {
-        logger.warn({ clientErr }, "Failed to query client users for notification fallback");
-      }
-    }
-
-    // 1c. Two-way sync: backfill companiesTable so both tables are always in sync
-    if (recipient && !company.notificationEmail) {
+    // 1b. Two-way sync: backfill company's own record from its own owner ONLY
+    if (recipient && !company.notificationEmail && company.clientId) {
       db.update(companiesTable)
         .set({ notificationEmail: recipient })
         .where(eq(companiesTable.id, company.id))
         .catch((e) => logger.warn({ err: e }, "Failed to backfill company.notificationEmail"));
     }
-    if (companyResendKey && !company.resendApiKey) {
+    if (companyResendKey && !company.resendApiKey && company.clientId) {
       db.update(companiesTable)
         .set({ resendApiKey: companyResendKey })
         .where(eq(companiesTable.id, company.id))
