@@ -4458,54 +4458,54 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
     const pUsd = Number(priceUsd || 0);
     const pLocal = Number(priceLocal || 0);
 
+    // Look up company, client, and current logged-in user for notification email and custom keys
+    let matchedCompany: any = null;
+    let matchedClient: any = null;
+    let currentUser: any = null;
+
+    if (req.session?.userId) {
+      const [u] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+      currentUser = u || null;
+    }
+
+    if (companyId) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
+      matchedCompany = comp || null;
+    }
+    if (!matchedCompany && companyName) {
+      const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.name, companyName)).limit(1);
+      matchedCompany = comp || null;
+    }
+    if (matchedCompany?.clientId) {
+      const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, matchedCompany.clientId)).limit(1);
+      matchedClient = cli || null;
+    } else if (clientId) {
+      const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
+      matchedClient = cli || null;
+    }
+
+    let fallbackEmail =
+      matchedCompany?.notificationEmail?.trim() ||
+      matchedClient?.notificationEmail?.trim() ||
+      matchedClient?.email?.trim() ||
+      currentUser?.notificationEmail?.trim() ||
+      "";
+
+    if (!fallbackEmail) {
+      try {
+        const [u] = await db
+          .select({ notificationEmail: usersTable.notificationEmail })
+          .from(usersTable)
+          .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
+          .limit(1);
+        if (u?.notificationEmail) fallbackEmail = u.notificationEmail.trim();
+      } catch {}
+    }
+
+    const targetEmail = (recipientEmail && recipientEmail.trim()) || fallbackEmail;
+
     // 1. Send via Email if requested
     if (sendViaEmail) {
-      // Look up company, client, and current logged-in user for custom Resend key and notification email
-      let matchedCompany: any = null;
-      let matchedClient: any = null;
-      let currentUser: any = null;
-
-      if (req.session?.userId) {
-        const [u] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
-        currentUser = u || null;
-      }
-
-      if (companyId) {
-        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.id, Number(companyId))).limit(1);
-        matchedCompany = comp || null;
-      }
-      if (!matchedCompany && companyName) {
-        const [comp] = await db.select().from(companiesTable).where(eq(companiesTable.name, companyName)).limit(1);
-        matchedCompany = comp || null;
-      }
-      if (matchedCompany?.clientId) {
-        const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, matchedCompany.clientId)).limit(1);
-        matchedClient = cli || null;
-      } else if (clientId) {
-        const [cli] = await db.select().from(usersTable).where(eq(usersTable.id, Number(clientId))).limit(1);
-        matchedClient = cli || null;
-      }
-
-      let fallbackEmail =
-        matchedCompany?.notificationEmail?.trim() ||
-        matchedClient?.notificationEmail?.trim() ||
-        matchedClient?.email?.trim() ||
-        currentUser?.notificationEmail?.trim() ||
-        "";
-
-      if (!fallbackEmail) {
-        try {
-          const [u] = await db
-            .select({ notificationEmail: usersTable.notificationEmail })
-            .from(usersTable)
-            .where(and(sql`${usersTable.notificationEmail} IS NOT NULL`, sql`${usersTable.notificationEmail} != ''`))
-            .limit(1);
-          if (u?.notificationEmail) fallbackEmail = u.notificationEmail.trim();
-        } catch {}
-      }
-
-      const targetEmail = (recipientEmail && recipientEmail.trim()) || fallbackEmail;
-
       if (!targetEmail) {
         emailError = "البريد الإلكتروني للمستلم مطلوب (يرجى إدخال بريد مستلم أو حفظ بريد الإشعارات في الإعدادات).";
       } else {
