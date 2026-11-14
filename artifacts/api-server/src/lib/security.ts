@@ -986,7 +986,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
  * @param exceptSid - Optional session ID to preserve (e.g. current session of user who changed their password)
  */
 export async function revokeAllUserSessions(userId: number, exceptSid?: string): Promise<number> {
-  if (!userId || typeof userId !== "number" || isNaN(userId)) return 0;
+  if (!userId || typeof userId !== "number" || isNaN(userId) || userId <= 0) return 0;
   try {
     if (exceptSid) {
       await db.execute(sql`
