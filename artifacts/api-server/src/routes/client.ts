@@ -2748,7 +2748,7 @@ router.put("/client/settings", async (req, res) => {
     }
 
     if (newPassword) {
-      updates.passwordHash = await bcrypt.hash(newPassword, 10);
+      updates.passwordHash = await bcrypt.hash(newPassword, 12);
       changes.push("password changed");
     }
 
