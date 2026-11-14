@@ -500,11 +500,20 @@ let lastSpikeAlertAt = 0;
 const PROGRESSIVE_DELAY_THRESHOLD = 5;
 const MAX_PROGRESSIVE_DELAY_MS = 30_000; // Cap at 30 seconds
 
-function calculateProgressiveDelay(accountWideFailures: number): number {
+export function calculateProgressiveDelay(accountWideFailures: number): number {
   if (accountWideFailures < PROGRESSIVE_DELAY_THRESHOLD) return 0;
   const exponent = accountWideFailures - PROGRESSIVE_DELAY_THRESHOLD;
   // 2^0=1s, 2^1=2s, 2^2=4s, 2^3=8s, 2^4=16s, capped at 30s
   return Math.min(Math.pow(2, exponent) * 1000, MAX_PROGRESSIVE_DELAY_MS);
+}
+
+export function isCaptchaRequired(username: string): boolean {
+  const normUser = username.trim().toLowerCase();
+  const entry = accountLoginAttempts.get(normUser);
+  if (!entry) return false;
+  const now = Date.now();
+  const recentAttempts = entry.failureTimes.filter((time) => now - time <= FAILURE_WINDOW_MS).length;
+  return recentAttempts >= PROGRESSIVE_DELAY_THRESHOLD;
 }
 
 const ipLoginAttempts = new Map<string, IpLoginAttempt>();

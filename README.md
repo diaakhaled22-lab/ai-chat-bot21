@@ -5,10 +5,10 @@ chat pot6
 
 See `.env.example` for the full template of configuration keys.
 
-- **`ENCRYPTION_KEY`**: 32-byte secret used for AES-256-GCM encryption of sensitive database fields (SMTP credentials, integration tokens, API keys). In production, set this to a secure random string (e.g. `openssl rand -hex 32`).
-- **`PLAN_APPROVAL_SECRET`**: Dedicated secret for signing and verifying one-click plan approval links. If missing, the server generates an ephemeral secret (approval links will not survive restarts). Set `REQUIRE_STRICT_SECRETS=true` to make this a required startup secret.
-- **`SESSION_SECRET`**: Secret for signing session cookies and pepper for email verification hashes.
-- **`INBOUND_EMAIL_WEBHOOK_SECRET`**: Inbound email plan approvals require this variable. Configure the inbound email provider to send its value in the `x-email-webhook-token` request header (the legacy `x-webhook-token` and `x-admin-token` header names are also accepted). Requests are rejected when this secret is missing or invalid, and the sender must also match a configured admin email or admin user. Email approvals are treated as unpaid unless the message explicitly says paid.
+- **`ENCRYPTION_KEY`**: 32-byte secret used for AES-256-GCM encryption of sensitive database fields (SMTP credentials, integration tokens, API keys). In production, set this to a secure random string (e.g. `openssl rand -hex 32`). Placeholder values are rejected on startup. Key rotation can be configured using `PREVIOUS_ENCRYPTION_KEYS`.
+- **`PLAN_APPROVAL_SECRET`**: Dedicated secret for signing and verifying one-click plan approval links. If missing, the server generates an ephemeral secret (approval links will not survive restarts). Placeholder values are strictly rejected in production.
+- **`SESSION_SECRET`**: Secret for signing session cookies and pepper for email verification hashes. Placeholder values are strictly rejected in production.
+- **`INBOUND_EMAIL_WEBHOOK_SECRET`**: Inbound email plan approvals require this variable. Configure the inbound email provider to send its value in the `x-email-webhook-token` request header (the legacy `x-webhook-token` and `x-admin-token` header names are also accepted). Requests are rejected when this secret is missing, invalid, or left as a placeholder, and the sender must also match a configured admin email or admin user. Email approvals are treated as unpaid unless the message explicitly says paid.
 - **`TRUSTED_PROXIES`**: Controls Express `trust proxy` to correctly resolve client IPs from `X-Forwarded-*` headers:
   - Behind a **single reverse proxy** (Nginx, Cloudflare, Traefik, Docker with nginx): set to `1`
   - Behind **multiple proxies**: set to the hop count (e.g., `2`) or a comma-separated IP list
@@ -22,3 +22,8 @@ Telegram webhooks use an independently generated secret sent only in Telegram's 
 Meta WhatsApp and Messenger webhook POST requests require a valid HMAC signature and a configured `meta_app_secret` (or channel-specific app-secret environment variable). Requests fail closed if the secret or raw request body is unavailable. The server-to-server `/api/webhook/message` endpoint accepts only private Telegram, WhatsApp, or Messenger channel keys; public website widget keys and caller-supplied `botResponse` values are rejected.
 
 Uploaded SVGs are not accepted. Object downloads use safe content headers, and registering an uploaded knowledge file requires an object uploaded by the authenticated client. Temporary uploaded files are always cleaned up from disk.
+
+### Multi-Instance Scaling & In-Memory Rate Limits (M1)
+
+- **Persistent State:** Express session records, companies, token usage, blocked IPs, and security attack logs are persisted in PostgreSQL (`session` and `admin_config` tables), and survive server restarts and scale across multiple application instances.
+- **In-Memory Rate Limits:** Short-window rate limiters (login failure counters, sliding-window widget limits, and per-domain OTP buckets) are tracked in process memory for performance and low latency. For high-availability multi-instance deployments behind a round-robin load balancer, configure a shared Redis store for global sliding windows, while the database-level monthly token quotas (`assertCompanyQuotaNotExceeded`) provide authoritative cross-instance protection against quota drain.

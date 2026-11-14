@@ -7,6 +7,7 @@ import {
   isValidWidgetSessionId,
   checkSessionRateLimit,
   checkWidgetRateLimit,
+  checkDailyWidgetLimit,
   validateWidgetRequest,
 } from "./widgetSecurity";
 
@@ -187,5 +188,32 @@ describe("validateWidgetRequest helper", () => {
     assert.equal(res.valid, true);
     assert.equal(res.status, 200);
     assert.equal(res.allowedOrigin, "https://example.com");
+  });
+});
+
+describe("checkDailyWidgetLimit (R6)", () => {
+  it("allows messages within daily limits and tracks remaining", () => {
+    const res = checkDailyWidgetLimit("test-daily-widget-key", "203.0.113.1");
+    assert.equal(res.allowed, true);
+    assert.ok(res.remaining > 0);
+  });
+
+  it("enforces per-IP daily limit to prevent a single IP from exhausting the assistant quota", () => {
+    const widgetKey = "test-ip-cap-widget-key";
+    const abusiveIp = "203.0.113.88";
+
+    // Exhaust the 300 daily messages cap for this single IP
+    for (let i = 0; i < 300; i++) {
+      checkDailyWidgetLimit(widgetKey, abusiveIp);
+    }
+
+    const blocked = checkDailyWidgetLimit(widgetKey, abusiveIp);
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.reason, "ip");
+
+    // Another clean IP must still be allowed on the same widget!
+    const cleanIp = "203.0.113.89";
+    const allowed = checkDailyWidgetLimit(widgetKey, cleanIp);
+    assert.equal(allowed.allowed, true);
   });
 });

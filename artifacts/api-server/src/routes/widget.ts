@@ -26,7 +26,7 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATI
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
-import { isWidgetOriginAllowed, validateWidgetRequest, isValidWidgetSessionId, checkSessionRateLimit, checkWidgetRateLimit } from "../lib/widgetSecurity";
+import { isWidgetOriginAllowed, validateWidgetRequest, isValidWidgetSessionId, checkSessionRateLimit, checkWidgetRateLimit, checkDailyWidgetLimit } from "../lib/widgetSecurity";
 
 const router = Router();
 
@@ -156,6 +156,24 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
           explicitLang
         ),
         retryAfter: sessionRate.retryAfterSeconds,
+      });
+      return;
+    }
+
+    // R6 fix: Enforce per-widget and per-IP daily message limits
+    const dailyLimit = checkDailyWidgetLimit(key as string, clientIp);
+    if (!dailyLimit.allowed) {
+      res.status(429).json({
+        error: localizedChannelMessage(
+          message,
+          dailyLimit.reason === "ip"
+            ? "تم تجاوز الحد اليومي للرسائل لهذا الجهاز. يرجى المحاولة غداً."
+            : "تم تجاوز الحد اليومي للرسائل لهذا المساعد. يرجى المحاولة غداً.",
+          dailyLimit.reason === "ip"
+            ? "Daily message limit reached for this device. Please try again tomorrow."
+            : "Daily message limit reached for this assistant. Please try again tomorrow.",
+          explicitLang
+        ),
       });
       return;
     }

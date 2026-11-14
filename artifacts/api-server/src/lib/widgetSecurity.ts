@@ -329,28 +329,49 @@ export function validateWidgetRequest(
 
 /**
  * Per-widget-key daily message counter (in-memory).
- * Provides a daily message cap per widget key as an additional layer on top of
- * the monthly token quota. In multi-instance deployments, this should be backed
- * by Redis or a shared datastore; the DB-level monthly quota check remains the
- * authoritative cross-instance limit.
+ * Provides a daily message cap per widget key and per client IP as an additional layer
+ * on top of the monthly token quota.
+ * In multi-instance deployments, this can be backed by Redis or a shared datastore;
+ * the DB-level monthly token quota check remains the authoritative cross-instance limit.
  */
 const dailyWidgetMessageCounts = new Map<string, { count: number; resetAt: number }>();
-const DAILY_WIDGET_MESSAGE_LIMIT = 1000; // Max messages per widget key per day
+const dailyWidgetIpCounts = new Map<string, { count: number; resetAt: number }>();
+const DAILY_WIDGET_MESSAGE_LIMIT = 2000; // Max messages per widget key per day across all users
+const DAILY_WIDGET_IP_LIMIT = 300; // Max messages per client IP per widget per day (prevents single IP DoS)
 
-export function checkDailyWidgetLimit(widgetKey: string): { allowed: boolean; remaining: number } {
+export function checkDailyWidgetLimit(
+  widgetKey: string,
+  clientIp?: string | null
+): { allowed: boolean; remaining: number; reason?: "widget" | "ip" } {
   const now = Date.now();
-  let record = dailyWidgetMessageCounts.get(widgetKey);
+  const tomorrow = new Date();
+  tomorrow.setUTCHours(24, 0, 0, 0);
+  const resetAt = tomorrow.getTime();
 
+  // 1. IP-level daily limit per widget key (prevents single malicious IP from exhausting company daily limit)
+  const cleanIp = (clientIp || "").replace(/^::ffff:/i, "").trim();
+  if (cleanIp && cleanIp !== "unknown") {
+    const ipKey = `${widgetKey}:${cleanIp}`;
+    let ipRecord = dailyWidgetIpCounts.get(ipKey);
+    if (!ipRecord || now >= ipRecord.resetAt) {
+      ipRecord = { count: 0, resetAt };
+      dailyWidgetIpCounts.set(ipKey, ipRecord);
+    }
+    if (ipRecord.count >= DAILY_WIDGET_IP_LIMIT) {
+      return { allowed: false, remaining: 0, reason: "ip" };
+    }
+    ipRecord.count++;
+  }
+
+  // 2. Widget-level daily limit
+  let record = dailyWidgetMessageCounts.get(widgetKey);
   if (!record || now >= record.resetAt) {
-    // Reset at midnight UTC or 24h from first message
-    const tomorrow = new Date();
-    tomorrow.setUTCHours(24, 0, 0, 0);
-    record = { count: 0, resetAt: tomorrow.getTime() };
+    record = { count: 0, resetAt };
     dailyWidgetMessageCounts.set(widgetKey, record);
   }
 
   if (record.count >= DAILY_WIDGET_MESSAGE_LIMIT) {
-    return { allowed: false, remaining: 0 };
+    return { allowed: false, remaining: 0, reason: "widget" };
   }
 
   record.count++;
@@ -362,5 +383,8 @@ setInterval(() => {
   const now = Date.now();
   for (const [key, record] of dailyWidgetMessageCounts) {
     if (now >= record.resetAt) dailyWidgetMessageCounts.delete(key);
+  }
+  for (const [key, record] of dailyWidgetIpCounts) {
+    if (now >= record.resetAt) dailyWidgetIpCounts.delete(key);
   }
 }, 60 * 60 * 1000).unref();

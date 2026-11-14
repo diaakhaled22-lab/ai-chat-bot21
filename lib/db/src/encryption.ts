@@ -76,36 +76,7 @@ export function getDecryptionKeys(): Buffer[] {
     addKey(crypto.createHash("sha256").update(envKey).digest());
   }
 
-  // 3. Candidate from DATABASE_URL (the historic default before explicit ENCRYPTION_KEY)
-  const dbUrl = process.env.DATABASE_URL;
-  if (dbUrl) {
-    addKey(crypto.createHash("sha256").update(dbUrl).digest());
-    // Also try without query parameters (e.g. ?sslmode=require) in case URL was modified
-    const dbUrlNoQuery = dbUrl.split("?")[0];
-    if (dbUrlNoQuery && dbUrlNoQuery !== dbUrl) {
-      addKey(crypto.createHash("sha256").update(dbUrlNoQuery).digest());
-    }
-    // Also try swapping postgresql:// vs postgres://
-    if (dbUrl.startsWith("postgresql://")) {
-      addKey(crypto.createHash("sha256").update(dbUrl.replace(/^postgresql:/, "postgres:")).digest());
-    } else if (dbUrl.startsWith("postgres://")) {
-      addKey(crypto.createHash("sha256").update(dbUrl.replace(/^postgres:/, "postgresql:")).digest());
-    }
-  }
-
-  // 4. Candidate from SESSION_SECRET
-  const sessionSecret = process.env.SESSION_SECRET;
-  if (sessionSecret) {
-    if (sessionSecret.length === 64) {
-      try { addKey(Buffer.from(sessionSecret, "hex")); } catch {}
-    }
-    if (sessionSecret.length === 32) {
-      addKey(Buffer.from(sessionSecret, "utf-8"));
-    }
-    addKey(crypto.createHash("sha256").update(sessionSecret).digest());
-  }
-
-  // 5. Candidate from PREVIOUS_ENCRYPTION_KEYS / OLD_ENCRYPTION_KEY (comma-separated list for key rotation)
+  // 3. Explicit key rotation via PREVIOUS_ENCRYPTION_KEYS / OLD_ENCRYPTION_KEY (comma-separated list)
   const previousKeys = (process.env.PREVIOUS_ENCRYPTION_KEYS || process.env.OLD_ENCRYPTION_KEY || "").split(",");
   for (const raw of previousKeys) {
     const trimmed = raw.trim();
@@ -119,15 +90,52 @@ export function getDecryptionKeys(): Buffer[] {
     addKey(crypto.createHash("sha256").update(trimmed).digest());
   }
 
-  // 6. Candidate from REPL_ID (Replit environment identifier)
-  if (process.env.REPL_ID) {
-    addKey(crypto.createHash("sha256").update(process.env.REPL_ID).digest());
-  }
+  // 4. In development, testing, or when ALLOW_LEGACY_FALLBACK_KEYS="true" is set:
+  // Allow candidates from DATABASE_URL, SESSION_SECRET, and REPL_ID (X1 fix)
+  const isProd = process.env.NODE_ENV === "production";
+  const allowLegacy = !isProd || process.env.ALLOW_LEGACY_FALLBACK_KEYS === "true";
 
-  // 7. Legacy fallback constants (kept for backward-compatible decryption of old data)
-  addKey(crypto.createHash("sha256").update("dev-only-insecure-fallback").digest());
-  addKey(crypto.createHash("sha256").update("default-unsafe-production-key").digest());
-  addKey(crypto.createHash("sha256").update("default-unsafe-fallback-key").digest());
+  if (allowLegacy) {
+    // Historic candidate from DATABASE_URL
+    const dbUrl = process.env.DATABASE_URL;
+    if (dbUrl) {
+      addKey(crypto.createHash("sha256").update(dbUrl).digest());
+      // Also try without query parameters (e.g. ?sslmode=require) in case URL was modified
+      const dbUrlNoQuery = dbUrl.split("?")[0];
+      if (dbUrlNoQuery && dbUrlNoQuery !== dbUrl) {
+        addKey(crypto.createHash("sha256").update(dbUrlNoQuery).digest());
+      }
+      // Also try swapping postgresql:// vs postgres://
+      if (dbUrl.startsWith("postgresql://")) {
+        addKey(crypto.createHash("sha256").update(dbUrl.replace(/^postgresql:/, "postgres:")).digest());
+      } else if (dbUrl.startsWith("postgres://")) {
+        addKey(crypto.createHash("sha256").update(dbUrl.replace(/^postgres:/, "postgresql:")).digest());
+      }
+    }
+
+    // Candidate from SESSION_SECRET
+    const sessionSecret = process.env.SESSION_SECRET;
+    if (sessionSecret) {
+      if (sessionSecret.length === 64) {
+        try { addKey(Buffer.from(sessionSecret, "hex")); } catch {}
+      }
+      if (sessionSecret.length === 32) {
+        addKey(Buffer.from(sessionSecret, "utf-8"));
+      }
+      addKey(crypto.createHash("sha256").update(sessionSecret).digest());
+    }
+
+    // Candidate from REPL_ID (Replit environment identifier)
+    if (process.env.REPL_ID) {
+      addKey(crypto.createHash("sha256").update(process.env.REPL_ID).digest());
+    }
+
+    // Static fallback constants are strictly forbidden in production (X1)
+    if (!isProd) {
+      addKey(crypto.createHash("sha256").update("dev-only-insecure-fallback").digest());
+      addKey(crypto.createHash("sha256").update("default-unsafe-fallback-key").digest());
+    }
+  }
 
   return keys;
 }

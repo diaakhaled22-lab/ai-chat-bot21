@@ -14,6 +14,7 @@ import {
   sensitiveLimiter,
   isAccountLocked,
   isIpBlocked,
+  isCaptchaRequired,
   recordBlockedLoginAttempt,
   recordFailedLogin,
   resetLoginAttempts,
@@ -69,6 +70,83 @@ setInterval(() => {
     if (record.timestamps.length === 0) otpDomainRates.delete(key);
   }
 }, 30 * 60 * 1000).unref();
+
+// Major public email domains exempt from restrictive per-domain OTP caps (X3)
+const COMMON_PUBLIC_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.co.uk",
+  "yahoo.fr",
+  "hotmail.com",
+  "hotmail.co.uk",
+  "hotmail.fr",
+  "outlook.com",
+  "outlook.sa",
+  "live.com",
+  "msn.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "zoho.com",
+  "mail.com",
+  "yandex.com",
+  "yandex.ru",
+  "gmx.com",
+  "gmx.net",
+]);
+
+/**
+ * Handles failed login attempts with progressive delay & CAPTCHA requirements (R2).
+ */
+async function handleFailedLoginResponse(
+  username: string,
+  clientIp: string,
+  res: any,
+  lang?: string,
+): Promise<void> {
+  const result = recordFailedLogin(username, clientIp);
+  if (result.spikeDetected) {
+    void sendAttackSpikeNotification({
+      recentFailedAttempts: result.recentFailedAttempts,
+      windowMinutes: 5,
+    });
+  }
+
+  // Progressive delay against distributed brute-force attacks (R2)
+  if (result.progressiveDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, result.progressiveDelayMs));
+  }
+
+  const isAr = lang !== "en";
+  if (result.accountLocked) {
+    res.status(429).json({
+      error: isAr
+        ? "تم قفل الحساب مؤقتاً لهذا الـ IP بسبب تكرار المحاولات الفاشلة. يرجى الانتظار 15 دقيقة."
+        : "Account locked for this IP due to repeated failed login attempts. Please try again in 15 minutes.",
+      accountLocked: true,
+    });
+    return;
+  }
+
+  if (result.captchaRequired) {
+    res.status(429).json({
+      error: isAr
+        ? "تم رصد محاولات دخول فاشلة متعددة على هذا الحساب. يرجى إتمام التحقق الأمني (CAPTCHA)."
+        : "Multiple failed login attempts detected on this account. CAPTCHA verification required.",
+      captchaRequired: true,
+      delayMs: result.progressiveDelayMs,
+    });
+    return;
+  }
+
+  res.status(401).json({
+    error: isAr ? "بيانات الدخول غير صحيحة" : "Invalid login credentials",
+  });
+}
 
 export function hashOtpCode(email: string, code: string): string {
   const pepper = process.env.SESSION_SECRET || "bot-manager-otp-pepper";
@@ -140,29 +218,17 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       // Execute dummy bcrypt check to prevent timing-based username enumeration
       await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
       if (username) {
-        const result = recordFailedLogin(username, clientIp);
-        if (result.spikeDetected) {
-          void sendAttackSpikeNotification({
-            recentFailedAttempts: result.recentFailedAttempts,
-            windowMinutes: 5,
-          });
-        }
+        await handleFailedLoginResponse(username, clientIp, res);
+      } else {
+        res.status(401).json({ error: "Invalid login credentials" });
       }
-      res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     const valid = password !== "admin123" && isMatch;
     if (!valid) {
-      const result = recordFailedLogin(username, clientIp);
-      if (result.spikeDetected) {
-        void sendAttackSpikeNotification({
-          recentFailedAttempts: result.recentFailedAttempts,
-          windowMinutes: 5,
-        });
-      }
-      res.status(401).json({ error: "Invalid login credentials" });
+      await handleFailedLoginResponse(username, clientIp, res);
       return;
     }
 
@@ -267,11 +333,14 @@ router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
     if (!isValid) {
       tokenData.attempts = (tokenData.attempts || 0) + 1;
       const failedResult = recordFailedLogin(tokenData.username, clientIp);
+      if (failedResult.progressiveDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, failedResult.progressiveDelayMs));
+      }
 
       // Invalidate tempToken after 3 failed attempts or if account gets locked
       if (tokenData.attempts >= 3 || failedResult.accountLocked) {
         temp2faTokens.delete(tempToken);
-        res.status(401).json({ error: "Too many failed 2FA verification attempts. Session invalidated. Please log in again." });
+        res.status(429).json({ error: "Too many failed 2FA verification attempts. Session invalidated. Please log in again." });
         return;
       }
 
@@ -335,32 +404,22 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       .where(eq(usersTable.username, username))
       .limit(1);
 
+    const reqLang = (req.body as { lang?: string } | undefined)?.lang;
+
     if (!user || user.role !== "client") {
       // Execute dummy bcrypt check to prevent timing-based username enumeration
       await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
       if (username) {
-        const result = recordFailedLogin(username, clientIp);
-        if (result.spikeDetected) {
-          void sendAttackSpikeNotification({
-            recentFailedAttempts: result.recentFailedAttempts,
-            windowMinutes: 5,
-          });
-        }
+        await handleFailedLoginResponse(username, clientIp, res, reqLang);
+      } else {
+        res.status(401).json({ error: "Invalid login credentials" });
       }
-      res.status(401).json({ error: "Invalid login credentials" });
       return;
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      const result = recordFailedLogin(username, clientIp);
-      if (result.spikeDetected) {
-        void sendAttackSpikeNotification({
-          recentFailedAttempts: result.recentFailedAttempts,
-          windowMinutes: 5,
-        });
-      }
-      res.status(401).json({ error: "Invalid login credentials" });
+      await handleFailedLoginResponse(username, clientIp, res, reqLang);
       return;
     }
 
@@ -421,50 +480,8 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
 
     const cleanEmail = normalizeEmail(email);
 
-    // Unify username & email collision check to prevent account enumeration (N6)
-    let isTaken = false;
-    if (username && typeof username === "string") {
-      const cleanUsername = username.trim().toLowerCase();
-      const [existingUser] = await db
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(eq(usersTable.username, cleanUsername))
-        .limit(1);
-      if (existingUser) isTaken = true;
-    }
-
-    if (!isTaken) {
-      const [existingEmail] = await db
-        .select({ id: usersTable.id })
-        .from(usersTable)
-        .where(
-          and(
-            eq(usersTable.role, "client"),
-            or(
-              eq(usersTable.email, cleanEmail),
-              eq(usersTable.notificationEmail, cleanEmail)
-            )
-          )
-        )
-        .limit(1);
-      if (existingEmail) isTaken = true;
-    }
-
-    if (isTaken) {
-      // R3 fix: Don't reveal that the account exists — return same success response
-      // to prevent email/username enumeration attacks. Log internally for debugging.
-      logger.info({ email: cleanEmail }, "Registration OTP requested for already-taken email/username (not revealing to client)");
-      res.json({
-        ok: true,
-        message: isAr
-          ? "إن كان البريد صالحاً ستصلك رسالة تحقق خلال دقائق."
-          : "If the email is valid, you will receive a verification code shortly.",
-        email: cleanEmail,
-      });
-      return;
-    }
-
-    // Cooldown check (60 seconds) & Hourly limit (5 max)
+    // 1. Cooldown check (60 seconds) & Hourly limit (5 max) applies equally to ALL requests
+    // to prevent side-channel timing and enumeration attacks (R3)
     const recentCodes = await db
       .select()
       .from(emailVerificationCodesTable)
@@ -498,9 +515,10 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       }
     }
 
-    // R5 fix: Per-email-domain rate limiting to prevent spamming all users of one domain
-    const emailDomain = cleanEmail.split("@")[1];
-    if (emailDomain) {
+    // 2. Per-email-domain rate limiting for private/corporate domains (X3)
+    // Major public providers (Gmail, Outlook, Yahoo) are exempt to prevent registration DoS on public users
+    const emailDomain = cleanEmail.split("@")[1]?.toLowerCase();
+    if (emailDomain && !COMMON_PUBLIC_EMAIL_DOMAINS.has(emailDomain)) {
       const domainOtpKey = `otp_domain:${emailDomain}`;
       let domainRecord = otpDomainRates.get(domainOtpKey);
       const domainNow = Date.now();
@@ -513,12 +531,62 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         logger.warn({ emailDomain, count: domainRecord.timestamps.length }, "OTP domain rate limit exceeded");
         res.status(429).json({
           error: isAr
-            ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق. يرجى المحاولة لاحقاً."
-            : "Too many verification requests for this email domain. Please try again later.",
+            ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق المؤسسي. يرجى المحاولة لاحقاً."
+            : "Too many verification requests for this organization domain. Please try again later.",
         });
         return;
       }
       domainRecord.timestamps.push(domainNow);
+    }
+
+    // 3. Unify username & email collision check to prevent account enumeration (N6, R3)
+    let isTaken = false;
+    if (username && typeof username === "string") {
+      const cleanUsername = username.trim().toLowerCase();
+      const [existingUser] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.username, cleanUsername))
+        .limit(1);
+      if (existingUser) isTaken = true;
+    }
+
+    if (!isTaken) {
+      const [existingEmail] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(
+          and(
+            eq(usersTable.role, "client"),
+            or(
+              eq(usersTable.email, cleanEmail),
+              eq(usersTable.notificationEmail, cleanEmail)
+            )
+          )
+        )
+        .limit(1);
+      if (existingEmail) isTaken = true;
+    }
+
+    if (isTaken) {
+      // R3 fix: Record a dummy entry to enforce identical 60-second cooldown on subsequent calls.
+      // Returns the exact same 200 OK success response without revealing account existence or sending OTP.
+      await db.insert(emailVerificationCodesTable).values({
+        email: cleanEmail,
+        code: hashOtpCode(cleanEmail, "000000"),
+        attempts: 99,
+        expiresAt: new Date(Date.now() + 60 * 1000),
+      }).catch((err) => logger.warn({ err }, "Failed to record dummy OTP cooldown"));
+
+      logger.info({ email: cleanEmail }, "Registration OTP requested for already-taken email/username (not revealing to client, cooldown enforced)");
+      res.json({
+        ok: true,
+        message: isAr
+          ? "إن كان البريد صالحاً ستصلك رسالة تحقق خلال دقائق."
+          : "If the email is valid, you will receive a verification code shortly.",
+        email: cleanEmail,
+      });
+      return;
     }
 
     // Check Email Delivery Providers: Prefer Resend, fallback to Admin SMTP (Gmail)
