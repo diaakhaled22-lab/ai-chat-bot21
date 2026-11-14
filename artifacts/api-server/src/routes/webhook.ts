@@ -871,7 +871,7 @@ router.get(
             <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
               ${
                 result.dispatchResult.whatsappUrl
-                  ? `<a href="${result.dispatchResult.whatsappUrl}" target="_blank" style="padding:12px 22px;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:13px;">
+                  ? `<a href="${escapeHtml(result.dispatchResult.whatsappUrl)}" target="_blank" rel="noopener noreferrer" style="padding:12px 22px;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;font-size:13px;">
                       💬 إرسال الفاتورة للعميل عبر الواتساب
                     </a>`
                   : ""
