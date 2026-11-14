@@ -260,18 +260,37 @@ declare global {
   }
 }
 
-app.use(
+// ── Granular Request Body Size Limits (DoS & Memory Exhaustion Defense) ──
+// Legitimate heavy ingestion routes (knowledge base files, document indexing, storage sync)
+// require larger payload limits (up to 15MB).
+// Standard API routes (auth, configuration, chat messages) are strictly capped at 1MB
+// to prevent memory consumption attacks and CPU exhaustion from large JSON parsing.
+const isHeavyPayloadRoute = (req: express.Request): boolean => {
+  const p = (req.path || req.url || "").toLowerCase();
+  return (
+    p.includes("/knowledge-files") ||
+    p.includes("/knowledge/upload") ||
+    p.includes("/storage") ||
+    p.includes("/sync") ||
+    p.includes("/rag") ||
+    p.includes("/upload")
+  );
+};
+
+app.use((req, res, next) => {
+  const limit = isHeavyPayloadRoute(req) ? "15mb" : "1mb";
   express.json({
-    limit: "10mb",
+    limit,
     verify: (req: any, _res, buf) => {
       req.rawBody = buf;
     },
-  })
-);
+  })(req, res, next);
+});
+
 app.use(
   express.urlencoded({
     extended: true,
-    limit: "10mb",
+    limit: "1mb",
     verify: (req: any, _res, buf) => {
       req.rawBody = buf;
     },
@@ -327,6 +346,7 @@ sessionStore.on("error", (err) => {
 
 app.use(
   session({
+    name: "sid",
     store: sessionStore,
     secret: sessionSecret,
     resave: false,

@@ -38,6 +38,7 @@ import {
   recordBlockedLoginAttempt,
   recordFailedLogin,
   resetLoginAttempts,
+  revokeAllUserSessions,
 } from "../lib/security";
 import { sendClientNotification, sendMalfunctionNotification, sendSecurityEventEmail, sendNewClientNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { notifySubscriptionActivated, getResendConfig } from "../lib/companyNotification";
@@ -739,6 +740,10 @@ router.put("/admin/clients/:id", async (req, res) => {
     if (!user) {
       res.status(404).json({ error: "Client not found" });
       return;
+    }
+
+    if (updates.passwordHash) {
+      await revokeAllUserSessions(user.id);
     }
     res.json({
       id: user.id,
@@ -5903,6 +5908,9 @@ router.put("/admin/settings", async (req, res) => {
     if (Object.keys(updates).length > 0) {
       await db.update(usersTable).set(updates).where(eq(usersTable.id, req.session.userId!));
       if (typeof updates.name === "string") req.session.name = updates.name;
+      if (updates.passwordHash) {
+        await revokeAllUserSessions(req.session.userId!, req.sessionID);
+      }
     }
 
     res.json({ ok: true });

@@ -24,6 +24,7 @@ import {
   isTotpSecretUnavailable,
   isTotpCodeUsed,
   markTotpCodeUsed,
+  revokeAllUserSessions,
 } from "../lib/security";
 import { authenticator } from "otplib";
 
@@ -1051,10 +1052,15 @@ router.post("/auth/reset-password", sensitiveLimiter, async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    await db
+    const [updatedUser] = await db
       .update(usersTable)
       .set({ passwordHash })
-      .where(eq(usersTable.username, record.username));
+      .where(eq(usersTable.username, record.username))
+      .returning({ id: usersTable.id });
+
+    if (updatedUser?.id) {
+      await revokeAllUserSessions(updatedUser.id);
+    }
 
     await db
       .update(passwordResetTokensTable)

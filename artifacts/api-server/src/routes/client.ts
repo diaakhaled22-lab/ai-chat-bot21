@@ -24,7 +24,7 @@ import { enforceResponseLanguage, getLanguageInstruction } from "../lib/language
 import { syncCompanyWebsite } from "../lib/websiteSync";
 import { sendNewTicketNotification, sendPlanRequestAdminNotification, sendMalfunctionNotification, getEmailConfig, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, formatAnthropicMessages, buildOpenAiChatParams, buildOpenRouterChatParams, formatGeminiHistory, AI_MODEL_PRICING, getModelPricing, getOpenRouterHeaders, isOpenRouterFreeModel } from "../lib/aiModels";
-import { maskApiKey, preserveMaskedSecret, sensitiveLimiter } from "../lib/security";
+import { maskApiKey, preserveMaskedSecret, sensitiveLimiter, revokeAllUserSessions } from "../lib/security";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, getQuotaAiModelInfo, checkAndTriggerQuotaNotifications } from "../lib/supportAi";
 import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
@@ -2812,6 +2812,10 @@ router.put("/client/settings", async (req, res) => {
 
     if (Object.keys(updates).length > 0) {
       await db.update(usersTable).set(updates).where(eq(usersTable.id, req.session.userId!));
+
+      if (updates.passwordHash) {
+        await revokeAllUserSessions(req.session.userId!, req.sessionID);
+      }
 
       // Notify all admin users about the change
       if (changes.length > 0) {

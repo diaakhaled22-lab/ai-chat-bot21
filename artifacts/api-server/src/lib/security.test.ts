@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { isSafeUrl, safeFetch } from "./urlSecurity";
-import { isAccountLocked, recordFailedLogin, resetLoginAttempts, isCaptchaRequired, calculateProgressiveDelay } from "./security";
+import { isAccountLocked, recordFailedLogin, resetLoginAttempts, isCaptchaRequired, calculateProgressiveDelay, securityHeaders, revokeAllUserSessions } from "./security";
 
 describe("SSRF URL validation", () => {
   it("rejects private, mapped, link-local, and unspecified IP addresses", () => {
@@ -77,5 +77,39 @@ describe("Account lockout IP scoping (DoS prevention - N1)", () => {
     // Resetting unlocks
     resetLoginAttempts(distributedUser);
     assert.equal(isCaptchaRequired(distributedUser), false);
+  });
+});
+
+describe("securityHeaders middleware hardening", () => {
+  it("enforces X-Permitted-Cross-Domain-Policies, nosniff, DENY, and strict CSP", () => {
+    const headers: Record<string, string> = {};
+    const req = { secure: false, headers: {} } as any;
+    const res = {
+      setHeader(k: string, v: string) {
+        headers[k] = v;
+      },
+    } as any;
+    let nextCalled = false;
+
+    securityHeaders(req, res, () => {
+      nextCalled = true;
+    });
+
+    assert.equal(nextCalled, true);
+    assert.equal(headers["X-Permitted-Cross-Domain-Policies"], "none");
+    assert.equal(headers["X-Content-Type-Options"], "nosniff");
+    assert.equal(headers["X-Frame-Options"], "DENY");
+    assert.ok(headers["Content-Security-Policy"].includes("default-src 'self'"));
+    assert.ok(headers["Permissions-Policy"].includes("microphone=(self)"));
+  });
+});
+
+describe("revokeAllUserSessions parameter validation", () => {
+  it("safely handles invalid user IDs without throwing", async () => {
+    const res1 = await revokeAllUserSessions(0);
+    assert.equal(res1, 0);
+
+    const res2 = await revokeAllUserSessions(NaN);
+    assert.equal(res2, 0);
   });
 });

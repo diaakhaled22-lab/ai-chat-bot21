@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { logger } from "./logger";
 import { db, adminConfigTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { isSafeUrl } from "./urlSecurity";
 import { decryptTotpValue, encryptTotpValue } from "./totpEncryption";
 
@@ -959,7 +959,8 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(self), geolocation=(), payment=()");
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   // Content Security Policy — prevents XSS, clickjacking, data injection
   // 'unsafe-inline' is removed from script-src to prevent execution of injected inline scripts (XSS).
   // Exact sha256 hashes are whitelisted for static pre-hydration theme/lang bootstrap scripts.
@@ -974,6 +975,37 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
   next();
+}
+
+/**
+ * Revokes all active database sessions for a specific user.
+ * Called immediately upon password reset or password change to terminate
+ * any potentially compromised or stale sessions on other devices.
+ * 
+ * @param userId - ID of the user whose sessions should be invalidated
+ * @param exceptSid - Optional session ID to preserve (e.g. current session of user who changed their password)
+ */
+export async function revokeAllUserSessions(userId: number, exceptSid?: string): Promise<number> {
+  if (!userId || typeof userId !== "number" || isNaN(userId)) return 0;
+  try {
+    if (exceptSid) {
+      await db.execute(sql`
+        DELETE FROM "session"
+        WHERE ((sess->>'userId')::int = ${userId} OR sess->>'userId' = ${String(userId)})
+          AND sid != ${exceptSid};
+      `);
+    } else {
+      await db.execute(sql`
+        DELETE FROM "session"
+        WHERE ((sess->>'userId')::int = ${userId} OR sess->>'userId' = ${String(userId)});
+      `);
+    }
+    logger.info({ userId, exceptSid: Boolean(exceptSid) }, "Successfully revoked user sessions on credential update");
+    return 1;
+  } catch (err) {
+    logger.error({ err, userId }, "Failed to revoke user sessions from database");
+    return 0;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
