@@ -7,7 +7,7 @@
         "dev": "pnpm run build && pnpm run start",
         "build": "node ./build.mjs",
         "start": "node ./dist/index.mjs",
-        "test": "node --env-file=../../.env.example --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts ./src/lib/widgetSecurity.test.ts ./src/lib/planApprovalSecurity.test.ts ./src/lib/knowledgeFileSecurity.test.ts ./src/lib/errorSecurity.test.ts ./src/lib/sensitiveFilesSecurity.test.ts ./src/lib/security.test.ts ./src/lib/comprehensiveProtection.test.ts",
+        "test": "node --env-file=../../.env.example --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts ./src/lib/widgetSecurity.test.ts ./src/lib/planApprovalSecurity.test.ts ./src/lib/knowledgeFileSecurity.test.ts ./src/lib/errorSecurity.test.ts ./src/lib/sensitiveFilesSecurity.test.ts ./src/lib/security.test.ts ./src/lib/comprehensiveProtection.test.ts ./src/lib/captchaSecurity.test.ts",
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {

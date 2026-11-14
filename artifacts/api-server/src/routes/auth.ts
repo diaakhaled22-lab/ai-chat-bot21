@@ -8,6 +8,7 @@ import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { getResendConfig, escapeHtml } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
+import { extractCaptchaToken, verifyCaptchaToken } from "../lib/captchaSecurity";
 import {
   maskApiKey,
   authLimiter,
@@ -209,6 +210,28 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
+    // ── Check CAPTCHA Requirement (Enforced when repeated failures occur) ──
+    if (isCaptchaRequired(username)) {
+      const captchaToken = extractCaptchaToken(req);
+      if (!captchaToken) {
+        res.status(429).json({
+          error: "تم رصد محاولات دخول فاشلة متعددة على هذا الحساب. يرجى إتمام التحقق الأمني (CAPTCHA).",
+          captchaRequired: true,
+        });
+        return;
+      }
+
+      const verification = await verifyCaptchaToken(captchaToken, clientIp);
+      if (!verification.valid) {
+        logger.warn({ username, clientIp, reason: verification.reason }, "Admin login blocked: invalid CAPTCHA token");
+        res.status(429).json({
+          error: "فشل التحقق الأمني (CAPTCHA). يرجى حل الاختبار وإعادة المحاولة.",
+          captchaRequired: true,
+        });
+        return;
+      }
+    }
+
     const [user] = await db
       .select()
       .from(usersTable)
@@ -399,13 +422,34 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.username, username))
-      .limit(1);
-
     const reqLang = (req.body as { lang?: string } | undefined)?.lang;
+    const isAr = reqLang !== "en";
+
+    // ── Check CAPTCHA Requirement (Enforced when repeated failures occur) ──
+    if (isCaptchaRequired(username)) {
+      const captchaToken = extractCaptchaToken(req);
+      if (!captchaToken) {
+        res.status(429).json({
+          error: isAr
+            ? "تم رصد محاولات دخول فاشلة متعددة على هذا الحساب. يرجى إتمام التحقق الأمني (CAPTCHA)."
+            : "Multiple failed login attempts detected on this account. CAPTCHA verification required.",
+          captchaRequired: true,
+        });
+        return;
+      }
+
+      const verification = await verifyCaptchaToken(captchaToken, clientIp);
+      if (!verification.valid) {
+        logger.warn({ username, clientIp, reason: verification.reason }, "Client login blocked: invalid CAPTCHA token");
+        res.status(429).json({
+          error: isAr
+            ? "فشل التحقق الأمني (CAPTCHA). يرجى حل الاختبار وإعادة المحاولة."
+            : "CAPTCHA verification failed. Please complete the security challenge and try again.",
+          captchaRequired: true,
+        });
+        return;
+      }
+    }
 
     if (!user || user.role !== "client") {
       // Execute dummy bcrypt check to prevent timing-based username enumeration
