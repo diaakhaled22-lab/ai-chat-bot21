@@ -158,3 +158,26 @@ test_*.ts
 test_*.js
 test_*.cjs
 test_*.mjs
+
+# Database dumps, backups and raw databases
+*.sql
+!scripts/security_rls_and_roles.sql
+*.dump
+*.dmp
+*.sqlite
+*.sqlite3
+*.db
+*.rdb
+*.psql
+*.pgsql
+
+# Editor backup files and temporary files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.swp
+*.swo
+*~
+*.copy

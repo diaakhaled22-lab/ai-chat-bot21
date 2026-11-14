@@ -8,6 +8,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionAnomalyDetector } from "./lib/security";
 import { errorSanitizerMiddleware, globalErrorHandler } from "./lib/errorSecurity";
+import { sensitiveFilesGuard } from "./lib/sensitiveFilesSecurity";
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +29,12 @@ app.disable("x-powered-by");
 // In production, intercepts outgoing error responses to guarantee NO stack traces,
 // internal table names, SQL queries, or file paths leak to clients.
 app.use(errorSanitizerMiddleware);
+
+// ── Sensitive Files Public Reachability Defense ───────────────────────────
+// Strictly intercepts and blocks any public requests targeting .env files,
+// backups (*.bak, *.backup, *.old, ~), SQL dumps (*.sql, *.dump), .git folders,
+// and server/project config files (package.json, tsconfig.json, etc.).
+app.use(sensitiveFilesGuard);
 
 // ── Trust Proxy Configuration ───────────────────────────────────────────
 // Essential for deployments behind reverse proxies (Replit, Cloud Run, Render, Cloudflare, Nginx).
@@ -434,14 +441,32 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.use("/api", express.static(path.join(__dirname, "../public")));
+app.use(
+  "/api",
+  express.static(path.join(__dirname, "../public"), {
+    dotfiles: "deny",
+    index: false,
+  })
+);
 app.use("/api", router);
 
 // Serve the frontend static files in production
 if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true") {
   const frontendDist = path.join(__dirname, "../../chatbot-admin/dist/public");
-  app.use(express.static(frontendDist));
+  app.use(
+    express.static(frontendDist, {
+      dotfiles: "deny",
+      index: false,
+    })
+  );
   app.get("*", (req, res) => {
+    // If the request points to a missing file asset with an extension (e.g. .sql, .env, .js, .json)
+    // that was not found by static handlers, return 404 instead of falling back to SPA index.html
+    const pathname = (req.path || "").toLowerCase();
+    const ext = path.extname(pathname);
+    if (ext && ext !== ".html") {
+      return res.status(404).json({ error: "Not Found" });
+    }
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
