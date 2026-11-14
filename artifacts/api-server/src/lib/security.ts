@@ -963,12 +963,15 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   // Content Security Policy — prevents XSS, clickjacking, data injection
   // 'unsafe-inline' is removed from script-src to prevent execution of injected inline scripts (XSS).
   // Exact sha256 hashes are whitelisted for static pre-hydration theme/lang bootstrap scripts.
+  // 'upgrade-insecure-requests' instructs browsers to automatically upgrade any plain HTTP URLs to HTTPS.
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'sha256-MIBkNA2os92j8uFEzhx3JczceGUTqVgfk5MByxO3w+I=' 'sha256-3l2JKxQ7uzdqKk0vtTtTcKXPwrENosFM12o5W0lnSak='; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+    "default-src 'self'; script-src 'self' 'sha256-MIBkNA2os92j8uFEzhx3JczceGUTqVgfk5MByxO3w+I=' 'sha256-3l2JKxQ7uzdqKk0vtTtTcKXPwrENosFM12o5W0lnSak='; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;"
   );
-  if (process.env.NODE_ENV === "production") {
-    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  // HTTP Strict Transport Security (HSTS)
+  // Forces browsers to interact strictly over HTTPS for 1 year, covers all subdomains, and qualifies for HSTS preload.
+  if (process.env.NODE_ENV === "production" || req.secure || req.headers["x-forwarded-proto"] === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
   next();
 }
