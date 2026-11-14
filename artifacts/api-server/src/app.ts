@@ -49,22 +49,30 @@ if (rawTrustedProxies) {
 }
 
 // ── Automatic HTTP to HTTPS Redirection Middleware ────────────────────────
-// Automatically redirects all plain HTTP requests to HTTPS with 301 Moved Permanently.
+// Automatically redirects plain HTTP requests to HTTPS with 301 Moved Permanently.
 // Preserves host header, original path, and query strings.
-// Whitelists internal health checks and local development.
+// Whitelists internal health checks, local development, and direct IP access.
 app.use((req, res, next) => {
-  // Allow internal health-check probes without redirect
+  // 1. Allow disabling via environment variable if running in an HTTP-only environment
+  if (process.env.DISABLE_HTTPS_REDIRECT === "true" || process.env.DISABLE_HTTPS_REDIRECT === "1") {
+    return next();
+  }
+
+  // 2. Allow internal health-check probes without redirect
   if (req.path === "/health" || req.path === "/api/health") {
     return next();
   }
 
   const rawHost = req.headers.host || "";
-  const isLocal =
-    rawHost.startsWith("localhost") ||
-    rawHost.startsWith("127.0.0.1") ||
-    rawHost.startsWith("[::1]");
+  const hostname = rawHost.split(":")[0].toLowerCase();
 
-  if (isLocal) {
+  // 3. Skip localhost and loopback addresses
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]") {
+    return next();
+  }
+
+  // 4. Skip raw private/internal IPv4 addresses (e.g. Docker / Kubernetes internal VPCs)
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname)) {
     return next();
   }
 
@@ -72,7 +80,18 @@ app.use((req, res, next) => {
   const forwardedProto = typeof protoHeader === "string" ? protoHeader.split(",")[0].trim().toLowerCase() : null;
   const isHttps = req.secure || forwardedProto === "https" || req.protocol === "https";
 
-  if (!isHttps) {
+  if (isHttps) {
+    return next();
+  }
+
+  // 5. If reverse proxy signaled plain HTTP, or if on a live production domain
+  const isDirectIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+  const shouldRedirect =
+    forwardedProto === "http" ||
+    (process.env.NODE_ENV === "production" && !isDirectIp) ||
+    process.env.FORCE_HTTPS === "true";
+
+  if (shouldRedirect) {
     const targetUrl = `https://${rawHost}${req.originalUrl || req.url}`;
     return res.redirect(301, targetUrl);
   }
