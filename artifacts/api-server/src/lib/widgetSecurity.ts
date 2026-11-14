@@ -4,6 +4,18 @@
  * 1. AI token quota draining from unauthorized websites when widgetAllowedDomains is empty.
  * 2. Automated non-browser requests (curl, python scripts, bots).
  * 3. Session hijacking or rapid automated spamming within sessions.
+ *
+ * DEFENSE-IN-DEPTH NOTE:
+ * Origin, Referer, and User-Agent header checks are spoofable by determined attackers.
+ * They provide a reasonable barrier against casual abuse and automated scripts, but
+ * the primary protection against token quota drain is the per-company monthly token
+ * quota enforced in the widget chat handler (assertCompanyQuotaNotExceeded).
+ *
+ * MULTI-INSTANCE DEPLOYMENT NOTE:
+ * The in-memory rate limiters (sessionRates, ipRates) are local to each process.
+ * In multi-instance deployments behind a load balancer, consider using Redis or a
+ * shared store for rate limiting. The per-company DB-level quota check already
+ * provides cross-instance protection for token consumption.
  */
 
 export interface ValidateWidgetResult {
@@ -314,3 +326,41 @@ export function validateWidgetRequest(
 
   return { valid: true, status: 200, allowedOrigin: determinedOrigin };
 }
+
+/**
+ * Per-widget-key daily message counter (in-memory).
+ * Provides a daily message cap per widget key as an additional layer on top of
+ * the monthly token quota. In multi-instance deployments, this should be backed
+ * by Redis or a shared datastore; the DB-level monthly quota check remains the
+ * authoritative cross-instance limit.
+ */
+const dailyWidgetMessageCounts = new Map<string, { count: number; resetAt: number }>();
+const DAILY_WIDGET_MESSAGE_LIMIT = 1000; // Max messages per widget key per day
+
+export function checkDailyWidgetLimit(widgetKey: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  let record = dailyWidgetMessageCounts.get(widgetKey);
+
+  if (!record || now >= record.resetAt) {
+    // Reset at midnight UTC or 24h from first message
+    const tomorrow = new Date();
+    tomorrow.setUTCHours(24, 0, 0, 0);
+    record = { count: 0, resetAt: tomorrow.getTime() };
+    dailyWidgetMessageCounts.set(widgetKey, record);
+  }
+
+  if (record.count >= DAILY_WIDGET_MESSAGE_LIMIT) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  return { allowed: true, remaining: DAILY_WIDGET_MESSAGE_LIMIT - record.count };
+}
+
+// Clean up expired daily counters every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of dailyWidgetMessageCounts) {
+    if (now >= record.resetAt) dailyWidgetMessageCounts.delete(key);
+  }
+}, 60 * 60 * 1000).unref();

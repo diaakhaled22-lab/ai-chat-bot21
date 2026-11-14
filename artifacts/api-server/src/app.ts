@@ -215,6 +215,27 @@ if (process.env.NODE_ENV === "production") {
   assertPlanApprovalSecretConfigured();
 }
 
+// ── Startup Validation — reject placeholder secrets in production ────────
+if (process.env.NODE_ENV === 'production') {
+  const PLACEHOLDER_PATTERN = /^replace_with/i;
+  const criticalSecrets: Array<[string, string | undefined]> = [
+    ['SESSION_SECRET', process.env.SESSION_SECRET],
+    ['PLAN_APPROVAL_SECRET', process.env.PLAN_APPROVAL_SECRET],
+    ['INBOUND_EMAIL_WEBHOOK_SECRET', process.env.INBOUND_EMAIL_WEBHOOK_SECRET],
+  ];
+  for (const [name, value] of criticalSecrets) {
+    if (value && PLACEHOLDER_PATTERN.test(value)) {
+      logger.error(
+        { variable: name },
+        `FATAL: ${name} contains a placeholder value. Generate a real secret before deploying to production.`
+      );
+      if (process.env.REQUIRE_STRICT_SECRETS === 'true') {
+        throw new Error(`${name} contains a placeholder value. Refusing to start.`);
+      }
+    }
+  }
+}
+
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
 if (!process.env.SESSION_SECRET) {
   if (process.env.NODE_ENV === 'production') {

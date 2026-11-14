@@ -9,24 +9,35 @@ const DECRYPTION_ERROR_THROTTLE_MS = 60_000; // Log at most once per minute
 // Generate or retrieve a consistent 32-byte encryption key
 export function getEncryptionKey(): Buffer {
   const envKey = process.env.ENCRYPTION_KEY;
+  
   if (envKey) {
+    // Reject placeholder values in production
+    const lowerKey = envKey.toLowerCase();
+    if (
+      process.env.NODE_ENV === "production" &&
+      (lowerKey.startsWith("replace_with") || lowerKey === "change_me" || lowerKey === "your_key_here")
+    ) {
+      throw new Error(
+        "FATAL SECURITY ERROR: ENCRYPTION_KEY contains a placeholder value. " +
+        "Please generate a real key: openssl rand -hex 32"
+      );
+    }
     if (envKey.length === 64) return Buffer.from(envKey, "hex"); // 32 bytes in hex
     if (envKey.length === 32) return Buffer.from(envKey, "utf-8"); // 32 bytes plain
     // Hash it to exactly 32 bytes if it doesn't match standard lengths
     return crypto.createHash("sha256").update(envKey).digest();
   }
 
-  if (process.env.NODE_ENV === "production" && process.env.REQUIRE_STRICT_SECRETS === "true") {
+  // In production, ENCRYPTION_KEY is mandatory — no fallbacks
+  if (process.env.NODE_ENV === "production") {
     throw new Error(
       "FATAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production. " +
-      "Refusing to derive encryption key from fallback. Please configure ENCRYPTION_KEY."
+      "Generate one with: openssl rand -hex 32"
     );
   }
 
-  // Consistent fallback across dev and production environments:
-  // DATABASE_URL is the long-standing primary fallback across the codebase,
-  // followed by SESSION_SECRET, then a stable fallback string.
-  const fallbackSource = process.env.DATABASE_URL || process.env.SESSION_SECRET || "default-unsafe-fallback-key";
+  // Non-production fallback for dev/test convenience
+  const fallbackSource = process.env.DATABASE_URL || process.env.SESSION_SECRET || "dev-only-insecure-fallback";
   return crypto.createHash("sha256").update(fallbackSource).digest();
 }
 
@@ -113,9 +124,10 @@ export function getDecryptionKeys(): Buffer[] {
     addKey(crypto.createHash("sha256").update(process.env.REPL_ID).digest());
   }
 
-  // 7. Legacy fallback constants
-  addKey(crypto.createHash("sha256").update("default-unsafe-fallback-key").digest());
+  // 7. Legacy fallback constants (kept for backward-compatible decryption of old data)
+  addKey(crypto.createHash("sha256").update("dev-only-insecure-fallback").digest());
   addKey(crypto.createHash("sha256").update("default-unsafe-production-key").digest());
+  addKey(crypto.createHash("sha256").update("default-unsafe-fallback-key").digest());
 
   return keys;
 }

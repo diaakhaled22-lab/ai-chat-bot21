@@ -230,6 +230,8 @@ export interface FailedLoginResult {
   accountLocked: boolean;
   spikeDetected: boolean;
   recentFailedAttempts: number;
+  progressiveDelayMs: number;
+  captchaRequired: boolean;
 }
 
 export interface AttackMonitoringSnapshot {
@@ -488,6 +490,22 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const MAX_ATTACK_LOG_ENTRIES = 500;
 const SPIKE_ALERT_THRESHOLD = 10;
 let lastSpikeAlertAt = 0;
+
+/**
+ * Calculates progressive delay for distributed brute-force protection.
+ * After PROGRESSIVE_DELAY_THRESHOLD account-wide failures (regardless of IP),
+ * each subsequent attempt gets an exponentially increasing delay.
+ * This makes distributed attacks impractical without locking out the real user.
+ */
+const PROGRESSIVE_DELAY_THRESHOLD = 5;
+const MAX_PROGRESSIVE_DELAY_MS = 30_000; // Cap at 30 seconds
+
+function calculateProgressiveDelay(accountWideFailures: number): number {
+  if (accountWideFailures < PROGRESSIVE_DELAY_THRESHOLD) return 0;
+  const exponent = accountWideFailures - PROGRESSIVE_DELAY_THRESHOLD;
+  // 2^0=1s, 2^1=2s, 2^2=4s, 2^3=8s, 2^4=16s, capped at 30s
+  return Math.min(Math.pow(2, exponent) * 1000, MAX_PROGRESSIVE_DELAY_MS);
+}
 
 const ipLoginAttempts = new Map<string, IpLoginAttempt>();
 
@@ -765,10 +783,22 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     dispatchSecurityEventEmail("failed_attempts_warning", normalizedIp, cleanUsername, accountAttempts);
   }
 
+  const progressiveDelayMs = calculateProgressiveDelay(accountAttempts);
+  const captchaRequired = accountAttempts >= PROGRESSIVE_DELAY_THRESHOLD;
+
+  if (progressiveDelayMs > 0) {
+    logger.info(
+      { username: normUser, accountAttempts, delayMs: progressiveDelayMs },
+      "Progressive delay applied due to distributed failed login attempts"
+    );
+  }
+
   return {
     accountLocked,
     spikeDetected,
     recentFailedAttempts,
+    progressiveDelayMs,
+    captchaRequired,
   };
 }
 

@@ -6,10 +6,14 @@ chat pot6
 See `.env.example` for the full template of configuration keys.
 
 - **`ENCRYPTION_KEY`**: 32-byte secret used for AES-256-GCM encryption of sensitive database fields (SMTP credentials, integration tokens, API keys). In production, set this to a secure random string (e.g. `openssl rand -hex 32`).
-- **`PLAN_APPROVAL_SECRET`**: Dedicated secret for signing and verifying one-click plan approval links. Server will refuse to start in production if this key is missing or set to a default fallback.
+- **`PLAN_APPROVAL_SECRET`**: Dedicated secret for signing and verifying one-click plan approval links. If missing, the server generates an ephemeral secret (approval links will not survive restarts). Set `REQUIRE_STRICT_SECRETS=true` to make this a required startup secret.
 - **`SESSION_SECRET`**: Secret for signing session cookies and pepper for email verification hashes.
 - **`INBOUND_EMAIL_WEBHOOK_SECRET`**: Inbound email plan approvals require this variable. Configure the inbound email provider to send its value in the `x-email-webhook-token` request header (the legacy `x-webhook-token` and `x-admin-token` header names are also accepted). Requests are rejected when this secret is missing or invalid, and the sender must also match a configured admin email or admin user. Email approvals are treated as unpaid unless the message explicitly says paid.
-- **`TRUSTED_PROXIES`**: When deploying behind a reverse proxy (e.g., Nginx, Cloudflare, Traefik), set `TRUSTED_PROXIES` to `1` or a comma-separated list of proxy IPs/CIDRs. In standalone/direct Docker or VPS deployments, leave unset or set to `false` to avoid spoofed `X-Forwarded-*` headers.
+- **`TRUSTED_PROXIES`**: Controls Express `trust proxy` to correctly resolve client IPs from `X-Forwarded-*` headers:
+  - Behind a **single reverse proxy** (Nginx, Cloudflare, Traefik, Docker with nginx): set to `1`
+  - Behind **multiple proxies**: set to the hop count (e.g., `2`) or a comma-separated IP list
+  - **No proxy / direct VPS**: leave unset or set to `false` to prevent IP header spoofing
+  - Cloud PaaS (Replit, Cloud Run, Render, Railway, Heroku, Fly.io, Vercel) are auto-detected
 
 Login and registration do not trust MAC addresses supplied by browsers; browser clients cannot reliably provide their hardware MAC address. Authentication throttling and temporary lockouts use the server-derived client IP, with lockouts scoped to that username and IP rather than disabling the account globally.
 

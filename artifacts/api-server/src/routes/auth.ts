@@ -54,6 +54,22 @@ setInterval(() => {
   }
 }, 60 * 1000).unref();
 
+// ── R5: Per-domain OTP rate limiting ───────────────────────────────────
+interface OtpDomainRecord {
+  timestamps: number[];
+}
+const otpDomainRates = new Map<string, OtpDomainRecord>();
+const OTP_MAX_PER_DOMAIN_PER_HOUR = 10; // Max 10 OTPs per email domain per hour
+
+// Clean up stale domain rate records every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of otpDomainRates) {
+    record.timestamps = record.timestamps.filter((ts) => now - ts < 60 * 60 * 1000);
+    if (record.timestamps.length === 0) otpDomainRates.delete(key);
+  }
+}, 30 * 60 * 1000).unref();
+
 export function hashOtpCode(email: string, code: string): string {
   const pepper = process.env.SESSION_SECRET || "bot-manager-otp-pepper";
   return crypto
@@ -435,10 +451,15 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
     }
 
     if (isTaken) {
-      res.status(409).json({
-        error: isAr
-          ? "بيانات الحساب غير متاحة للتسجيل (اسم المستخدم أو البريد مسجل بالفعل). يرجى تسجيل الدخول أو استخدام بيانات أخرى."
-          : "Registration details unavailable. The username or email may already be registered. Please sign in or use different details.",
+      // R3 fix: Don't reveal that the account exists — return same success response
+      // to prevent email/username enumeration attacks. Log internally for debugging.
+      logger.info({ email: cleanEmail }, "Registration OTP requested for already-taken email/username (not revealing to client)");
+      res.json({
+        ok: true,
+        message: isAr
+          ? "إن كان البريد صالحاً ستصلك رسالة تحقق خلال دقائق."
+          : "If the email is valid, you will receive a verification code shortly.",
+        email: cleanEmail,
       });
       return;
     }
@@ -475,6 +496,29 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         });
         return;
       }
+    }
+
+    // R5 fix: Per-email-domain rate limiting to prevent spamming all users of one domain
+    const emailDomain = cleanEmail.split("@")[1];
+    if (emailDomain) {
+      const domainOtpKey = `otp_domain:${emailDomain}`;
+      let domainRecord = otpDomainRates.get(domainOtpKey);
+      const domainNow = Date.now();
+      if (!domainRecord) {
+        domainRecord = { timestamps: [] };
+        otpDomainRates.set(domainOtpKey, domainRecord);
+      }
+      domainRecord.timestamps = domainRecord.timestamps.filter((ts) => domainNow - ts < 60 * 60 * 1000);
+      if (domainRecord.timestamps.length >= OTP_MAX_PER_DOMAIN_PER_HOUR) {
+        logger.warn({ emailDomain, count: domainRecord.timestamps.length }, "OTP domain rate limit exceeded");
+        res.status(429).json({
+          error: isAr
+            ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق. يرجى المحاولة لاحقاً."
+            : "Too many verification requests for this email domain. Please try again later.",
+        });
+        return;
+      }
+      domainRecord.timestamps.push(domainNow);
     }
 
     // Check Email Delivery Providers: Prefer Resend, fallback to Admin SMTP (Gmail)
@@ -602,7 +646,9 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
 
     res.json({
       ok: true,
-      message: isAr ? "تم إرسال كود التحقق إلى بريدك الإلكتروني بنجاح." : "Verification code sent to your email successfully.",
+      message: isAr
+        ? "إن كان البريد صالحاً ستصلك رسالة تحقق خلال دقائق."
+        : "If the email is valid, you will receive a verification code shortly.",
       email: cleanEmail,
     });
   } catch (err: any) {
