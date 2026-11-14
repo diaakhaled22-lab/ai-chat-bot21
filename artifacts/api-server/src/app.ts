@@ -7,12 +7,27 @@ import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionAnomalyDetector } from "./lib/security";
+import { errorSanitizerMiddleware, globalErrorHandler } from "./lib/errorSecurity";
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
+
+// Enforce production mode by default if not explicitly configured
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "production";
+}
+
+// ── Disable Express debug fingerprinting ──────────────────────────────────
+// Disables the 'X-Powered-By: Express' header to prevent technology fingerprinting
+app.disable("x-powered-by");
+
+// ── Error Sanitizer Middleware ────────────────────────────────────────────
+// In production, intercepts outgoing error responses to guarantee NO stack traces,
+// internal table names, SQL queries, or file paths leak to clients.
+app.use(errorSanitizerMiddleware);
 
 // ── Trust Proxy Configuration ───────────────────────────────────────────
 // Essential for deployments behind reverse proxies (Replit, Cloud Run, Render, Cloudflare, Nginx).
@@ -430,5 +445,10 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
+
+// ── Global Error Handling Middleware ──────────────────────────────────────
+// Catches unhandled errors, logs full technical details and stack traces internally,
+// and returns a clean, generic error to the client without exposing internals.
+app.use(globalErrorHandler);
 
 export default app;
