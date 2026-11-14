@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { logger } from "./logger";
 import { ObjectStorageService } from "./objectStorage";
 import { indexKnowledgeFileChunks, retrieveRelevantKnowledgeChunks, formatRagPromptSection } from "./knowledgeRag";
+import { verifyBufferFileType } from "./knowledgeFileSecurity";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -70,6 +71,11 @@ function jsonToReadableText(value: unknown, indent = 0): string {
 }
 
 export async function extractTextFromBuffer(fileType: KnowledgeFileType, buffer: Buffer, fileName: string): Promise<string> {
+  const verification = verifyBufferFileType(buffer, fileType, fileName);
+  if (!verification.valid) {
+    throw new Error(verification.error || `File content does not match expected format: ${fileType}`);
+  }
+
   if (fileType === "pdf") {
     let extracted = "";
     try {

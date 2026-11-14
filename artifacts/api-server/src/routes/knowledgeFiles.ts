@@ -11,9 +11,18 @@ import { logger } from "../lib/logger";
 import { processKnowledgeFile, extractTextFromBuffer, KnowledgeFileType } from "../lib/knowledgeFiles";
 import { indexKnowledgeFileChunks, retrieveRelevantKnowledgeChunks } from "../lib/knowledgeRag";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { isKnowledgeUploadPath, isOwnedKnowledgeUpload } from "../lib/knowledgeFileSecurity";
+import { isKnowledgeUploadPath, isOwnedKnowledgeUpload, verifyBufferFileType } from "../lib/knowledgeFileSecurity";
 
 const router = Router();
+
+const FILE_TYPE_BY_EXTENSION: Record<string, KnowledgeFileType> = {
+  pdf: "pdf",
+  xlsx: "excel",
+  xls: "excel",
+  csv: "csv",
+  json: "json",
+  txt: "txt",
+};
 
 // Use diskStorage instead of memoryStorage to stream files directly to disk.
 // This prevents high-concurrency memory exhaustion (DoS / Out-Of-Memory) from 100MB files.
@@ -37,17 +46,19 @@ const diskStorage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: diskStorage, limits: { fileSize: 100 * 1024 * 1024 } });
+const upload = multer({
+  storage: diskStorage,
+  limits: { fileSize: 100 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ext = file.originalname.split(".").pop()?.toLowerCase() ?? "";
+    if (!FILE_TYPE_BY_EXTENSION[ext]) {
+      cb(new Error(`صيغة الملف .${ext} غير مدعومة. الصيغ المسموحة: PDF, Excel, CSV, JSON, TXT.`));
+      return;
+    }
+    cb(null, true);
+  },
+});
 const objectStorageService = new ObjectStorageService();
-
-const FILE_TYPE_BY_EXTENSION: Record<string, KnowledgeFileType> = {
-  pdf: "pdf",
-  xlsx: "excel",
-  xls: "excel",
-  csv: "csv",
-  json: "json",
-  txt: "txt",
-};
 
 router.use("/client/company/knowledge-files", requireClient);
 
@@ -123,6 +134,16 @@ router.post(
       }
 
       const fileBuffer = await fs.promises.readFile(filePath);
+
+      // Verify the REAL file type via binary magic bytes / content inspection (not just extension)
+      const verification = verifyBufferFileType(fileBuffer, fileType, req.file.originalname);
+      if (!verification.valid) {
+        res.status(400).json({
+          error: verification.error || "محتوى الملف لا يتطابق مع نوع الملف المعلن. تم رفض الملف لأسباب أمنية.",
+        });
+        return;
+      }
+
       const text = await extractTextFromBuffer(fileType, fileBuffer, req.file.originalname);
       const trimmed = text.trim();
       if (!trimmed) {

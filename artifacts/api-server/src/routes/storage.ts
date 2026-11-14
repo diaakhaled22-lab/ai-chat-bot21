@@ -13,13 +13,27 @@ import {
 } from '../lib/objectStorage';
 import { requireClient } from '../middlewares/requireAuth';
 import { isAllowedFileType } from '../lib/security';
-import { setSafeObjectResponseHeaders } from '../lib/knowledgeFileSecurity';
+import { setSafeObjectResponseHeaders, verifyBufferFileType } from '../lib/knowledgeFileSecurity';
 import { db, companiesTable, companyKnowledgeFilesTable } from '@workspace/db';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+const ALLOWED_STORAGE_EXTENSIONS = new Set([
+  'pdf',
+  'csv',
+  'json',
+  'txt',
+  'xlsx',
+  'xls',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+]);
 
 // Stream uploads to disk instead of memoryStorage to prevent memory exhaustion
 const storageTempDir = path.join(os.tmpdir(), 'bot-manager-storage-uploads');
@@ -42,7 +56,22 @@ const storageDisk = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storageDisk, limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({
+  storage: storageDisk,
+  limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ext = file.originalname.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_STORAGE_EXTENSIONS.has(ext)) {
+      cb(new Error(`File extension .${ext} is not allowed. Allowed: PDF, CSV, JSON, Excel, and raster images.`));
+      return;
+    }
+    if (!isAllowedFileType(file.mimetype)) {
+      cb(new Error(`MIME type "${file.mimetype}" is not allowed.`));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 /**
  * POST /storage/uploads
@@ -54,7 +83,22 @@ const upload = multer({ storage: storageDisk, limits: { fileSize: 50 * 1024 * 10
 router.post(
   '/storage/uploads',
   requireClient,
-  upload.single('file'),
+  (req: Request, res: Response, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(413).json({ error: 'File size exceeds maximum allowed limit of 50MB.' });
+          return;
+        }
+        res.status(400).json({ error: `Upload error: ${err.message}` });
+        return;
+      } else if (err) {
+        res.status(400).json({ error: err.message || 'Failed to upload file' });
+        return;
+      }
+      next();
+    });
+  },
   async (req: Request, res: Response) => {
     if (!req.file) {
       res.status(400).json({ error: 'No file provided' });
@@ -71,6 +115,18 @@ router.post(
     }
 
     try {
+      const fileBuffer = await fs.promises.readFile(filePath);
+
+      // Verify the REAL file type via binary magic bytes / content inspection (not just extension or header)
+      const verification = verifyBufferFileType(fileBuffer, req.file.mimetype, req.file.originalname);
+      if (!verification.valid) {
+        if (filePath) fs.promises.unlink(filePath).catch(() => {});
+        res.status(400).json({
+          error: verification.error || 'File content signature does not match declared type. Upload rejected.',
+        });
+        return;
+      }
+
       const privateDir = objectStorageService.getPrivateObjectDir();
       const objectId = randomUUID();
       const fullPath = `${privateDir}/uploads/${objectId}`;
@@ -82,8 +138,6 @@ router.post(
 
       const bucket = objectStorageClient.bucket(bucketName);
       const gcsFile = bucket.file(objectName);
-
-      const fileBuffer = await fs.promises.readFile(filePath);
 
       await gcsFile.save(fileBuffer, {
         metadata: {
