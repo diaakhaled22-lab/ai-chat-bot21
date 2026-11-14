@@ -2568,7 +2568,7 @@ router.patch(["/client/tickets/:id/cancel", "/tickets/:id/cancel"], async (req, 
         status: "resolved",
         adminNote: "تم إلغاء هذا الطلب من قِبل العميل عبر صفحة الدعم والتذاكر (Cancelled by client)",
       })
-      .where(eq(ticketsTable.id, id));
+      .where(req.session.role === "admin" ? eq(ticketsTable.id, id) : and(eq(ticketsTable.id, id), eq(ticketsTable.clientId, userId)));
 
     await db
       .update(chatLogsTable)
@@ -2627,7 +2627,7 @@ router.delete(["/client/tickets/:id", "/tickets/:id"], async (req, res) => {
 
     await db
       .delete(ticketsTable)
-      .where(eq(ticketsTable.id, id));
+      .where(req.session.role === "admin" ? eq(ticketsTable.id, id) : and(eq(ticketsTable.id, id), eq(ticketsTable.clientId, userId)));
 
     // Also delete any mirrored chat log for this ticket
     await db
@@ -4082,7 +4082,7 @@ router.delete("/client/leads/:id", async (req, res) => {
       res.status(404).json({ error: "Lead not found" });
       return;
     }
-    await db.delete(leadsTable).where(eq(leadsTable.id, leadId));
+    await db.delete(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.companyId, company.id)));
     res.json({ success: true });
   } catch (err: any) {
     logger.error("Error deleting lead:", err);
@@ -4156,7 +4156,7 @@ router.patch("/client/leads/:id", async (req, res) => {
     if (email !== undefined) updates.email = email;
     if (interest !== undefined) updates.interest = interest;
 
-    const [updated] = await db.update(leadsTable).set(updates).where(eq(leadsTable.id, leadId)).returning();
+    const [updated] = await db.update(leadsTable).set(updates).where(and(eq(leadsTable.id, leadId), eq(leadsTable.companyId, company.id))).returning();
     res.json(updated);
   } catch (err: any) {
     logger.error("Error updating lead:", err);
