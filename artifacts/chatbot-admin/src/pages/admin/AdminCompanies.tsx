@@ -3219,7 +3219,8 @@ export default function AdminCompanies() {
                 if (!target) return;
                 fetch(`/api/admin/companies/${target.id}`, {
                   method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
                   body: JSON.stringify({ 
                     systemPrompt: editPromptsValue.systemPrompt || null, 
                     securityPrompt: editPromptsValue.securityPrompt || null 
