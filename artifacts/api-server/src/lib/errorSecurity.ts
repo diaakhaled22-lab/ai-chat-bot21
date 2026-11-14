@@ -10,8 +10,9 @@ import { logger } from "./logger";
  */
 const SENSITIVE_INTERNAL_PATTERNS = [
   // Stack traces
-  /\bat\s+(?:[a-zA-Z0-9_$.<>]+\s+\()?([A-Za-z]:[\\\/]|\/|\.\/|[a-zA-Z0-9_-]+)/i,
-  /\b(at\s+async|\bat\s+new|\bat\s+Module|\bat\s+processTicksAndRejections|\bat\s+emitUnhandledRejectionOrHandled)\b/i,
+  /\bat\s+(?:async\s+)?[a-zA-Z0-9_$.<>]+\s+\((?:[A-Za-z]:[\\\/]|\/|\.\/|native|eval|[a-zA-Z0-9_.-]+:[0-9]+)/i,
+  /\bat\s+(?:[A-Za-z]:[\\\/]|\/|\.\/)[a-zA-Z0-9_.\-\\\/]+/i,
+  /\b(at\s+async\s+[a-zA-Z0-9_$.<>]+\s+\(|\bat\s+new\s+[a-zA-Z0-9_$.<>]+\s+\(|\bat\s+Module\._|\bat\s+processTicksAndRejections|\bat\s+emitUnhandledRejectionOrHandled)\b/i,
   /\.(?:ts|js|mjs|cjs):\d+:\d+/i,
   /^\s*error:\s+at\s+/im,
 
