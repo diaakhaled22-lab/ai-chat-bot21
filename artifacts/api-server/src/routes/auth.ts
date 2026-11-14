@@ -1068,14 +1068,29 @@ router.post("/auth/reset-password", sensitiveLimiter, async (req, res) => {
   }
 });
 
+// POST /auth/logout — securely invalidates server-side session and wipes client cookies
 router.post("/auth/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.json({ ok: true });
-  });
+  const clearSessionCookies = () => {
+    res.clearCookie("connect.sid", { path: "/" });
+    res.clearCookie("sid", { path: "/" });
+  };
+
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        logger.error({ err }, "Logout session destruction error");
+      }
+      clearSessionCookies();
+      res.json({ ok: true, message: "Logged out successfully" });
+    });
+  } else {
+    clearSessionCookies();
+    res.json({ ok: true, message: "Logged out successfully" });
+  }
 });
 
 router.get("/auth/me", async (req, res) => {
-  if (!req.session.userId) {
+  if (!req.session?.userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
@@ -1094,7 +1109,11 @@ router.get("/auth/me", async (req, res) => {
       .limit(1);
 
     if (!user) {
-      res.status(401).json({ error: "Not authenticated" });
+      // Invalidate orphan session if user was deleted
+      req.session.destroy(() => {});
+      res.clearCookie("connect.sid", { path: "/" });
+      res.clearCookie("sid", { path: "/" });
+      res.status(401).json({ error: "Not authenticated: account not found" });
       return;
     }
 

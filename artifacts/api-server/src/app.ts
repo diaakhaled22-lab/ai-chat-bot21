@@ -258,6 +258,7 @@ app.use(
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       secure: "auto",
       httpOnly: true,
