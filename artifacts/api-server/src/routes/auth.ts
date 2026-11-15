@@ -740,6 +740,21 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       }
     }
 
+    // Check Email Delivery Providers: Prefer Resend, fallback to Admin SMTP (Gmail)
+    // Checked early so unconfigured state fails uniformly with 503 before any side effects.
+    const { apiKey, fromEmail } = await getResendConfig();
+    const smtpCfg = await getEmailConfig();
+    const smtpReady = isSmtpConfigured(smtpCfg);
+
+    if (!apiKey && !smtpReady) {
+      res.status(503).json({
+        error: isAr
+          ? "خدمة تأكيد البريد الإلكتروني غير مهيأة حالياً. يرجى التواصل مع إدارة النظام."
+          : "Email verification service is not configured. Please contact support.",
+      });
+      return;
+    }
+
     // 3. Unify username & email collision check to prevent account enumeration (N6, R3)
     let isTaken = false;
     if (username && typeof username === "string") {
@@ -769,9 +784,56 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       if (existingEmail) isTaken = true;
     }
 
-    if (isTaken) {
-      // R3 fix: Record a dummy entry to enforce identical 60-second cooldown on subsequent calls.
-      // Returns the exact same 200 OK success response without revealing account existence or sending OTP.
+    // Email content setup with HTML escaping on caller-supplied name (N2)
+    const safeName = name ? escapeHtml(name.trim()) : "";
+    const sender = fromEmail || (smtpReady ? `"Bot Manager" <${smtpCfg.smtpUser}>` : "Bot Manager <onboarding@resend.dev>");
+    let subject: string;
+    let html: string;
+
+    if (!isTaken) {
+      // Unregistered email: Generate cryptographically secure 6-digit code and store in DB
+      const otpCode = crypto.randomInt(100000, 999999).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes TTL
+
+      await db.insert(emailVerificationCodesTable).values({
+        email: cleanEmail,
+        code: hashOtpCode(cleanEmail, otpCode),
+        attempts: 0,
+        expiresAt,
+      });
+
+      subject = isAr
+        ? `رمز التحقق الخاص بك: ${otpCode} | منصة المساعد الذكي`
+        : `Your Verification Code: ${otpCode} | AI Chatbot`;
+
+      html = `
+        <div dir="${isAr ? "rtl" : "ltr"}" style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تأكيد البريد الإلكتروني" : "Verify Your Email"}</h2>
+            <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
+              ${isAr ? `مرحباً ${safeName}، استخدم الرمز التالي لتفعيل حسابك الجديد:` : `Hello ${safeName}, use the code below to complete your registration:`}
+            </p>
+          </div>
+
+          <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+            <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb; display: inline-block;">
+              ${otpCode}
+            </span>
+          </div>
+
+          <div style="background-color: #fef2f2; border-right: 4px solid #ef4444; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #991b1b; font-size: 13px; font-weight: 600;">
+              ${isAr ? "صلاحية هذا الرمز 10 دقائق فقط. لا تشارك هذا الرمز مع أي شخص لحماية حسابك." : "This code expires in 10 minutes. Never share this code with anyone."}
+            </p>
+          </div>
+
+          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+            ${isAr ? "إذا لم تقم بطلب هذا الحساب، يمكنك تجاهل هذه الرسالة بأمان." : "If you did not request this registration, you can safely ignore this email."}
+          </p>
+        </div>
+      `;
+    } else {
+      // Registered email: Record dummy entry for cooldown (R3)
       await db.insert(emailVerificationCodesTable).values({
         email: cleanEmail,
         code: hashOtpCode(cleanEmail, "000000"),
@@ -779,85 +841,49 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         expiresAt: new Date(Date.now() + 60 * 1000),
       }).catch((err) => logger.warn({ err }, "Failed to record dummy OTP cooldown"));
 
-      logger.info({ email: cleanEmail }, "Registration OTP requested for already-taken email/username (not revealing to client, cooldown enforced)");
+      logger.info({ email: cleanEmail }, "Registration OTP requested for existing account; sending existing account notice email");
 
-      // Timing equalization (D7): Simulate mail delivery latency so taken and non-taken emails respond with indistinguishable duration (~450-650ms)
-      await new Promise((resolve) => setTimeout(resolve, crypto.randomInt(450, 650)));
+      // Send existing-account security notice email to the real owner.
+      // This guarantees identical actual SMTP processing time and returns 500 during outages for both cases!
+      subject = isAr
+        ? "تنبيه أمني: محاولة تسجيل حساب جديد | منصة المساعد الذكي"
+        : "Security Notice: Account Registration Attempt | AI Chatbot";
 
-      res.json({
-        ok: true,
-        message: isAr
-          ? "إن كان البريد صالحاً ستصلك رسالة تحقق خلال دقائق."
-          : "If the email is valid, you will receive a verification code shortly.",
-        email: cleanEmail,
-      });
-      return;
-    }
+      html = `
+        <div dir="${isAr ? "rtl" : "ltr"}" style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تنبيه أمني بخصوص حسابك" : "Account Security Notice"}</h2>
+            <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
+              ${isAr ? `مرحباً ${safeName}، تم استلام طلب لتسجيل حساب جديد باستخدام هذا البريد الإلكتروني.` : `Hello ${safeName}, an account registration attempt was made using this email address.`}
+            </p>
+          </div>
 
-    // Check Email Delivery Providers: Prefer Resend, fallback to Admin SMTP (Gmail)
-    const { apiKey, fromEmail } = await getResendConfig();
-    const smtpCfg = await getEmailConfig();
-    const smtpReady = isSmtpConfigured(smtpCfg);
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+            <p style="color: #334155; font-size: 14px; margin: 0; line-height: 1.6;">
+              ${isAr
+                ? "لديك بالفعل حساب مسجل على منصتنا. يمكنك تسجيل الدخول إلى حسابك مباشرة، أو استخدام خيار استعادة كلمة المرور إذا كنت قد نسيتها."
+                : "An account is already registered with this email. You can sign in directly or use the password recovery option if you forgot your credentials."}
+            </p>
+          </div>
 
-    if (!apiKey && !smtpReady) {
-      res.status(503).json({
-        error: isAr
-          ? "خدمة تأكيد البريد الإلكتروني غير مهيأة حالياً. يرجى التواصل مع إدارة النظام."
-          : "Email verification service is not configured. Please contact support.",
-      });
-      return;
-    }
+          <div style="background-color: #f0fdf4; border-right: 4px solid #22c55e; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #166534; font-size: 13px; font-weight: 600;">
+              ${isAr ? "إذا لم تكن أنت من قام بهذا الطلب، فلا داعي للقلق؛ حسابك آمن تماماً ويمكنك تجاهل هذه الرسالة." : "If you did not request this, no action is needed; your account remains secure."}
+            </p>
+          </div>
 
-    // Generate cryptographically secure 6-digit code
-    const otpCode = crypto.randomInt(100000, 999999).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes TTL
-
-    // Store cryptographically hashed code instead of plaintext (N7)
-    await db.insert(emailVerificationCodesTable).values({
-      email: cleanEmail,
-      code: hashOtpCode(cleanEmail, otpCode),
-      attempts: 0,
-      expiresAt,
-    });
-
-    // Email content with HTML escaping on caller-supplied name (N2)
-    const safeName = name ? escapeHtml(name.trim()) : "";
-    const sender = fromEmail || (smtpReady ? `"Bot Manager" <${smtpCfg.smtpUser}>` : "Bot Manager <onboarding@resend.dev>");
-    const subject = isAr
-      ? `رمز التحقق الخاص بك: ${otpCode} | منصة المساعد الذكي`
-      : `Your Verification Code: ${otpCode} | AI Chatbot`;
-
-    const html = `
-      <div dir="${isAr ? "rtl" : "ltr"}" style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تأكيد البريد الإلكتروني" : "Verify Your Email"}</h2>
-          <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
-            ${isAr ? `مرحباً ${safeName}، استخدم الرمز التالي لتفعيل حسابك الجديد:` : `Hello ${safeName}, use the code below to complete your registration:`}
+          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+            ${isAr ? "منصة المساعد الذكي — لحماية وأمان حسابك" : "AI Chatbot Platform — Security Notification"}
           </p>
         </div>
+      `;
+    }
 
-        <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
-          <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #2563eb; display: inline-block;">
-            ${otpCode}
-          </span>
-        </div>
-
-        <div style="background-color: #fef2f2; border-right: 4px solid #ef4444; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
-          <p style="margin: 0; color: #991b1b; font-size: 13px; font-weight: 600;">
-            ${isAr ? "صلاحية هذا الرمز 10 دقائق فقط. لا تشارك هذا الرمز مع أي شخص لحماية حسابك." : "This code expires in 10 minutes. Never share this code with anyone."}
-          </p>
-        </div>
-
-        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
-          ${isAr ? "إذا لم تقم بطلب هذا الحساب، يمكنك تجاهل هذه الرسالة بأمان." : "If you did not request this registration, you can safely ignore this email."}
-        </p>
-      </div>
-    `;
-
-    // Dispatch email delivery and verify successful acceptance by provider.
-    // Notice to user: If sending fails (e.g. SMTP down / provider error), the user is notified immediately
-    // so delivery failures never go unnoticed. In combination with the timing delay in the isTaken branch,
-    // response latency remains equalized.
+    // Dispatch email delivery through the exact same mail pipeline for both registered and unregistered addresses.
+    // Result:
+    // 1. Response latency reflects actual SMTP network roundtrip time in BOTH cases (no artificial randomized delay).
+    // 2. During mail provider outages, BOTH cases fail and return 500 error (no 500 vs 200 disparity).
+    // 3. During normal operations, BOTH cases return 200 with identical message structure.
     let emailSent = false;
     let lastError = "";
 
@@ -880,15 +906,15 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
 
         if (resendRes.ok) {
           emailSent = true;
-          logger.info({ email: cleanEmail }, "Registration OTP sent successfully via Resend");
+          logger.info({ email: cleanEmail, isTaken }, "Registration email sent successfully via Resend");
         } else {
           const errText = await resendRes.text();
           lastError = errText;
-          logger.warn({ status: resendRes.status, err: errText }, "Resend OTP send failed, attempting SMTP fallback");
+          logger.warn({ status: resendRes.status, err: errText }, "Resend email send failed, attempting SMTP fallback");
         }
       } catch (rErr: any) {
         lastError = rErr?.message || "Resend network error";
-        logger.warn({ err: rErr }, "Resend exception while sending OTP, attempting SMTP fallback");
+        logger.warn({ err: rErr }, "Resend exception while sending email, attempting SMTP fallback");
       }
     }
 
@@ -903,18 +929,18 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
           html,
         });
         emailSent = true;
-        logger.info({ email: cleanEmail, via: "SMTP" }, "Registration OTP sent successfully via SMTP (Gmail)");
+        logger.info({ email: cleanEmail, isTaken, via: "SMTP" }, "Registration email sent successfully via SMTP");
       } catch (smtpErr: any) {
         lastError = smtpErr?.message || "SMTP error";
-        logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration OTP");
+        logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration email");
       }
     }
 
     if (!emailSent) {
-      logger.error({ email: cleanEmail, lastError }, "Failed to deliver registration OTP email to recipient");
+      logger.error({ email: cleanEmail, lastError }, "Failed to deliver registration email to recipient");
       let friendlyError = isAr
-        ? "تعذر إرسال رمز التحقق إلى بريدك الإلكتروني حالياً. يرجى التأكد من صحة البريد أو المحاولة لاحقاً."
-        : "Failed to send verification code to your email. Please verify your email or try again later.";
+        ? "تعذر إرسال رسالة التحقق إلى بريدك الإلكتروني حالياً. يرجى التأكد من صحة البريد أو المحاولة لاحقاً."
+        : "Failed to send verification email. Please verify your email or try again later.";
       if (lastError.includes("testing emails")) {
         friendlyError = isAr
           ? "يرجى التأكد من إعدادات الـ SMTP في لوحة التحكم أو توثيق الدومين في Resend."
