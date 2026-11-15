@@ -6,7 +6,7 @@ import { db, usersTable, passwordResetTokensTable, companiesTable, notifications
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
-import { getResendConfig, escapeHtml } from "../lib/companyNotification";
+import { getResendConfig } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
 import { extractCaptchaToken, verifyCaptchaToken, getCaptchaSecrets } from "../lib/captchaSecurity";
 import {
@@ -571,7 +571,7 @@ export function normalizeEmail(email: string): string {
 router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) => {
   const isAr = (req.body as { lang?: string } | undefined)?.lang !== "en";
   try {
-    const { email, username, name } = req.body as {
+    const { email, username } = req.body as {
       email?: string;
       username?: string;
       name?: string;
@@ -784,8 +784,8 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       if (existingEmail) isTaken = true;
     }
 
-    // Email content setup with HTML escaping on caller-supplied name (N2)
-    const safeName = name ? escapeHtml(name.trim()) : "";
+    // Email content setup: Use generic greetings to prevent attacker-supplied `name` from being used
+    // for social engineering, nuisance, phishing, or HTML injection in security notices.
     const sender = fromEmail || (smtpReady ? `"Bot Manager" <${smtpCfg.smtpUser}>` : "Bot Manager <onboarding@resend.dev>");
     let subject: string;
     let html: string;
@@ -811,7 +811,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
           <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تأكيد البريد الإلكتروني" : "Verify Your Email"}</h2>
             <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
-              ${isAr ? `مرحباً ${safeName}، استخدم الرمز التالي لتفعيل حسابك الجديد:` : `Hello ${safeName}, use the code below to complete your registration:`}
+              ${isAr ? "مرحباً، استخدم الرمز التالي لتفعيل حسابك الجديد:" : "Hello, use the code below to complete your registration:"}
             </p>
           </div>
 
@@ -844,7 +844,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       logger.info({ email: cleanEmail }, "Registration OTP requested for existing account; sending existing account notice email");
 
       // Send existing-account security notice email to the real owner.
-      // This guarantees identical actual SMTP processing time and returns 500 during outages for both cases!
+      // Generic greeting is strictly enforced to prevent attacker-supplied text/HTML from reaching existing users.
       subject = isAr
         ? "تنبيه أمني: محاولة تسجيل حساب جديد | منصة المساعد الذكي"
         : "Security Notice: Account Registration Attempt | AI Chatbot";
@@ -854,7 +854,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
           <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="color: #1e293b; margin: 0; font-size: 22px;">${isAr ? "تنبيه أمني بخصوص حسابك" : "Account Security Notice"}</h2>
             <p style="color: #64748b; font-size: 14px; margin-top: 6px;">
-              ${isAr ? `مرحباً ${safeName}، تم استلام طلب لتسجيل حساب جديد باستخدام هذا البريد الإلكتروني.` : `Hello ${safeName}, an account registration attempt was made using this email address.`}
+              ${isAr ? "مرحباً، تم استلام طلب لتسجيل حساب جديد باستخدام هذا البريد الإلكتروني." : "Hello, an account registration attempt was made using this email address."}
             </p>
           </div>
 
