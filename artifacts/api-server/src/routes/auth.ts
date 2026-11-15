@@ -780,6 +780,10 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       }).catch((err) => logger.warn({ err }, "Failed to record dummy OTP cooldown"));
 
       logger.info({ email: cleanEmail }, "Registration OTP requested for already-taken email/username (not revealing to client, cooldown enforced)");
+
+      // Timing equalization (D7): Simulate mail delivery latency so taken and non-taken emails respond with indistinguishable duration (~450-650ms)
+      await new Promise((resolve) => setTimeout(resolve, crypto.randomInt(450, 650)));
+
       res.json({
         ok: true,
         message: isAr
@@ -850,65 +854,75 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       </div>
     `;
 
-    // D7 Fix: Dispatch email delivery asynchronously in the background so both registered and unregistered
-    // branches complete with identical near-instant timing (~5-15ms), completely eliminating email enumeration timing side-channels.
-    setImmediate(async () => {
-      let emailSent = false;
-      let lastError = "";
+    // Dispatch email delivery and verify successful acceptance by provider.
+    // Notice to user: If sending fails (e.g. SMTP down / provider error), the user is notified immediately
+    // so delivery failures never go unnoticed. In combination with the timing delay in the isTaken branch,
+    // response latency remains equalized.
+    let emailSent = false;
+    let lastError = "";
 
-      // 1. Try Resend if configured
-      if (apiKey) {
-        try {
-          const resendRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: sender,
-              to: [email.trim()],
-              subject,
-              html,
-            }),
-          });
-
-          if (resendRes.ok) {
-            emailSent = true;
-            logger.info({ email: cleanEmail }, "Registration OTP sent successfully via Resend");
-          } else {
-            const errText = await resendRes.text();
-            lastError = errText;
-            logger.warn({ status: resendRes.status, err: errText }, "Resend OTP send failed, attempting SMTP fallback");
-          }
-        } catch (rErr: any) {
-          lastError = rErr?.message || "Resend network error";
-          logger.warn({ err: rErr }, "Resend exception while sending OTP, attempting SMTP fallback");
-        }
-      }
-
-      // 2. Fallback to Admin SMTP (Gmail) if Resend failed or not configured
-      if (!emailSent && smtpReady) {
-        try {
-          const transporter = buildTransporter(smtpCfg);
-          await transporter.sendMail({
-            from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
-            to: email.trim(),
+    // 1. Try Resend if configured
+    if (apiKey) {
+      try {
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: sender,
+            to: [email.trim()],
             subject,
             html,
-          });
-          emailSent = true;
-          logger.info({ email: cleanEmail, via: "SMTP" }, "Registration OTP sent successfully via SMTP (Gmail)");
-        } catch (smtpErr: any) {
-          lastError = smtpErr?.message || "SMTP error";
-          logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration OTP");
-        }
-      }
+          }),
+        });
 
-      if (!emailSent) {
-        logger.error({ email: cleanEmail, lastError }, "Failed to deliver registration OTP email in background");
+        if (resendRes.ok) {
+          emailSent = true;
+          logger.info({ email: cleanEmail }, "Registration OTP sent successfully via Resend");
+        } else {
+          const errText = await resendRes.text();
+          lastError = errText;
+          logger.warn({ status: resendRes.status, err: errText }, "Resend OTP send failed, attempting SMTP fallback");
+        }
+      } catch (rErr: any) {
+        lastError = rErr?.message || "Resend network error";
+        logger.warn({ err: rErr }, "Resend exception while sending OTP, attempting SMTP fallback");
       }
-    });
+    }
+
+    // 2. Fallback to Admin SMTP (Gmail) if Resend failed or not configured
+    if (!emailSent && smtpReady) {
+      try {
+        const transporter = buildTransporter(smtpCfg);
+        await transporter.sendMail({
+          from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
+          to: email.trim(),
+          subject,
+          html,
+        });
+        emailSent = true;
+        logger.info({ email: cleanEmail, via: "SMTP" }, "Registration OTP sent successfully via SMTP (Gmail)");
+      } catch (smtpErr: any) {
+        lastError = smtpErr?.message || "SMTP error";
+        logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration OTP");
+      }
+    }
+
+    if (!emailSent) {
+      logger.error({ email: cleanEmail, lastError }, "Failed to deliver registration OTP email to recipient");
+      let friendlyError = isAr
+        ? "تعذر إرسال رمز التحقق إلى بريدك الإلكتروني حالياً. يرجى التأكد من صحة البريد أو المحاولة لاحقاً."
+        : "Failed to send verification code to your email. Please verify your email or try again later.";
+      if (lastError.includes("testing emails")) {
+        friendlyError = isAr
+          ? "يرجى التأكد من إعدادات الـ SMTP في لوحة التحكم أو توثيق الدومين في Resend."
+          : "Delivery restriction: Please configure Admin SMTP or verify custom domain in Resend.";
+      }
+      res.status(500).json({ error: friendlyError });
+      return;
+    }
 
     res.json({
       ok: true,
