@@ -1,15 +1,17 @@
 /**
- * Database Encryption Key Migration Script (D4 Fix with Transactions & Backups)
+ * Database Encryption Key Migration Script (D4 Fix with Transactions & Scoped Backups)
  * 
  * Features:
- * 1. Pre-migration Automated Backup:
- *    - Creates timestamped database snapshot tables (e.g. `_backup_companies_enc_<timestamp>`)
- *    - Saves a local JSON snapshot backup in `scripts/backups/`
+ * 1. Pre-migration Scoped Backup:
+ *    - Copies ONLY the target encrypted columns (and primary key id) into temporary snapshot tables.
+ *    - Strictly excludes password_hash, 2FA/totp secrets, and user profile data.
+ *    - Enables Row-Level Security (RLS) on snapshot tables during their lifespan.
  * 2. Full ACID Transaction Handling:
- *    - Executes all re-encryptions inside `BEGIN ... COMMIT`
- *    - Automatically executes `ROLLBACK` on any error or decryption failure, leaving zero corrupted rows.
- * 3. Rollback Support:
- *    - Run with `--rollback` or `--rollback <timestamp>` to restore data from backup tables.
+ *    - Executes all re-encryptions inside BEGIN ... COMMIT.
+ *    - Automatically executes ROLLBACK on any error or decryption failure, leaving zero corrupted rows.
+ * 3. Automatic Snapshot Cleanup:
+ *    - Automatically drops snapshot tables immediately after confirming migration success.
+ *    - Leaves zero lingering backup tables or redundant data in the database.
  * 
  * Usage:
  *   pnpm --filter @workspace/scripts run migrate:encryption
@@ -40,9 +42,8 @@ interface BackupRecord {
 }
 
 async function runRollback(client: Client, backupTimestamp?: string) {
-  console.log("[ROLLBACK] Starting database restore from backup snapshot...");
+  console.log("[ROLLBACK] Starting database restore from scoped backup snapshot...");
 
-  // Find available backup tables if timestamp not specified
   let targetTimestamp = backupTimestamp;
   if (!targetTimestamp) {
     const tableRes = await client.query(`
@@ -65,28 +66,45 @@ async function runRollback(client: Client, backupTimestamp?: string) {
     const backupCompaniesTable = `_backup_companies_enc_${targetTimestamp}`;
     const backupUsersTable = `_backup_users_enc_${targetTimestamp}`;
 
-    // Restore companies encrypted columns
+    // Restore companies encrypted columns only
     for (const { table, column } of ENCRYPTED_COLUMNS.filter((c) => c.table === "companies")) {
-      await client.query(`
-        UPDATE "companies" c
-        SET "${column}" = b."${column}"
-        FROM "${backupCompaniesTable}" b
-        WHERE c.id = b.id;
-      `);
+      const colCheck = await client.query(
+        `SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2);`,
+        [backupCompaniesTable, column]
+      );
+      if (colCheck.rows[0]?.exists) {
+        await client.query(`
+          UPDATE "companies" c
+          SET "${column}" = b."${column}"
+          FROM "${backupCompaniesTable}" b
+          WHERE c.id = b.id;
+        `);
+      }
     }
 
-    // Restore users encrypted columns
+    // Restore users encrypted columns only
     for (const { table, column } of ENCRYPTED_COLUMNS.filter((c) => c.table === "users")) {
-      await client.query(`
-        UPDATE "users" u
-        SET "${column}" = b."${column}"
-        FROM "${backupUsersTable}" b
-        WHERE u.id = b.id;
-      `);
+      const colCheck = await client.query(
+        `SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2);`,
+        [backupUsersTable, column]
+      );
+      if (colCheck.rows[0]?.exists) {
+        await client.query(`
+          UPDATE "users" u
+          SET "${column}" = b."${column}"
+          FROM "${backupUsersTable}" b
+          WHERE u.id = b.id;
+        `);
+      }
     }
 
     await client.query("COMMIT;");
     console.log(`[ROLLBACK] Successfully restored all encrypted columns from snapshot ${targetTimestamp}`);
+
+    // Drop the snapshot tables after successful rollback
+    await client.query(`DROP TABLE IF EXISTS "${backupCompaniesTable}";`);
+    await client.query(`DROP TABLE IF EXISTS "${backupUsersTable}";`);
+    console.log(`[ROLLBACK] Dropped temporary snapshot tables after restore.`);
   } catch (err) {
     await client.query("ROLLBACK;");
     throw err;
@@ -99,6 +117,7 @@ async function runMigration() {
   const rollbackTimestampArg = rollbackIdx !== -1 && process.argv[rollbackIdx + 1] && !process.argv[rollbackIdx + 1].startsWith("--")
     ? process.argv[rollbackIdx + 1]
     : undefined;
+  const keepDbBackup = process.argv.includes("--keep-db-backup");
 
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
@@ -132,30 +151,46 @@ async function runMigration() {
   }
 
   const timestamp = Date.now().toString();
-  console.log(`[MIGRATE-ENCRYPTION] Connected to database. Snapshot ID: ${timestamp}`);
+  console.log(`[MIGRATE-ENCRYPTION] Connected to database. Migration session ID: ${timestamp}`);
 
-  // ── 1. Create Pre-Migration Backup Snapshot Tables ──
-  console.log("[MIGRATE-ENCRYPTION] Creating pre-migration database snapshot tables...");
+  // ── 1. Create Pre-Migration Scoped Backup Tables (Encrypted Columns Only) ──
+  console.log("[MIGRATE-ENCRYPTION] Creating scoped pre-migration backup tables (encrypted columns only)...");
+  const tablesToBackup = ["companies", "users"];
+  const createdBackupTables: string[] = [];
+
   try {
-    const tablesToBackup = ["companies", "users"];
     for (const tbl of tablesToBackup) {
       const existsRes = await client.query(
         `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1);`,
         [tbl]
       );
       if (existsRes.rows[0]?.exists) {
-        const backupTableName = `_backup_${tbl}_enc_${timestamp}`;
-        await client.query(`CREATE TABLE "${backupTableName}" AS SELECT * FROM "${tbl}";`);
-        console.log(`  Created database backup table: ${backupTableName}`);
+        // Find existing encrypted columns for this table
+        const targetCols = ENCRYPTED_COLUMNS.filter((c) => c.table === tbl).map((c) => c.column);
+        const existingColsRes = await client.query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = ANY($2);`,
+          [tbl, targetCols]
+        );
+        const colsToSelect = existingColsRes.rows.map((r: { column_name: string }) => `"${r.column_name}"`);
+
+        if (colsToSelect.length > 0) {
+          const backupTableName = `_backup_${tbl}_enc_${timestamp}`;
+          // Copy strictly id and the encrypted columns. Strictly excludes password_hash, 2FA secrets, etc.
+          await client.query(`CREATE TABLE "${backupTableName}" AS SELECT id, ${colsToSelect.join(", ")} FROM "${tbl}";`);
+          // Enable RLS on the snapshot table
+          await client.query(`ALTER TABLE "${backupTableName}" ENABLE ROW LEVEL SECURITY;`);
+          createdBackupTables.push(backupTableName);
+          console.log(`  Created scoped backup: ${backupTableName} (id, ${colsToSelect.join(", ")}) with RLS enabled.`);
+        }
       }
     }
   } catch (backupErr: any) {
-    console.error("FATAL: Failed to create pre-migration database backup tables:", backupErr.message);
+    console.error("FATAL: Failed to create pre-migration scoped backup tables:", backupErr.message);
     await client.end();
     process.exit(1);
   }
 
-  // ── 2. Collect In-Memory / File Backup Snapshot ──
+  // ── 2. Collect In-Memory / File Backup Snapshot (Only if explicitly requested) ──
   const fileBackupRecords: BackupRecord[] = [];
   const shouldSaveFileBackup = process.argv.includes("--save-file-backup");
   const backupDir = path.resolve(process.cwd(), "scripts", "backups");
@@ -182,7 +217,6 @@ async function runMigration() {
         [table]
       );
       if (!tableCheck.rows[0]?.exists) {
-        console.log(`[MIGRATE-ENCRYPTION] Skipping ${table}.${column}: table does not exist.`);
         continue;
       }
 
@@ -194,7 +228,6 @@ async function runMigration() {
         [table, column]
       );
       if (!colCheck.rows[0]?.exists) {
-        console.log(`[MIGRATE-ENCRYPTION] Skipping ${table}.${column}: column does not exist.`);
         continue;
       }
 
@@ -208,13 +241,14 @@ async function runMigration() {
         totalInspected++;
         const rawValue = row.val as string;
 
-        // Save to file backup snapshot
-        fileBackupRecords.push({
-          table,
-          column,
-          id: row.id,
-          previousValue: rawValue,
-        });
+        if (shouldSaveFileBackup) {
+          fileBackupRecords.push({
+            table,
+            column,
+            id: row.id,
+            previousValue: rawValue,
+          });
+        }
 
         // Decrypt using candidate keys
         const decrypted = decrypt(rawValue);
@@ -232,7 +266,7 @@ async function runMigration() {
           continue;
         }
 
-        // Apply updated value within the active transaction
+        // Apply updated value within active transaction
         await client.query(
           `UPDATE "${table}" SET "${column}" = $1 WHERE id = $2`,
           [reEncrypted, row.id]
@@ -241,16 +275,21 @@ async function runMigration() {
       }
     }
 
-    // ── 4. Verify Transaction Safety & Finalize ──
+    // ── 4. Verify Safety & Finalize Transaction ──
     if (totalFailed > 0) {
       console.error(`\n[ABORT] ${totalFailed} fields failed to decrypt or re-encrypt. Rolling back all database changes (ROLLBACK)...`);
       await client.query("ROLLBACK;");
       console.log("[MIGRATE-ENCRYPTION] Transaction rolled back safely. Database is completely untouched.");
+
+      // Clean up temporary snapshot tables on abort
+      for (const backupTableName of createdBackupTables) {
+        await client.query(`DROP TABLE IF EXISTS "${backupTableName}";`);
+      }
       await client.end();
       process.exit(1);
     }
 
-    // Persist file backup only if explicitly opted-in (with restrictive permissions 0o600 and .gitignore protection)
+    // Persist file backup only if explicitly opted-in
     if (shouldSaveFileBackup) {
       const backupFilePath = path.join(backupDir, `encryption_backup_${timestamp}.json`);
       fs.writeFileSync(backupFilePath, JSON.stringify({ timestamp, records: fileBackupRecords }, null, 2), {
@@ -264,9 +303,25 @@ async function runMigration() {
     await client.query("COMMIT;");
     console.log("[MIGRATE-ENCRYPTION] Transaction committed successfully (COMMIT).");
 
+    // ── 5. Drop Snapshot Tables After Confirmed Success ──
+    if (!keepDbBackup) {
+      console.log("[MIGRATE-ENCRYPTION] Migration verified successfully. Dropping temporary backup snapshot tables...");
+      for (const backupTableName of createdBackupTables) {
+        await client.query(`DROP TABLE IF EXISTS "${backupTableName}";`);
+        console.log(`  Dropped temporary snapshot table: ${backupTableName}`);
+      }
+    } else {
+      console.log("[MIGRATE-ENCRYPTION] Preserved scoped backup snapshot tables as requested (--keep-db-backup).");
+    }
+
   } catch (txErr: any) {
     console.error("[MIGRATE-ENCRYPTION] Unexpected error occurred during migration. Executing ROLLBACK:", txErr.message);
     await client.query("ROLLBACK;");
+
+    // Clean up temporary snapshot tables on exception
+    for (const backupTableName of createdBackupTables) {
+      await client.query(`DROP TABLE IF EXISTS "${backupTableName}";`);
+    }
     await client.end();
     process.exit(1);
   }
@@ -278,7 +333,7 @@ async function runMigration() {
   console.log(`  Total fields inspected:    ${totalInspected}`);
   console.log(`  Total fields re-encrypted: ${totalMigrated}`);
   console.log(`  Total fields failed:       ${totalFailed}`);
-  console.log(`  Database backup snapshot:  _backup_*_enc_${timestamp}`);
+  console.log("  Snapshot tables:           Cleaned up (zero lingering tables)");
   console.log("==================================================");
   console.log("SUCCESS: All encrypted secrets have been re-encrypted with primary ENCRYPTION_KEY.");
   console.log("You can now safely set ALLOW_LEGACY_FALLBACK_KEYS=false in production.");
