@@ -8,6 +8,10 @@ import {
   checkSessionRateLimit,
   checkWidgetRateLimit,
   checkDailyWidgetLimit,
+  recordDailyWidgetMessage,
+  setCompanyDailyWidgetLimit,
+  createWidgetSessionToken,
+  verifyWidgetSessionToken,
   validateWidgetRequest,
 } from "./widgetSecurity";
 
@@ -215,5 +219,119 @@ describe("checkDailyWidgetLimit (R6)", () => {
     const cleanIp = "203.0.113.89";
     const allowed = checkDailyWidgetLimit(widgetKey, cleanIp);
     assert.equal(allowed.allowed, true);
+  });
+
+  it("counts ONLY requests that produced a message (consume: false vs recordDailyWidgetMessage)", () => {
+    const key = "test-only-produced-messages-key";
+    const session = "ws_" + "1".repeat(64);
+
+    // 10 incoming requests checked with consume: false (e.g. before message production)
+    for (let i = 0; i < 10; i++) {
+      const res = checkDailyWidgetLimit(key, session, { consume: false, companyLimit: 5 });
+      assert.equal(res.allowed, true);
+      assert.equal(res.remaining, 5, "Remaining should NOT decrease when consume: false");
+    }
+
+    // Now produce 3 messages
+    for (let i = 0; i < 3; i++) {
+      recordDailyWidgetMessage(key, session, null, 5);
+    }
+
+    const after3 = checkDailyWidgetLimit(key, session, { consume: false, companyLimit: 5 });
+    assert.equal(after3.allowed, true);
+    assert.equal(after3.remaining, 2);
+
+    // Produce 2 more messages to reach the limit of 5
+    recordDailyWidgetMessage(key, session, null, 5);
+    recordDailyWidgetMessage(key, session, null, 5);
+
+    const blocked = checkDailyWidgetLimit(key, session, { consume: false, companyLimit: 5 });
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.reason, "widget");
+  });
+
+  it("enforces custom configurable daily limit per company", () => {
+    const customKey = "company-with-custom-limit";
+
+    // Set custom limit to 10 via helper
+    setCompanyDailyWidgetLimit(customKey, 10);
+
+    for (let i = 0; i < 10; i++) {
+      const check = checkDailyWidgetLimit(customKey, `ws_${i.toString().padStart(64, "0")}`, { consume: true });
+      assert.equal(check.allowed, true);
+    }
+
+    const blocked = checkDailyWidgetLimit(customKey, "ws_eleventh_session", { consume: false });
+    assert.equal(blocked.allowed, false);
+    assert.equal(blocked.reason, "widget");
+  });
+});
+
+describe("cryptographically signed widget session token", () => {
+  const widgetKey = "test-signed-session-widget-key";
+  const sessionId = "ws_" + "e".repeat(64);
+
+  it("creates and verifies a valid signed widget session token", () => {
+    const token = createWidgetSessionToken(sessionId, widgetKey, 42);
+    assert.ok(typeof token === "string" && token.includes("."));
+
+    const verified = verifyWidgetSessionToken(token, widgetKey);
+    assert.equal(verified.valid, true);
+    assert.equal(verified.payload?.sid, sessionId);
+    assert.equal(verified.payload?.wk, widgetKey);
+    assert.equal(verified.payload?.cid, 42);
+  });
+
+  it("rejects forged or tampered session tokens", () => {
+    const token = createWidgetSessionToken(sessionId, widgetKey, 42);
+    const [payloadB64, sig] = token.split(".");
+
+    // Alter payload
+    const tamperedPayload = Buffer.from(JSON.stringify({ sid: sessionId, wk: widgetKey, iat: Date.now(), exp: Date.now() + 100000 })).toString("base64url");
+    const tamperedToken = `${tamperedPayload}.${sig}`;
+
+    const res = verifyWidgetSessionToken(tamperedToken, widgetKey);
+    assert.equal(res.valid, false);
+    assert.ok(res.error?.includes("Invalid widget session token signature"));
+  });
+
+  it("rejects tokens with widgetKey mismatch", () => {
+    const token = createWidgetSessionToken(sessionId, widgetKey, 42);
+    const res = verifyWidgetSessionToken(token, "different-widget-key");
+    assert.equal(res.valid, false);
+    assert.ok(res.error?.includes("mismatch"));
+  });
+
+  it("rejects expired session tokens", () => {
+    // Expired 10 seconds ago
+    const expiredToken = createWidgetSessionToken(sessionId, widgetKey, 42, -10000);
+    const res = verifyWidgetSessionToken(expiredToken, widgetKey);
+    assert.equal(res.valid, false);
+    assert.ok(res.error?.includes("expired"));
+  });
+
+  it("allows multiple independent users on the SAME IP using distinct signed session tokens (NAT protection)", () => {
+    const sharedNatIp = "198.51.100.99";
+    const natWidgetKey = "nat-friendly-widget";
+
+    const user1Session = "ws_" + "1".repeat(64);
+    const user2Session = "ws_" + "2".repeat(64);
+
+    const user1Token = createWidgetSessionToken(user1Session, natWidgetKey);
+    const user2Token = createWidgetSessionToken(user2Session, natWidgetKey);
+
+    // User 1 sends 300 messages
+    for (let i = 0; i < 300; i++) {
+      checkDailyWidgetLimit(natWidgetKey, user1Token, { clientIp: sharedNatIp, consume: true });
+    }
+
+    // User 1 is now at their 300 cap
+    const user1Check = checkDailyWidgetLimit(natWidgetKey, user1Token, { clientIp: sharedNatIp, consume: false });
+    assert.equal(user1Check.allowed, false);
+    assert.equal(user1Check.reason, "session");
+
+    // User 2 on the SAME IP must NOT be blocked!
+    const user2Check = checkDailyWidgetLimit(natWidgetKey, user2Token, { clientIp: sharedNatIp, consume: false });
+    assert.equal(user2Check.allowed, true, "User 2 with their own signed session token must not be blocked by User 1's usage on the same IP");
   });
 });

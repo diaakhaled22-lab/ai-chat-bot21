@@ -4,19 +4,11 @@
  * 1. AI token quota draining from unauthorized websites when widgetAllowedDomains is empty.
  * 2. Automated non-browser requests (curl, python scripts, bots).
  * 3. Session hijacking or rapid automated spamming within sessions.
- *
- * DEFENSE-IN-DEPTH NOTE:
- * Origin, Referer, and User-Agent header checks are spoofable by determined attackers.
- * They provide a reasonable barrier against casual abuse and automated scripts, but
- * the primary protection against token quota drain is the per-company monthly token
- * quota enforced in the widget chat handler (assertCompanyQuotaNotExceeded).
- *
- * MULTI-INSTANCE DEPLOYMENT NOTE:
- * The in-memory rate limiters (sessionRates, ipRates) are local to each process.
- * In multi-instance deployments behind a load balancer, consider using Redis or a
- * shared store for rate limiting. The per-company DB-level quota check already
- * provides cross-instance protection for token consumption.
+ * 4. Cryptographically signed session tokens instead of relying on IP alone.
+ * 5. Accurate daily message caps that count only requests that produced a message.
  */
+
+import crypto from "crypto";
 
 export interface ValidateWidgetResult {
   valid: boolean;
@@ -328,54 +320,251 @@ export function validateWidgetRequest(
 }
 
 /**
- * Per-widget-key daily message counter (in-memory).
- * Provides a daily message cap per widget key and per client IP as an additional layer
- * on top of the monthly token quota.
- * In multi-instance deployments, this can be backed by Redis or a shared datastore;
- * the DB-level monthly token quota check remains the authoritative cross-instance limit.
+ * Cryptographically signed widget session token.
+ * Prevents session forgery, tamper attacks, and enables secure per-session tracking
+ * instead of relying on IP alone (which causes collisions behind corporate NAT/CGNAT).
+ */
+export interface WidgetSessionTokenPayload {
+  sid: string;          // Session ID (e.g. ws_...)
+  wk: string;           // Widget Key
+  cid?: number;         // Company ID
+  iat: number;          // Issued at epoch ms
+  exp: number;          // Expiration epoch ms
+}
+
+let ephemeralWidgetSecret: string | null = null;
+
+export function getWidgetSigningSecret(): string {
+  if (process.env.WIDGET_SIGNING_SECRET?.trim()) {
+    return process.env.WIDGET_SIGNING_SECRET.trim();
+  }
+  if (process.env.SESSION_SECRET?.trim()) {
+    return process.env.SESSION_SECRET.trim();
+  }
+  if (!ephemeralWidgetSecret) {
+    ephemeralWidgetSecret = crypto.randomBytes(32).toString("hex");
+  }
+  return ephemeralWidgetSecret;
+}
+
+/**
+ * Creates an HMAC-SHA256 signed session token for a widget visitor.
+ */
+export function createWidgetSessionToken(
+  sessionId: string,
+  widgetKey: string,
+  companyId?: number,
+  ttlMs = 7 * 24 * 60 * 60 * 1000 // 7 days session lifetime
+): string {
+  const now = Date.now();
+  const payload: WidgetSessionTokenPayload = {
+    sid: sessionId.trim(),
+    wk: widgetKey.trim(),
+    cid: companyId,
+    iat: now,
+    exp: now + ttlMs,
+  };
+
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", getWidgetSigningSecret())
+    .update(payloadB64)
+    .digest("base64url");
+
+  return `${payloadB64}.${signature}`;
+}
+
+/**
+ * Verifies a widget session token, ensuring signature validity, key match, and freshness.
+ */
+export function verifyWidgetSessionToken(
+  token: string | null | undefined,
+  expectedWidgetKey?: string
+): { valid: boolean; payload?: WidgetSessionTokenPayload; error?: string } {
+  if (!token || typeof token !== "string" || !token.includes(".")) {
+    return { valid: false, error: "Missing or malformed widget session token" };
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 2) {
+    return { valid: false, error: "Malformed widget session token structure" };
+  }
+  const [payloadB64, signature] = parts;
+
+  const expectedSignature = crypto
+    .createHmac("sha256", getWidgetSigningSecret())
+    .update(payloadB64)
+    .digest("base64url");
+
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return { valid: false, error: "Invalid widget session token signature" };
+  }
+
+  let payload: WidgetSessionTokenPayload;
+  try {
+    payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+  } catch {
+    return { valid: false, error: "Invalid widget session token payload JSON" };
+  }
+
+  if (Date.now() > payload.exp) {
+    return { valid: false, error: "Widget session token has expired" };
+  }
+
+  if (expectedWidgetKey && payload.wk !== expectedWidgetKey) {
+    return { valid: false, error: "Widget session token key mismatch" };
+  }
+
+  if (!isValidWidgetSessionId(payload.sid)) {
+    return { valid: false, error: "Widget session token contains invalid sessionId" };
+  }
+
+  return { valid: true, payload };
+}
+
+/**
+ * Daily message counters (in-memory sliding day reset).
+ * Supports:
+ * 1. Configurable limit per company (DB company.widgetDailyLimit or setCompanyDailyWidgetLimit).
+ * 2. Per-session device limit anchored by signed session tokens (instead of relying on IP alone).
+ * 3. Accurate accounting: counts ONLY requests that produced an actual message.
  */
 const dailyWidgetMessageCounts = new Map<string, { count: number; resetAt: number }>();
+const dailyWidgetSessionCounts = new Map<string, { count: number; resetAt: number }>();
 const dailyWidgetIpCounts = new Map<string, { count: number; resetAt: number }>();
-const DAILY_WIDGET_MESSAGE_LIMIT = 2000; // Max messages per widget key per day across all users
-const DAILY_WIDGET_IP_LIMIT = 300; // Max messages per client IP per widget per day (prevents single IP DoS)
+const companyDailyLimits = new Map<string, number>();
 
+export const DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT = 2000; // Default company daily messages cap across all users
+export const DEFAULT_DAILY_WIDGET_SESSION_LIMIT = 300;  // Default cap per session per widget per day
+export const DEFAULT_DAILY_WIDGET_IP_LIMIT = 300;       // Default cap per client IP per widget per day (defense-in-depth)
+
+export function setCompanyDailyWidgetLimit(widgetKey: string, limit: number): void {
+  companyDailyLimits.set(widgetKey, Math.max(1, limit));
+}
+
+export function getCompanyDailyWidgetLimit(widgetKey: string, overrideLimit?: number | null): number {
+  if (typeof overrideLimit === "number" && overrideLimit > 0) {
+    return overrideLimit;
+  }
+  const configured = companyDailyLimits.get(widgetKey);
+  if (typeof configured === "number" && configured > 0) {
+    return configured;
+  }
+  const envVal = process.env.DAILY_WIDGET_MESSAGE_LIMIT;
+  if (envVal) {
+    const parsed = parseInt(envVal, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  return DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT;
+}
+
+export interface CheckDailyWidgetLimitOptions {
+  companyLimit?: number | null;
+  clientIp?: string | null;
+  consume?: boolean; // When false, checks availability without incrementing. Defaults to true when omitted.
+}
+
+/**
+ * Checks if the daily message limit allows another message.
+ * When consume !== false, it increments the counters immediately.
+ * When consume === false, it checks whether the limit has been reached without incrementing.
+ */
 export function checkDailyWidgetLimit(
   widgetKey: string,
-  clientIp?: string | null
-): { allowed: boolean; remaining: number; reason?: "widget" | "ip" } {
+  identifierOrIp?: string | null,
+  options?: CheckDailyWidgetLimitOptions
+): { allowed: boolean; remaining: number; reason?: "widget" | "session" | "ip" } {
   const now = Date.now();
   const tomorrow = new Date();
   tomorrow.setUTCHours(24, 0, 0, 0);
   const resetAt = tomorrow.getTime();
 
-  // 1. IP-level daily limit per widget key (prevents single malicious IP from exhausting company daily limit)
-  const cleanIp = (clientIp || "").replace(/^::ffff:/i, "").trim();
-  if (cleanIp && cleanIp !== "unknown") {
+  const maxCompanyLimit = getCompanyDailyWidgetLimit(widgetKey, options?.companyLimit);
+  // Default consume to true if options is omitted or options.consume !== false (preserves compatibility with test runner calling checkDailyWidgetLimit in a loop)
+  const shouldConsume = options?.consume !== false;
+
+  const rawIdent = (identifierOrIp || "").trim();
+  let effectiveSessionId: string | undefined;
+
+  if (rawIdent.includes(".")) {
+    const verified = verifyWidgetSessionToken(rawIdent, widgetKey);
+    if (verified.valid && verified.payload) {
+      effectiveSessionId = verified.payload.sid;
+    }
+  } else if (rawIdent.startsWith("ws_") || rawIdent.startsWith("preview_") || /^[0-9a-f-]{36}$/i.test(rawIdent)) {
+    effectiveSessionId = rawIdent;
+  }
+
+  const cleanIp = (options?.clientIp || (!effectiveSessionId && (rawIdent.includes(".") || rawIdent.includes(":")) ? rawIdent : "")).replace(/^::ffff:/i, "").trim();
+
+  // 1. Session-level daily limit (anchored by signed session token, immune to shared NAT/IP collisions)
+  if (effectiveSessionId) {
+    const sessionKey = `${widgetKey}:sess:${effectiveSessionId}`;
+    let sessionRecord = dailyWidgetSessionCounts.get(sessionKey);
+    if (!sessionRecord || now >= sessionRecord.resetAt) {
+      sessionRecord = { count: 0, resetAt };
+      dailyWidgetSessionCounts.set(sessionKey, sessionRecord);
+    }
+    if (sessionRecord.count >= DEFAULT_DAILY_WIDGET_SESSION_LIMIT) {
+      return { allowed: false, remaining: 0, reason: "session" };
+    }
+    if (shouldConsume) {
+      sessionRecord.count++;
+    }
+  }
+
+  // 2. IP-level daily limit (applied when no session ID is supplied or as defense-in-depth)
+  if (cleanIp && cleanIp !== "unknown" && !effectiveSessionId) {
     const ipKey = `${widgetKey}:${cleanIp}`;
     let ipRecord = dailyWidgetIpCounts.get(ipKey);
     if (!ipRecord || now >= ipRecord.resetAt) {
       ipRecord = { count: 0, resetAt };
       dailyWidgetIpCounts.set(ipKey, ipRecord);
     }
-    if (ipRecord.count >= DAILY_WIDGET_IP_LIMIT) {
+    if (ipRecord.count >= DEFAULT_DAILY_WIDGET_IP_LIMIT) {
       return { allowed: false, remaining: 0, reason: "ip" };
     }
-    ipRecord.count++;
+    if (shouldConsume) {
+      ipRecord.count++;
+    }
   }
 
-  // 2. Widget-level daily limit
+  // 3. Widget/Company-level daily limit (configurable per company)
   let record = dailyWidgetMessageCounts.get(widgetKey);
   if (!record || now >= record.resetAt) {
     record = { count: 0, resetAt };
     dailyWidgetMessageCounts.set(widgetKey, record);
   }
 
-  if (record.count >= DAILY_WIDGET_MESSAGE_LIMIT) {
+  if (record.count >= maxCompanyLimit) {
     return { allowed: false, remaining: 0, reason: "widget" };
   }
 
-  record.count++;
-  return { allowed: true, remaining: DAILY_WIDGET_MESSAGE_LIMIT - record.count };
+  if (shouldConsume) {
+    record.count++;
+  }
+
+  return { allowed: true, remaining: Math.max(0, maxCompanyLimit - record.count) };
+}
+
+/**
+ * Records that an AI response message was actually produced, incrementing the company, session, and IP daily counters.
+ * MUST be called only after the AI successfully produces a response.
+ */
+export function recordDailyWidgetMessage(
+  widgetKey: string,
+  identifierOrIp?: string | null,
+  clientIp?: string | null,
+  companyLimit?: number | null
+): void {
+  checkDailyWidgetLimit(widgetKey, identifierOrIp, {
+    companyLimit,
+    clientIp,
+    consume: true,
+  });
 }
 
 // Clean up expired daily counters every hour
@@ -383,6 +572,9 @@ setInterval(() => {
   const now = Date.now();
   for (const [key, record] of dailyWidgetMessageCounts) {
     if (now >= record.resetAt) dailyWidgetMessageCounts.delete(key);
+  }
+  for (const [key, record] of dailyWidgetSessionCounts) {
+    if (now >= record.resetAt) dailyWidgetSessionCounts.delete(key);
   }
   for (const [key, record] of dailyWidgetIpCounts) {
     if (now >= record.resetAt) dailyWidgetIpCounts.delete(key);

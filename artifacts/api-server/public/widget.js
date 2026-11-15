@@ -13,7 +13,9 @@
   var apiBase = scriptSrc.replace(/\/widget\.js.*$/, "");
 
   var SESSION_KEY = "chatwidget_session_" + widgetKey;
+  var SESSION_TOKEN_KEY = "chatwidget_token_" + widgetKey;
   var sessionId = localStorage.getItem(SESSION_KEY);
+  var sessionToken = localStorage.getItem(SESSION_TOKEN_KEY) || null;
   if (!/^ws_[a-f0-9]{64}$/i.test(sessionId || "")) {
     if (!window.crypto || typeof window.crypto.getRandomValues !== "function") {
       console.error("[ChatWidget] Secure random generation is unavailable; refusing to create a predictable session.");
@@ -383,16 +385,23 @@
     if (sendBtn) sendBtn.disabled = true;
     showTyping();
 
+    var reqHeaders = { "Content-Type": "application/json" };
+    if (sessionToken) reqHeaders["x-widget-session-token"] = sessionToken;
+
     fetch(apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, sessionId: sessionId, lang: voiceLang }),
+      headers: reqHeaders,
+      body: JSON.stringify({ message: text, sessionId: sessionId, sessionToken: sessionToken, lang: voiceLang }),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         hideTyping();
         isLoading = false;
         if (sendBtn) sendBtn.disabled = false;
+        if (data.sessionToken) {
+          sessionToken = data.sessionToken;
+          localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+        }
         if (data.response) {
           addMessage("bot", data.response);
           if (autoSpeak) speak(data.response);
@@ -539,9 +548,24 @@
   }
 
   function fetchConfig() {
-    fetch(apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/config")
+    var configUrl = apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/config";
+    if (sessionId) {
+      configUrl += "?sessionId=" + encodeURIComponent(sessionId);
+    }
+    var headers = {};
+    if (sessionToken) headers["x-widget-session-token"] = sessionToken;
+
+    fetch(configUrl, { headers: headers })
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        if (data.sessionToken) {
+          sessionToken = data.sessionToken;
+          localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+        }
+        if (data.sessionId && !sessionId) {
+          sessionId = data.sessionId;
+          localStorage.setItem(SESSION_KEY, sessionId);
+        }
         if (data.name) {
           companyName = data.name;
           var titleEl = document.getElementById("cw-title");

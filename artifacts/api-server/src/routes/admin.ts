@@ -890,6 +890,7 @@ router.get("/admin/companies", async (req, res) => {
         websiteChatbotKey: company.websiteChatbotKey,
         widgetAllowedDomains: company.widgetAllowedDomains ?? null,
         widgetEnabled: company.widgetEnabled,
+        widgetDailyLimit: company.widgetDailyLimit ?? null,
         websiteDataUrl: company.websiteDataUrl,
         websiteAutoSync: company.websiteAutoSync,
         websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
@@ -1055,6 +1056,7 @@ router.get("/admin/companies/:id", async (req, res) => {
       websiteChatbotKey: company.websiteChatbotKey,
       widgetAllowedDomains: company.widgetAllowedDomains ?? null,
       widgetEnabled: company.widgetEnabled ?? false,
+      widgetDailyLimit: company.widgetDailyLimit ?? null,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       websiteLastSynced: company.websiteLastSynced?.toISOString() ?? null,
@@ -1207,6 +1209,11 @@ async function handleUpdateCompany(req: any, res: any) {
     }
     if (body.widgetAllowedDomains !== undefined) {
       updateValues.widgetAllowedDomains = body.widgetAllowedDomains ? String(body.widgetAllowedDomains).trim() : null;
+    }
+    if (body.widgetDailyLimit !== undefined) {
+      updateValues.widgetDailyLimit = body.widgetDailyLimit !== null && body.widgetDailyLimit !== ""
+        ? Math.max(1, parseInt(String(body.widgetDailyLimit), 10))
+        : null;
     }
 
     // 8. Google Sheets
@@ -1384,6 +1391,7 @@ async function handleUpdateCompany(req: any, res: any) {
       websiteChatbotKey: updatedRow.websiteChatbotKey,
       widgetAllowedDomains: updatedRow.widgetAllowedDomains ?? null,
       widgetEnabled: updatedRow.widgetEnabled ?? false,
+      widgetDailyLimit: updatedRow.widgetDailyLimit ?? null,
       websiteDataUrl: updatedRow.websiteDataUrl,
       websiteAutoSync: updatedRow.websiteAutoSync,
       websiteLastSynced: updatedRow.websiteLastSynced?.toISOString() ?? null,

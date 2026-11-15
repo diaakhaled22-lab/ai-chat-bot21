@@ -51,6 +51,7 @@ export const companiesTable = pgTable("companies", {
   websiteChatbotKey: searchableText("website_chatbot_key"),
   widgetAllowedDomains: text("widget_allowed_domains"),
   widgetEnabled: boolean("widget_enabled"),
+  widgetDailyLimit: integer("widget_daily_limit"),
   websiteDataUrl: text("website_data_url"),
   websiteAutoSync: boolean("website_auto_sync").notNull().default(false),
   websiteContentCache: text("website_content_cache"),

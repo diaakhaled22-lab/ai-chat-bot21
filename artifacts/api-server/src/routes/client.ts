@@ -309,6 +309,7 @@ router.get("/client/company", async (req, res) => {
       websiteChatbotKey: company.websiteChatbotKey,
       widgetEnabled: company.widgetEnabled ?? false,
       widgetAllowedDomains: company.widgetAllowedDomains ?? null,
+      widgetDailyLimit: company.widgetDailyLimit ?? null,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,
@@ -730,6 +731,11 @@ router.put("/client/company", async (req, res) => {
     if ((data as any).widgetAllowedDomains !== undefined) {
       updates.widgetAllowedDomains = (data as any).widgetAllowedDomains ? String((data as any).widgetAllowedDomains).trim() : null;
     }
+    if ((data as any).widgetDailyLimit !== undefined) {
+      updates.widgetDailyLimit = (data as any).widgetDailyLimit !== null && (data as any).widgetDailyLimit !== ""
+        ? Math.max(1, parseInt(String((data as any).widgetDailyLimit), 10))
+        : null;
+    }
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
     if (data.websiteAutoSync !== undefined) updates.websiteAutoSync = data.websiteAutoSync;
     if (data.fabEnabled !== undefined) updates.fabEnabled = data.fabEnabled;
@@ -918,6 +924,7 @@ router.put("/client/company", async (req, res) => {
       websiteChatbotKey: company.websiteChatbotKey,
       widgetEnabled: company.widgetEnabled ?? false,
       widgetAllowedDomains: company.widgetAllowedDomains ?? null,
+      widgetDailyLimit: company.widgetDailyLimit ?? null,
       websiteDataUrl: company.websiteDataUrl,
       websiteAutoSync: company.websiteAutoSync,
       fabEnabled: company.fabEnabled,

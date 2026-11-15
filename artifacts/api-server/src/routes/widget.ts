@@ -7,7 +7,7 @@ import {
 } from "../lib/companyNotification";
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { Router } from "express";
-import { randomUUID } from "node:crypto";
+import crypto, { randomUUID } from "node:crypto";
 import { db, companiesTable, chatLogsTable, leadsTable } from "@workspace/db";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -26,7 +26,18 @@ import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATI
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
 import { chatLimiter } from "../lib/security";
 import { assertCompanyQuotaNotExceeded, resolveCompanyAi } from "../lib/supportAi";
-import { isWidgetOriginAllowed, validateWidgetRequest, isValidWidgetSessionId, checkSessionRateLimit, checkWidgetRateLimit, checkDailyWidgetLimit } from "../lib/widgetSecurity";
+import {
+  isWidgetOriginAllowed,
+  validateWidgetRequest,
+  isValidWidgetSessionId,
+  checkSessionRateLimit,
+  checkWidgetRateLimit,
+  checkDailyWidgetLimit,
+  recordDailyWidgetMessage,
+  createWidgetSessionToken,
+  verifyWidgetSessionToken,
+  DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT,
+} from "../lib/widgetSecurity";
 
 const router = Router();
 
@@ -96,11 +107,40 @@ router.get("/widget/:key/config", chatLimiter, async (req, res) => {
       res.setHeader("Vary", "Origin");
     }
 
+    const rawSessionId = typeof req.query.sessionId === "string" ? req.query.sessionId.trim() : undefined;
+    const rawSessionToken = (typeof req.query.sessionToken === "string"
+      ? req.query.sessionToken
+      : req.headers["x-widget-session-token"]) as string | undefined;
+
+    let sessionToken: string | undefined;
+    let activeSessionId: string | undefined;
+
+    if (rawSessionToken) {
+      const verified = verifyWidgetSessionToken(rawSessionToken, key as string);
+      if (verified.valid && verified.payload) {
+        activeSessionId = verified.payload.sid;
+        sessionToken = rawSessionToken;
+      }
+    }
+
+    if (!sessionToken && rawSessionId && isValidWidgetSessionId(rawSessionId)) {
+      activeSessionId = rawSessionId;
+      sessionToken = createWidgetSessionToken(rawSessionId, key as string, company.id);
+    }
+
+    if (!sessionToken) {
+      activeSessionId = "ws_" + crypto.randomBytes(32).toString("hex");
+      sessionToken = createWidgetSessionToken(activeSessionId, key as string, company.id);
+    }
+
     res.json({
       name: company.name,
       isActive: company.isActive,
       fabPositionX: company.fabPositionX,
       fabPositionY: company.fabPositionY,
+      sessionId: activeSessionId,
+      sessionToken,
+      dailyLimit: company.widgetDailyLimit ?? DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT,
     });
   } catch (err) {
     logger.error({ err }, "Widget config error");
@@ -111,19 +151,12 @@ router.get("/widget/:key/config", chatLimiter, async (req, res) => {
 router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
   try {
     const { key } = req.params;
-    const { message, sessionId, lang } = req.body;
+    const { message, lang } = req.body || {};
 
     if (!message || typeof message !== "string" || !message.trim()) {
       res.status(400).json({ error: "message is required" });
       return;
     }
-
-    if (!sessionId || !isValidWidgetSessionId(sessionId)) {
-      res.status(400).json({ error: "Valid sessionId is required" });
-      return;
-    }
-
-    const explicitLang = lang === "ar" || lang === "en" ? lang : undefined;
 
     const [company] = await db.select().from(companiesTable).where(eq(companiesTable.websiteChatbotKey, key as string)).limit(1);
 
@@ -131,6 +164,31 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       res.status(404).json({ error: "Widget not found" });
       return;
     }
+
+    const rawSessionId = req.body?.sessionId;
+    const rawToken = (req.body?.sessionToken || req.headers["x-widget-session-token"]) as string | undefined;
+
+    let effectiveSessionId: string;
+    let effectiveSessionToken: string;
+
+    if (rawToken && typeof rawToken === "string") {
+      const verified = verifyWidgetSessionToken(rawToken, key as string);
+      if (!verified.valid || !verified.payload) {
+        res.status(401).json({ error: "Invalid or expired widget session token" });
+        return;
+      }
+      effectiveSessionId = verified.payload.sid;
+      effectiveSessionToken = rawToken;
+    } else if (rawSessionId && typeof rawSessionId === "string" && isValidWidgetSessionId(rawSessionId)) {
+      effectiveSessionId = rawSessionId;
+      effectiveSessionToken = createWidgetSessionToken(rawSessionId, key as string, company.id);
+    } else {
+      res.status(400).json({ error: "Valid sessionId or signed sessionToken is required" });
+      return;
+    }
+
+    const sessionId = effectiveSessionId;
+    const explicitLang = lang === "ar" || lang === "en" ? lang : undefined;
 
     const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
     const check = validateWidgetRequest(req, company, serverHost);
@@ -146,7 +204,7 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
 
     const rawIp = req.ip || req.socket?.remoteAddress || "unknown";
     const clientIp = typeof rawIp === "string" ? rawIp.replace(/^::ffff:/i, "").trim() : "unknown";
-    const sessionRate = checkWidgetRateLimit(sessionId, clientIp);
+    const sessionRate = checkWidgetRateLimit(effectiveSessionId, clientIp);
     if (!sessionRate.allowed) {
       res.status(429).json({
         error: localizedChannelMessage(
@@ -160,17 +218,21 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       return;
     }
 
-    // R6 fix: Enforce per-widget and per-IP daily message limits
-    const dailyLimit = checkDailyWidgetLimit(key as string, clientIp);
+    // Check per-company and per-session daily limits without pre-consuming (only consumed on message production)
+    const dailyLimit = checkDailyWidgetLimit(key as string, effectiveSessionId, {
+      companyLimit: company.widgetDailyLimit,
+      clientIp,
+      consume: false,
+    });
     if (!dailyLimit.allowed) {
       res.status(429).json({
         error: localizedChannelMessage(
           message,
-          dailyLimit.reason === "ip"
-            ? "تم تجاوز الحد اليومي للرسائل لهذا الجهاز. يرجى المحاولة غداً."
+          dailyLimit.reason === "session" || dailyLimit.reason === "ip"
+            ? "تم تجاوز الحد اليومي للرسائل لهذه الجلسة. يرجى المحاولة غداً."
             : "تم تجاوز الحد اليومي للرسائل لهذا المساعد. يرجى المحاولة غداً.",
-          dailyLimit.reason === "ip"
-            ? "Daily message limit reached for this device. Please try again tomorrow."
+          dailyLimit.reason === "session" || dailyLimit.reason === "ip"
+            ? "Daily message limit reached for this session. Please try again tomorrow."
             : "Daily message limit reached for this assistant. Please try again tomorrow.",
           explicitLang
         ),
@@ -537,7 +599,13 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       { role: "assistant", content: aiReply },
     ]);
 
-    res.json({ response: aiReply });
+    // Count ONLY requests that produced an actual message
+    recordDailyWidgetMessage(key as string, effectiveSessionId, clientIp, company.widgetDailyLimit);
+
+    res.json({
+      response: aiReply,
+      sessionToken: effectiveSessionToken,
+    });
   } catch (err: any) {
     logger.error({ err }, "Widget chat error");
     reportSystemMalfunction(
