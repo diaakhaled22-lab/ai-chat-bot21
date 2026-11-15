@@ -174,10 +174,30 @@ describe("Sensitive Files Public Reachability Defense", () => {
         "/assets/index-CWLz.js",
         "/assets/style-D_7a.css",
         "/robots.txt",
+        "/.well-known/security.txt",
+        "/.well-known/acme-challenge/HGr8u11Wfe",
+        "/.well-known/openid-configuration",
+        "/.well-known/assetlinks.json",
+        "/.well-known/apple-app-site-association",
       ];
 
       for (const p of legitimatePaths) {
         assert.equal(isSensitivePath(p), false, `Falsely blocked legitimate path: ${p}`);
+      }
+    });
+
+    it("blocks sensitive files even when nested inside .well-known", () => {
+      const maliciousWellKnown = [
+        "/.well-known/../.env",
+        "/.well-known/.env",
+        "/.well-known/config.json.bak",
+        "/.well-known/backup.sql",
+        "/.well-known/.git/config",
+        "/.well-known/package.json",
+      ];
+
+      for (const p of maliciousWellKnown) {
+        assert.equal(isSensitivePath(p), true, `Failed to block sensitive file under .well-known: ${p}`);
       }
     });
   });

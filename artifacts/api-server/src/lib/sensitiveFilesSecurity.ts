@@ -13,6 +13,8 @@ import { logger } from "./logger";
  * 5. Configuration & manifest files: package.json, pnpm-lock.yaml, tsconfig.json,
  *    drizzle.config.*, vite.config.*, orval.config.*, Dockerfile, docker-compose.*, etc.
  * 6. Hidden dotfiles and dotfolders: /.* (e.g. /.aws, /.ssh, /.config)
+ *    EXCEPT legitimate standard /.well-known/ endpoints (RFC 5785 / RFC 8555 acme-challenge,
+ *    RFC 9116 security.txt, openid-configuration, etc.).
  */
 
 const BLOCKED_FILE_EXTENSIONS = new Set([
@@ -141,7 +143,16 @@ export function isSensitivePath(rawPath: string): boolean {
   const segments = lowerPath.split("/").filter(Boolean);
 
   // 2. Check each path segment for hidden dotfiles/folders or sensitive directories
-  for (const segment of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+
+    // Standard RFC 5785 / RFC 8555 / RFC 9116: legitimate /.well-known/ endpoints
+    // (such as /.well-known/acme-challenge/..., /.well-known/security.txt, /.well-known/openid-configuration)
+    // must NOT be blocked as arbitrary hidden dotdirectories.
+    if (segment === ".well-known" && i === 0) {
+      continue;
+    }
+
     // Hidden dotfiles or dotdirectories (e.g. .git, .env, .aws, .ssh, .config)
     if (segment.startsWith(".")) {
       return true;

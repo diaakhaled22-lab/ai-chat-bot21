@@ -459,6 +459,18 @@ app.use("/api", router);
 // Serve the frontend static files in production
 if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true") {
   const frontendDist = path.join(__dirname, "../../chatbot-admin/dist/public");
+
+  // Explicit handler for /.well-known static directory (e.g. acme-challenge, security.txt)
+  // Ensures standard ACME/security files can be served even with dotfiles: "deny" default
+  const wellKnownDir = path.join(frontendDist, ".well-known");
+  app.use(
+    "/.well-known",
+    express.static(wellKnownDir, {
+      dotfiles: "allow",
+      index: false,
+    })
+  );
+
   app.use(
     express.static(frontendDist, {
       dotfiles: "deny",
