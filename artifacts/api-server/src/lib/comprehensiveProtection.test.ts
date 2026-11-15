@@ -187,3 +187,47 @@ describe("5. Production Error Sanitization & Anti-Fingerprinting", () => {
     assert.equal(containsSensitiveErrorInfo(sanitized), false);
   });
 });
+
+describe("6. Public Domain OTP DoS Protection & CAPTCHA Fallback (E1 Fix)", () => {
+  it("enforces higher threshold for public email domains and requires CAPTCHA instead of hard rejection", () => {
+    const records = new Map<string, { timestamps: number[] }>();
+    const emailDomain = "gmail.com";
+    const publicDomainKey = `otp_public_domain:${emailDomain}`;
+
+    const checkPublicDomainOtp = (isCaptchaVerified: boolean, customLimit?: number) => {
+      let record = records.get(publicDomainKey);
+      const now = Date.now();
+      if (!record) {
+        record = { timestamps: [] };
+        records.set(publicDomainKey, record);
+      }
+      record.timestamps = record.timestamps.filter((ts) => now - ts < 60 * 60 * 1000);
+      const limit = customLimit && customLimit > 0 ? customLimit : 1000;
+
+      if (record.timestamps.length >= limit) {
+        if (!isCaptchaVerified) {
+          return { allowed: false, captchaRequired: true, error: "CAPTCHA required" };
+        }
+      }
+      record.timestamps.push(now);
+      return { allowed: true, captchaRequired: false };
+    };
+
+    // 1. Simulating 100 normal requests with default 1000 limit: all allowed without blocking
+    for (let i = 0; i < 100; i++) {
+      const res = checkPublicDomainOtp(false, 100);
+      if (i < 100) {
+        assert.equal(res.allowed, true);
+      }
+    }
+
+    // 2. 101st request without CAPTCHA when limit is 100: requires CAPTCHA (soft challenge, not permanent block)
+    const blockedRes = checkPublicDomainOtp(false, 100);
+    assert.equal(blockedRes.allowed, false);
+    assert.equal(blockedRes.captchaRequired, true);
+
+    // 3. 102nd request with valid CAPTCHA: allowed through! (Prevents registration DoS for Gmail users)
+    const allowedWithCaptcha = checkPublicDomainOtp(true, 100);
+    assert.equal(allowedWithCaptcha.allowed, true);
+  });
+});

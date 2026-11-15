@@ -598,6 +598,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
     const captchaToken = extractCaptchaToken(req);
     const { turnstileSecret, hcaptchaSecret, recaptchaSecret } = await getCaptchaSecrets();
     const hasCaptcha = Boolean(turnstileSecret || hcaptchaSecret || recaptchaSecret);
+    let isCaptchaVerified = false;
 
     if (hasCaptcha) {
       if (!captchaToken) {
@@ -620,6 +621,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         });
         return;
       }
+      isCaptchaVerified = true;
     } else if (captchaToken) {
       const captchaResult = await verifyCaptchaToken(captchaToken, clientIp);
       if (!captchaResult.valid) {
@@ -631,6 +633,7 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         });
         return;
       }
+      isCaptchaVerified = true;
     }
 
     // 1. Cooldown check (60 seconds) & Hourly limit (5 max) applies equally to ALL requests
@@ -692,7 +695,12 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         }
         domainRecord.timestamps.push(domainNow);
       } else {
-        // Aggregate safety rate ceiling on public email domains across all IPs (D6)
+        // E1 Fix: Protect public email domains (Gmail, Yahoo, Outlook, etc.) from registration DoS.
+        // A low hard cap (e.g. 60/hr) across all IPs allowed an attacker with just 12 IPs to block all legitimate users.
+        // Solution:
+        // 1. Raise the threshold significantly (default 1000/hour, configurable via OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR).
+        // 2. Instead of hard-rejecting when the threshold is reached, require CAPTCHA verification.
+        //    Any user who solves CAPTCHA is allowed through, ensuring legitimate users are never blocked.
         const publicDomainKey = `otp_public_domain:${emailDomain}`;
         let publicDomainRecord = otpDomainRates.get(publicDomainKey);
         const domainNow = Date.now();
@@ -701,16 +709,32 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
           otpDomainRates.set(publicDomainKey, publicDomainRecord);
         }
         publicDomainRecord.timestamps = publicDomainRecord.timestamps.filter((ts) => domainNow - ts < 60 * 60 * 1000);
-        const OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR = 60;
+
+        const envPublicLimit = process.env.OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR;
+        const parsedLimit = envPublicLimit ? parseInt(envPublicLimit, 10) : NaN;
+        const OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 1000;
+
         if (publicDomainRecord.timestamps.length >= OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR) {
-          logger.warn({ emailDomain, count: publicDomainRecord.timestamps.length }, "Public email domain OTP rate ceiling exceeded");
-          res.status(429).json({
-            error: isAr
-              ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق حالياً. يرجى المحاولة لاحقاً."
-              : "Too many verification requests for this email domain. Please try again later.",
-            captchaRequired: true,
-          });
-          return;
+          // If the caller hasn't verified CAPTCHA yet, check if a valid captcha token was provided
+          if (!isCaptchaVerified) {
+            if (captchaToken) {
+              const extraVerify = await verifyCaptchaToken(captchaToken, clientIp);
+              if (extraVerify.valid) {
+                isCaptchaVerified = true;
+              }
+            }
+
+            if (!isCaptchaVerified) {
+              logger.warn({ emailDomain, count: publicDomainRecord.timestamps.length }, "Public email domain OTP threshold reached; CAPTCHA verification required (E1 fix)");
+              res.status(429).json({
+                error: isAr
+                  ? "نظراً لكثرة طلبات التسجيل على هذا النطاق، يرجى إكمال التحقق الأمني (CAPTCHA) للمتابعة."
+                  : "High registration volume detected on this email domain. Please complete CAPTCHA verification to proceed.",
+                captchaRequired: true,
+              });
+              return;
+            }
+          }
         }
         publicDomainRecord.timestamps.push(domainNow);
       }
