@@ -8,7 +8,7 @@ import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { getResendConfig, escapeHtml } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
-import { extractCaptchaToken, verifyCaptchaToken } from "../lib/captchaSecurity";
+import { extractCaptchaToken, verifyCaptchaToken, getCaptchaSecrets } from "../lib/captchaSecurity";
 import {
   maskApiKey,
   authLimiter,
@@ -590,6 +590,49 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
 
     const cleanEmail = normalizeEmail(email);
 
+    // D6 Fix: CAPTCHA verification before sending registration OTP.
+    // Major public email domains (gmail, yahoo, etc.) were exempted from domain limits to prevent registration DoS,
+    // which meant an attacker using multiple IPs could flood OTPs to public domains.
+    // Requiring CAPTCHA verification when configured (or when client provides a captcha token)
+    // completely stops automated OTP bombing against public email providers.
+    const captchaToken = extractCaptchaToken(req);
+    const { turnstileSecret, hcaptchaSecret, recaptchaSecret } = await getCaptchaSecrets();
+    const hasCaptcha = Boolean(turnstileSecret || hcaptchaSecret || recaptchaSecret);
+
+    if (hasCaptcha) {
+      if (!captchaToken) {
+        res.status(429).json({
+          error: isAr
+            ? "يرجى إكمال التحقق الأمني (CAPTCHA) قبل طلب رمز التحقق."
+            : "CAPTCHA verification is required before requesting a verification code.",
+          captchaRequired: true,
+        });
+        return;
+      }
+      const captchaResult = await verifyCaptchaToken(captchaToken, clientIp);
+      if (!captchaResult.valid) {
+        logger.warn({ clientIp, reason: captchaResult.reason }, "Registration OTP blocked: invalid CAPTCHA token");
+        res.status(429).json({
+          error: isAr
+            ? "فشل التحقق الأمني (CAPTCHA). يرجى المحاولة مرة أخرى."
+            : "CAPTCHA verification failed. Please try again.",
+          captchaRequired: true,
+        });
+        return;
+      }
+    } else if (captchaToken) {
+      const captchaResult = await verifyCaptchaToken(captchaToken, clientIp);
+      if (!captchaResult.valid) {
+        res.status(429).json({
+          error: isAr
+            ? "فشل التحقق الأمني (CAPTCHA)."
+            : "CAPTCHA verification failed.",
+          captchaRequired: true,
+        });
+        return;
+      }
+    }
+
     // 1. Cooldown check (60 seconds) & Hourly limit (5 max) applies equally to ALL requests
     // to prevent side-channel timing and enumeration attacks (R3)
     const recentCodes = await db
@@ -626,27 +669,51 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
     }
 
     // 2. Per-email-domain rate limiting for private/corporate domains (X3)
-    // Major public providers (Gmail, Outlook, Yahoo) are exempt to prevent registration DoS on public users
+    // Major public providers (Gmail, Outlook, Yahoo) have a dedicated higher aggregate safety threshold (D6)
     const emailDomain = cleanEmail.split("@")[1]?.toLowerCase();
-    if (emailDomain && !COMMON_PUBLIC_EMAIL_DOMAINS.has(emailDomain)) {
-      const domainOtpKey = `otp_domain:${emailDomain}`;
-      let domainRecord = otpDomainRates.get(domainOtpKey);
-      const domainNow = Date.now();
-      if (!domainRecord) {
-        domainRecord = { timestamps: [] };
-        otpDomainRates.set(domainOtpKey, domainRecord);
+    if (emailDomain) {
+      if (!COMMON_PUBLIC_EMAIL_DOMAINS.has(emailDomain)) {
+        const domainOtpKey = `otp_domain:${emailDomain}`;
+        let domainRecord = otpDomainRates.get(domainOtpKey);
+        const domainNow = Date.now();
+        if (!domainRecord) {
+          domainRecord = { timestamps: [] };
+          otpDomainRates.set(domainOtpKey, domainRecord);
+        }
+        domainRecord.timestamps = domainRecord.timestamps.filter((ts) => domainNow - ts < 60 * 60 * 1000);
+        if (domainRecord.timestamps.length >= OTP_MAX_PER_DOMAIN_PER_HOUR) {
+          logger.warn({ emailDomain, count: domainRecord.timestamps.length }, "OTP domain rate limit exceeded");
+          res.status(429).json({
+            error: isAr
+              ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق المؤسسي. يرجى المحاولة لاحقاً."
+              : "Too many verification requests for this organization domain. Please try again later.",
+          });
+          return;
+        }
+        domainRecord.timestamps.push(domainNow);
+      } else {
+        // Aggregate safety rate ceiling on public email domains across all IPs (D6)
+        const publicDomainKey = `otp_public_domain:${emailDomain}`;
+        let publicDomainRecord = otpDomainRates.get(publicDomainKey);
+        const domainNow = Date.now();
+        if (!publicDomainRecord) {
+          publicDomainRecord = { timestamps: [] };
+          otpDomainRates.set(publicDomainKey, publicDomainRecord);
+        }
+        publicDomainRecord.timestamps = publicDomainRecord.timestamps.filter((ts) => domainNow - ts < 60 * 60 * 1000);
+        const OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR = 60;
+        if (publicDomainRecord.timestamps.length >= OTP_MAX_PER_PUBLIC_DOMAIN_PER_HOUR) {
+          logger.warn({ emailDomain, count: publicDomainRecord.timestamps.length }, "Public email domain OTP rate ceiling exceeded");
+          res.status(429).json({
+            error: isAr
+              ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق حالياً. يرجى المحاولة لاحقاً."
+              : "Too many verification requests for this email domain. Please try again later.",
+            captchaRequired: true,
+          });
+          return;
+        }
+        publicDomainRecord.timestamps.push(domainNow);
       }
-      domainRecord.timestamps = domainRecord.timestamps.filter((ts) => domainNow - ts < 60 * 60 * 1000);
-      if (domainRecord.timestamps.length >= OTP_MAX_PER_DOMAIN_PER_HOUR) {
-        logger.warn({ emailDomain, count: domainRecord.timestamps.length }, "OTP domain rate limit exceeded");
-        res.status(429).json({
-          error: isAr
-            ? "تم تجاوز الحد الأقصى لطلبات التحقق لهذا النطاق المؤسسي. يرجى المحاولة لاحقاً."
-            : "Too many verification requests for this organization domain. Please try again later.",
-        });
-        return;
-      }
-      domainRecord.timestamps.push(domainNow);
     }
 
     // 3. Unify username & email collision check to prevent account enumeration (N6, R3)
@@ -759,68 +826,65 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       </div>
     `;
 
-    let emailSent = false;
-    let lastError = "";
+    // D7 Fix: Dispatch email delivery asynchronously in the background so both registered and unregistered
+    // branches complete with identical near-instant timing (~5-15ms), completely eliminating email enumeration timing side-channels.
+    setImmediate(async () => {
+      let emailSent = false;
+      let lastError = "";
 
-    // 1. Try Resend if configured
-    if (apiKey) {
-      try {
-        const resendRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: sender,
-            to: [email.trim()],
+      // 1. Try Resend if configured
+      if (apiKey) {
+        try {
+          const resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: sender,
+              to: [email.trim()],
+              subject,
+              html,
+            }),
+          });
+
+          if (resendRes.ok) {
+            emailSent = true;
+            logger.info({ email: cleanEmail }, "Registration OTP sent successfully via Resend");
+          } else {
+            const errText = await resendRes.text();
+            lastError = errText;
+            logger.warn({ status: resendRes.status, err: errText }, "Resend OTP send failed, attempting SMTP fallback");
+          }
+        } catch (rErr: any) {
+          lastError = rErr?.message || "Resend network error";
+          logger.warn({ err: rErr }, "Resend exception while sending OTP, attempting SMTP fallback");
+        }
+      }
+
+      // 2. Fallback to Admin SMTP (Gmail) if Resend failed or not configured
+      if (!emailSent && smtpReady) {
+        try {
+          const transporter = buildTransporter(smtpCfg);
+          await transporter.sendMail({
+            from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
+            to: email.trim(),
             subject,
             html,
-          }),
-        });
-
-        if (resendRes.ok) {
+          });
           emailSent = true;
-          logger.info({ email: cleanEmail }, "Registration OTP sent successfully via Resend");
-        } else {
-          const errText = await resendRes.text();
-          lastError = errText;
-          logger.warn({ status: resendRes.status, err: errText }, "Resend OTP send failed, attempting SMTP fallback");
+          logger.info({ email: cleanEmail, via: "SMTP" }, "Registration OTP sent successfully via SMTP (Gmail)");
+        } catch (smtpErr: any) {
+          lastError = smtpErr?.message || "SMTP error";
+          logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration OTP");
         }
-      } catch (rErr: any) {
-        lastError = rErr?.message || "Resend network error";
-        logger.warn({ err: rErr }, "Resend exception while sending OTP, attempting SMTP fallback");
       }
-    }
 
-    // 2. Fallback to Admin SMTP (Gmail) if Resend failed or not configured
-    if (!emailSent && smtpReady) {
-      try {
-        const transporter = buildTransporter(smtpCfg);
-        await transporter.sendMail({
-          from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
-          to: email.trim(),
-          subject,
-          html,
-        });
-        emailSent = true;
-        logger.info({ email: cleanEmail, via: "SMTP" }, "Registration OTP sent successfully via SMTP (Gmail)");
-      } catch (smtpErr: any) {
-        lastError = smtpErr?.message || "SMTP error";
-        logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration OTP");
+      if (!emailSent) {
+        logger.error({ email: cleanEmail, lastError }, "Failed to deliver registration OTP email in background");
       }
-    }
-
-    if (!emailSent) {
-      let friendlyError = isAr ? "فشل إرسال كود التحقق عبر البريد الإلكتروني." : "Failed to send verification code.";
-      if (lastError.includes("testing emails")) {
-        friendlyError = isAr
-          ? "يرجى التأكد من إعدادات الـ SMTP في لوحة التحكم أو توثيق الدومين في Resend."
-          : "Delivery restriction: Please configure Admin SMTP or verify custom domain in Resend.";
-      }
-      res.status(500).json({ error: friendlyError });
-      return;
-    }
+    });
 
     res.json({
       ok: true,

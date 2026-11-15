@@ -446,22 +446,25 @@ export const DEFAULT_DAILY_WIDGET_SESSION_LIMIT = 300;  // Default cap per sessi
 export const DEFAULT_DAILY_WIDGET_IP_LIMIT = 300;       // Default cap per client IP per widget per day (defense-in-depth)
 
 export function setCompanyDailyWidgetLimit(widgetKey: string, limit: number): void {
-  const boundedLimit = Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, limit));
+  const parsed = typeof limit === "number" ? limit : parseInt(String(limit), 10);
+  const boundedLimit = Number.isFinite(parsed)
+    ? Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, parsed))
+    : DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT;
   companyDailyLimits.set(widgetKey, boundedLimit);
 }
 
 export function getCompanyDailyWidgetLimit(widgetKey: string, overrideLimit?: number | null): number {
-  if (typeof overrideLimit === "number" && overrideLimit > 0) {
+  if (typeof overrideLimit === "number" && Number.isFinite(overrideLimit) && overrideLimit > 0) {
     return Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, overrideLimit));
   }
   const configured = companyDailyLimits.get(widgetKey);
-  if (typeof configured === "number" && configured > 0) {
+  if (typeof configured === "number" && Number.isFinite(configured) && configured > 0) {
     return Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, configured));
   }
   const envVal = process.env.DAILY_WIDGET_MESSAGE_LIMIT;
   if (envVal) {
     const parsed = parseInt(envVal, 10);
-    if (!isNaN(parsed) && parsed > 0) {
+    if (Number.isFinite(parsed) && parsed > 0) {
       return Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, parsed));
     }
   }

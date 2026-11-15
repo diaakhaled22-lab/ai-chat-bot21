@@ -67,6 +67,19 @@ describe("CAPTCHA Token Extraction & Validation", () => {
       const res3 = await verifyCaptchaToken("test-invalid-captcha");
       assert.equal(res3.valid, false);
     });
+
+    it("strictly rejects test bypass tokens in production (C1 fix)", async () => {
+      const origEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = "production";
+        const res = await verifyCaptchaToken("test-captcha-valid");
+        // In production without configured upstream secret, it fails securely
+        assert.equal(res.valid, false);
+        assert.equal(res.reason, "captcha_unconfigured_in_production");
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
   });
 });
 

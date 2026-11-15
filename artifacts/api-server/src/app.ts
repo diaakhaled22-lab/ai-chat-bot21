@@ -100,7 +100,14 @@ app.use((req, res, next) => {
     process.env.FORCE_HTTPS === "true";
 
   if (shouldRedirect) {
-    const targetUrl = `https://${rawHost}${req.originalUrl || req.url}`;
+    // Prevent Host header injection during HTTPS redirection (N12 fix)
+    // Validate host format (valid domain or domain:port) and fallback to PUBLIC_HOST / canonical host if present
+    const validHostPattern = /^[a-zA-Z0-9.\-]+(?::\d+)?$/;
+    const trustedHost = process.env.PUBLIC_HOST?.trim() || (validHostPattern.test(rawHost) ? rawHost : undefined);
+    if (!trustedHost) {
+      return res.status(400).json({ error: "Invalid Host header" });
+    }
+    const targetUrl = `https://${trustedHost}${req.originalUrl || req.url}`;
     return res.redirect(301, targetUrl);
   }
 
@@ -251,15 +258,31 @@ declare global {
 // require larger payload limits (up to 15MB).
 // Standard API routes (auth, configuration, chat messages) are strictly capped at 1MB
 // to prevent memory consumption attacks and CPU exhaustion from large JSON parsing.
+// Strictly anchored to actual API endpoints instead of broad substring includes (N13 fix).
+const HEAVY_PAYLOAD_ROUTES = new Set([
+  "/api/client/company/knowledge-files",
+  "/client/company/knowledge-files",
+  "/api/client/company/knowledge-files/upload",
+  "/client/company/knowledge-files/upload",
+  "/api/storage/uploads",
+  "/storage/uploads",
+  "/api/client/wordpress/sync",
+  "/client/wordpress/sync",
+  "/api/client/rest-api/sync",
+  "/client/rest-api/sync",
+  "/api/client/shopify/sync",
+  "/client/shopify/sync",
+]);
+
 const isHeavyPayloadRoute = (req: express.Request): boolean => {
-  const p = (req.path || req.url || "").toLowerCase();
+  const p = (req.path || req.url || "").split("?")[0].toLowerCase().replace(/\/$/, "");
+  if (HEAVY_PAYLOAD_ROUTES.has(p)) return true;
+  // Also match parameter routes under knowledge-files or storage
   return (
-    p.includes("/knowledge-files") ||
-    p.includes("/knowledge/upload") ||
-    p.includes("/storage") ||
-    p.includes("/sync") ||
-    p.includes("/rag") ||
-    p.includes("/upload")
+    p.startsWith("/api/client/company/knowledge-files/") ||
+    p.startsWith("/client/company/knowledge-files/") ||
+    p.startsWith("/api/storage/") ||
+    p.startsWith("/storage/")
   );
 };
 
@@ -293,8 +316,13 @@ if (process.env.NODE_ENV === "production") {
   assertPlanApprovalSecretConfigured();
 }
 
-// ── Startup Validation — reject placeholder secrets in production ────────
+// ── Startup Validation — reject missing or placeholder secrets in production ────────
 if (process.env.NODE_ENV === 'production') {
+  if (!process.env.SESSION_SECRET || !process.env.SESSION_SECRET.trim()) {
+    logger.error('FATAL SECURITY ERROR: SESSION_SECRET is required in production. Refusing to start.');
+    throw new Error('FATAL SECURITY ERROR: SESSION_SECRET is required in production. Refusing to start.');
+  }
+
   const PLACEHOLDER_PATTERN = /^(replace_with|change_me|your_secret_here|your_key_here)/i;
   const criticalSecrets: Array<[string, string | undefined]> = [
     ['SESSION_SECRET', process.env.SESSION_SECRET],
@@ -315,9 +343,7 @@ if (process.env.NODE_ENV === 'production') {
 
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
 if (!process.env.SESSION_SECRET) {
-  if (process.env.NODE_ENV === 'production') {
-    logger.warn('SECURITY: SESSION_SECRET env var is not set. Using a random secret — sessions will not survive restarts.');
-  }
+  logger.warn('SECURITY: SESSION_SECRET env var is not set. Using a random secret for non-production environment.');
 }
 
 const PgStore = pgSession(session);

@@ -6,6 +6,7 @@
   "scripts": {
     "setup": "tsx ./src/setup.ts",
     "seed": "tsx ./src/seed.ts",
+    "migrate:encryption": "tsx ./src/migrate_encryption.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -91,9 +91,17 @@ export function getDecryptionKeys(): Buffer[] {
   }
 
   // 4. In development, testing, or when ALLOW_LEGACY_FALLBACK_KEYS="true" is set:
-  // Allow candidates from DATABASE_URL, SESSION_SECRET, and REPL_ID (X1 fix)
+  // Allow candidates from DATABASE_URL, SESSION_SECRET, and REPL_ID (X1/D4 fix)
   const isProd = process.env.NODE_ENV === "production";
   const allowLegacy = !isProd || process.env.ALLOW_LEGACY_FALLBACK_KEYS === "true";
+
+  if (isProd && process.env.ALLOW_LEGACY_FALLBACK_KEYS === "true") {
+    console.warn(
+      "[SECURITY DEPRECATION] ALLOW_LEGACY_FALLBACK_KEYS=true is enabled in production. " +
+      "Run 'pnpm run db:migrate-encryption' to unify all encrypted data under ENCRYPTION_KEY, " +
+      "then unset ALLOW_LEGACY_FALLBACK_KEYS."
+    );
+  }
 
   if (allowLegacy) {
     // Historic candidate from DATABASE_URL

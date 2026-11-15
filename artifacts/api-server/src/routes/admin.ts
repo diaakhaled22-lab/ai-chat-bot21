@@ -1211,9 +1211,13 @@ async function handleUpdateCompany(req: any, res: any) {
       updateValues.widgetAllowedDomains = body.widgetAllowedDomains ? String(body.widgetAllowedDomains).trim() : null;
     }
     if (body.widgetDailyLimit !== undefined) {
-      updateValues.widgetDailyLimit = body.widgetDailyLimit !== null && body.widgetDailyLimit !== ""
-        ? Math.min(50000, Math.max(1, parseInt(String(body.widgetDailyLimit), 10)))
-        : null;
+      const rawLimit = body.widgetDailyLimit;
+      if (rawLimit === null || rawLimit === "") {
+        updateValues.widgetDailyLimit = null;
+      } else {
+        const parsed = parseInt(String(rawLimit), 10);
+        updateValues.widgetDailyLimit = Number.isFinite(parsed) ? Math.min(50000, Math.max(1, parsed)) : null;
+      }
     }
 
     // 8. Google Sheets

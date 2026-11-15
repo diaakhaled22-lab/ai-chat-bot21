@@ -732,9 +732,13 @@ router.put("/client/company", async (req, res) => {
       updates.widgetAllowedDomains = (data as any).widgetAllowedDomains ? String((data as any).widgetAllowedDomains).trim() : null;
     }
     if ((data as any).widgetDailyLimit !== undefined) {
-      updates.widgetDailyLimit = (data as any).widgetDailyLimit !== null && (data as any).widgetDailyLimit !== ""
-        ? Math.min(50000, Math.max(1, parseInt(String((data as any).widgetDailyLimit), 10)))
-        : null;
+      const rawLimit = (data as any).widgetDailyLimit;
+      if (rawLimit === null || rawLimit === "") {
+        updates.widgetDailyLimit = null;
+      } else {
+        const parsed = parseInt(String(rawLimit), 10);
+        updates.widgetDailyLimit = Number.isFinite(parsed) ? Math.min(50000, Math.max(1, parsed)) : null;
+      }
     }
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
     if (data.websiteAutoSync !== undefined) updates.websiteAutoSync = data.websiteAutoSync;

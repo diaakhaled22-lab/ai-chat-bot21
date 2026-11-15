@@ -124,12 +124,16 @@ router.get("/widget/:key/config", chatLimiter, async (req, res) => {
       }
     }
 
+    const rawClientIp = (req.ip || req.socket.remoteAddress || "unknown").replace(/^::ffff:/i, "").trim();
+
     if (!sessionToken && rawSessionId && isValidWidgetSessionId(rawSessionId)) {
+      if (!checkNewWidgetSessionIssuance(rawClientIp)) {
+        res.status(429).json({ error: "Too many new widget sessions created from this IP. Please wait before opening another session." });
+        return;
+      }
       activeSessionId = rawSessionId;
       sessionToken = createWidgetSessionToken(rawSessionId, key as string, company.id);
     }
-
-    const rawClientIp = (req.ip || req.socket.remoteAddress || "unknown").replace(/^::ffff:/i, "").trim();
 
     if (!sessionToken) {
       if (!checkNewWidgetSessionIssuance(rawClientIp)) {
@@ -178,6 +182,8 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
     let effectiveSessionId: string;
     let effectiveSessionToken: string;
 
+    const rawClientIp = (req.ip || req.socket.remoteAddress || "unknown").replace(/^::ffff:/i, "").trim();
+
     if (rawToken && typeof rawToken === "string") {
       const verified = verifyWidgetSessionToken(rawToken, key as string);
       if (!verified.valid || !verified.payload) {
@@ -187,6 +193,10 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       effectiveSessionId = verified.payload.sid;
       effectiveSessionToken = rawToken;
     } else if (rawSessionId && typeof rawSessionId === "string" && isValidWidgetSessionId(rawSessionId)) {
+      if (!checkNewWidgetSessionIssuance(rawClientIp)) {
+        res.status(429).json({ error: "Too many new widget sessions created from this IP. Please wait before opening another session." });
+        return;
+      }
       effectiveSessionId = rawSessionId;
       effectiveSessionToken = createWidgetSessionToken(rawSessionId, key as string, company.id);
     } else {

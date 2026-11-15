@@ -21,7 +21,6 @@ export function detectKnownProxyPlatform(env: NodeJS.ProcessEnv = process.env): 
   if (env.FLY_ALLOC_ID || env.FLY_APP_NAME) return "Fly.io";
   if (env.CF_PAGES || env.CF_PAGES_URL) return "Cloudflare Pages";
   if (env.DIGITALOCEAN_APP_ID) return "DigitalOcean App Platform";
-  if (env.AWS_LAMBDA_FUNCTION_NAME || env.AWS_EXECUTION_ENV) return "AWS Lambda";
   if (env.NETLIFY) return "Netlify";
 
   return null;

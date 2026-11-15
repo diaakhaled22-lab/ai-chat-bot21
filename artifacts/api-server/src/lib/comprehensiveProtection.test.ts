@@ -11,14 +11,11 @@ import { sanitizeUserFacingErrorMessage, containsSensitiveErrorInfo } from "./er
 
 describe("1. Granular Request Body Size Limits Hardening", () => {
   const isHeavyPayloadRoute = (req: express.Request): boolean => {
-    const p = (req.path || req.url || "").toLowerCase();
+    const p = (req.path || req.url || "").split("?")[0].toLowerCase().replace(/\/$/, "");
     return (
-      p.includes("/knowledge-files") ||
-      p.includes("/knowledge/upload") ||
-      p.includes("/storage") ||
-      p.includes("/sync") ||
-      p.includes("/rag") ||
-      p.includes("/upload")
+      p.startsWith("/api/client/company/knowledge-files") ||
+      p.startsWith("/api/knowledge-files") ||
+      p.startsWith("/api/storage")
     );
   };
 

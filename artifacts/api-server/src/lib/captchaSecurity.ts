@@ -113,22 +113,24 @@ export async function verifyCaptchaToken(
 
   const cleanToken = token.trim();
 
-  // 1. Official Cloudflare Turnstile & hCaptcha test dummy keys
-  if (
-    cleanToken === "1x0000000000000000000000000000000AA" ||
-    cleanToken === "test-turnstile-pass" ||
-    cleanToken === "test-captcha-valid" ||
-    cleanToken === "XXXX.DUMMY.TOKEN.XXXX"
-  ) {
-    return { valid: true, provider: "test" };
-  }
+  // 1. In non-production environments only: allow mock/dummy tokens for automated test suites
+  if (process.env.NODE_ENV !== "production") {
+    if (
+      cleanToken === "1x0000000000000000000000000000000AA" ||
+      cleanToken === "test-turnstile-pass" ||
+      cleanToken === "test-captcha-valid" ||
+      cleanToken === "XXXX.DUMMY.TOKEN.XXXX"
+    ) {
+      return { valid: true, provider: "test" };
+    }
 
-  if (
-    cleanToken === "2x0000000000000000000000000000000AA" ||
-    cleanToken === "test-turnstile-fail" ||
-    cleanToken === "test-invalid-captcha"
-  ) {
-    return { valid: false, provider: "test", reason: "invalid_test_token" };
+    if (
+      cleanToken === "2x0000000000000000000000000000000AA" ||
+      cleanToken === "test-turnstile-fail" ||
+      cleanToken === "test-invalid-captcha"
+    ) {
+      return { valid: false, provider: "test", reason: "invalid_test_token" };
+    }
   }
 
   const { turnstileSecret, hcaptchaSecret, recaptchaSecret } = await getCaptchaSecrets();

@@ -42,12 +42,12 @@ describe("detectKnownProxyPlatform", () => {
     assert.equal(detectKnownProxyPlatform({ DIGITALOCEAN_APP_ID: "do-app-123" }), "DigitalOcean App Platform");
   });
 
-  it("detects AWS Lambda via AWS_EXECUTION_ENV", () => {
-    assert.equal(detectKnownProxyPlatform({ AWS_EXECUTION_ENV: "AWS_Lambda_nodejs20.x" }), "AWS Lambda");
-  });
-
   it("detects Netlify via NETLIFY", () => {
     assert.equal(detectKnownProxyPlatform({ NETLIFY: "true" }), "Netlify");
+  });
+
+  it("requires explicit TRUSTED_PROXIES in AWS environments without blindly trusting AWS_EXECUTION_ENV (C6 fix)", () => {
+    assert.equal(detectKnownProxyPlatform({ AWS_EXECUTION_ENV: "AWS_Lambda_nodejs20.x" }), null);
   });
 
   it("returns null when no known cloud proxy platform is present", () => {
