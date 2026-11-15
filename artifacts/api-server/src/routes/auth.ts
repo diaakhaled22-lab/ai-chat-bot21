@@ -834,12 +834,14 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       `;
     } else {
       // Registered email: Record dummy entry for cooldown (R3)
+      // Handled identically to the unregistered case without swallowing DB insertion errors
+      // to ensure strictly uniform error handling and prevent enumeration side-channels.
       await db.insert(emailVerificationCodesTable).values({
         email: cleanEmail,
         code: hashOtpCode(cleanEmail, "000000"),
         attempts: 99,
         expiresAt: new Date(Date.now() + 60 * 1000),
-      }).catch((err) => logger.warn({ err }, "Failed to record dummy OTP cooldown"));
+      });
 
       logger.info({ email: cleanEmail }, "Registration OTP requested for existing account; sending existing account notice email");
 
