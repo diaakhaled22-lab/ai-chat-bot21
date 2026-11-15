@@ -9,6 +9,7 @@ import { logger } from "./lib/logger";
 import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionAnomalyDetector } from "./lib/security";
 import { errorSanitizerMiddleware, globalErrorHandler } from "./lib/errorSecurity";
 import { sensitiveFilesGuard } from "./lib/sensitiveFilesSecurity";
+import { resolveTrustProxySetting } from "./lib/proxySecurity";
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,34 +42,19 @@ app.use(sensitiveFilesGuard);
 // Without this, req.ip resolves to the internal proxy IP for all users, breaking rate limits,
 // IP-based blocking, and Secure cookie flags. In standalone/direct environments without proxies,
 // trusting proxies blindly allows client-spoofed X-Forwarded-For and X-Forwarded-Host headers.
-const isBehindKnownReverseProxy = Boolean(
-  process.env.REPLIT_DEV_DOMAIN ||
-  process.env.REPLIT_CLUSTER ||
-  process.env.K_SERVICE || // Google Cloud Run
-  process.env.RENDER || // Render
-  process.env.RAILWAY_ENVIRONMENT || // Railway
-  process.env.VERCEL || // Vercel
-  process.env.HEROKU_APP_ID || // Heroku
-  process.env.FLY_ALLOC_ID // Fly.io
+// We strictly set trust proxy to 1 ONLY when behind a recognized cloud ingress platform or
+// when TRUSTED_PROXIES is explicitly configured. Direct production defaults to false.
+const trustProxyResolution = resolveTrustProxySetting();
+app.set("trust proxy", trustProxyResolution.value as any);
+logger.info(
+  {
+    trustProxy: trustProxyResolution.value,
+    source: trustProxyResolution.source,
+    platform: trustProxyResolution.platformName,
+    reason: trustProxyResolution.reason,
+  },
+  "Configured Express trust proxy setting"
 );
-
-const rawTrustedProxies = process.env.TRUSTED_PROXIES?.trim();
-if (rawTrustedProxies) {
-  if (rawTrustedProxies === "false" || rawTrustedProxies === "0") {
-    app.set("trust proxy", false);
-  } else if (rawTrustedProxies === "true" || rawTrustedProxies === "1") {
-    app.set("trust proxy", 1);
-  } else {
-    const proxiesList = rawTrustedProxies.split(",").map((p) => p.trim()).filter(Boolean);
-    app.set("trust proxy", proxiesList.length === 1 ? proxiesList[0] : (proxiesList.length > 0 ? proxiesList : 1));
-  }
-} else if (isBehindKnownReverseProxy || process.env.NODE_ENV === "production") {
-  // Known cloud PaaS/container ingress or production reverse proxies terminate TLS
-  app.set("trust proxy", 1);
-} else {
-  // Standalone/direct VPS deployments default to untrusted to prevent header spoofing
-  app.set("trust proxy", false);
-}
 
 // ── Automatic HTTP to HTTPS Redirection Middleware ────────────────────────
 // Automatically redirects plain HTTP requests to HTTPS with 301 Moved Permanently.

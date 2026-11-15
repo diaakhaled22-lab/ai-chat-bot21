@@ -26,12 +26,14 @@ import { ensureVoiceSchema } from "./lib/audio";
 import { getExchangeRates } from "./lib/currencyRates";
 import { assertPlanApprovalSecretConfigured } from "./lib/planApproval";
 import { ensureEmailVerificationSchema } from "./routes/auth";
+import { resolveTrustProxySetting, auditProxyExposure } from "./lib/proxySecurity";
 
 // Early security sanity check: prevent server startup if PLAN_APPROVAL_SECRET is not configured
 assertPlanApprovalSecretConfigured();
 
 const rawPort = process.env["API_PORT"] || (process.env["PORT"] && process.env["PORT"] !== "3000" && process.env["PORT"] !== "5173" ? process.env["PORT"] : "8080");
 const port = Number(rawPort) || 8080;
+const bindHost = process.env["BIND_HOST"] || process.env["HOST"] || "0.0.0.0";
 
 async function expireCompanies() {
   try {
@@ -339,8 +341,11 @@ async function startServer() {
       process.exit(1);
     });
 
-    server.listen(port, "0.0.0.0", () => {
-      logger.info({ port }, "Server listening");
+    server.listen(port, bindHost, () => {
+      logger.info({ port, bindHost }, "Server listening");
+      // Security audit check for proxy configuration & host binding exposure
+      const trustResolution = resolveTrustProxySetting();
+      auditProxyExposure(trustResolution, bindHost, port);
     });
 
     // Gracefully handle SIGTERM and SIGINT to close the socket cleanly on restart
