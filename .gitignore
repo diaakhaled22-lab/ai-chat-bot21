@@ -171,6 +171,12 @@ test_*.mjs
 *.psql
 *.pgsql
 
+# Migration backups and sensitive secret snapshots
+scripts/backups/
+**/backups/
+encryption_backup_*.json
+*encryption_backup*.json
+
 # Editor backup files and temporary files
 *.bak
 *.backup

@@ -157,9 +157,11 @@ async function runMigration() {
 
   // ── 2. Collect In-Memory / File Backup Snapshot ──
   const fileBackupRecords: BackupRecord[] = [];
+  const shouldSaveFileBackup = process.argv.includes("--save-file-backup");
   const backupDir = path.resolve(process.cwd(), "scripts", "backups");
-  if (!fs.existsSync(backupDir)) {
+  if (shouldSaveFileBackup && !fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
+    fs.writeFileSync(path.join(backupDir, ".gitignore"), "*\n!.gitignore\n", "utf-8");
   }
 
   // ── 3. Execute Migration within an ACID Transaction ──
@@ -248,10 +250,15 @@ async function runMigration() {
       process.exit(1);
     }
 
-    // Persist file backup before commit
-    const backupFilePath = path.join(backupDir, `encryption_backup_${timestamp}.json`);
-    fs.writeFileSync(backupFilePath, JSON.stringify({ timestamp, records: fileBackupRecords }, null, 2), "utf-8");
-    console.log(`[MIGRATE-ENCRYPTION] Backup file saved to: ${backupFilePath}`);
+    // Persist file backup only if explicitly opted-in (with restrictive permissions 0o600 and .gitignore protection)
+    if (shouldSaveFileBackup) {
+      const backupFilePath = path.join(backupDir, `encryption_backup_${timestamp}.json`);
+      fs.writeFileSync(backupFilePath, JSON.stringify({ timestamp, records: fileBackupRecords }, null, 2), {
+        encoding: "utf-8",
+        mode: 0o600,
+      });
+      console.log(`[MIGRATE-ENCRYPTION] Local backup file saved to: ${backupFilePath}`);
+    }
 
     // Commit transaction
     await client.query("COMMIT;");
