@@ -1,7 +1,29 @@
 -- ==============================================================================
 -- DATABASE SECURITY HARDENING: ROW LEVEL SECURITY (RLS) & LEAST PRIVILEGE ROLES
 -- Database: PostgreSQL 14+
+--
+-- USAGE:
+-- The application user password MUST be passed explicitly via psql variable (pass):
+--
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v pass='YOUR_STRONG_PASSWORD_HERE' -f scripts/security_rls_and_roles.sql
+--
+-- DO NOT hardcode passwords or defaults in this script. Execution will abort if
+-- :pass is undefined or empty.
 -- ==============================================================================
+
+-- Ensure execution aborts immediately on error
+\set ON_ERROR_STOP on
+
+-- Validate that :pass variable was passed via psql command-line (-v pass=...)
+-- Abort with a clear error message if :pass is missing or empty.
+DO $check$
+DECLARE
+  app_pass text := :'pass';
+BEGIN
+  IF app_pass IS NULL OR length(trim(app_pass)) = 0 THEN
+    RAISE EXCEPTION 'FATAL: Application database password must be passed explicitly via psql variable. Example: psql "$DATABASE_URL" -v pass=''YOUR_STRONG_PASSWORD'' -f scripts/security_rls_and_roles.sql';
+  END IF;
+END $check$;
 
 -- ------------------------------------------------------------------------------
 -- PART 1: LEAST-PRIVILEGE APPLICATION ROLE SETUP
@@ -11,12 +33,16 @@
 -- (SELECT, INSERT, UPDATE, DELETE). It must NOT have DDL permissions
 -- (CREATE, ALTER, DROP, TRUNCATE) or SUPERUSER privileges.
 
-DO $$
+DO $setup$
+DECLARE
+  app_pass text := :'pass';
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'chatbot_app_user') THEN
-    CREATE ROLE chatbot_app_user WITH LOGIN PASSWORD 'CHANGE_THIS_SECURE_PASSWORD';
+    EXECUTE format('CREATE ROLE chatbot_app_user WITH LOGIN PASSWORD %L', app_pass);
+  ELSE
+    EXECUTE format('ALTER ROLE chatbot_app_user WITH LOGIN PASSWORD %L', app_pass);
   END IF;
-END $$;
+END $setup$;
 
 -- Revoke default public permissions on public schema
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
