@@ -338,8 +338,11 @@ export function getWidgetSigningSecret(): string {
   if (process.env.WIDGET_SIGNING_SECRET?.trim()) {
     return process.env.WIDGET_SIGNING_SECRET.trim();
   }
-  if (process.env.SESSION_SECRET?.trim()) {
-    return process.env.SESSION_SECRET.trim();
+  // Cryptographic key separation: Do NOT reuse SESSION_SECRET for signing public widget tokens.
+  // Derive a dedicated domain-separated key from ENCRYPTION_KEY if available.
+  const masterKey = process.env.ENCRYPTION_KEY?.trim();
+  if (masterKey) {
+    return crypto.createHmac("sha256", masterKey).update("ai-chat-bot:widget-session-signing-key:v1").digest("hex");
   }
   if (!ephemeralWidgetSecret) {
     ephemeralWidgetSecret = crypto.randomBytes(32).toString("hex");
@@ -438,25 +441,29 @@ const dailyWidgetIpCounts = new Map<string, { count: number; resetAt: number }>(
 const companyDailyLimits = new Map<string, number>();
 
 export const DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT = 2000; // Default company daily messages cap across all users
+export const MAX_ALLOWED_WIDGET_DAILY_LIMIT = 50000;   // Hard upper safety ceiling to prevent integer overflow / resource exhaustion
 export const DEFAULT_DAILY_WIDGET_SESSION_LIMIT = 300;  // Default cap per session per widget per day
 export const DEFAULT_DAILY_WIDGET_IP_LIMIT = 300;       // Default cap per client IP per widget per day (defense-in-depth)
 
 export function setCompanyDailyWidgetLimit(widgetKey: string, limit: number): void {
-  companyDailyLimits.set(widgetKey, Math.max(1, limit));
+  const boundedLimit = Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, limit));
+  companyDailyLimits.set(widgetKey, boundedLimit);
 }
 
 export function getCompanyDailyWidgetLimit(widgetKey: string, overrideLimit?: number | null): number {
   if (typeof overrideLimit === "number" && overrideLimit > 0) {
-    return overrideLimit;
+    return Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, overrideLimit));
   }
   const configured = companyDailyLimits.get(widgetKey);
   if (typeof configured === "number" && configured > 0) {
-    return configured;
+    return Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, configured));
   }
   const envVal = process.env.DAILY_WIDGET_MESSAGE_LIMIT;
   if (envVal) {
     const parsed = parseInt(envVal, 10);
-    if (!isNaN(parsed) && parsed > 0) return parsed;
+    if (!isNaN(parsed) && parsed > 0) {
+      return Math.min(MAX_ALLOWED_WIDGET_DAILY_LIMIT, Math.max(1, parsed));
+    }
   }
   return DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT;
 }
@@ -567,7 +574,34 @@ export function recordDailyWidgetMessage(
   });
 }
 
-// Clean up expired daily counters every hour
+// Sliding-window limiter for new widget session issuance per client IP (prevents mass session generation DoS - C3)
+const newSessionIssuanceByIp = new Map<string, number[]>();
+export const MAX_NEW_WIDGET_SESSIONS_PER_IP_HOURLY = 50;
+
+/**
+ * Checks and records whether a client IP is allowed to obtain a brand new widget session token.
+ * Prevents malicious actors from churning thousands of fresh signed session tokens to evade limits.
+ */
+export function checkNewWidgetSessionIssuance(ip: string): boolean {
+  const normIp = (ip || "unknown").replace(/^::ffff:/i, "").trim().toLowerCase();
+  if (normIp === "127.0.0.1" || normIp === "::1" || normIp === "localhost") return true;
+
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000; // 1 hour window
+  let timestamps = newSessionIssuanceByIp.get(normIp) || [];
+  timestamps = timestamps.filter((t) => now - t <= windowMs);
+
+  if (timestamps.length >= MAX_NEW_WIDGET_SESSIONS_PER_IP_HOURLY) {
+    newSessionIssuanceByIp.set(normIp, timestamps);
+    return false;
+  }
+
+  timestamps.push(now);
+  newSessionIssuanceByIp.set(normIp, timestamps);
+  return true;
+}
+
+// Clean up expired daily counters and session issuance records every hour
 setInterval(() => {
   const now = Date.now();
   for (const [key, record] of dailyWidgetMessageCounts) {
@@ -578,5 +612,14 @@ setInterval(() => {
   }
   for (const [key, record] of dailyWidgetIpCounts) {
     if (now >= record.resetAt) dailyWidgetIpCounts.delete(key);
+  }
+  const windowMs = 60 * 60 * 1000;
+  for (const [ip, timestamps] of newSessionIssuanceByIp) {
+    const valid = timestamps.filter((t) => now - t <= windowMs);
+    if (valid.length === 0) {
+      newSessionIssuanceByIp.delete(ip);
+    } else {
+      newSessionIssuanceByIp.set(ip, valid);
+    }
   }
 }, 60 * 60 * 1000).unref();

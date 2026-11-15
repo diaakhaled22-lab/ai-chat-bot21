@@ -520,11 +520,20 @@ export function isCaptchaRequired(username: string): boolean {
 }
 
 /**
- * Checks if an account is currently restricted by progressive delay.
+ * Checks if an account or (username + IP) pair is currently restricted by progressive delay.
+ * Scoped to (username + IP) when IP is provided to prevent remote Denial-of-Service (C2).
  * Returns the remaining delay in seconds (for HTTP Retry-After header), or 0 if allowed.
  */
-export function getAccountRetryAfter(username: string): number {
+export function getAccountRetryAfter(username: string, ip?: string): number {
   const normUser = username.trim().toLowerCase();
+  if (ip) {
+    const pairEntry = loginAttempts.get(getLoginAttemptKey(username, ip));
+    if (pairEntry?.nextAllowedAt) {
+      const remainingMs = pairEntry.nextAllowedAt - Date.now();
+      if (remainingMs > 0) return Math.ceil(remainingMs / 1000);
+    }
+    return 0;
+  }
   const entry = accountLoginAttempts.get(normUser);
   if (!entry || !entry.nextAllowedAt) return 0;
   const remainingMs = entry.nextAllowedAt - Date.now();
@@ -532,11 +541,18 @@ export function getAccountRetryAfter(username: string): number {
 }
 
 /**
- * Returns the timestamp in milliseconds when the next login attempt is permitted for an account,
+ * Returns the timestamp in milliseconds when the next login attempt is permitted for an account or IP,
  * or null if no delay is currently active.
  */
-export function getAccountNextAllowedAt(username: string): number | null {
+export function getAccountNextAllowedAt(username: string, ip?: string): number | null {
   const normUser = username.trim().toLowerCase();
+  if (ip) {
+    const pairEntry = loginAttempts.get(getLoginAttemptKey(username, ip));
+    if (pairEntry?.nextAllowedAt && pairEntry.nextAllowedAt > Date.now()) {
+      return pairEntry.nextAllowedAt;
+    }
+    return null;
+  }
   const entry = accountLoginAttempts.get(normUser);
   if (!entry || !entry.nextAllowedAt) return null;
   return entry.nextAllowedAt > Date.now() ? entry.nextAllowedAt : null;
@@ -635,7 +651,10 @@ setInterval(() => {
       entry.postLockoutFailures = 0;
       entry.warningSent = false;
     }
-    if (!entry.lockedUntil && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
+    if (entry.nextAllowedAt && now > entry.nextAllowedAt) {
+      entry.nextAllowedAt = null;
+    }
+    if (!entry.lockedUntil && !entry.nextAllowedAt && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
       loginAttempts.delete(key);
     }
   }
@@ -827,10 +846,13 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
 
   if (progressiveDelayMs > 0) {
     nextAllowedAt = now + progressiveDelayMs;
+    // Set on the specific (username + IP) pair to prevent remote DoS against other IPs (C2)
+    pairEntry.nextAllowedAt = nextAllowedAt;
+    // Also track on accountEntry for account-wide queries/backwards compatibility
     accountEntry.nextAllowedAt = nextAllowedAt;
     logger.info(
-      { username: normUser, accountAttempts, delayMs: progressiveDelayMs, nextAllowedAt },
-      "Progressive delay scheduled; subsequent or parallel attempts will be rejected immediately with 429 Retry-After"
+      { username: normUser, ip: normalizedIp, accountAttempts, delayMs: progressiveDelayMs, nextAllowedAt },
+      "Progressive delay scheduled for (user, IP); subsequent attempts from this IP will be rejected immediately with 429 Retry-After"
     );
   }
 
@@ -921,6 +943,14 @@ export function resetLoginAttempts(username: string, ip?: string): void {
   if (ip) {
     loginAttempts.delete(getLoginAttemptKey(username, ip));
     ipLoginAttempts.delete(normalizeIp(ip));
+  } else {
+    // When no specific IP is provided, clear all pair records matching this username
+    const prefix = `${normUser}\u0000`;
+    for (const key of loginAttempts.keys()) {
+      if (key.startsWith(prefix)) {
+        loginAttempts.delete(key);
+      }
+    }
   }
 }
 

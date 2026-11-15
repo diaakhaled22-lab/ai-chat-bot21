@@ -223,8 +223,8 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
       return;
     }
 
-    // Check non-blocking progressive delay (blocks parallel/burst attempts immediately)
-    const retryAfter = getAccountRetryAfter(username);
+    // Check non-blocking progressive delay (blocks parallel/burst attempts from this IP immediately)
+    const retryAfter = getAccountRetryAfter(username, clientIp);
     if (retryAfter > 0) {
       res.setHeader("Retry-After", String(retryAfter));
       res.status(429).json({
@@ -363,8 +363,8 @@ router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
       return;
     }
 
-    // Check non-blocking progressive delay (blocks parallel/burst attempts immediately)
-    const retryAfter = getAccountRetryAfter(tokenData.username);
+    // Check non-blocking progressive delay (blocks parallel/burst attempts from this IP immediately)
+    const retryAfter = getAccountRetryAfter(tokenData.username, clientIp);
     if (retryAfter > 0) {
       res.setHeader("Retry-After", String(retryAfter));
       res.status(429).json({
@@ -470,8 +470,8 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     const reqLang = (req.body as { lang?: string } | undefined)?.lang;
     const isAr = reqLang !== "en";
 
-    // Check non-blocking progressive delay (blocks parallel/burst attempts immediately)
-    const retryAfter = getAccountRetryAfter(username);
+    // Check non-blocking progressive delay (blocks parallel/burst attempts from this IP immediately)
+    const retryAfter = getAccountRetryAfter(username, clientIp);
     if (retryAfter > 0) {
       res.setHeader("Retry-After", String(retryAfter));
       res.status(429).json({

@@ -13,6 +13,9 @@ import {
   createWidgetSessionToken,
   verifyWidgetSessionToken,
   validateWidgetRequest,
+  MAX_ALLOWED_WIDGET_DAILY_LIMIT,
+  getCompanyDailyWidgetLimit,
+  checkNewWidgetSessionIssuance,
 } from "./widgetSecurity";
 
 describe("widget origin restrictions and security hardening", () => {
@@ -333,5 +336,26 @@ describe("cryptographically signed widget session token", () => {
     // User 2 on the SAME IP must NOT be blocked!
     const user2Check = checkDailyWidgetLimit(natWidgetKey, user2Token, { clientIp: sharedNatIp, consume: false });
     assert.equal(user2Check.allowed, true, "User 2 with their own signed session token must not be blocked by User 1's usage on the same IP");
+  });
+
+  it("enforces upper safety ceiling on widgetDailyLimit (C4)", () => {
+    assert.equal(MAX_ALLOWED_WIDGET_DAILY_LIMIT, 50000);
+    // Setting beyond MAX_ALLOWED_WIDGET_DAILY_LIMIT is clamped to 50000
+    setCompanyDailyWidgetLimit("huge-limit-test", 9999999);
+    assert.equal(getCompanyDailyWidgetLimit("huge-limit-test"), 50000);
+    assert.equal(getCompanyDailyWidgetLimit("override-huge-test", 500000), 50000);
+  });
+
+  it("limits new widget session issuance per IP to prevent session churning (C3)", () => {
+    const testIp = "203.0.113.88";
+    // First 50 requests should succeed
+    for (let i = 0; i < 50; i++) {
+      assert.equal(checkNewWidgetSessionIssuance(testIp), true, `Session ${i} should be allowed`);
+    }
+    // 51st request from the same IP must be rejected
+    assert.equal(checkNewWidgetSessionIssuance(testIp), false, "51st new session from same IP must be rate-limited");
+
+    // Loopback IP is exempt for local dev/testing
+    assert.equal(checkNewWidgetSessionIssuance("127.0.0.1"), true);
   });
 });

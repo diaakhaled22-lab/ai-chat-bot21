@@ -1212,7 +1212,7 @@ async function handleUpdateCompany(req: any, res: any) {
     }
     if (body.widgetDailyLimit !== undefined) {
       updateValues.widgetDailyLimit = body.widgetDailyLimit !== null && body.widgetDailyLimit !== ""
-        ? Math.max(1, parseInt(String(body.widgetDailyLimit), 10))
+        ? Math.min(50000, Math.max(1, parseInt(String(body.widgetDailyLimit), 10)))
         : null;
     }
 

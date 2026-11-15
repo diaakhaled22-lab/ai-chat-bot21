@@ -87,6 +87,12 @@ describe("Account lockout IP scoping (DoS prevention - N1)", () => {
     assert.ok(getAccountRetryAfter(distributedUser) > 0, "getAccountRetryAfter must return positive seconds");
     assert.ok(getAccountNextAllowedAt(distributedUser)! > Date.now(), "getAccountNextAllowedAt must return future timestamp");
 
+    // IP-scoped delay check (C2 prevention):
+    // The IP that made the 7th attempt has active delay
+    assert.ok(getAccountRetryAfter(distributedUser, "198.51.100.7") > 0, "IP making attempts must have Retry-After delay");
+    // A completely fresh legitimate IP must NOT be blocked by 429 Retry-After (prevents DoS / lockout of real admin)
+    assert.equal(getAccountRetryAfter(distributedUser, "198.51.100.99"), 0, "Fresh IP must NOT be blocked by progressive delay");
+
     // Account should NOT be locked out for a fresh IP (DoS protection)
     assert.equal(isAccountLocked(distributedUser, "198.51.100.99"), 0);
 
@@ -95,6 +101,7 @@ describe("Account lockout IP scoping (DoS prevention - N1)", () => {
     assert.equal(isCaptchaRequired(distributedUser), false);
     assert.equal(getAccountRetryAfter(distributedUser), 0);
     assert.equal(getAccountNextAllowedAt(distributedUser), null);
+    assert.equal(getAccountRetryAfter(distributedUser, "198.51.100.7"), 0);
   });
 });
 

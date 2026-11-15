@@ -37,6 +37,7 @@ import {
   createWidgetSessionToken,
   verifyWidgetSessionToken,
   DEFAULT_DAILY_WIDGET_MESSAGE_LIMIT,
+  checkNewWidgetSessionIssuance,
 } from "../lib/widgetSecurity";
 
 const router = Router();
@@ -128,7 +129,13 @@ router.get("/widget/:key/config", chatLimiter, async (req, res) => {
       sessionToken = createWidgetSessionToken(rawSessionId, key as string, company.id);
     }
 
+    const rawClientIp = (req.ip || req.socket.remoteAddress || "unknown").replace(/^::ffff:/i, "").trim();
+
     if (!sessionToken) {
+      if (!checkNewWidgetSessionIssuance(rawClientIp)) {
+        res.status(429).json({ error: "Too many new widget sessions created from this IP. Please wait before opening another session." });
+        return;
+      }
       activeSessionId = "ws_" + crypto.randomBytes(32).toString("hex");
       sessionToken = createWidgetSessionToken(activeSessionId, key as string, company.id);
     }

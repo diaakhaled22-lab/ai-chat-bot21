@@ -733,7 +733,7 @@ router.put("/client/company", async (req, res) => {
     }
     if ((data as any).widgetDailyLimit !== undefined) {
       updates.widgetDailyLimit = (data as any).widgetDailyLimit !== null && (data as any).widgetDailyLimit !== ""
-        ? Math.max(1, parseInt(String((data as any).widgetDailyLimit), 10))
+        ? Math.min(50000, Math.max(1, parseInt(String((data as any).widgetDailyLimit), 10)))
         : null;
     }
     if (data.websiteDataUrl !== undefined) updates.websiteDataUrl = data.websiteDataUrl;
