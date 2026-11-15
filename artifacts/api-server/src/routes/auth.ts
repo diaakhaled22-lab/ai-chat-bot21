@@ -16,6 +16,7 @@ import {
   isAccountLocked,
   isIpBlocked,
   isCaptchaRequired,
+  getAccountRetryAfter,
   recordBlockedLoginAttempt,
   recordFailedLogin,
   resetLoginAttempts,
@@ -102,7 +103,9 @@ const COMMON_PUBLIC_EMAIL_DOMAINS = new Set([
 ]);
 
 /**
- * Handles failed login attempts with progressive delay & CAPTCHA requirements (R2).
+ * Handles failed login attempts with non-blocking progressive delay (429 + Retry-After) & CAPTCHA requirements.
+ * Rejects immediately with Retry-After instead of sleeping inside the handler, preventing socket starvation
+ * and enforcing delays across parallel/concurrent requests.
  */
 async function handleFailedLoginResponse(
   username: string,
@@ -118,11 +121,6 @@ async function handleFailedLoginResponse(
     });
   }
 
-  // Progressive delay against distributed brute-force attacks (R2)
-  if (result.progressiveDelayMs > 0) {
-    await new Promise((resolve) => setTimeout(resolve, result.progressiveDelayMs));
-  }
-
   const isAr = lang !== "en";
   if (result.accountLocked) {
     res.status(429).json({
@@ -130,6 +128,21 @@ async function handleFailedLoginResponse(
         ? "تم قفل الحساب مؤقتاً لهذا الـ IP بسبب تكرار المحاولات الفاشلة. يرجى الانتظار 15 دقيقة."
         : "Account locked for this IP due to repeated failed login attempts. Please try again in 15 minutes.",
       accountLocked: true,
+    });
+    return;
+  }
+
+  // Non-blocking progressive delay against distributed/parallel brute-force attacks
+  if (result.progressiveDelayMs > 0) {
+    const retryAfterSec = result.retryAfterSeconds ?? Math.ceil(result.progressiveDelayMs / 1000);
+    res.setHeader("Retry-After", String(retryAfterSec));
+    res.status(429).json({
+      error: isAr
+        ? `محاولات الدخول متتالية وسريعة. يرجى الانتظار ${retryAfterSec} ثانية قبل المحاولة مجدداً.`
+        : `Too many rapid login attempts. Please wait ${retryAfterSec}s before trying again.`,
+      retryAfter: retryAfterSec,
+      captchaRequired: true,
+      delayMs: result.progressiveDelayMs,
     });
     return;
   }
@@ -207,6 +220,18 @@ router.post("/auth/admin/login", authLimiter, async (req, res) => {
     if (lockSeconds > 0) {
       recordBlockedLoginAttempt(username, clientIp);
       res.status(429).json({ error: `Account locked due to too many failed attempts. Try again in ${Math.ceil(lockSeconds / 60)} minutes.` });
+      return;
+    }
+
+    // Check non-blocking progressive delay (blocks parallel/burst attempts immediately)
+    const retryAfter = getAccountRetryAfter(username);
+    if (retryAfter > 0) {
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(429).json({
+        error: `Too many rapid login attempts. Please wait ${retryAfter}s before trying again.`,
+        retryAfter,
+        captchaRequired: true,
+      });
       return;
     }
 
@@ -338,6 +363,17 @@ router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
       return;
     }
 
+    // Check non-blocking progressive delay (blocks parallel/burst attempts immediately)
+    const retryAfter = getAccountRetryAfter(tokenData.username);
+    if (retryAfter > 0) {
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(429).json({
+        error: `Too many rapid 2FA attempts. Please wait ${retryAfter}s before trying again.`,
+        retryAfter,
+      });
+      return;
+    }
+
     const secret = getTotpSecret(tokenData.userId);
     if (!secret) {
       temp2faTokens.delete(tempToken);
@@ -357,14 +393,23 @@ router.post("/auth/admin/login/verify-2fa", authLimiter, async (req, res) => {
     if (!isValid) {
       tokenData.attempts = (tokenData.attempts || 0) + 1;
       const failedResult = recordFailedLogin(tokenData.username, clientIp);
-      if (failedResult.progressiveDelayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, failedResult.progressiveDelayMs));
+      const retryAfterSec = failedResult.retryAfterSeconds ?? (failedResult.progressiveDelayMs > 0 ? Math.ceil(failedResult.progressiveDelayMs / 1000) : 0);
+      if (retryAfterSec > 0) {
+        res.setHeader("Retry-After", String(retryAfterSec));
       }
 
       // Invalidate tempToken after 3 failed attempts or if account gets locked
       if (tokenData.attempts >= 3 || failedResult.accountLocked) {
         temp2faTokens.delete(tempToken);
         res.status(429).json({ error: "Too many failed 2FA verification attempts. Session invalidated. Please log in again." });
+        return;
+      }
+
+      if (retryAfterSec > 0) {
+        res.status(429).json({
+          error: `Too many rapid 2FA attempts. Please wait ${retryAfterSec}s before trying again.`,
+          retryAfter: retryAfterSec,
+        });
         return;
       }
 
@@ -425,6 +470,20 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
     const reqLang = (req.body as { lang?: string } | undefined)?.lang;
     const isAr = reqLang !== "en";
 
+    // Check non-blocking progressive delay (blocks parallel/burst attempts immediately)
+    const retryAfter = getAccountRetryAfter(username);
+    if (retryAfter > 0) {
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(429).json({
+        error: isAr
+          ? `محاولات الدخول متتالية وسريعة. يرجى الانتظار ${retryAfter} ثانية قبل المحاولة مجدداً.`
+          : `Too many rapid login attempts. Please wait ${retryAfter}s before trying again.`,
+        retryAfter,
+        captchaRequired: true,
+      });
+      return;
+    }
+
     // ── Check CAPTCHA Requirement (Enforced when repeated failures occur) ──
     if (isCaptchaRequired(username)) {
       const captchaToken = extractCaptchaToken(req);
@@ -450,6 +509,12 @@ router.post("/auth/client/login", authLimiter, async (req, res) => {
         return;
       }
     }
+
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.username, username))
+      .limit(1);
 
     if (!user || user.role !== "client") {
       // Execute dummy bcrypt check to prevent timing-based username enumeration

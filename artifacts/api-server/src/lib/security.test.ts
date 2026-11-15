@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { isSafeUrl, safeFetch } from "./urlSecurity";
-import { isAccountLocked, recordFailedLogin, resetLoginAttempts, isCaptchaRequired, calculateProgressiveDelay, securityHeaders, revokeAllUserSessions } from "./security";
+import {
+  isAccountLocked,
+  recordFailedLogin,
+  resetLoginAttempts,
+  isCaptchaRequired,
+  calculateProgressiveDelay,
+  getAccountRetryAfter,
+  getAccountNextAllowedAt,
+  securityHeaders,
+  revokeAllUserSessions,
+} from "./security";
 
 describe("SSRF URL validation", () => {
   it("rejects private, mapped, link-local, and unspecified IP addresses", () => {
@@ -71,12 +81,20 @@ describe("Account lockout IP scoping (DoS prevention - N1)", () => {
     assert.equal(lastResult.captchaRequired, true, "Captcha should be required after threshold");
     assert.equal(isCaptchaRequired(distributedUser), true, "isCaptchaRequired helper should return true");
 
+    // Non-blocking nextAllowedAt and Retry-After tracking
+    assert.ok(typeof lastResult.nextAllowedAt === "number" && lastResult.nextAllowedAt > Date.now(), "nextAllowedAt must be in the future");
+    assert.ok(typeof lastResult.retryAfterSeconds === "number" && lastResult.retryAfterSeconds > 0, "retryAfterSeconds must be > 0");
+    assert.ok(getAccountRetryAfter(distributedUser) > 0, "getAccountRetryAfter must return positive seconds");
+    assert.ok(getAccountNextAllowedAt(distributedUser)! > Date.now(), "getAccountNextAllowedAt must return future timestamp");
+
     // Account should NOT be locked out for a fresh IP (DoS protection)
     assert.equal(isAccountLocked(distributedUser, "198.51.100.99"), 0);
 
-    // Resetting unlocks
+    // Resetting unlocks and clears nextAllowedAt
     resetLoginAttempts(distributedUser);
     assert.equal(isCaptchaRequired(distributedUser), false);
+    assert.equal(getAccountRetryAfter(distributedUser), 0);
+    assert.equal(getAccountNextAllowedAt(distributedUser), null);
   });
 });
 

@@ -194,6 +194,7 @@ interface LoginAttempt {
   lockedUntil: number | null;
   postLockoutFailures: number;
   warningSent: boolean;
+  nextAllowedAt?: number | null;
 }
 
 interface IpLoginAttempt {
@@ -232,6 +233,8 @@ export interface FailedLoginResult {
   recentFailedAttempts: number;
   progressiveDelayMs: number;
   captchaRequired: boolean;
+  nextAllowedAt?: number | null;
+  retryAfterSeconds?: number;
 }
 
 export interface AttackMonitoringSnapshot {
@@ -516,6 +519,29 @@ export function isCaptchaRequired(username: string): boolean {
   return recentAttempts >= PROGRESSIVE_DELAY_THRESHOLD;
 }
 
+/**
+ * Checks if an account is currently restricted by progressive delay.
+ * Returns the remaining delay in seconds (for HTTP Retry-After header), or 0 if allowed.
+ */
+export function getAccountRetryAfter(username: string): number {
+  const normUser = username.trim().toLowerCase();
+  const entry = accountLoginAttempts.get(normUser);
+  if (!entry || !entry.nextAllowedAt) return 0;
+  const remainingMs = entry.nextAllowedAt - Date.now();
+  return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+}
+
+/**
+ * Returns the timestamp in milliseconds when the next login attempt is permitted for an account,
+ * or null if no delay is currently active.
+ */
+export function getAccountNextAllowedAt(username: string): number | null {
+  const normUser = username.trim().toLowerCase();
+  const entry = accountLoginAttempts.get(normUser);
+  if (!entry || !entry.nextAllowedAt) return null;
+  return entry.nextAllowedAt > Date.now() ? entry.nextAllowedAt : null;
+}
+
 const ipLoginAttempts = new Map<string, IpLoginAttempt>();
 
 export function isLoopbackIp(ip: string): boolean {
@@ -560,7 +586,7 @@ function getOrCreateAccountAttempt(username: string): LoginAttempt {
   const key = username.trim().toLowerCase();
   let entry = accountLoginAttempts.get(key);
   if (!entry) {
-    entry = { failureTimes: [], lockedUntil: null, postLockoutFailures: 0, warningSent: false };
+    entry = { failureTimes: [], lockedUntil: null, postLockoutFailures: 0, warningSent: false, nextAllowedAt: null };
     accountLoginAttempts.set(key, entry);
   }
   return entry;
@@ -590,7 +616,10 @@ setInterval(() => {
       entry.postLockoutFailures = 0;
       entry.warningSent = false;
     }
-    if (!entry.lockedUntil && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
+    if (entry.nextAllowedAt && now > entry.nextAllowedAt) {
+      entry.nextAllowedAt = null;
+    }
+    if (!entry.lockedUntil && !entry.nextAllowedAt && entry.failureTimes.length === 0 && entry.postLockoutFailures === 0) {
       accountLoginAttempts.delete(key);
     }
   }
@@ -794,11 +823,14 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
 
   const progressiveDelayMs = calculateProgressiveDelay(accountAttempts);
   const captchaRequired = accountAttempts >= PROGRESSIVE_DELAY_THRESHOLD;
+  let nextAllowedAt: number | null = null;
 
   if (progressiveDelayMs > 0) {
+    nextAllowedAt = now + progressiveDelayMs;
+    accountEntry.nextAllowedAt = nextAllowedAt;
     logger.info(
-      { username: normUser, accountAttempts, delayMs: progressiveDelayMs },
-      "Progressive delay applied due to distributed failed login attempts"
+      { username: normUser, accountAttempts, delayMs: progressiveDelayMs, nextAllowedAt },
+      "Progressive delay scheduled; subsequent or parallel attempts will be rejected immediately with 429 Retry-After"
     );
   }
 
@@ -808,6 +840,8 @@ export function recordFailedLogin(username: string, ip: string): FailedLoginResu
     recentFailedAttempts,
     progressiveDelayMs,
     captchaRequired,
+    nextAllowedAt,
+    retryAfterSeconds: progressiveDelayMs > 0 ? Math.ceil(progressiveDelayMs / 1000) : 0,
   };
 }
 
