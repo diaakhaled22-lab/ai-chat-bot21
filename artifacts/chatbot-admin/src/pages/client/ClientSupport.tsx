@@ -357,7 +357,7 @@ export default function ClientSupport() {
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full md:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -370,16 +370,26 @@ export default function ClientSupport() {
                   title: lang === "ar" ? "تم تحديث التذاكر والعدادات بنجاح" : "Tickets and counters refreshed",
                 });
               }}
-              className="w-full sm:w-auto justify-center bg-white/15 hover:bg-white/25 text-white border-white/25 rounded-xl backdrop-blur-md shadow-sm cursor-pointer text-xs"
+              className="w-full sm:w-auto justify-center bg-white/15 hover:bg-white/25 text-white border-white/25 rounded-xl backdrop-blur-md shadow-sm cursor-pointer text-xs h-9 px-3.5 shrink-0"
             >
-              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-              <span>{lang === "ar" ? "تحديث" : "Refresh"}</span>
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+              <span className="truncate">{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
             <Button
               onClick={() => setShowForm((v) => !v)}
-              className="w-full sm:w-auto justify-center bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0"
+              className="w-full sm:w-auto justify-center bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all shrink-0 h-9 px-4"
             >
-              {showForm ? <><X className="w-4 h-4 mr-1.5" />{t("btn_cancel")}</> : <><Plus className="w-4 h-4 mr-1.5" />{t("support_new_ticket")}</>}
+              {showForm ? (
+                <>
+                  <X className="w-4 h-4 mr-1.5 shrink-0" />
+                  <span className="truncate">{t("btn_cancel")}</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-1.5 shrink-0" />
+                  <span className="truncate">{t("support_new_ticket")}</span>
+                </>
+              )}
             </Button>
           </div>
         </div>

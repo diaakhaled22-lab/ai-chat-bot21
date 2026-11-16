@@ -226,9 +226,9 @@ export default function ClientDashboard() {
       </div>
 
       {/* Filter Buttons Group */}
-      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3.5 shadow-md shadow-[#2D5BE3]/15 space-y-3.5 border-l-4 border-l-[#2D5BE3]">
+      <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-md shadow-[#2D5BE3]/15 space-y-3.5 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/40 rounded-xl border border-[#DCE7FF] dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:flex sm:items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/40 rounded-xl border border-[#DCE7FF] dark:border-slate-800 w-full sm:w-auto">
             {/* Filter 1: Admin Assigned Quota (Primary & Default) */}
             <button
               type="button"
@@ -236,28 +236,32 @@ export default function ClientDashboard() {
                 setUserSelected(true);
                 setFilterMode("quota");
               }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all w-full sm:w-auto ${
                 filterMode === "quota"
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
               }`}
             >
-              <Coins className="w-4 h-4 shrink-0" />
-              <span>{lang === "ar" ? "الحصة المخصصة من المسؤول" : "Admin Assigned Quota"}</span>
-              {data?.activeExecutionMode === "quota" && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  {lang === "ar" ? "نشط حالياً" : "Active"}
-                </span>
-              )}
-              {hasQuota && quotaPercent !== null && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  filterMode === "quota"
-                    ? "bg-primary-foreground/20 text-primary-foreground"
-                    : "bg-muted-foreground/20 text-foreground"
-                }`}>
-                  {quotaPercent.toFixed(0)}%
-                </span>
-              )}
+              <div className="flex items-center gap-2 min-w-0">
+                <Coins className="w-4 h-4 shrink-0" />
+                <span className="truncate">{lang === "ar" ? "الحصة المخصصة من المسؤول" : "Admin Assigned Quota"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {data?.activeExecutionMode === "quota" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    {lang === "ar" ? "نشط حالياً" : "Active"}
+                  </span>
+                )}
+                {hasQuota && quotaPercent !== null && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    filterMode === "quota"
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted-foreground/20 text-foreground"
+                  }`}>
+                    {quotaPercent.toFixed(0)}%
+                  </span>
+                )}
+              </div>
             </button>
 
             {/* Filter 2: Own API Key Model */}
@@ -267,40 +271,46 @@ export default function ClientDashboard() {
                 setUserSelected(true);
                 setFilterMode("own_key");
               }}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all w-full sm:w-auto ${
                 filterMode === "own_key"
                   ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
               }`}
             >
-              <KeyRound className="w-4 h-4 shrink-0" />
-              <span>{lang === "ar" ? "نموذج مفتاح API الخاص" : "Own API Key Model"}</span>
-              {data?.aiExecutionMode !== "tokens" && (
-                <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded border border-amber-500/30">
-                  Enterprise
-                </span>
-              )}
-              {data?.activeExecutionMode === "own_key" && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  {lang === "ar" ? "نشط حالياً" : "Active"}
-                </span>
-              )}
+              <div className="flex items-center gap-2 min-w-0">
+                <KeyRound className="w-4 h-4 shrink-0" />
+                <span className="truncate">{lang === "ar" ? "نموذج مفتاح API الخاص" : "Own API Key Model"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {data?.aiExecutionMode !== "tokens" && (
+                  <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold px-1.5 py-0.5 rounded border border-amber-500/30">
+                    Enterprise
+                  </span>
+                )}
+                {data?.activeExecutionMode === "own_key" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    {lang === "ar" ? "نشط حالياً" : "Active"}
+                  </span>
+                )}
+              </div>
             </button>
           </div>
 
           {/* Active System Mode Indicator Badge */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-1.5 bg-muted/40 rounded-xl border border-border/40">
-            <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>
-              {lang === "ar" ? "المسار الفعلي في النظام:" : "Current System Routing:"}{" "}
-              <strong className="text-foreground">
-                {data?.activeExecutionMode === "quota"
-                  ? (lang === "ar" ? "حصة المسؤول المخصصة" : "Admin Assigned Quota")
-                  : data?.activeExecutionMode === "own_key"
-                  ? (lang === "ar" ? "مفتاح API الخاص" : "Own API Key")
-                  : (lang === "ar" ? "غير مفعل" : "Inactive")}
-              </strong>
-            </span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-1.5 bg-muted/40 rounded-xl border border-border/40 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate">
+                {lang === "ar" ? "المسار الفعلي في النظام:" : "Current System Routing:"}{" "}
+                <strong className="text-foreground">
+                  {data?.activeExecutionMode === "quota"
+                    ? (lang === "ar" ? "حصة المسؤول المخصصة" : "Admin Assigned Quota")
+                    : data?.activeExecutionMode === "own_key"
+                    ? (lang === "ar" ? "مفتاح API الخاص" : "Own API Key")
+                    : (lang === "ar" ? "غير مفعل" : "Inactive")}
+                </strong>
+              </span>
+            </div>
           </div>
         </div>
 

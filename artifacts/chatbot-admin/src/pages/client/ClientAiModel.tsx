@@ -399,7 +399,7 @@ export default function ClientAiModel() {
       </div>
 
       {/* ── 0. Active Operating Engine Hero Card (المحرك الفعلي المشغّل للردود) ── */}
-      <div className="rounded-2xl border border-[#DCE7FF] dark:border-slate-800 bg-card p-6 shadow-md shadow-[#2D5BE3]/15 space-y-4 border-l-4 border-l-[#2D5BE3]">
+      <div className="rounded-2xl border border-[#DCE7FF] dark:border-slate-800 bg-card p-4 sm:p-6 shadow-md shadow-[#2D5BE3]/15 space-y-4 border-l-4 border-l-[#2D5BE3]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
             <div className={`p-2.5 rounded-xl ${activeMode === "quota" ? "bg-amber-500/15 text-amber-500" : "bg-blue-500/15 text-blue-500"} shrink-0`}>
