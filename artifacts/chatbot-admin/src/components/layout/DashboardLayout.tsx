@@ -32,12 +32,13 @@ import {
   Database,
   Cpu,
   Coins,
-  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Receipt, Lock, type LucideIcon,
+  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Receipt, Lock, PanelLeftClose, PanelLeftOpen, PanelLeft, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
 
@@ -682,7 +683,7 @@ function ClientNotificationBell() {
   );
 }
 
-function OpenTicketsBadge() {
+function OpenTicketsBadge({ compact }: { compact?: boolean } = {}) {
   const { data: tickets = [] } = useQuery<any[]>({
     queryKey: ["admin-tickets"],
     queryFn: () => customFetch("/api/admin/tickets"),
@@ -718,6 +719,17 @@ function OpenTicketsBadge() {
 
   if (count === 0) return null;
 
+  if (compact) {
+    return (
+      <span
+        className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold leading-none bg-amber-400 text-slate-950 border border-[#070b19] shadow-sm z-20"
+        title={`${count} open problem${count !== 1 ? "s" : ""}`}
+      >
+        {count > 99 ? "99+" : count}
+      </span>
+    );
+  }
+
   return (
     <span
       className="ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all shadow-sm bg-amber-400 text-slate-950 font-bold"
@@ -728,7 +740,7 @@ function OpenTicketsBadge() {
   );
 }
 
-function AdminUnreadChatBadge({ isActive }: { isActive?: boolean }) {
+function AdminUnreadChatBadge({ isActive, compact }: { isActive?: boolean; compact?: boolean }) {
   const { data: logs } = useListAllChatLogs(undefined, {
     query: {
       refetchInterval: 10_000,
@@ -743,6 +755,16 @@ function AdminUnreadChatBadge({ isActive }: { isActive?: boolean }) {
 
   if (unreadCount === 0) return null;
 
+  if (compact) {
+    return (
+      <span
+        className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold leading-none bg-blue-500 text-white border border-[#070b19] shadow-sm z-20 animate-pulse"
+      >
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`ml-auto inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-colors ${
@@ -756,7 +778,7 @@ function AdminUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   );
 }
 
-function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
+function ClientUnreadChatBadge({ isActive, compact }: { isActive?: boolean; compact?: boolean }) {
   const { data: logs } = useListClientChatLogs(undefined, {
     query: {
       refetchInterval: 10_000,
@@ -771,6 +793,16 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
 
   if (unreadCount === 0) return null;
 
+  if (compact) {
+    return (
+      <span
+        className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold leading-none bg-blue-500 text-white border border-[#070b19] shadow-sm z-20 animate-pulse"
+      >
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`ml-auto inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-colors ${
@@ -784,7 +816,7 @@ function ClientUnreadChatBadge({ isActive }: { isActive?: boolean }) {
   );
 }
 
-function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
+function AdminNotificationBadge({ isActive, compact }: { isActive?: boolean; compact?: boolean }) {
   const { data: stats } = useGetAdminStats({
     query: { refetchInterval: 15_000, queryKey: getGetAdminStatsQueryKey() },
   });
@@ -843,6 +875,16 @@ function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
 
   if (unreadNotifications === 0) return null;
 
+  if (compact) {
+    return (
+      <span
+        className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold leading-none bg-amber-400 text-slate-950 border border-[#070b19] shadow-sm z-20 animate-pulse"
+      >
+        {unreadNotifications > 99 ? "99+" : unreadNotifications}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`ms-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold leading-none transition-all shadow-sm ${
@@ -856,7 +898,7 @@ function AdminNotificationBadge({ isActive }: { isActive?: boolean }) {
   );
 }
 
-function ClientNotificationBadge({ isActive }: { isActive?: boolean }) {
+function ClientNotificationBadge({ isActive, compact }: { isActive?: boolean; compact?: boolean }) {
   const { data: notifications = [] } = useQuery<AppNotification[]>({
     queryKey: ["client-notifications"],
     queryFn: () => customFetch("/api/client/notifications"),
@@ -896,6 +938,20 @@ function ClientNotificationBadge({ isActive }: { isActive?: boolean }) {
   const hasUnreadRed = displayNotifications.some((n) => !n.isRead && (n.type === "quota_depleted_red" || n.type.includes("depleted")));
 
   if (unread === 0) return null;
+
+  if (compact) {
+    return (
+      <span
+        className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold leading-none border border-[#070b19] shadow-sm z-20 ${
+          hasUnreadRed
+            ? "bg-rose-500 text-white animate-pulse"
+            : "bg-amber-400 text-slate-950"
+        }`}
+      >
+        {unread > 99 ? "99+" : unread}
+      </span>
+    );
+  }
 
   return (
     <span
@@ -953,6 +1009,24 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("sidebar_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -1169,7 +1243,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const sidebarFooterBg = "bg-transparent";
   const navbarBg = "bg-[#0e1838] bg-gradient-to-r from-[#0e1838] via-[#102354] to-[#070b19]";
 
-  const sidebarContent = (
+  const renderSidebarContent = (isCollapsed: boolean) => (
     <div className="relative flex flex-col h-full w-full overflow-hidden select-none">
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {/* Base dark midnight-blue cosmic night sky background */}
@@ -1210,52 +1284,245 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-[#2D5BE3]/30 blur-3xl pointer-events-none" />
       </div>
 
-      {/* Top Header - Bot Manager Logo */}
-      <div className={`h-16 flex items-center gap-3 px-4 border-b border-white/10 shrink-0 ${sidebarHeaderBg} relative z-10`}>
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
-        >
-          <i className="fa-solid fa-robot text-lg text-white"></i>
+      {/* Top Header - Bot Manager Logo & Toggle */}
+      {isCollapsed ? (
+        <div className={`h-16 flex items-center justify-center border-b border-white/10 shrink-0 ${sidebarHeaderBg} relative z-10`}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all cursor-pointer group shadow-sm hover:scale-105 active:scale-95"
+                aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
+              >
+                <i className="fa-solid fa-robot text-lg text-white group-hover:hidden"></i>
+                <PanelLeftOpen className="w-5 h-5 text-sky-300 hidden group-hover:block" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl">
+              <p>{lang === "ar" ? "توسيع القائمة الجانبية (Bot Manager)" : "Expand sidebar (Bot Manager)"}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <div className="flex flex-col min-w-0">
-          <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
-            Bot Manager
-          </span>
-        </div>
-      </div>
-
-      {/* Unified User Info & Live Status in One Box */}
-      <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
-        <div className="rounded-2xl bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] p-2.5 space-y-2">
-          {/* User profile row */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-sm shadow-inner shrink-0">
-              {user?.name?.charAt(0).toUpperCase() ?? "S"}
+      ) : (
+        <div className={`h-16 flex items-center justify-between px-4 border-b border-white/10 shrink-0 ${sidebarHeaderBg} relative z-10`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-white border border-white/20 bg-white/10 backdrop-blur-md"
+            >
+              <i className="fa-solid fa-robot text-lg text-white"></i>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate leading-tight">
-                {user?.name ?? "softysta.com"}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <p className="text-[11px] font-semibold text-slate-200 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate">
+                Bot Manager
+              </span>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer shrink-0 hidden md:inline-flex"
+            title={lang === "ar" ? "طي القائمة الجانبية" : "Collapse sidebar"}
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* User Info & Live Status */}
+      {isCollapsed ? (
+        <div className="py-2.5 flex items-center justify-center shrink-0 relative z-10">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-sm shadow-inner hover:bg-white/25 transition-all">
+                  {user?.name?.charAt(0).toUpperCase() ?? "S"}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070b19] animate-pulse" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl p-2.5 space-y-1">
+              <p className="font-bold text-sm text-white">{user?.name ?? "softysta.com"}</p>
+              <p className="text-[11px] text-slate-300 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
+              <div className="pt-1.5 border-t border-white/10 mt-1">
+                {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
+          <div className="rounded-2xl bg-white/[0.08] backdrop-blur-xl border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] p-2.5 space-y-2">
+            {/* User profile row */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-sm shadow-inner shrink-0">
+                {user?.name?.charAt(0).toUpperCase() ?? "S"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate leading-tight">
+                  {user?.name ?? "softysta.com"}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <p className="text-[11px] font-semibold text-slate-200 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Live status row */}
-          <div className="pt-2 border-t border-white/10">
-            {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+            {/* Live status row */}
+            <div className="pt-2 border-t border-white/10">
+              {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Nav — scrolls if items overflow, fills all remaining height */}
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-1 space-y-1 relative z-10 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
+      {/* Nav */}
+      <nav className={`flex-1 min-h-0 overflow-y-auto relative z-10 ${
+        isCollapsed
+          ? "px-2 py-2 space-y-2 scrollbar-none"
+          : "px-3 py-1 space-y-1 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30"
+      }`}>
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = location === link.href;
 
+          if (isCollapsed) {
+            // Collapsed navigation items
+            if (link.children && link.children.length > 0) {
+              const isChildActive = link.children.some((c) => location === c.href);
+              const isParentActive = isActive || isChildActive;
+
+              return (
+                <Popover key={link.href}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`relative w-11 h-11 mx-auto rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                            isParentActive
+                              ? "bg-white/25 text-white font-bold border border-white/30 shadow-lg shadow-black/30"
+                              : "text-slate-200 hover:text-white hover:bg-white/15"
+                          }`}
+                          aria-label={link.label}
+                        >
+                          <Icon className={`w-5 h-5 shrink-0 transition-colors ${isParentActive ? "text-white" : "text-sky-300 hover:text-white"}`} />
+                          <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-sky-300" />
+                        </button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl">
+                      <p>{link.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <PopoverContent
+                    side={lang === "ar" ? "left" : "right"}
+                    sideOffset={12}
+                    className="w-52 p-2 bg-[#0e1838]/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl text-white z-50 space-y-1"
+                  >
+                    <p className="px-2.5 py-1.5 text-xs font-bold text-sky-200 border-b border-white/10 mb-1">
+                      {link.label}
+                    </p>
+                    {link.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isSubActive = location === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                            isSubActive
+                              ? "bg-white/20 text-white font-bold shadow-sm border border-white/25"
+                              : "text-slate-200 hover:text-white hover:bg-white/12"
+                          }`}
+                        >
+                          <ChildIcon className={`w-4 h-4 shrink-0 ${isSubActive ? "text-white" : "text-sky-300"}`} />
+                          <span className="truncate">{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+
+            if (link.isAction || link.onClick) {
+              const isNotifActive = Boolean(isActive && link.notifBadge);
+              return (
+                <Tooltip key={link.href}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={link.onClick}
+                      className={`relative w-11 h-11 mx-auto rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        isNotifActive
+                          ? "bg-white/25 text-white font-bold border border-white/30 shadow-lg shadow-black/30 ring-1 ring-white/30"
+                          : "text-slate-200 hover:text-white hover:bg-white/15"
+                      }`}
+                      aria-label={link.label}
+                    >
+                      <Icon className={`w-5 h-5 shrink-0 transition-colors ${isNotifActive ? "text-amber-300" : "text-sky-300 hover:text-white"}`} />
+                      {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isNotifActive} compact />}
+                      {link.notifBadge && role === "client" && <ClientNotificationBadge isActive={isNotifActive} compact />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl">
+                    <p>{link.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return (
+              <Tooltip key={link.href}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={link.href}
+                    onClick={(e) => {
+                      if (link.isLocked) {
+                        e.preventDefault();
+                        toast({
+                          title: lang === "ar" ? "الصفحة مقفلة" : "Page Locked",
+                          description: lang === "ar"
+                            ? "يرجى إكمال ملف الشركة أولاً (الاسم ووصف النشاط) لإلغاء قفل الباقات."
+                            : "Please complete your Company Profile first to unlock Packages & Plans.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                    }}
+                    className={`relative w-11 h-11 mx-auto rounded-xl flex items-center justify-center transition-all ${
+                      link.isLocked
+                        ? "opacity-60 text-slate-400 cursor-not-allowed"
+                        : isActive
+                        ? "bg-white/25 text-white font-bold border border-white/30 shadow-lg shadow-black/30"
+                        : "text-slate-200 hover:text-white hover:bg-white/15"
+                    }`}
+                    aria-label={link.label}
+                  >
+                    <Icon className={`w-5 h-5 shrink-0 transition-colors ${link.isLocked ? "text-slate-400" : isActive ? "text-white" : "text-sky-300 hover:text-white"}`} />
+                    {link.isLocked && (
+                      <Lock className="w-3 h-3 text-amber-400 absolute -bottom-0.5 -right-0.5" />
+                    )}
+                    {link.badge && role === "admin" && <AdminUnreadChatBadge isActive={isActive} compact />}
+                    {link.ticketBadge && role === "admin" && <OpenTicketsBadge compact />}
+                    {link.clientChatBadge && role === "client" && <ClientUnreadChatBadge isActive={isActive} compact />}
+                    {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isActive} compact />}
+                    {link.notifBadge && role === "client" && <ClientNotificationBadge isActive={isActive} compact />}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl">
+                  <p>{link.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          // Expanded navigation items
           if (link.children && link.children.length > 0) {
             const isChildActive = link.children.some((c) => location === c.href);
             const isParentActive = isActive || isChildActive;
@@ -1375,70 +1642,115 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         })}
       </nav>
 
-      {/* Sign out — always pinned at the bottom, never scrolls away */}
-      <div className={`p-3 border-t border-white/10 ${sidebarFooterBg} shrink-0 relative z-10`}>
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-slate-100 hover:text-white hover:bg-rose-500/20 font-medium rounded-xl transition-all"
-          onClick={handleLogout}
-          disabled={logout.isPending}
-        >
-          <LogOut className="w-5 h-5 text-rose-300 shrink-0" />
-          {t("nav_sign_out")}
-        </Button>
-      </div>
+      {/* Sign out */}
+      {isCollapsed ? (
+        <div className={`p-3 border-t border-white/10 ${sidebarFooterBg} shrink-0 relative z-10 flex items-center justify-center`}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-11 h-11 rounded-xl text-slate-100 hover:text-white hover:bg-rose-500/25 transition-all cursor-pointer"
+                onClick={handleLogout}
+                disabled={logout.isPending}
+                aria-label={t("nav_sign_out")}
+              >
+                <LogOut className="w-5 h-5 text-rose-300 shrink-0" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl">
+              <p>{t("nav_sign_out")}</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <div className={`p-3 border-t border-white/10 ${sidebarFooterBg} shrink-0 relative z-10`}>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-slate-100 hover:text-white hover:bg-rose-500/20 font-medium rounded-xl transition-all"
+            onClick={handleLogout}
+            disabled={logout.isPending}
+          >
+            <LogOut className="w-5 h-5 text-rose-300 shrink-0" />
+            {t("nav_sign_out")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 
 
   return (
-    <div className="flex h-full w-full bg-[#F3F7FF] dark:bg-background overflow-hidden text-foreground">
-      {/* Sidebar */}
-      <aside className={`w-64 border-r border-white/10 ${sidebarAsideBg} text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative`}>
-        {sidebarContent}
-      </aside>
+    <TooltipProvider delayDuration={150}>
+      <div className="flex h-full w-full bg-[#F3F7FF] dark:bg-background overflow-hidden text-foreground">
+        {/* Sidebar */}
+        <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} border-r border-white/10 ${sidebarAsideBg} text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative transition-[width] duration-300 ease-in-out`}>
+          {renderSidebarContent(sidebarCollapsed)}
+        </aside>
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
-        <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
-          <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
-          <div className="flex items-center gap-3 relative z-10">
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9" aria-label="Menu">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side={lang === "ar" ? "right" : "left"} className={`w-64 p-0 flex flex-col ${sidebarAsideBg} text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative`}>
-                {sidebarContent}
-              </SheetContent>
-            </Sheet>
+        {/* Main content */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
+          <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
+            <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-3 relative z-10">
+              {/* Mobile menu sheet */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9" aria-label="Menu">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side={lang === "ar" ? "right" : "left"} className={`w-64 p-0 flex flex-col ${sidebarAsideBg} text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative`}>
+                  {renderSidebarContent(false)}
+                </SheetContent>
+              </Sheet>
 
-            {/* Current Page Breadcrumb Pill */}
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
-              <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">{currentPage}</p>
+              {/* Desktop Sidebar Toggle Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSidebar}
+                className="hidden md:inline-flex bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 transition-all cursor-pointer"
+                title={
+                  sidebarCollapsed
+                    ? (lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar")
+                    : (lang === "ar" ? "طي القائمة الجانبية" : "Collapse sidebar")
+                }
+                aria-label="Toggle sidebar"
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen className="w-5 h-5 text-white" />
+                ) : (
+                  <PanelLeftClose className="w-5 h-5 text-white" />
+                )}
+              </Button>
+
+              {/* Current Page Breadcrumb Pill */}
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
+                <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">{currentPage}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 relative z-10">
+              <LanguageToggle />
+              <ThemeToggle />
+              {role === "admin" ? (
+                <NotificationBell />
+              ) : (
+                <ClientNotificationBell />
+              )}
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
+            <div className={location === "/client/support" || location === "/admin/broadcast" || location === "/admin/ai-tester" || location === "/admin/settings" || location === "/client/settings" || location === "/client/company" || location === "/client/ai-model" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
+              {children}
             </div>
           </div>
-
-          <div className="flex items-center gap-2 relative z-10">
-            <LanguageToggle />
-            <ThemeToggle />
-            {role === "admin" ? (
-              <NotificationBell />
-            ) : (
-              <ClientNotificationBell />
-            )}
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
-          <div className={location === "/client/support" || location === "/admin/broadcast" || location === "/admin/ai-tester" || location === "/admin/settings" || location === "/client/settings" || location === "/client/company" || location === "/client/ai-model" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
-            {children}
-          </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </TooltipProvider>
   );
 }
 
