@@ -40,6 +40,7 @@ import {
   Search,
   Filter,
   Download,
+  Printer,
   Share2,
   RefreshCw,
   ExternalLink,
@@ -1307,6 +1308,243 @@ export default function AdminBills() {
     }
   };
 
+  // Print Single Invoice
+  const handlePrintInvoice = (inv: InvoiceItem) => {
+    const convertedPrice = convertPrice(inv.priceUsd);
+    const title = lang === "ar" ? inv.titleAr : inv.titleEn;
+    const billingCycle = lang === "ar" ? inv.billingCycleAr : inv.billingCycleEn;
+    const isPaid = inv.isPaid || inv.status === "paid" || inv.status === "activated";
+    const issueDate = new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
+
+    const matchedComp = companies.find(
+      (c: any) =>
+        (inv.companyId && c.id === inv.companyId) ||
+        (c.name && inv.companyName && c.name.toLowerCase() === inv.companyName.toLowerCase())
+    );
+    const payPhone = inv.paymentPhone || matchedComp?.whatsappNumber || "01110891521";
+    const payInsta = inv.paymentInstaPay || "eng-diaakhaled@instapay";
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const html = `<!DOCTYPE html>
+<html dir="${lang === "ar" ? "rtl" : "ltr"}" lang="${lang === "ar" ? "ar" : "en"}">
+<head>
+  <meta charset="utf-8">
+  <title>${lang === "ar" ? `فاتورة رقم ${inv.invoiceNumber}` : `Invoice #${inv.invoiceNumber}`}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #0f172a; margin: 0; padding: 24px; }
+    .card { max-width: 680px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .header { background: ${isPaid ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #091e2f 0%, #0c334d 100%)"}; color: white; padding: 24px; }
+    .header h1 { margin: 0 0 6px 0; font-size: 22px; font-weight: 800; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; background: ${isPaid ? "#dcfce7; color: #166534;" : "#fef3c7; color: #92400e;"}; margin-top: 8px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .info-item { font-size: 13px; color: #475569; }
+    .info-item strong { display: block; font-size: 14px; color: #0f172a; margin-top: 2px; }
+    .item-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .item-table th { background: #0f172a; color: #fff; padding: 12px; font-size: 12px; text-align: ${lang === "ar" ? "right" : "left"}; }
+    .item-table td { padding: 14px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+    .total-box { background: #f1f5f9; padding: 16px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin: 20px; font-size: 16px; font-weight: 800; }
+    .payment-info { margin: 20px; padding: 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; font-size: 13px; }
+    .footer { text-align: center; font-size: 11px; color: #94a3b8; padding: 16px; }
+    @media print { body { padding: 0; } .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1>Bot Manager</h1>
+          <p style="margin: 0; opacity: 0.85; font-size: 13px;">${lang === "ar" ? "فاتورة ضريبية رسمية ومعتمدة" : "Official Billing & Invoice"}</p>
+        </div>
+        <div style="text-align: ${lang === "ar" ? "left" : "right"};">
+          <div style="font-family: monospace; font-size: 16px; font-weight: bold;">#${inv.invoiceNumber}</div>
+          <div class="status-badge">${isPaid ? (lang === "ar" ? "مسددة بالكامل" : "Paid") : (lang === "ar" ? "مستحقة السداد" : "Unpaid / Pending")}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">${lang === "ar" ? "الشركة / المنشأة:" : "Company:"} <strong>${inv.companyName}</strong></div>
+      <div class="info-item">${lang === "ar" ? "المسؤول:" : "Client:"} <strong>${inv.clientName}</strong></div>
+      <div class="info-item">${lang === "ar" ? "البريد الإلكتروني:" : "Email:"} <strong>${inv.clientEmail || "-"}</strong></div>
+      <div class="info-item">${lang === "ar" ? "تاريخ الإصدار:" : "Date:"} <strong>${issueDate}</strong></div>
+    </div>
+
+    <div style="padding: 0 20px;">
+      <table class="item-table">
+        <thead>
+          <tr>
+            <th>${lang === "ar" ? "الوصف / الباقة" : "Description"}</th>
+            <th style="text-align: center;">${lang === "ar" ? "الرصيد المخصص" : "Token Quota"}</th>
+            <th style="text-align: center;">${lang === "ar" ? "دورة الفوترة" : "Cycle"}</th>
+            <th style="text-align: ${lang === "ar" ? "left" : "right"};">${lang === "ar" ? "المبلغ" : "Amount"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>${title}</strong></td>
+            <td style="text-align: center;">${inv.tokenQuota?.toLocaleString() || "0"} tokens</td>
+            <td style="text-align: center;">${billingCycle}</td>
+            <td style="text-align: ${lang === "ar" ? "left" : "right"}; font-weight: bold;">
+              ${convertedPrice.toLocaleString()} ${currencyInfo.symbol} ${currencyInfo.code !== "USD" ? `($${inv.priceUsd} USD)` : ""}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="total-box">
+      <span>${lang === "ar" ? "الإجمالي الكلي:" : "Total Amount:"}</span>
+      <span style="color: #059669;">${convertedPrice.toLocaleString()} ${currencyInfo.symbol}</span>
+    </div>
+
+    ${!isPaid ? `
+    <div class="payment-info">
+      <strong>💳 ${lang === "ar" ? "طرق السداد المعتمدة:" : "Payment Methods:"}</strong>
+      <div style="margin-top: 6px;">
+        📱 ${lang === "ar" ? "محافظ الهاتف / فودافون كاش:" : "Vodafone Cash:"} <strong>${payPhone}</strong><br>
+        ⚡ ${lang === "ar" ? "عنوان إنستاباي IPA:" : "InstaPay IPA:"} <strong>${payInsta}</strong>
+      </div>
+    </div>
+    ` : ""}
+
+    <div class="footer">
+      Bot Manager Automation Platform • ${lang === "ar" ? "تم استخراج هذا السند رسمياً" : "Official System Generated Invoice"}
+    </div>
+  </div>
+  <script>
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  // Print Company Financial Statement
+  const handlePrintCompanyStatement = (group: CompanyInvoiceGroup) => {
+    const isAllPaid = group.unpaidCount === 0;
+    const paidUsd = group.invoices
+      .filter((i) => i.isPaid || i.status === "paid" || i.status === "activated")
+      .reduce((sum, i) => sum + Number(i.priceUsd || 0), 0);
+    const unpaidUsd = Math.max(0, group.totalUsd - paidUsd);
+    const issueDate = new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US");
+
+    const matchedComp = companies.find(
+      (c: any) =>
+        (group.companyId && c.id === group.companyId) ||
+        (c.name && group.companyName && c.name.toLowerCase() === group.companyName.toLowerCase())
+    );
+    const payPhone = group.invoices[0]?.paymentPhone || matchedComp?.whatsappNumber || "01110891521";
+    const payInsta = group.invoices[0]?.paymentInstaPay || "eng-diaakhaled@instapay";
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const rows = group.invoices.map((inv) => {
+      const isPaid = inv.isPaid || inv.status === "paid" || inv.status === "activated";
+      const local = Math.round(Number(inv.priceUsd || 0) * currencyInfo.rate);
+      const title = lang === "ar" ? inv.titleAr : inv.titleEn;
+      const statusBadge = isPaid
+        ? `<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: bold;">مسددة</span>`
+        : `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: bold;">مستحقة</span>`;
+      return `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 10px 12px; font-family: monospace; font-weight: bold;">#${inv.invoiceNumber}</td>
+          <td style="padding: 10px 12px;">
+            <strong>${title}</strong>
+            <div style="font-size: 11px; color: #64748b;">${new Date(inv.issueDate).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</div>
+          </td>
+          <td style="padding: 10px 12px; text-align: center; color: #059669; font-weight: 600;">${(inv.tokenQuota || 0).toLocaleString()} رمز</td>
+          <td style="padding: 10px 12px; text-align: left; direction: ltr;">
+            <strong style="font-family: monospace;">$${inv.priceUsd} USD</strong>
+            <div style="font-size: 10px; color: #64748b;">≈ ${local.toLocaleString()} ${currencyInfo.symbol}</div>
+          </td>
+          <td style="padding: 10px 12px; text-align: center;">${statusBadge}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const html = `<!DOCTYPE html>
+<html dir="${lang === "ar" ? "rtl" : "ltr"}" lang="${lang === "ar" ? "ar" : "en"}">
+<head>
+  <meta charset="utf-8">
+  <title>كشف حساب فواتير معتمد - ${group.companyName}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fff; color: #0f172a; margin: 0; padding: 24px; }
+    .card { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .header { background: ${isAllPaid ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "linear-gradient(135deg, #d97706 0%, #b45309 100%)"}; color: white; padding: 24px; text-align: center; }
+    .header h1 { margin: 0 0 6px 0; font-size: 22px; }
+    .kpi-table { width: 100%; border-collapse: separate; border-spacing: 8px; margin: 16px 0; }
+    .kpi-cell { background: #f1f5f9; padding: 12px; border-radius: 10px; text-align: center; }
+    .inv-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .inv-table th { background: #0f172a; color: #fff; padding: 10px 12px; font-size: 12px; text-align: right; }
+    @media print { body { padding: 0; } .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>📋 كشف حساب فواتير معتمد</h1>
+      <p style="margin: 0; opacity: 0.9;">Bot Manager Financial Statement • ${group.companyName}</p>
+    </div>
+    <div style="padding: 20px;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: #475569; margin-bottom: 12px;">
+        <div>👤 العميل: <strong>${group.clientName}</strong></div>
+        <div>📅 تاريخ الإصدار: <strong>${issueDate}</strong></div>
+      </div>
+      <table class="kpi-table">
+        <tr>
+          <td class="kpi-cell"><span style="font-size: 11px; color: #64748b;">عدد الفواتير</span><br><strong style="font-size: 16px;">${group.invoices.length}</strong></td>
+          <td class="kpi-cell"><span style="font-size: 11px; color: #64748b;">الإجمالي الكلي</span><br><strong style="font-size: 16px;">$${group.totalUsd} USD</strong></td>
+          <td class="kpi-cell" style="background: #dcfce7;"><span style="font-size: 11px; color: #166534;">المسدد</span><br><strong style="font-size: 16px; color: #166534;">$${paidUsd} USD</strong></td>
+          <td class="kpi-cell" style="background: ${unpaidUsd > 0 ? "#fef3c7" : "#f1f5f9"};"><span style="font-size: 11px; color: #92400e;">المستحق المتبقي</span><br><strong style="font-size: 16px; color: #b45309;">$${unpaidUsd} USD</strong></td>
+        </tr>
+      </table>
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>رقم الفاتورة</th>
+            <th>البند / الباقة</th>
+            <th style="text-align: center;">الرصيد</th>
+            <th style="text-align: left;">المبلغ</th>
+            <th style="text-align: center;">الحالة</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${unpaidUsd > 0 ? `
+        <div style="margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px; text-align: right;">
+          <strong style="color: #92400e; font-size: 13px;">💳 طرق السداد المعتمدة:</strong>
+          <div style="margin-top: 8px; font-size: 12px; color: #1e293b;">
+            📱 فودافون كاش ومحافظ الهاتف: <strong>${payPhone}</strong><br>
+            ⚡ عنوان إنستاباي IPA: <strong>${payInsta}</strong>
+          </div>
+        </div>
+      ` : ""}
+    </div>
+  </div>
+  <script>
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   // Handle open Send Copy Modal
   const handleOpenSendCopy = (invoice: InvoiceItem) => {
     setSelectedInvoice(invoice);
@@ -2229,6 +2467,16 @@ export default function AdminBills() {
                               <span>{lang === "ar" ? "تحميل كشف الحساب (HTML/PDF)" : "Download Statement (HTML)"}</span>
                             </DropdownMenuItem>
 
+                            <DropdownMenuItem
+                              onClick={() => {
+                                handlePrintCompanyStatement(group);
+                              }}
+                              className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium text-teal-600 dark:text-teal-400 focus:text-teal-700"
+                            >
+                              <Printer className="w-4 h-4 text-teal-500 shrink-0" />
+                              <span>{lang === "ar" ? "طباعة كشف الحساب" : "Print Statement"}</span>
+                            </DropdownMenuItem>
+
                             <DropdownMenuSeparator />
 
                             {/* Section 2: Latest Single Invoice */}
@@ -2573,6 +2821,13 @@ export default function AdminBills() {
                                          >
                                            <Download className="w-4 h-4 text-blue-500 shrink-0" />
                                            <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                                         </DropdownMenuItem>
+                                         <DropdownMenuItem
+                                           onClick={() => handlePrintInvoice(inv)}
+                                           className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium text-teal-600 dark:text-teal-400 focus:text-teal-700"
+                                         >
+                                           <Printer className="w-4 h-4 text-teal-500 shrink-0" />
+                                           <span>{lang === "ar" ? "طباعة الفاتورة" : "Print Invoice"}</span>
                                          </DropdownMenuItem>
                                         <DropdownMenuItem
                                           onClick={() => handleTogglePaid(inv)}
@@ -2925,6 +3180,13 @@ export default function AdminBills() {
                                     >
                                       <Download className="w-4 h-4 text-blue-500 shrink-0" />
                                       <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handlePrintInvoice(inv)}
+                                      className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium text-teal-600 dark:text-teal-400 focus:text-teal-700"
+                                    >
+                                      <Printer className="w-4 h-4 text-teal-500 shrink-0" />
+                                      <span>{lang === "ar" ? "طباعة الفاتورة" : "Print Invoice"}</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleTogglePaid(inv)}
@@ -3332,6 +3594,13 @@ export default function AdminBills() {
                                   <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
+                                  onClick={() => handlePrintInvoice(inv)}
+                                  className="text-xs cursor-pointer gap-2 py-1.5 font-medium text-teal-600 dark:text-teal-400 focus:text-teal-700"
+                                >
+                                  <Printer className="w-4 h-4 text-teal-500 shrink-0" />
+                                  <span>{lang === "ar" ? "طباعة الفاتورة" : "Print Invoice"}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                   onClick={() => handleTogglePaid(inv)}
                                   disabled={togglingInvoice === inv.invoiceNumber}
                                   className="text-xs cursor-pointer gap-2 py-1.5 font-medium"
@@ -3665,6 +3934,13 @@ export default function AdminBills() {
                               >
                                 <Download className="w-4 h-4 text-blue-500 shrink-0" />
                                 <span>{lang === "ar" ? "تحميل بطاقة الفاتورة" : "Download Invoice Card"}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handlePrintInvoice(inv)}
+                                className="text-xs cursor-pointer gap-2.5 py-1.5 font-medium text-teal-600 dark:text-teal-400 focus:text-teal-700"
+                              >
+                                <Printer className="w-4 h-4 text-teal-500 shrink-0" />
+                                <span>{lang === "ar" ? "طباعة الفاتورة" : "Print Invoice"}</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleTogglePaid(inv)}
@@ -4494,6 +4770,17 @@ export default function AdminBills() {
                       <span>{lang === "ar" ? "تحميل الصورة" : "Download Image"}</span>
                     </Button>
 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePrintInvoice(viewingInvoice)}
+                      className="text-xs gap-1.5 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-50 dark:hover:bg-teal-950/30 w-full sm:w-auto justify-center cursor-pointer"
+                      title={lang === "ar" ? "طباعة الفاتورة" : "Print Invoice"}
+                    >
+                      <Printer className="w-3.5 h-3.5 text-teal-500" />
+                      <span>{lang === "ar" ? "طباعة" : "Print"}</span>
+                    </Button>
+
                     {/* Advanced Custom Send (WhatsApp / Custom Notes) */}
                     <Button
                       variant="outline"
@@ -4776,6 +5063,19 @@ export default function AdminBills() {
                     >
                       <Download className="w-3.5 h-3.5 text-blue-500" />
                       <span>{lang === "ar" ? "تحميل (HTML/PDF)" : "Download (HTML/PDF)"}</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handlePrintCompanyStatement(viewingCompanyStatement);
+                      }}
+                      className="text-xs gap-1.5 cursor-pointer text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                      title={lang === "ar" ? "طباعة كشف الحساب" : "Print Statement"}
+                    >
+                      <Printer className="w-3.5 h-3.5 text-teal-500" />
+                      <span>{lang === "ar" ? "طباعة كشف الحساب" : "Print Statement"}</span>
                     </Button>
                   </div>
 
