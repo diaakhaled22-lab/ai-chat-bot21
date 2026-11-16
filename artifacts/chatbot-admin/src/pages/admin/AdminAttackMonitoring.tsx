@@ -227,12 +227,12 @@ export default function AdminAttackMonitoring() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto shrink-0">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto shrink-0">
             {data?.logs && data.logs.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full sm:w-auto justify-center gap-2 bg-white/15 hover:bg-red-500/30 text-white border-white/20 rounded-xl cursor-pointer"
+                className="w-full sm:w-auto justify-center gap-2 bg-white/15 hover:bg-red-500/30 text-white border-white/20 rounded-xl cursor-pointer h-9 px-3.5 text-xs transition-colors shrink-0"
                 onClick={() => {
                   if (window.confirm(lang === "ar" ? "هل أنت متأكد من مسح جميع سجلات الهجمات؟" : "Are you sure you want to clear all recorded attack logs?")) {
                     clearLogsMutation.mutate();
@@ -240,18 +240,18 @@ export default function AdminAttackMonitoring() {
                 }}
                 disabled={clearLogsMutation.isPending}
               >
-                <Trash2 className="w-4 h-4 text-red-300" />
-                <span>{lang === "ar" ? "مسح السجلات" : "Clear Logs"}</span>
+                <Trash2 className="w-4 h-4 text-red-300 shrink-0" />
+                <span className="truncate">{lang === "ar" ? "مسح السجلات" : "Clear Logs"}</span>
               </Button>
             )}
             <Button
               size="sm"
-              className="w-full sm:w-auto justify-center gap-2 bg-white hover:bg-blue-50 text-blue-700 font-bold shadow-lg shadow-black/10 rounded-xl px-4 py-2 text-xs cursor-pointer"
+              className="w-full sm:w-auto justify-center gap-2 bg-white hover:bg-blue-50 text-blue-700 font-bold shadow-lg shadow-black/10 rounded-xl px-4 py-2 text-xs cursor-pointer h-9 shrink-0"
               onClick={() => testAlertMutation.mutate()}
               disabled={testAlertMutation.isPending}
             >
-              {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4 text-amber-500" />}
-              <span>{lang === "ar" ? "إرسال تنبيه أمني تجريبي" : "Send Test Security Alert"}</span>
+              {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Bell className="w-4 h-4 text-amber-500 shrink-0" />}
+              <span className="truncate">{lang === "ar" ? "إرسال تنبيه أمني تجريبي" : "Send Test Security Alert"}</span>
             </Button>
           </div>
         </div>

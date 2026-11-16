@@ -411,16 +411,16 @@ export default function AdminChatLogs() {
               disabled={!logs?.length}
               className="w-full sm:w-auto justify-center bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
             >
-              <Download className="w-4 h-4 mr-2" />
-              {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+              <Download className="w-4 h-4 mr-2 shrink-0" />
+              <span className="truncate">{lang === "ar" ? "تصدير CSV" : "Export CSV"}</span>
             </Button>
             <Button
               onClick={handleRefresh}
               disabled={isFetching || isLoading}
               className="w-full sm:w-auto justify-center bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-              {lang === "ar" ? "تحديث" : "Refresh"}
+              <RefreshCw className={`w-4 h-4 mr-2 shrink-0 ${isFetching ? "animate-spin" : ""}`} />
+              <span className="truncate">{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
           </div>
         </div>

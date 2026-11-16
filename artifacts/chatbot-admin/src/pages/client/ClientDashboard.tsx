@@ -207,19 +207,19 @@ export default function ClientDashboard() {
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full md:w-auto shrink-0">
             <Link href="/client/universal-chat" className="w-full sm:w-auto">
               <Button
-                className="w-full sm:w-auto bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all px-4"
+                className="w-full sm:w-auto justify-center bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all px-3 sm:px-4"
               >
                 <Sparkles className="w-4 h-4 mr-1.5 text-blue-600 shrink-0" />
-                {lang === "ar" ? "محادثة حية للبوت" : "Universal Chat"}
+                <span className="truncate">{lang === "ar" ? "محادثة حية" : "Universal Chat"}</span>
               </Button>
             </Link>
             <Button
               onClick={() => refetch()}
               disabled={isFetching || isLoading}
-              className="w-full sm:w-auto bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+              className="w-full sm:w-auto justify-center bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
             >
               <RefreshCw className={`w-4 h-4 mr-1.5 shrink-0 ${isFetching ? "animate-spin" : ""}`} />
-              {lang === "ar" ? "تحديث" : "Refresh"}
+              <span className="truncate">{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
           </div>
         </div>
