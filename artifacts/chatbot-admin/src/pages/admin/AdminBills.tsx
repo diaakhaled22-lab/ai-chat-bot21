@@ -40,7 +40,6 @@ import {
   Search,
   Filter,
   Download,
-  Printer,
   Share2,
   RefreshCw,
   ExternalLink,
@@ -1730,11 +1729,6 @@ export default function AdminBills() {
     URL.revokeObjectURL(url);
   };
 
-  // Handle Print
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="space-y-4 sm:space-y-6 pb-16">
       {/* ── Top Header Banner ── */}
@@ -1763,58 +1757,28 @@ export default function AdminBills() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Global Send Copy Button */}
+          <div className="flex items-center gap-2 shrink-0">
             <Button
-              onClick={() => {
-                if (invoices.length > 0) {
-                  handleOpenSendCopy(invoices[0]);
-                } else {
-                  toast({
-                    title: lang === "ar" ? "لا توجد فواتير" : "No Invoices",
-                    description: lang === "ar" ? "لا توجد فواتير مسجلة حالياً لإرسال نسخة منها." : "No invoices found.",
-                  });
-                }
-              }}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs h-9 px-3.5 sm:px-4 gap-2 shadow-lg shadow-emerald-500/25 rounded-xl transition-all w-full sm:w-auto justify-center cursor-pointer"
+              variant="outline"
+              size="sm"
+              onClick={exportToCSV}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm justify-center cursor-pointer"
+              title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
             >
-              <Send className="w-4 h-4" />
-              <span>{lang === "ar" ? "إرسال نسخة من فاتورة" : "Send Invoice Copy"}</span>
+              <Download className="w-4 h-4 text-emerald-300" />
+              <span>{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
             </Button>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportToCSV}
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm flex-1 sm:flex-initial justify-center cursor-pointer"
-                title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
-              >
-                <Download className="w-4 h-4 text-emerald-300" />
-                <span>{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrint}
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm flex-1 sm:flex-initial justify-center cursor-pointer"
-                title={lang === "ar" ? "طباعة الكشف" : "Print summary"}
-              >
-                <Printer className="w-4 h-4 text-teal-300" />
-                <span>{lang === "ar" ? "طباعة" : "Print"}</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isRefetching}
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 px-3 rounded-xl backdrop-blur-sm shrink-0 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 px-3 rounded-xl backdrop-blur-sm shrink-0 cursor-pointer"
+              title={lang === "ar" ? "تحديث" : "Refresh"}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+            </Button>
           </div>
         </div>
       </div>
