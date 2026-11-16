@@ -564,7 +564,7 @@ export default function AdminPackages() {
     <div className="space-y-6 pb-12">
       {/* ── Operations Hero Header Banner ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
           background: "linear-gradient(135deg, #070b19 0%, #0e1838 50%, #102354 100%)",
         }}

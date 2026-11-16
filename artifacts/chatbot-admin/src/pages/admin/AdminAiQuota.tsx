@@ -1863,7 +1863,7 @@ export default function AdminAiQuota() {
     <div className="space-y-8">
       {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
           background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
         }}
@@ -1871,20 +1871,20 @@ export default function AdminAiQuota() {
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
-              <i className="fa-solid fa-microchip text-2xl sm:text-3xl text-white"></i>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <i className="fa-solid fa-microchip text-xl sm:text-3xl text-white"></i>
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "مركز إدارة الذكاء الاصطناعي والحصص" : "AI Quota & Telemetry"}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "الذكاء الاصطناعي وإدارة الحصص (AI / Quota)" : "AI / Quota Management"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
                 {lang === "ar"
                   ? "تكوين نموذج الدعم الفني بالذكاء الاصطناعي، ومراقبة وتحديد حصص الرموز (Token Quotas) لشركات العملاء."
                   : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
@@ -1893,9 +1893,100 @@ export default function AdminAiQuota() {
           </div>
 
           {/* Global Date Filter Controls (Translucent frosted glass inside hero) */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start lg:self-auto shrink-0">
-            <div className="flex items-center gap-1 bg-black/20 backdrop-blur-md border border-white/20 rounded-xl p-1 overflow-x-auto max-w-full scrollbar-hide">
-              <Calendar className="w-3.5 h-3.5 text-blue-200 ml-1.5 shrink-0" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 self-stretch lg:self-auto shrink-0 w-full lg:w-auto">
+            {/* Mobile View (< sm): Compact 3-chip + More dropdown */}
+            <div className="flex sm:hidden items-center gap-1 bg-black/25 backdrop-blur-md border border-white/20 rounded-xl p-1 w-full">
+              <Calendar className="w-3.5 h-3.5 text-blue-200 ms-1.5 shrink-0" />
+              <button
+                type="button"
+                onClick={() => { setActiveRange("today"); setShowCustom(false); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center ${
+                  !showCustom && activeRange === "today"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {lang === "ar" ? "اليوم" : "Today"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveRange("7d"); setShowCustom(false); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center ${
+                  !showCustom && activeRange === "7d"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {lang === "ar" ? "7 أيام" : "7 Days"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveRange("30d"); setShowCustom(false); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center ${
+                  !showCustom && activeRange === "30d"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/80 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {lang === "ar" ? "30 يوم" : "30 Days"}
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={`flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 ${
+                      showCustom || (activeRange !== "today" && activeRange !== "7d" && activeRange !== "30d")
+                        ? "bg-white text-blue-700 shadow-sm"
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <span>
+                      {showCustom
+                        ? (lang === "ar" ? "مخصص" : "Custom")
+                        : activeRange === "month"
+                        ? (lang === "ar" ? "الشهر" : "Month")
+                        : activeRange === "all"
+                        ? (lang === "ar" ? "الكل" : "All")
+                        : activeRange === "quota_period"
+                        ? (lang === "ar" ? "الحصة" : "Quota")
+                        : (lang === "ar" ? "المزيد" : "More")}
+                    </span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-52 bg-[#0e1838] border-white/20 text-white z-50">
+                  <DropdownMenuItem
+                    onClick={() => { setActiveRange("month"); setShowCustom(false); }}
+                    className={`cursor-pointer ${activeRange === "month" && !showCustom ? "bg-blue-600 text-white font-bold" : "hover:bg-white/10"}`}
+                  >
+                    {lang === "ar" ? "هذا الشهر" : "This month"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setActiveRange("quota_period"); setShowCustom(false); }}
+                    className={`cursor-pointer ${activeRange === "quota_period" && !showCustom ? "bg-blue-600 text-white font-bold" : "hover:bg-white/10"}`}
+                  >
+                    {lang === "ar" ? "فترة صلاحية الحصة" : "Quota Validity Period"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setActiveRange("all"); setShowCustom(false); }}
+                    className={`cursor-pointer ${activeRange === "all" && !showCustom ? "bg-blue-600 text-white font-bold" : "hover:bg-white/10"}`}
+                  >
+                    {lang === "ar" ? "كل الأوقات" : "All time"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem
+                    onClick={() => setShowCustom(true)}
+                    className={`cursor-pointer font-bold ${showCustom ? "bg-blue-600 text-white" : "text-sky-300 hover:bg-white/10"}`}
+                  >
+                    {lang === "ar" ? "تاريخ مخصص..." : "Custom date..."}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Tablet & Desktop View (sm:): Full Pills Toolbar */}
+            <div className="hidden sm:flex items-center gap-1 bg-black/20 backdrop-blur-md border border-white/20 rounded-xl p-1 overflow-x-auto max-w-full scrollbar-none">
+              <Calendar className="w-3.5 h-3.5 text-blue-200 ms-1.5 shrink-0" />
               {RANGE_OPTIONS.map((opt) => (
                 <button
                   key={opt.key}
@@ -1925,22 +2016,23 @@ export default function AdminAiQuota() {
             </div>
 
             {showCustom && (
-              <div className="flex items-center gap-2 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1.5 shadow-sm text-xs text-white">
+              <div className="flex flex-wrap items-center gap-2 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-sm text-xs text-white w-full sm:w-auto">
+                <span className="text-white/70 text-[11px]">{lang === "ar" ? "من:" : "From:"}</span>
                 <input
                   type="date"
                   value={customFrom}
                   max={customTo}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className="bg-transparent text-white outline-none text-xs"
+                  className="bg-white/10 rounded-lg px-2 py-1 text-white outline-none text-xs flex-1 min-w-[120px]"
                 />
-                <span className="text-white/60">→</span>
+                <span className="text-white/70 text-[11px]">{lang === "ar" ? "إلى:" : "To:"}</span>
                 <input
                   type="date"
                   value={customTo}
                   min={customFrom}
                   max={toIso(new Date())}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className="bg-transparent text-white outline-none text-xs"
+                  className="bg-white/10 rounded-lg px-2 py-1 text-white outline-none text-xs flex-1 min-w-[120px]"
                 />
               </div>
             )}
