@@ -974,7 +974,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center hover:scale-105 active:scale-95"
+      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       title={theme === "dark" ? "Light mode" : "Dark mode"}
     >
@@ -990,11 +990,11 @@ function LanguageToggle() {
   return (
     <button
       onClick={() => setLang(next)}
-      className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center gap-1.5 hover:scale-105 active:scale-95"
+      className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center gap-1 sm:gap-1.5 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
       title={lang === "en" ? "Switch to Arabic" : "Switch to English"}
       aria-label={lang === "en" ? "Switch to Arabic" : "Switch to English"}
     >
-      <Globe className="w-4 h-4 text-blue-200" />
+      <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-200" />
       <span className="text-xs font-bold leading-none">{lang === "en" ? "AR" : "EN"}</span>
     </button>
   );
@@ -1709,10 +1709,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
-          <header className={`relative z-20 h-16 px-4 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
+          <header className={`relative z-20 h-16 px-3 sm:px-6 md:px-8 ${navbarBg} text-white border-b border-white/10 shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
             <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
             <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
-            <div className="flex items-center gap-3 relative z-10">
+            <div className="flex items-center gap-2 sm:gap-3 relative z-10 min-w-0 flex-1">
               {/* Mobile & Tablet menu sheet */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -1720,7 +1720,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     variant="ghost"
                     size="icon"
                     onClick={() => setMobileMenuOpen(true)}
-                    className="lg:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 cursor-pointer"
+                    className="lg:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 shrink-0 cursor-pointer"
                     aria-label="Menu"
                   >
                     <Menu className="w-5 h-5" />
@@ -1745,7 +1745,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 variant="ghost"
                 size="icon"
                 onClick={toggleSidebar}
-                className="hidden lg:inline-flex bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 transition-all cursor-pointer"
+                className="hidden lg:inline-flex bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 shrink-0 transition-all cursor-pointer"
                 title={
                   sidebarCollapsed
                     ? (lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar")
@@ -1760,13 +1760,16 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 )}
               </Button>
 
-              {/* Current Page Breadcrumb Pill */}
-              <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
-                <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">{currentPage}</p>
+              {/* Current Page Breadcrumb Pill - Organized for Phone, Tablet, and Desktop */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm min-w-0 max-w-[135px] xs:max-w-[185px] sm:max-w-xs md:max-w-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-300 shrink-0 hidden sm:inline-block" />
+                <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">
+                  {currentPage}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 relative z-10">
+            <div className="flex items-center gap-1.5 sm:gap-2 relative z-10 shrink-0">
               <LanguageToggle />
               <ThemeToggle />
               {role === "admin" ? (

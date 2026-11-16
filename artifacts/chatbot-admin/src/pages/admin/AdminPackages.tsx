@@ -573,13 +573,13 @@ export default function AdminPackages() {
         <div className="absolute right-40 -top-10 w-56 h-56 bg-sky-400/20 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
-              <Package className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
+              <Package className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
                   {lang === "ar" ? "إدارة باقات واشتراكات المنصة" : "Packages & Plans Management"}
                 </h1>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 border border-white/30 backdrop-blur-md">
@@ -587,7 +587,7 @@ export default function AdminPackages() {
                   {lang === "ar" ? "صلاحيات المسؤول الكاملة" : "Admin Master Controls"}
                 </span>
               </div>
-              <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl leading-relaxed">
+              <p className="text-xs sm:text-sm md:text-base text-blue-100/90 max-w-2xl leading-relaxed">
                 {lang === "ar"
                   ? "تعديل وإضافة باقات الاشتراك، تحديد حصص الرموز (Tokens)، ضبط الأسعار، ميزات كل باقة، وحزم شحن الرصيد الإضافية المعروضة للعملاء."
                   : "Add, modify, and price subscription packages, token allocations, feature lists, and top-up packs shown to clients."}
@@ -595,7 +595,7 @@ export default function AdminPackages() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 self-stretch md:self-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:flex md:flex-wrap items-stretch md:items-center gap-2.5 w-full md:w-auto">
             <Button
               variant="outline"
               onClick={() => {
@@ -609,7 +609,7 @@ export default function AdminPackages() {
                 });
               }}
               disabled={isSyncing}
-              className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-400/30 rounded-xl text-xs font-bold gap-1.5 cursor-pointer backdrop-blur-md"
+              className="w-full md:w-auto justify-center bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-400/30 rounded-xl text-xs font-bold gap-1.5 cursor-pointer backdrop-blur-md py-2.5"
               title={lang === "ar" ? "تحديث أسعار الصرف الحية اليومية الآن" : "Sync live daily exchange rates"}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
@@ -617,7 +617,7 @@ export default function AdminPackages() {
             </Button>
             <Button
               onClick={handleOpenAddPlan}
-              className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white rounded-xl text-xs font-bold gap-2 shadow-lg cursor-pointer"
+              className="w-full md:w-auto justify-center bg-[#2D5BE3] hover:bg-[#254ec2] text-white rounded-xl text-xs font-bold gap-2 shadow-lg cursor-pointer py-2.5"
             >
               <Plus className="w-4 h-4" />
               <span>{lang === "ar" ? "إضافة باقة جديدة" : "Add New Plan"}</span>
@@ -625,7 +625,7 @@ export default function AdminPackages() {
             <Button
               variant="outline"
               onClick={() => setIsResetConfirmOpen(true)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl text-xs font-bold gap-1.5 cursor-pointer backdrop-blur-md"
+              className="w-full md:w-auto justify-center bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl text-xs font-bold gap-1.5 cursor-pointer backdrop-blur-md py-2.5"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>{lang === "ar" ? "استعادة الافتراضي" : "Reset Defaults"}</span>
