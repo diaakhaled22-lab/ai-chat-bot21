@@ -1971,7 +1971,7 @@ export default function AdminBills() {
     <div className="space-y-4 sm:space-y-6 pb-16">
       {/* ── Top Header Banner ── */}
       <div
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 sm:p-8 text-white shadow-xl shadow-emerald-600/10 border border-white/10"
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-emerald-600/10 border border-white/10"
         style={{
           background: "linear-gradient(135deg, #091e2f 0%, #0c334d 50%, #065f46 100%)",
         }}
@@ -1995,15 +1995,15 @@ export default function AdminBills() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={exportToCSV}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm justify-center cursor-pointer"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm justify-center cursor-pointer"
               title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
             >
-              <Download className="w-4 h-4 text-emerald-300" />
+              <Download className="w-4 h-4 text-emerald-300 shrink-0" />
               <span>{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
             </Button>
 
@@ -2012,10 +2012,11 @@ export default function AdminBills() {
               size="sm"
               onClick={() => refetch()}
               disabled={isRefetching}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 px-3 rounded-xl backdrop-blur-sm shrink-0 cursor-pointer"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 px-3 rounded-xl backdrop-blur-sm shrink-0 cursor-pointer justify-center"
               title={lang === "ar" ? "تحديث" : "Refresh"}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isRefetching ? "animate-spin" : ""}`} />
+              <span className="sm:hidden">{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
           </div>
         </div>

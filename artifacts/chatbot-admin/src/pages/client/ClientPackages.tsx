@@ -838,7 +838,7 @@ export default function ClientPackages() {
     <div className="space-y-8 pb-12">
       {/* ── Operations Hero Banner ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
           background: "linear-gradient(135deg, #0e1838 0%, #102354 50%, #1e3a8a 100%)",
         }}
@@ -846,22 +846,22 @@ export default function ClientPackages() {
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-56 h-56 bg-sky-400/15 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
-              <Package className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+        <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <Package className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                  {lang === "ar" ? "باقات واشتراكات الذكاء الاصطناعي" : "AI Packages & Subscriptions"}
-                </h1>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 border border-white/30 backdrop-blur-md">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   {lang === "ar" ? "خطط مرنة تناسب نموك" : "Flexible Scaling Plans"}
                 </span>
               </div>
-              <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl leading-relaxed">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
+                {lang === "ar" ? "باقات واشتراكات الذكاء الاصطناعي" : "AI Packages & Subscriptions"}
+              </h1>
+              <p className="text-xs sm:text-sm md:text-base text-blue-100/90 max-w-2xl mt-1.5 leading-relaxed">
                 {lang === "ar"
                   ? "اختر الباقة المناسبة لحجم أعمالك مع حصص الرموز (AI Tokens)، ربط متعدد القنوات (تليجرام، واتساب، موقع)، وإدارة الحجوزات الذكية."
                   : "Choose the optimal plan for your business volume with AI Tokens quota, multi-channel bots, and intelligent booking management."}
@@ -870,8 +870,8 @@ export default function ClientPackages() {
           </div>
 
           {/* Quick Currency Selector */}
-          <div className="flex flex-col items-center md:items-end gap-1.5 self-stretch md:self-auto">
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl justify-center">
+          <div className="flex flex-col items-stretch md:items-end gap-1.5 self-stretch md:self-auto shrink-0">
+            <div className="grid grid-cols-3 sm:flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl justify-center w-full sm:w-auto">
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((cur) => {
                 const cfg = CURRENCIES[cur];
                 const isSel = selectedCurrency === cur;

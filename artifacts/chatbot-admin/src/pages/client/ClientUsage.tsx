@@ -190,23 +190,23 @@ export default function ClientUsage() {
   return (
     <div className="space-y-6">
       {/* Hero Operations Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-blue-500/10">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-500/10">
         <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 h-44 w-44 rounded-full bg-blue-400/20 blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0">
-              <i className="fa-solid fa-coins text-2xl sm:text-3xl text-white"></i>
+          <div className="flex items-start gap-3.5 sm:gap-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0 mt-0.5">
+              <i className="fa-solid fa-coins text-xl sm:text-3xl text-white"></i>
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
-                
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
+                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "الحصة الشهرية واستهلاك الرموز" : "Token Quota & Usage"}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight drop-shadow-sm">
                 {lang === "ar" ? "استهلاك الحصة المخصصة (Token Quota)" : "Admin Assigned Quota Usage"}
               </h1>
-              <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl font-normal opacity-90">
+              <p className="text-blue-100 text-xs sm:text-sm mt-1.5 max-w-xl font-normal opacity-90 leading-relaxed">
                 {lang === "ar"
                   ? "متابعة استهلاك الحصة الشهرية المخصصة لشركتك من قِبل مسؤول النظام بالرموز والرسائل"
                   : "Track consumption under the administrator-assigned monthly token quota"}
@@ -216,7 +216,7 @@ export default function ClientUsage() {
 
           {/* Quick Period Switcher in Hero */}
           {hasQuota && (
-            <div className="flex flex-col gap-2 items-start md:items-end shrink-0">
+            <div className="flex flex-col gap-2 items-stretch md:items-end w-full md:w-auto shrink-0">
               <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md border border-white/20 p-1.5 rounded-xl max-w-full overflow-x-auto scrollbar-hide">
                 <CalendarRange className="w-4 h-4 text-blue-200 ml-1.5 mr-0.5 shrink-0" />
                 {PRESETS.map((p) => (

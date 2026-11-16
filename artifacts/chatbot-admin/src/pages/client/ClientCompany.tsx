@@ -566,7 +566,7 @@ export default function ClientCompany() {
     <div className="space-y-8 w-full pb-12">
       {/* ── Bot Manager Hero Operations Banner ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
           background: (company as any)?.businessType === "clinic"
             ? "linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)"
@@ -576,20 +576,20 @@ export default function ClientCompany() {
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
-              <i className="fa-solid fa-building text-2xl sm:text-3xl text-white"></i>
+        <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-5">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <i className="fa-solid fa-building text-xl sm:text-3xl text-white"></i>
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "ملف وهوية الشركة" : "Company Profile & Identity"}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {t("company_title")}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
                 {t("company_desc")}
               </p>
             </div>

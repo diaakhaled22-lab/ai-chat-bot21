@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2 } from "lucide-react";
+import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Sparkles } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -141,21 +141,21 @@ export default function ClientSettings() {
   return (
     <div className="space-y-6 w-full">
       {/* Hero Operations Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-blue-500/10">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-500/10">
         <div className="absolute -right-10 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="absolute -left-10 -bottom-10 h-44 w-44 rounded-full bg-blue-400/20 blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0">
-              <i className="fa-solid fa-sliders text-2xl sm:text-3xl text-white"></i>
+          <div className="flex items-start gap-3.5 sm:gap-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] shrink-0 mt-0.5">
+              <i className="fa-solid fa-sliders text-xl sm:text-3xl text-white"></i>
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
-                
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
+                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "تفضيلات وإعدادات الحساب" : "Account & Preferences"}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-sm">{t("client_settings_title")}</h1>
-              <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl font-normal opacity-90">{t("client_settings_desc")}</p>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight drop-shadow-sm">{t("client_settings_title")}</h1>
+              <p className="text-blue-100 text-xs sm:text-sm mt-1.5 max-w-xl font-normal opacity-90 leading-relaxed">{t("client_settings_desc")}</p>
             </div>
           </div>
         </div>

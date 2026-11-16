@@ -168,7 +168,7 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       {/* ── Bot Manager Hero Operations Banner matching Login aesthetic ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
           background: isClinic
             ? "linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)"
@@ -178,12 +178,12 @@ export default function ClientDashboard() {
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
-              <i className="fa-solid fa-robot text-2xl sm:text-3xl text-white"></i>
+        <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <i className="fa-solid fa-robot text-xl sm:text-3xl text-white"></i>
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-2 border border-white/20">
                 <span className={`w-1.5 h-1.5 rounded-full ${data?.isActive ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
                 <span>
@@ -193,7 +193,7 @@ export default function ClientDashboard() {
                     : (lang === "ar" ? "النظام غير مفعل" : "Inactive")}
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "لوحة تحكم العميل الذكية" : "Client Operations Portal"}
               </h1>
               <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
@@ -204,21 +204,21 @@ export default function ClientDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 flex-wrap">
-            <Link href="/client/universal-chat">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full md:w-auto shrink-0">
+            <Link href="/client/universal-chat" className="w-full sm:w-auto">
               <Button
-                className="bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all px-4"
+                className="w-full sm:w-auto bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all px-4"
               >
-                <Sparkles className="w-4 h-4 mr-1.5 text-blue-600" />
+                <Sparkles className="w-4 h-4 mr-1.5 text-blue-600 shrink-0" />
                 {lang === "ar" ? "محادثة حية للبوت" : "Universal Chat"}
               </Button>
             </Link>
             <Button
               onClick={() => refetch()}
               disabled={isFetching || isLoading}
-              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+              className="w-full sm:w-auto bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-4 h-4 mr-1.5 shrink-0 ${isFetching ? "animate-spin" : ""}`} />
               {lang === "ar" ? "تحديث" : "Refresh"}
             </Button>
           </div>

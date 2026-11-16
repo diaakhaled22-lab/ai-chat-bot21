@@ -193,7 +193,7 @@ export default function ClientApiTokens() {
         </div>
 
         {/* Date filter */}
-        <div className="flex flex-col gap-2 items-end">
+        <div className="flex flex-col gap-2 items-stretch sm:items-end w-full sm:w-auto">
           <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto max-w-full scrollbar-hide justify-start sm:justify-end pb-1">
             <CalendarRange className="w-4 h-4 text-muted-foreground shrink-0" />
             {PRESETS.map((p) => (

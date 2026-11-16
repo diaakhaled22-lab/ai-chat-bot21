@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useListClientChatLogs, useDeleteClientChatLog, getListClientChatLogsQueryKey, useGetClientChatLogRetention, useMarkClientLogAsRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot, ArrowLeft, Smile, Frown, Meh, Angry } from 'lucide-react';
+import { Search, RefreshCw, MessageCircle, MessageSquare, Globe, CalendarRange, X, Trash2, Clock, Download, User, Bot, ArrowLeft, Smile, Frown, Meh, Angry, Sparkles } from 'lucide-react';
 
 import { Input } from "@/components/ui/input";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
@@ -299,7 +299,7 @@ export default function ClientChatLogs() {
     <div className="space-y-6 flex flex-col flex-1 pb-10">
       {/* ── Bot Manager Hero Operations Banner ── */}
       <div
-        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10 shrink-0"
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10 shrink-0"
         style={{
           background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
         }}
@@ -307,40 +307,40 @@ export default function ClientChatLogs() {
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0">
-              <i className="fa-solid fa-comments text-2xl sm:text-3xl text-white"></i>
+        <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-5">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <i className="fa-solid fa-comments text-xl sm:text-3xl text-white"></i>
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "سجلات المحادثات للشركة" : "Live Chat Telemetry"}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {t("chat_logs_title")}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
                 {t("chat_logs_desc")}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full md:w-auto shrink-0">
             <Button
               onClick={handleExportCSV}
               disabled={!logs?.length}
-              className="bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+              className="w-full sm:w-auto bg-white/15 hover:bg-white/25 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
             >
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-2 shrink-0" />
               {lang === "ar" ? "تصدير CSV" : "Export CSV"}
             </Button>
             <Button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+              className="w-full sm:w-auto bg-white/20 hover:bg-white/30 text-white border border-white/25 backdrop-blur-md font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 mr-2 shrink-0 ${isFetching ? 'animate-spin' : ''}`} />
               {t("btn_refresh")}
             </Button>
           </div>
