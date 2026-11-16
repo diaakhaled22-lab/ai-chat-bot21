@@ -32,12 +32,12 @@ import {
   Database,
   Cpu,
   Coins,
-  Menu, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Receipt, Lock, PanelLeftClose, PanelLeftOpen, PanelLeft, type LucideIcon,
+  Menu, X, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Receipt, Lock, PanelLeftClose, PanelLeftOpen, PanelLeft, type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/hooks/use-theme";
 import { useLanguage } from "@/hooks/use-language";
@@ -1318,15 +1318,28 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               </span>
             </div>
           </div>
+          {/* Desktop collapse button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer shrink-0 hidden md:inline-flex"
+            className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer shrink-0 hidden lg:inline-flex"
             title={lang === "ar" ? "طي القائمة الجانبية" : "Collapse sidebar"}
             aria-label="Collapse sidebar"
           >
             <PanelLeftClose className="w-4 h-4" />
+          </Button>
+
+          {/* Mobile & Tablet drawer close button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(false)}
+            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer shrink-0 lg:hidden"
+            title={lang === "ar" ? "إغلاق القائمة" : "Close menu"}
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5 text-white" />
           </Button>
         </div>
       )}
@@ -1457,7 +1470,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      onClick={link.onClick}
+                      onClick={() => {
+                  link.onClick?.();
+                  setMobileMenuOpen(false);
+                }}
                       className={`relative w-11 h-11 mx-auto rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                         isNotifActive
                           ? "bg-white/25 text-white font-bold border border-white/30 shadow-lg shadow-black/30 ring-1 ring-white/30"
@@ -1586,7 +1602,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 key={link.href}
                 type="button"
-                onClick={link.onClick}
+                onClick={() => {
+                  link.onClick?.();
+                  setMobileMenuOpen(false);
+                }}
                 className={`group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-start cursor-pointer select-none ${
                   isNotifActive
                     ? "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/25 ring-1 ring-white/30"
@@ -1684,7 +1703,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     <TooltipProvider delayDuration={150}>
       <div className="flex h-full w-full bg-[#F3F7FF] dark:bg-background overflow-hidden text-foreground">
         {/* Sidebar */}
-        <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} border-r border-white/10 ${sidebarAsideBg} text-white hidden md:flex flex-col overflow-hidden shrink-0 shadow-2xl relative transition-[width] duration-300 ease-in-out`}>
+        <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} border-r border-white/10 ${sidebarAsideBg} text-white hidden lg:flex flex-col overflow-hidden shrink-0 shadow-2xl relative transition-[width] duration-300 ease-in-out`}>
           {renderSidebarContent(sidebarCollapsed)}
         </aside>
 
@@ -1694,14 +1713,29 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-[#2D5BE3]/30 blur-2xl pointer-events-none" />
             <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
             <div className="flex items-center gap-3 relative z-10">
-              {/* Mobile menu sheet */}
+              {/* Mobile & Tablet menu sheet */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9" aria-label="Menu">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="lg:hidden bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 cursor-pointer"
+                    aria-label="Menu"
+                  >
                     <Menu className="w-5 h-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side={lang === "ar" ? "right" : "left"} className={`w-64 p-0 flex flex-col ${sidebarAsideBg} text-white border-none shadow-2xl overflow-hidden [&>button]:hidden relative`}>
+                <SheetContent
+                  side={lang === "ar" ? "right" : "left"}
+                  className={`w-72 max-w-[85vw] p-0 flex flex-col ${sidebarAsideBg} text-white border-none shadow-2xl overflow-hidden [&>button]:hidden z-50`}
+                >
+                  <SheetTitle className="sr-only">
+                    {lang === "ar" ? "القائمة الجانبية" : "Sidebar Navigation"}
+                  </SheetTitle>
+                  <SheetDescription className="sr-only">
+                    {lang === "ar" ? "تنقل بين صفحات لوحة التحكم" : "Navigate dashboard pages"}
+                  </SheetDescription>
                   {renderSidebarContent(false)}
                 </SheetContent>
               </Sheet>
@@ -1711,7 +1745,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 variant="ghost"
                 size="icon"
                 onClick={toggleSidebar}
-                className="hidden md:inline-flex bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 transition-all cursor-pointer"
+                className="hidden lg:inline-flex bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 transition-all cursor-pointer"
                 title={
                   sidebarCollapsed
                     ? (lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar")
