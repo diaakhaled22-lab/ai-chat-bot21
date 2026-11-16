@@ -21,7 +21,7 @@
 import fs from "fs";
 import path from "path";
 import { Client } from "pg";
-import { encrypt, decrypt, getEncryptionKey } from "../../lib/db/src/encryption";
+import { encrypt, decrypt, getEncryptionKey } from "@workspace/db/encryption";
 
 const ENCRYPTED_COLUMNS: Array<{ table: string; column: string }> = [
   { table: "companies", column: "resend_api_key" },

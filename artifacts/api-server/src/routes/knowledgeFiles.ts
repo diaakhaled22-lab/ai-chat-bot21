@@ -211,7 +211,7 @@ router.post("/client/company/knowledge-files", async (req, res) => {
     if (!parsed.success) {
       res.status(400).json({
         error: "Invalid payload",
-        details: parsed.error.issues.map((i) => i.message).join(", "),
+        details: parsed.error.issues.map((i: { message: string }) => i.message).join(", "),
       });
       return;
     }

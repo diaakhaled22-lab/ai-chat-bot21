@@ -212,11 +212,12 @@ router.post(["/webhook/message", "/webhook"], webhookLimiter, async (req, res) =
     const isContextOnly = (req.body as any)?.contextOnly === true || (req.body as any)?.autoGenerate === false;
 
     // Match company by channel key
-    const channelKeyColumn = {
+    const channelMap: Record<string, any> = {
       telegram: companiesTable.telegramBotApiKey,
       whatsapp: companiesTable.whatsappApiToken,
       messenger: companiesTable.messengerApiKey,
-    }[channel];
+    };
+    const channelKeyColumn = channelMap[channel];
 
     let [company] = channelKeyColumn
       ? await db.select().from(companiesTable).where(eq(channelKeyColumn, cleanApiKey)).limit(1)

@@ -503,13 +503,16 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
       index: false,
     })
   );
-  app.get("*", (req, res) => {
+  // In Express 5 (path-to-regexp v8), wildcards must be named (e.g. `/{*splat}`).
+  // Bare '*' throws: PathError: Missing parameter name at index 1: *
+  app.get("/{*splat}", (req, res) => {
     // If the request points to a missing file asset with an extension (e.g. .sql, .env, .js, .json)
     // that was not found by static handlers, return 404 instead of falling back to SPA index.html
     const pathname = (req.path || "").toLowerCase();
     const ext = path.extname(pathname);
     if (ext && ext !== ".html") {
-      return res.status(404).json({ error: "Not Found" });
+      res.status(404).json({ error: "Not Found" });
+      return;
     }
     res.sendFile(path.join(frontendDist, "index.html"));
   });

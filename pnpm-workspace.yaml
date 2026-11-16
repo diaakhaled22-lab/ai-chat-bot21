@@ -74,6 +74,8 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  react: 19.1.0
+  react-dom: 19.1.0
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   baseline-browser-mapping@>=2.0.0 <2.11.0: ^2.11.0
