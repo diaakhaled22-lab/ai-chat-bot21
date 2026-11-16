@@ -1761,7 +1761,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               </Button>
 
               {/* Current Page Breadcrumb Pill */}
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
+              <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
                 <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">{currentPage}</p>
               </div>
             </div>
