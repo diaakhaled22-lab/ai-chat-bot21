@@ -477,12 +477,13 @@ app.use((req, _res, next) => {
 // ── HTTP Response Compression (Gzip / Deflate) ───────────────────────────
 // Dramatically reduces transferred bytes for JS bundles, CSS, HTML, and JSON.
 // Significant performance improvement for FCP and LCP.
+// Explicitly bypasses text/event-stream so AI chat streaming is not buffered.
 app.use(
   compression({
     filter: (req, res) => {
-      if (req.headers["x-no-compression"]) {
-        return false;
-      }
+      if (req.headers["x-no-compression"]) return false;
+      const type = String(res.getHeader("Content-Type") || "");
+      if (type.includes("text/event-stream")) return false;
       return compression.filter(req, res);
     },
     threshold: 1024,
@@ -525,26 +526,37 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
     })
   );
 
-  // 2. Long-term caching for static fonts in /fonts/ and /fontawesome/
+  // 2. Caching for static fonts: 1 day for CSS files (unhashed), 1 year immutable for font binaries
   const fontsDir = path.join(frontendDist, "fonts");
   app.use(
     "/fonts",
     express.static(fontsDir, {
       dotfiles: "deny",
       index: false,
-      maxAge: "1y",
-      immutable: true,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".css")) {
+          res.setHeader("Cache-Control", "public, max-age=86400"); // 1d for CSS
+        } else {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1y for woff2/ttf
+        }
+      },
     })
   );
 
+  // 3. Caching for fontawesome: 1 day for CSS files (unhashed), 1 year immutable for webfonts
   const fontawesomeDir = path.join(frontendDist, "fontawesome");
   app.use(
     "/fontawesome",
     express.static(fontawesomeDir, {
       dotfiles: "deny",
       index: false,
-      maxAge: "1y",
-      immutable: true,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".css")) {
+          res.setHeader("Cache-Control", "public, max-age=86400"); // 1d for CSS
+        } else {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1y for webfonts
+        }
+      },
     })
   );
 
