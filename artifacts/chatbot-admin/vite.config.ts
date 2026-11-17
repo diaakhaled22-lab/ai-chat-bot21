@@ -87,6 +87,34 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("recharts")) {
+              return "vendor-charts";
+            }
+            if (id.includes("@tanstack/react-query")) {
+              return "vendor-query";
+            }
+            if (id.includes("lucide-react")) {
+              return "vendor-icons";
+            }
+            if (id.includes("@radix-ui")) {
+              return "vendor-radix";
+            }
+            if (
+              id.includes("react-dom") ||
+              /[\\/]react[\\/]/.test(id) ||
+              id.includes("wouter") ||
+              id.includes("scheduler")
+            ) {
+              return "vendor-react";
+            }
+          }
+        },
+      },
+    },
   },
   server: {
     port,

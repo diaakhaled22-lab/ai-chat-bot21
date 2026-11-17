@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead, useGetClientChatLogRetention } from "@workspace/api-client-react";
+import { useListClientChatLogs, getListClientChatLogsQueryKey, useMarkClientLogAsRead, useGetClientChatLogRetention, customFetch } from "@workspace/api-client-react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { Search, MessageCircle, MessageSquare, Globe, ArrowLeft, User, Bot, Send, Loader2, CheckCircle2, Zap, Trash2, UserCheck, Inbox, Sparkles, Clock, CalendarRange } from 'lucide-react';
 
@@ -178,7 +178,6 @@ export default function ClientUniversalChat() {
   const { data: cannedResponses = [] } = useQuery({
     queryKey: ["canned-responses"],
     queryFn: async () => {
-      const { customFetch } = await import("@workspace/api-client-react");
       const res = await customFetch<CannedResponse[]>("/client/canned-responses");
       return Array.isArray(res) ? res : [];
     }
@@ -187,7 +186,6 @@ export default function ClientUniversalChat() {
   const { data: leads = [] } = useQuery({
     queryKey: ["client-leads"],
     queryFn: async () => {
-      const { customFetch } = await import("@workspace/api-client-react");
       const res = await customFetch<Array<{ id: number; sessionId: string; name: string | null; phone: string | null; email: string | null }>>("/client/leads");
       return Array.isArray(res) ? res : [];
     }

@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useGetMe } from "@workspace/api-client-react";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { LanguageProvider } from "@/hooks/use-language";
 
@@ -12,48 +13,57 @@ import AdminLogin from "@/pages/auth/AdminLogin";
 import ClientLogin from "@/pages/auth/ClientLogin";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ResetPassword from "@/pages/auth/ResetPassword";
-
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminClients from "@/pages/admin/AdminClients";
-import AdminCompanies from "@/pages/admin/AdminCompanies";
-import AdminChatLogs from "@/pages/admin/AdminChatLogs";
-import AdminSettings from "@/pages/admin/AdminSettings";
-import AdminSecurity from "@/pages/admin/AdminSecurity";
-import AdminAuditLogs from "@/pages/admin/AdminAuditLogs";
-import AdminAttackMonitoring from "@/pages/admin/AdminAttackMonitoring";
-import AdminTickets from "@/pages/admin/AdminTickets";
-import AdminBroadcast from "@/pages/admin/AdminBroadcast";
-import AdminAITester from "@/pages/admin/AdminAITester";
-import AdminWebhookMessenger from "@/pages/admin/AdminWebhookMessenger";
-import AdminMalfunctions from "@/pages/admin/AdminMalfunctions";
-import AdminAiQuota from "@/pages/admin/AdminAiQuota";
-import AdminPackages from "@/pages/admin/AdminPackages";
-import AdminBills from "@/pages/admin/AdminBills";
-import AdminNotifications from "@/pages/admin/AdminNotifications";
-
-import ClientCompany from "./pages/client/ClientCompany";
-import ClientPackages from "./pages/client/ClientPackages";
-import ClientAiModel from "./pages/client/ClientAiModel";
-import ClientPrompts from "./pages/client/ClientPrompts";
-import ClientKnowledge from "@/pages/client/ClientKnowledge";
-import ClientChatLogs from "@/pages/client/ClientChatLogs";
-import ClientLeads from "@/pages/client/ClientLeads";
-import ClientSettings from "@/pages/client/ClientSettings";
-import ClientUsage from "@/pages/client/ClientUsage";
-import ClientApiTokens from "@/pages/client/ClientApiTokens";
-import ClientSupport from "@/pages/client/ClientSupport";
-import ClientMalfunctions from "@/pages/client/ClientMalfunctions";
-import ClientAIChat from "@/pages/client/ClientAIChat";
-import ClientUniversalChat from "@/pages/client/ClientUniversalChat";
-import ClientWebhookHistory from "@/pages/client/ClientWebhookHistory";
-import ClientWidgetPreview from "@/pages/client/ClientWidgetPreview";
-import ClientChannels from "@/pages/client/ClientChannels";
-import ClientDashboard from "@/pages/client/ClientDashboard";
-import ClientQuickReplies from "@/pages/client/ClientQuickReplies";
-import ClientTools from "@/pages/client/ClientTools";
-import ClientNotifications from "@/pages/client/ClientNotifications";
-
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
+// Lazy-loaded Admin Pages
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
+const AdminClients = lazy(() => import("@/pages/admin/AdminClients"));
+const AdminCompanies = lazy(() => import("@/pages/admin/AdminCompanies"));
+const AdminChatLogs = lazy(() => import("@/pages/admin/AdminChatLogs"));
+const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
+const AdminSecurity = lazy(() => import("@/pages/admin/AdminSecurity"));
+const AdminAuditLogs = lazy(() => import("@/pages/admin/AdminAuditLogs"));
+const AdminAttackMonitoring = lazy(() => import("@/pages/admin/AdminAttackMonitoring"));
+const AdminTickets = lazy(() => import("@/pages/admin/AdminTickets"));
+const AdminBroadcast = lazy(() => import("@/pages/admin/AdminBroadcast"));
+const AdminAITester = lazy(() => import("@/pages/admin/AdminAITester"));
+const AdminWebhookMessenger = lazy(() => import("@/pages/admin/AdminWebhookMessenger"));
+const AdminMalfunctions = lazy(() => import("@/pages/admin/AdminMalfunctions"));
+const AdminAiQuota = lazy(() => import("@/pages/admin/AdminAiQuota"));
+const AdminPackages = lazy(() => import("@/pages/admin/AdminPackages"));
+const AdminBills = lazy(() => import("@/pages/admin/AdminBills"));
+const AdminNotifications = lazy(() => import("@/pages/admin/AdminNotifications"));
+
+// Lazy-loaded Client Pages
+const ClientCompany = lazy(() => import("./pages/client/ClientCompany"));
+const ClientPackages = lazy(() => import("./pages/client/ClientPackages"));
+const ClientAiModel = lazy(() => import("./pages/client/ClientAiModel"));
+const ClientPrompts = lazy(() => import("./pages/client/ClientPrompts"));
+const ClientKnowledge = lazy(() => import("@/pages/client/ClientKnowledge"));
+const ClientChatLogs = lazy(() => import("@/pages/client/ClientChatLogs"));
+const ClientLeads = lazy(() => import("@/pages/client/ClientLeads"));
+const ClientSettings = lazy(() => import("@/pages/client/ClientSettings"));
+const ClientUsage = lazy(() => import("@/pages/client/ClientUsage"));
+const ClientApiTokens = lazy(() => import("@/pages/client/ClientApiTokens"));
+const ClientSupport = lazy(() => import("@/pages/client/ClientSupport"));
+const ClientMalfunctions = lazy(() => import("@/pages/client/ClientMalfunctions"));
+const ClientAIChat = lazy(() => import("@/pages/client/ClientAIChat"));
+const ClientUniversalChat = lazy(() => import("@/pages/client/ClientUniversalChat"));
+const ClientWebhookHistory = lazy(() => import("@/pages/client/ClientWebhookHistory"));
+const ClientWidgetPreview = lazy(() => import("@/pages/client/ClientWidgetPreview"));
+const ClientChannels = lazy(() => import("@/pages/client/ClientChannels"));
+const ClientDashboard = lazy(() => import("@/pages/client/ClientDashboard"));
+const ClientQuickReplies = lazy(() => import("@/pages/client/ClientQuickReplies"));
+const ClientTools = lazy(() => import("@/pages/client/ClientTools"));
+const ClientNotifications = lazy(() => import("@/pages/client/ClientNotifications"));
+
+function PageLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-muted-foreground animate-in fade-in duration-200">
+      <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,7 +91,11 @@ function ProtectedRoute({ component: Component, allowedRole, ...rest }: any) {
   }, [user, isLoading, allowedRole, setLocation]);
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background text-foreground">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (!user || (allowedRole && user.role !== allowedRole)) {
@@ -90,7 +104,9 @@ function ProtectedRoute({ component: Component, allowedRole, ...rest }: any) {
 
   return (
     <DashboardLayout role={user.role}>
-      <Component {...rest} />
+      <Suspense fallback={<PageLoadingFallback />}>
+        <Component {...rest} />
+      </Suspense>
     </DashboardLayout>
   );
 }
