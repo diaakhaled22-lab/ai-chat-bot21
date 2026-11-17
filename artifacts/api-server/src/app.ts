@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import session from "express-session";
 import path from "path";
 import { fileURLToPath } from "url";
+import compression from "compression";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { securityHeaders, sanitizeInputs, suspiciousActivityDetector, sessionAnomalyDetector } from "./lib/security";
@@ -473,6 +474,21 @@ app.use((req, _res, next) => {
   next();
 });
 
+// ── HTTP Response Compression (Gzip / Deflate) ───────────────────────────
+// Dramatically reduces transferred bytes for JS bundles, CSS, HTML, and JSON.
+// Significant performance improvement for FCP and LCP.
+app.use(
+  compression({
+    filter: (req, res) => {
+      if (req.headers["x-no-compression"]) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+    threshold: 1024,
+  })
+);
+
 app.use(
   "/api",
   express.static(path.join(__dirname, "../public"), {
@@ -497,12 +513,55 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
     })
   );
 
+  // 1. Long-term immutable caching for hashed assets in /assets/ (JS chunks, CSS)
+  const assetsDir = path.join(frontendDist, "assets");
+  app.use(
+    "/assets",
+    express.static(assetsDir, {
+      dotfiles: "deny",
+      index: false,
+      maxAge: "1y",
+      immutable: true,
+    })
+  );
+
+  // 2. Long-term caching for static fonts in /fonts/ and /fontawesome/
+  const fontsDir = path.join(frontendDist, "fonts");
+  app.use(
+    "/fonts",
+    express.static(fontsDir, {
+      dotfiles: "deny",
+      index: false,
+      maxAge: "1y",
+      immutable: true,
+    })
+  );
+
+  const fontawesomeDir = path.join(frontendDist, "fontawesome");
+  app.use(
+    "/fontawesome",
+    express.static(fontawesomeDir, {
+      dotfiles: "deny",
+      index: false,
+      maxAge: "1y",
+      immutable: true,
+    })
+  );
+
+  // 3. Fallback static serving for other root files (favicon, robots.txt, etc.)
   app.use(
     express.static(frontendDist, {
       dotfiles: "deny",
       index: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith("index.html")) {
+          // Never cache index.html so clients always get fresh asset hashes
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        }
+      },
     })
   );
+
   // In Express 5 (path-to-regexp v8), wildcards must be named (e.g. `/{*splat}`).
   // Bare '*' throws: PathError: Missing parameter name at index 1: *
   app.get("/{*splat}", (req, res) => {
@@ -514,6 +573,7 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
       res.status(404).json({ error: "Not Found" });
       return;
     }
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }
