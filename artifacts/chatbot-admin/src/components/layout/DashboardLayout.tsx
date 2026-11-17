@@ -1740,26 +1740,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 </SheetContent>
               </Sheet>
 
-              {/* Desktop Sidebar Toggle Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleSidebar}
-                className="hidden lg:inline-flex bg-white/10 hover:bg-white/20 text-white border border-white/15 rounded-xl h-9 w-9 shrink-0 transition-all cursor-pointer"
-                title={
-                  sidebarCollapsed
-                    ? (lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar")
-                    : (lang === "ar" ? "طي القائمة الجانبية" : "Collapse sidebar")
-                }
-                aria-label="Toggle sidebar"
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen className="w-5 h-5 text-white" />
-                ) : (
-                  <PanelLeftClose className="w-5 h-5 text-white" />
-                )}
-              </Button>
-
               {/* Current Page Breadcrumb Pill - Organized for Phone, Tablet, and Desktop */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm min-w-0 max-w-[135px] xs:max-w-[185px] sm:max-w-xs md:max-w-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-300 shrink-0 hidden sm:inline-block" />
