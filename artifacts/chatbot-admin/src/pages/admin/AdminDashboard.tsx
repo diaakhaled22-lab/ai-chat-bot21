@@ -3,7 +3,8 @@ import { useLanguage } from "@/hooks/use-language";
 import { useGetAdminStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Building2, Users, CheckCircle2, XCircle, Activity, Coins, Zap, TrendingUp, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Download, Bot, Ticket, Clock, Sparkles } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Building2, Users, CheckCircle2, XCircle, Activity, Coins, Zap, TrendingUp, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Download, Bot, Ticket, Clock, Sparkles, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
@@ -174,6 +175,7 @@ export default function AdminDashboard() {
   const { lang } = useLanguage();
   const [activeRange, setActiveRange] = useState<RangePreset>("30d");
   const [showCustom, setShowCustom] = useState(false);
+  const [customPopoverOpen, setCustomPopoverOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(toIso(new Date(Date.now() - 30 * 86400000)));
   const [customTo, setCustomTo] = useState(toIso(new Date()));
   const [sortKey, setSortKey]   = useState<SortKey>("costUsd");
@@ -338,7 +340,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Global Date Filter Controls (Translucent frosted glass inside hero) */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 self-stretch lg:self-auto shrink-0 w-full lg:w-auto">
+          <div className="flex flex-col items-stretch lg:items-end gap-2 self-stretch lg:self-auto shrink-0">
             {/* Mobile View (< sm): Compact 3-chip + More dropdown */}
             <div className="flex sm:hidden items-center gap-1 bg-black/25 backdrop-blur-md border border-white/20 rounded-xl p-1 w-full">
               <Calendar className="w-3.5 h-3.5 text-blue-200 ms-1.5 shrink-0" />
@@ -412,7 +414,9 @@ export default function AdminDashboard() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem
-                    onClick={() => setShowCustom(true)}
+                    onClick={() => {
+                      setShowCustom(true);
+                    }}
                     className={`cursor-pointer font-bold ${showCustom ? "bg-blue-600 text-white" : "text-sky-300 hover:bg-white/10"}`}
                   >
                     {lang === "ar" ? "تاريخ مخصص..." : "Custom date..."}
@@ -420,6 +424,48 @@ export default function AdminDashboard() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            {/* Mobile custom date inputs (renders cleanly under mobile toolbar, 100% width, never cuts off) */}
+            {showCustom && (
+              <div className="flex sm:hidden flex-col gap-2 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl p-3 text-xs text-white w-full">
+                <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                  <span className="font-bold text-sky-200">{lang === "ar" ? "تحديد فترة مخصصة" : "Custom Range"}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustom(false);
+                      setActiveRange("30d");
+                    }}
+                    className="text-[11px] text-rose-300 hover:text-rose-200"
+                  >
+                    {lang === "ar" ? "إلغاء" : "Reset"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-white/70 block mb-1">{lang === "ar" ? "من:" : "From:"}</label>
+                    <input
+                      type="date"
+                      value={customFrom}
+                      max={customTo}
+                      onChange={(e) => setCustomFrom(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white outline-none text-xs [color-scheme:dark]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/70 block mb-1">{lang === "ar" ? "إلى:" : "To:"}</label>
+                    <input
+                      type="date"
+                      value={customTo}
+                      min={customFrom}
+                      max={toIso(new Date())}
+                      onChange={(e) => setCustomTo(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white outline-none text-xs [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tablet & Desktop View (sm:): Full Pills Toolbar */}
             <div className="hidden sm:flex items-center gap-1 bg-black/20 backdrop-blur-md border border-white/20 rounded-xl p-1 overflow-x-auto max-w-full scrollbar-none">
@@ -429,48 +475,131 @@ export default function AdminDashboard() {
                   key={opt.key}
                   type="button"
                   onClick={() => { setActiveRange(opt.key); setShowCustom(false); }}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                     !showCustom && activeRange === opt.key
-                      ? "bg-white text-blue-700 shadow-sm"
+                      ? "bg-white text-blue-700 shadow-sm font-bold"
                       : "text-white/80 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setShowCustom((v) => !v)}
-                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
-                  showCustom
-                    ? "bg-white text-blue-700 shadow-sm"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                <span>{lang === "ar" ? "مخصص" : "Custom"}</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
+
+              <Popover open={customPopoverOpen} onOpenChange={setCustomPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                      showCustom
+                        ? "bg-white text-blue-700 shadow-sm font-bold"
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <span>
+                      {showCustom
+                        ? `${lang === "ar" ? "مخصص" : "Custom"} (${customFrom.slice(5)} → ${customTo.slice(5)})`
+                        : (lang === "ar" ? "مخصص" : "Custom")}
+                    </span>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${customPopoverOpen ? "rotate-180" : ""}`} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align={lang === "ar" ? "start" : "end"}
+                  sideOffset={8}
+                  className="w-80 p-4 bg-[#0e1838]/95 border border-white/20 text-white rounded-2xl shadow-2xl backdrop-blur-xl z-50 space-y-3"
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-sky-300" />
+                      <span className="text-xs font-bold text-white">
+                        {lang === "ar" ? "تحديد فترة زمنية مخصصة" : "Custom Date Range"}
+                      </span>
+                    </div>
+                    {showCustom && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCustom(false);
+                          setActiveRange("30d");
+                          setCustomPopoverOpen(false);
+                        }}
+                        className="text-[11px] text-rose-300 hover:text-rose-200 font-semibold hover:underline cursor-pointer"
+                      >
+                        {lang === "ar" ? "إلغاء التخصيص" : "Reset"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-300 block">
+                        {lang === "ar" ? "من تاريخ" : "From Date"}
+                      </label>
+                      <input
+                        type="date"
+                        value={customFrom}
+                        max={customTo}
+                        onChange={(e) => {
+                          setCustomFrom(e.target.value);
+                          setShowCustom(true);
+                        }}
+                        className="w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-sky-400 [color-scheme:dark] transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-300 block">
+                        {lang === "ar" ? "إلى تاريخ" : "To Date"}
+                      </label>
+                      <input
+                        type="date"
+                        value={customTo}
+                        min={customFrom}
+                        max={toIso(new Date())}
+                        onChange={(e) => {
+                          setCustomTo(e.target.value);
+                          setShowCustom(true);
+                        }}
+                        className="w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-sky-400 [color-scheme:dark] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <span className="text-[11px] text-sky-200/90 font-medium">
+                      {customFrom && customTo ? `${customFrom} → ${customTo}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustom(true);
+                        setCustomPopoverOpen(false);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      {lang === "ar" ? "تطبيق" : "Apply"}
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
+            {/* Active range text / badge indicator */}
             {showCustom && (
-              <div className="flex flex-wrap items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 shadow-sm text-xs text-white w-full sm:w-auto">
-                <span className="text-white/70 text-[11px]">{lang === "ar" ? "من:" : "From:"}</span>
-                <input
-                  type="date"
-                  value={customFrom}
-                  max={customTo}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="bg-black/20 rounded-lg px-2 py-1 text-white outline-none text-xs [color-scheme:dark] flex-1 min-w-[120px]"
-                />
-                <span className="text-white/70 text-[11px]">{lang === "ar" ? "إلى:" : "To:"}</span>
-                <input
-                  type="date"
-                  value={customTo}
-                  min={customFrom}
-                  max={toIso(new Date())}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="bg-black/20 rounded-lg px-2 py-1 text-white outline-none text-xs [color-scheme:dark] flex-1 min-w-[120px]"
-                />
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-100/90 px-1 self-start sm:self-end">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-300 animate-pulse" />
+                <span>{lang === "ar" ? "الفترة المحددة:" : "Active:"} {customFrom} → {customTo}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustom(false);
+                    setActiveRange("30d");
+                  }}
+                  className="ms-1 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+                  title={lang === "ar" ? "إلغاء التخصيص" : "Reset"}
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </div>
             )}
           </div>
