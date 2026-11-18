@@ -262,6 +262,47 @@ export default function AdminDashboard() {
     });
   }, [usage, sortKey, sortDir]);
 
+  const activeDateRange = useMemo(() => {
+    const now = new Date();
+    if (showCustom) {
+      return {
+        label: lang === "ar" ? "فترة مخصصة" : "Custom Range",
+        from: customFrom,
+        to: customTo,
+      };
+    }
+    if (activeRange === "today") {
+      const todayStr = toIso(now);
+      return {
+        label: lang === "ar" ? "اليوم" : "Today",
+        from: todayStr,
+        to: todayStr,
+      };
+    }
+    if (activeRange === "7d") {
+      return {
+        label: lang === "ar" ? "آخر 7 أيام" : "Last 7 Days",
+        from: toIso(new Date(now.getTime() - 7 * 864e5)),
+        to: toIso(now),
+      };
+    }
+    if (activeRange === "30d") {
+      return {
+        label: lang === "ar" ? "آخر 30 يوم" : "Last 30 Days",
+        from: toIso(new Date(now.getTime() - 30 * 864e5)),
+        to: toIso(now),
+      };
+    }
+    if (activeRange === "month") {
+      return {
+        label: lang === "ar" ? "هذا الشهر" : "This Month",
+        from: toIso(new Date(now.getFullYear(), now.getMonth(), 1)),
+        to: toIso(now),
+      };
+    }
+    return null;
+  }, [showCustom, customFrom, customTo, activeRange, lang]);
+
   const thirtyDaysRange = useMemo(() => {
     const end = new Date();
     const start = new Date(Date.now() - 30 * 86400000);
@@ -275,13 +316,11 @@ export default function AdminDashboard() {
     if (showCustom) {
       return `${customFrom} → ${customTo}`;
     }
-    if (activeRange === "30d") {
-      return lang === "ar"
-        ? `آخر 30 يوم (${thirtyDaysRange.from} إلى ${thirtyDaysRange.to})`
-        : `Last 30 days (${thirtyDaysRange.from} → ${thirtyDaysRange.to})`;
+    if (activeDateRange) {
+      return `${activeDateRange.label} (${activeDateRange.from} → ${activeDateRange.to})`;
     }
     return RANGE_OPTIONS.find((o) => o.key === activeRange)?.label ?? "";
-  }, [showCustom, customFrom, customTo, activeRange, thirtyDaysRange, lang]);
+  }, [showCustom, customFrom, customTo, activeDateRange, activeRange]);
 
   function exportCSV() {
     const rows: string[][] = [
@@ -604,51 +643,34 @@ export default function AdminDashboard() {
               </Popover>
             </div>
 
-            {/* Active range text / badge indicator for 30d */}
-            {activeRange === "30d" && !showCustom && (
+            {/* Active range text / badge indicator for active date range */}
+            {activeDateRange && (
               <div className="flex items-center gap-1.5 text-xs text-blue-100 font-medium px-1 self-start sm:self-end">
                 <div className="flex items-center gap-2 bg-black/25 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1.5 shadow-sm">
                   <Calendar className="w-3.5 h-3.5 text-sky-300 shrink-0" />
                   <span className="text-[11px] text-blue-200 font-semibold">
-                    {lang === "ar" ? "تفاصيل آخر 30 يوم:" : "Last 30 days details:"}
+                    {lang === "ar" ? `فترة (${activeDateRange.label}):` : `Range (${activeDateRange.label}):`}
                   </span>
                   <div className="flex items-center gap-1.5 text-[11px] font-mono text-white">
-                    <span className="text-white/70 text-[10px]">{lang === "ar" ? "البداية:" : "Start:"}</span>
-                    <span className="font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">{thirtyDaysRange.from}</span>
+                    <span className="text-white/70 text-[10px]">{lang === "ar" ? "من:" : "From:"}</span>
+                    <span className="font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">{activeDateRange.from}</span>
                     <span className="text-sky-300 font-sans">→</span>
-                    <span className="text-white/70 text-[10px]">{lang === "ar" ? "النهاية:" : "End:"}</span>
-                    <span className="font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">{thirtyDaysRange.to}</span>
+                    <span className="text-white/70 text-[10px]">{lang === "ar" ? "إلى:" : "To:"}</span>
+                    <span className="font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">{activeDateRange.to}</span>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Active range text / badge indicator for Custom */}
-            {showCustom && (
-              <div className="flex items-center gap-1.5 text-xs text-blue-100 font-medium px-1 self-start sm:self-end">
-                <div className="flex items-center gap-2 bg-black/25 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1.5 shadow-sm">
-                  <Calendar className="w-3.5 h-3.5 text-sky-300 shrink-0" />
-                  <span className="text-[11px] text-blue-200 font-semibold">
-                    {lang === "ar" ? "الفترة المحددة:" : "Active:"}
-                  </span>
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-white">
-                    <span className="text-white/70 text-[10px]">{lang === "ar" ? "البداية:" : "Start:"}</span>
-                    <span className="font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">{customFrom}</span>
-                    <span className="text-sky-300 font-sans">→</span>
-                    <span className="text-white/70 text-[10px]">{lang === "ar" ? "النهاية:" : "End:"}</span>
-                    <span className="font-bold bg-white/10 px-1.5 py-0.5 rounded border border-white/15">{customTo}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCustom(false);
-                      setActiveRange("30d");
-                    }}
-                    className="ms-1 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
-                    title={lang === "ar" ? "إلغاء التخصيص" : "Reset"}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  {showCustom && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustom(false);
+                        setActiveRange("30d");
+                      }}
+                      className="ms-1 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+                      title={lang === "ar" ? "إلغاء التخصيص" : "Reset"}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -821,7 +843,11 @@ export default function AdminDashboard() {
             ) : !hasUsage ? (
               <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
                 <Zap className="w-10 h-10 opacity-20" />
-                <p className="text-sm text-center">No chat activity in this period — cost data will appear once messages are processed.</p>
+                <p className="text-sm text-center px-4">
+                  {lang === "ar"
+                    ? `لا توجد أنشطة محادثات مسجلة في هذه الفترة (${rangeLabel}) — ستظهر بيانات التكلفة فور تسجيل محادثات جديدة.`
+                    : `No chat activity in this period (${rangeLabel}) — cost data will appear once messages are processed.`}
+                </p>
               </div>
             ) : (
               <div className="flex flex-col lg:flex-row items-center gap-6">
