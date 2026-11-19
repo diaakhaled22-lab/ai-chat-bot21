@@ -357,6 +357,9 @@ sessionStore.on("error", (err) => {
   logger.error({ err }, "Session store error");
 });
 
+const cookieSameSite = (process.env.COOKIE_SAME_SITE as "lax" | "strict" | "none") || (ALLOWED_ORIGINS.length > 0 ? "none" : "lax");
+const isSecureCookie = cookieSameSite === "none" ? true : "auto";
+
 app.use(
   session({
     name: "sid",
@@ -366,10 +369,10 @@ app.use(
     saveUninitialized: false,
     rolling: true,
     cookie: {
-      secure: "auto",
+      secure: isSecureCookie,
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: "lax",
+      sameSite: cookieSameSite,
     },
   }),
 );

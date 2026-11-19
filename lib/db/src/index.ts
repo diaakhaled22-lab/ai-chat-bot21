@@ -10,7 +10,16 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const isSsl =
+  Boolean(process.env.DATABASE_URL) &&
+  (process.env.DATABASE_URL.includes("neon.tech") ||
+    process.env.DATABASE_URL.includes("sslmode=require") ||
+    process.env.NODE_ENV === "production");
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: isSsl ? { rejectUnauthorized: false } : undefined,
+});
 pool.on("error", (err) => {
   console.error("Unexpected error on idle database client", err);
 });
