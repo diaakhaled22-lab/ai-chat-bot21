@@ -529,7 +529,7 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
     })
   );
 
-  // 2. Caching for static fonts: 1 day for CSS files (unhashed), 1 year immutable for font binaries
+  // 2. Caching for static fonts: 1 year immutable for CSS & font binaries
   const fontsDir = path.join(frontendDist, "fonts");
   app.use(
     "/fonts",
@@ -537,16 +537,12 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
       dotfiles: "deny",
       index: false,
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith(".css")) {
-          res.setHeader("Cache-Control", "public, max-age=86400"); // 1d for CSS
-        } else {
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1y for woff2/ttf
-        }
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       },
     })
   );
 
-  // 3. Caching for fontawesome: 1 day for CSS files (unhashed), 1 year immutable for webfonts
+  // 3. Caching for fontawesome: 1 year immutable for CSS & webfonts
   const fontawesomeDir = path.join(frontendDist, "fontawesome");
   app.use(
     "/fontawesome",
@@ -554,16 +550,12 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
       dotfiles: "deny",
       index: false,
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith(".css")) {
-          res.setHeader("Cache-Control", "public, max-age=86400"); // 1d for CSS
-        } else {
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1y for webfonts
-        }
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       },
     })
   );
 
-  // 3. Fallback static serving for other root files (favicon, robots.txt, etc.)
+  // 4. Fallback static serving for other root files (favicon, init-theme.js, robots.txt, etc.)
   app.use(
     express.static(frontendDist, {
       dotfiles: "deny",
@@ -572,6 +564,15 @@ if (process.env.NODE_ENV === "production" || process.env.SERVE_STATIC === "true"
         if (filePath.endsWith("index.html")) {
           // Never cache index.html so clients always get fresh asset hashes
           res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        } else if (
+          filePath.endsWith(".js") ||
+          filePath.endsWith(".svg") ||
+          filePath.endsWith(".png") ||
+          filePath.endsWith(".ico") ||
+          filePath.endsWith(".txt")
+        ) {
+          // Efficient caching for root static assets (favicon.svg, init-theme.js, robots.txt)
+          res.setHeader("Cache-Control", "public, max-age=2592000, stale-while-revalidate=86400");
         }
       },
     })

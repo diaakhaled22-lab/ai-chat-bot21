@@ -15,9 +15,12 @@
     <meta name="twitter:title" content="Chatbot Admin Platform" />
     <meta name="twitter:description" content="Chatbot Admin Platform — built on Replit. Update this description to reflect the app." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Local Self-Hosted Fonts & Icons (No render-blocking external calls) -->
-    <link rel="stylesheet" href="/fonts/fonts.css">
-    <link rel="stylesheet" href="/fontawesome/css/all.min.css">
+    <!-- Local Self-Hosted Fonts & Icons (Optimized for zero render-blocking & fast paint) -->
+    <link rel="preload" href="/fonts/fonts.css" as="style" />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <link rel="preload" href="/fontawesome/css/all.min.css" as="style" />
+    <link rel="stylesheet" href="/fontawesome/css/all.min.css" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="/fontawesome/css/all.min.css" /></noscript>
   </head>
   <body>
     <div id="root"></div>
