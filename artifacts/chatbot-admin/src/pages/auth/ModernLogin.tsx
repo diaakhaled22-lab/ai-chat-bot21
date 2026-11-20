@@ -433,45 +433,36 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
   return (
     <div className="modern-login-wrapper">
-      {/* Top Bar with Language & Theme Controls */}
-      <div className="w-full max-w-[440px] md:max-w-3xl lg:max-w-4xl flex items-center justify-between px-2 mb-2 sm:mb-4 shrink-0 z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-600/30 md:hidden">
-            <i className="fa-solid fa-robot text-sm"></i>
-          </div>
-          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 md:hidden">Bot Manager</span>
-        </div>
+      {/* Top Bar with Language & Theme Controls (Fixed top right to eliminate vertical layout shift) */}
+      <div className="fixed top-3 right-3 sm:top-4 sm:right-6 flex items-center gap-2 z-30">
+        <button
+          type="button"
+          onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+          title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
+        >
+          <Globe className="w-3.5 h-3.5 text-blue-500" />
+          <span>{lang === "ar" ? "English" : "العربية"}</span>
+        </button>
 
-        <div className="flex items-center gap-2 ms-auto">
-          <button
-            type="button"
-            onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-            title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
-          >
-            <Globe className="w-3.5 h-3.5 text-blue-500" />
-            <span>{lang === "ar" ? "English" : "العربية"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-1.5 sm:p-2 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-            title={theme === "dark" ? "Light Mode" : "Dark Mode"}
-            aria-label="Toggle Theme"
-          >
-            {theme === "dark" ? (
-              <Sun className="w-3.5 h-3.5 text-amber-400" />
-            ) : (
-              <Moon className="w-3.5 h-3.5 text-blue-500" />
-            )}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-1.5 sm:p-2 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+          title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+          aria-label="Toggle Theme"
+        >
+          {theme === "dark" ? (
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+          ) : (
+            <Moon className="w-3.5 h-3.5 text-blue-500" />
+          )}
+        </button>
       </div>
 
       {/* 2. Main Container */}
       <div
-        className={`relative w-full max-w-[440px] md:max-w-3xl lg:max-w-4xl min-h-0 md:min-h-[580px] lg:min-h-[600px] my-auto bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-400/25 dark:shadow-black/50 overflow-hidden flex flex-col md:flex-row border border-slate-200/60 dark:border-slate-800 transition-all ${
+        className={`relative w-full max-w-[400px] md:max-w-2xl lg:max-w-3xl h-auto md:h-[470px] lg:h-[490px] max-h-[92vh] max-h-[92dvh] bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl shadow-slate-400/25 dark:shadow-black/50 overflow-hidden flex flex-col md:flex-row border border-slate-200/60 dark:border-slate-800 transition-all ${
           isRightPanelActive ? "active" : ""
         }`}
         id="container"
@@ -525,7 +516,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
         {/* LEFT SIDE: Admin Login Form */}
         <div
-          className={`w-full md:w-1/2 md:absolute md:top-0 md:left-0 min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-10 xl:px-12 py-5 sm:py-8 transition-all duration-[600ms] ease-in-out ${
+          className={`w-full md:w-1/2 md:absolute md:top-0 md:left-0 min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-8 py-3 sm:py-5 md:py-6 transition-all duration-[600ms] ease-in-out ${
             !isRightPanelActive
               ? "z-10 opacity-100 pointer-events-auto"
               : "md:z-0 md:opacity-0 md:pointer-events-none hidden md:flex"
@@ -534,24 +525,24 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           {!tempToken ? (
             <div className="w-full max-w-sm flex flex-col items-center text-center">
               {/* Admin Shield Icon */}
-              <div className="hidden md:flex w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 items-center justify-center mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
-                <ShieldCheck className="w-6 h-6" />
+              <div className="hidden md:flex w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 items-center justify-center mb-2 shadow-sm border border-blue-100 dark:border-blue-800">
+                <ShieldCheck className="w-5 h-5" />
               </div>
 
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                 {lang === "ar" ? "تسجيل دخول المسؤول" : "Admin Login"}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 md:mb-6">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3 md:mb-4">
                 {lang === "ar"
                   ? "المصادقة للوصول إلى لوحة الإدارة الرئيسية"
                   : "Authenticate to access the admin portal"}
               </p>
 
-              <form onSubmit={handleAdminSubmit} className="w-full flex flex-col gap-3 sm:gap-3.5">
+              <form onSubmit={handleAdminSubmit} className="w-full flex flex-col gap-2.5 sm:gap-3">
                 {/* Username Input */}
                 <div className="relative w-full text-left">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                    <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                   </span>
                   <input
                     type="text"
@@ -560,14 +551,14 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     value={adminUsername}
                     onChange={(e) => setAdminUsername(e.target.value)}
                     autoComplete="username"
-                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                    className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                   />
                 </div>
 
                 {/* Password Input */}
                 <div className="relative w-full text-left">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Lock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                   </span>
                   <input
                     type={showAdminPassword ? "text" : "password"}
@@ -576,7 +567,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     autoComplete="current-password"
-                    className="w-full pl-10 pr-11 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                    className="w-full pl-10 pr-11 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                   />
                   <button
                     type="button"
@@ -585,9 +576,9 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
                   >
                     {showAdminPassword ? (
-                      <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <EyeOff className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                     ) : (
-                      <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Eye className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                     )}
                   </button>
                 </div>
@@ -606,7 +597,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 <button
                   type="submit"
                   disabled={adminLogin.isPending}
-                  className="w-full mt-1.5 py-3 sm:py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full mt-1 py-2.5 sm:py-3 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {adminLogin.isPending ? (
                     <>
@@ -678,7 +669,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
         {/* RIGHT SIDE: Client Login Form */}
         <div
-          className={`w-full md:w-1/2 md:absolute md:top-0 md:right-0 min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-10 xl:px-12 py-5 sm:py-8 transition-all duration-[600ms] ease-in-out ${
+          className={`w-full md:w-1/2 md:absolute md:top-0 md:right-0 min-h-0 md:h-full flex flex-col justify-center items-center px-5 sm:px-8 md:px-6 lg:px-8 py-3 sm:py-5 md:py-6 transition-all duration-[600ms] ease-in-out ${
             isRightPanelActive
               ? "z-10 opacity-100 pointer-events-auto"
               : "md:z-0 md:opacity-0 md:pointer-events-none hidden md:flex"
@@ -686,24 +677,24 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         >
           <div className="w-full max-w-sm flex flex-col items-center text-center">
             {/* Client Building Icon */}
-            <div className="hidden md:flex w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 items-center justify-center mb-3 shadow-sm border border-blue-100 dark:border-blue-800">
-              <Building2 className="w-6 h-6" />
+            <div className="hidden md:flex w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 items-center justify-center mb-2 shadow-sm border border-blue-100 dark:border-blue-800">
+              <Building2 className="w-5 h-5" />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {lang === "ar" ? "تسجيل دخول العميل" : "Client Login"}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4 md:mb-6">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-3 md:mb-4">
               {lang === "ar"
                 ? "سجل الدخول لإدارة روبوت الذكاء الاصطناعي الخاص بك"
                 : "Manage your chatbot deployment portal"}
             </p>
 
-            <form onSubmit={handleClientSubmit} className="w-full flex flex-col gap-3 sm:gap-3.5">
+            <form onSubmit={handleClientSubmit} className="w-full flex flex-col gap-2.5 sm:gap-3">
               {/* Username Input */}
               <div className="relative w-full text-left">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <User className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                 </span>
                 <input
                   type="text"
@@ -712,14 +703,14 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   value={clientUsername}
                   onChange={(e) => setClientUsername(e.target.value)}
                   autoComplete="username"
-                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                  className="w-full pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                 />
               </div>
 
               {/* Password Input */}
               <div className="relative w-full text-left">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Lock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                 </span>
                 <input
                   type={showClientPassword ? "text" : "password"}
@@ -728,7 +719,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   value={clientPassword}
                   onChange={(e) => setClientPassword(e.target.value)}
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-11 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
+                  className="w-full pl-10 pr-11 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition-all"
                 />
                 <button
                   type="button"
@@ -737,9 +728,9 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
                 >
                   {showClientPassword ? (
-                    <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <EyeOff className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                   ) : (
-                    <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <Eye className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                   )}
                 </button>
               </div>
@@ -748,7 +739,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               <button
                 type="submit"
                 disabled={clientLogin.isPending}
-                className="w-full mt-1.5 py-3 sm:py-3.5 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full mt-1 py-2.5 sm:py-3 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold tracking-wider uppercase rounded-xl shadow-lg shadow-blue-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {clientLogin.isPending ? (
                   <>
@@ -772,7 +763,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               <button
                 type="button"
                 onClick={() => setIsRegisterOpen(true)}
-                className="w-full py-2.5 sm:py-3 px-4 rounded-xl border-2 border-blue-600/25 dark:border-blue-500/30 hover:border-blue-600 dark:hover:border-blue-400 bg-blue-50/70 hover:bg-blue-100/80 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"
+                className="w-full py-2 sm:py-2.5 px-4 rounded-xl border-2 border-blue-600/25 dark:border-blue-500/30 hover:border-blue-600 dark:hover:border-blue-400 bg-blue-50/70 hover:bg-blue-100/80 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99]"
               >
                 <UserPlus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>{lang === "ar" ? "عميل جديد (New Client)" : "New Client"}</span>
@@ -797,7 +788,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         >
           {/* Sub-panel 1: Visible in Default State (When overlay is on the Right, covering Client) */}
           <div
-            className={`absolute inset-0 flex flex-col justify-center items-center px-6 md:px-8 lg:px-12 text-center transition-all duration-[600ms] ease-in-out ${
+            className={`absolute inset-0 flex flex-col justify-center items-center px-6 md:px-8 lg:px-10 text-center transition-all duration-[600ms] ease-in-out ${
               !isRightPanelActive
                 ? "opacity-100 translate-x-0 pointer-events-auto"
                 : "opacity-0 -translate-x-12 pointer-events-none"
@@ -808,10 +799,10 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               <i className="fa-solid fa-robot"></i>
             </div>
 
-            <h3 className="text-2xl md:text-3xl lg:text-[2.5rem] font-bold text-white tracking-tight mb-2 md:mb-3 leading-tight">
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-1.5 md:mb-2 leading-tight">
               Bot Manager
             </h3>
-            <p className="text-xs sm:text-sm text-white/90 mb-5 md:mb-6 max-w-[280px] leading-relaxed">
+            <p className="text-xs sm:text-sm text-white/90 mb-3.5 md:mb-4 max-w-[260px] leading-relaxed">
               {lang === "ar"
                 ? "للوصول إلى لوحة إعدادات بوت العميل."
                 : "Access your client chatbot deployment portal."}
@@ -829,7 +820,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
           {/* Sub-panel 2: Visible in Active State (When overlay is on the Left, covering Admin) */}
           <div
-            className={`absolute inset-0 flex flex-col justify-center items-center px-6 md:px-8 lg:px-12 text-center transition-all duration-[600ms] ease-in-out ${
+            className={`absolute inset-0 flex flex-col justify-center items-center px-6 md:px-8 lg:px-10 text-center transition-all duration-[600ms] ease-in-out ${
               isRightPanelActive
                 ? "opacity-100 translate-x-0 pointer-events-auto"
                 : "opacity-0 translate-x-12 pointer-events-none"
@@ -840,10 +831,10 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
               <i className="fa-solid fa-robot"></i>
             </div>
 
-            <h3 className="text-2xl md:text-3xl lg:text-[2.5rem] font-bold text-white tracking-tight mb-2 md:mb-3 leading-tight">
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-1.5 md:mb-2 leading-tight">
               Bot Manager
             </h3>
-            <p className="text-xs sm:text-sm text-white/90 mb-5 md:mb-6 max-w-[280px] leading-relaxed">
+            <p className="text-xs sm:text-sm text-white/90 mb-3.5 md:mb-4 max-w-[260px] leading-relaxed">
               {lang === "ar"
                 ? "للرجوع إلى لوحة تحكم المسؤول الرئيسية."
                 : "Access the administrator management portal."}
