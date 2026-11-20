@@ -192,6 +192,11 @@
   html {
     @apply h-full overflow-hidden;
   }
+  @media (min-width: 1024px) {
+    html {
+      zoom: 0.9;
+    }
+  }
   body {
     @apply h-full overflow-hidden font-sans antialiased bg-background text-foreground;
   }
