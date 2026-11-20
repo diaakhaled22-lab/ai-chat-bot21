@@ -144,45 +144,57 @@
 }
 
 .dark {
-  --background: 224 10% 8%;
-  --foreground: 210 20% 98%;
+  --background: 240 10% 4%;      /* #09090B Deep Obsidian Carbon */
+  --foreground: 0 0% 100%;       /* #FFFFFF Pure Crisp White */
 
-  --border: 220 10% 16%;
+  --border: 240 4% 16%;          /* #27272A Minimalist Dark Border */
 
-  --card: 224 10% 10%;
-  --card-foreground: 210 20% 98%;
-  --card-border: 220 10% 16%;
+  --card: 240 6% 10%;            /* #18181B Elevated Card Surface */
+  --card-foreground: 0 0% 100%;
+  --card-border: 240 4% 16%;
 
-  --sidebar: 224 10% 6%;
-  --sidebar-foreground: 210 20% 98%;
-  --sidebar-border: 220 10% 16%;
-  --sidebar-primary: 210 100% 55%;
-  --sidebar-primary-foreground: 210 20% 98%;
-  --sidebar-accent: 220 10% 16%;
-  --sidebar-accent-foreground: 210 20% 98%;
-  --sidebar-ring: 210 100% 55%;
+  --sidebar: 240 10% 4%;         /* #09090B Obsidian Sidebar */
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 240 4% 16%;
+  --sidebar-primary: 217 91% 60%; /* #3B82F6 Electric Blue */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 4% 16%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 217 91% 60%;
 
-  --popover: 224 10% 10%;
-  --popover-foreground: 210 20% 98%;
-  --popover-border: 220 10% 16%;
+  --popover: 240 6% 10%;         /* #18181B */
+  --popover-foreground: 0 0% 100%;
+  --popover-border: 240 4% 16%;
 
-  --primary: 210 100% 55%;
+  --primary: 217 91% 60%;        /* #3B82F6 Electric Blue */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 10% 20%;
-  --secondary-foreground: 210 20% 98%;
+  --secondary: 240 4% 16%;       /* #27272A */
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 220 10% 16%;
-  --muted-foreground: 220 10% 65%;
+  --muted: 240 4% 16%;          /* #27272A */
+  --muted-foreground: 240 5% 65%; /* #A1A1AA Zinc Muted Text */
 
-  --accent: 210 100% 55%;
+  --accent: 217 91% 60%;         /* #3B82F6 */
   --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 80% 50%;
+  --destructive: 0 84% 60%;      /* #EF4444 */
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 10% 20%;
-  --ring: 210 100% 55%;
+  --input: 240 4% 16%;          /* #27272A */
+  --ring: 217 91% 60%;           /* #3B82F6 */
+}
+
+.dark .bg-slate-900 {
+  background-color: #18181b !important;
+}
+
+.dark .border-slate-800 {
+  border-color: #27272a !important;
+}
+
+.dark .border-l-\[\#2D5BE3\] {
+  border-left-color: #3b82f6 !important;
 }
 
 @layer base {
