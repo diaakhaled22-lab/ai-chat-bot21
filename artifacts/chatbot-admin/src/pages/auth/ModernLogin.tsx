@@ -433,31 +433,40 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
 
   return (
     <div className="modern-login-wrapper">
-      {/* Top Bar with Language & Theme Controls (Fixed top right to eliminate vertical layout shift) */}
-      <div className="fixed top-3 right-3 sm:top-4 sm:right-6 flex items-center gap-2 z-30">
-        <button
-          type="button"
-          onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-          title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
-        >
-          <Globe className="w-3.5 h-3.5 text-blue-500" />
-          <span>{lang === "ar" ? "English" : "العربية"}</span>
-        </button>
+      {/* Top Bar with Brand & Controls (Outside the card, perfectly aligned above) */}
+      <div className="w-full max-w-[400px] md:max-w-2xl lg:max-w-3xl flex items-center justify-between px-2 mb-2 sm:mb-3 shrink-0 z-20">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-600/30">
+            <i className="fa-solid fa-robot text-sm"></i>
+          </div>
+          <span className="font-bold text-sm text-slate-800 dark:text-slate-100 tracking-tight">Bot Manager</span>
+        </div>
 
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="p-1.5 sm:p-2 rounded-full bg-white/80 dark:bg-slate-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
-          title={theme === "dark" ? "Light Mode" : "Dark Mode"}
-          aria-label="Toggle Theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="w-3.5 h-3.5 text-amber-400" />
-          ) : (
-            <Moon className="w-3.5 h-3.5 text-blue-500" />
-          )}
-        </button>
+        <div className="flex items-center gap-2 ms-auto">
+          <button
+            type="button"
+            onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-black/5 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+            title={lang === "ar" ? "Switch to English" : "التحويل إلى العربية"}
+          >
+            <Globe className="w-3.5 h-3.5 text-blue-500" />
+            <span>{lang === "ar" ? "English" : "العربية"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-1.5 sm:p-2 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+            title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+            aria-label="Toggle Theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <Moon className="w-3.5 h-3.5 text-blue-500" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* 2. Main Container */}
@@ -468,31 +477,15 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
         id="container"
         dir="ltr"
       >
-        {/* Mobile Header (Rendered on small screens < 768px) */}
-        <div
-          className="md:hidden w-full flex flex-col items-center px-4 pt-5 pb-4 text-center text-white"
-          style={{ background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)" }}
-        >
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center shadow-inner">
-              <i className="fa-solid fa-robot text-lg text-white"></i>
-            </div>
-            <div className="text-left">
-              <h1 className="text-base font-bold tracking-tight leading-tight">Bot Manager</h1>
-              <p className="text-[10px] text-white/80 leading-tight">
-                {lang === "ar" ? "منصة إدارة وتخصيص روبوتات الدردشة" : "AI Chatbot Portal"}
-              </p>
-            </div>
-          </div>
-
-          {/* Tab Switcher */}
-          <div className="w-full max-w-[280px] grid grid-cols-2 bg-black/25 backdrop-blur-md p-1 rounded-full border border-white/15 shadow-inner">
+        {/* Mobile Header / Tab Switcher (Rendered on small screens < 768px) */}
+        <div className="md:hidden w-full flex justify-center pt-3 pb-2 px-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-full max-w-[280px] grid grid-cols-2 bg-slate-200/70 dark:bg-slate-900/80 p-1 rounded-xl border border-slate-300/40 dark:border-slate-700/60 shadow-inner">
             <button
               type="button"
-              className={`py-1.5 px-3 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+              className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
                 !isRightPanelActive
-                  ? "bg-white text-blue-700 shadow-md scale-[1.02]"
-                  : "text-white/80 hover:text-white"
+                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={handleSwitchToAdmin}
             >
@@ -500,10 +493,10 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
             </button>
             <button
               type="button"
-              className={`py-1.5 px-3 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
+              className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
                 isRightPanelActive
-                  ? "bg-white text-blue-700 shadow-md scale-[1.02]"
-                  : "text-white/80 hover:text-white"
+                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
               onClick={handleSwitchToClient}
             >
