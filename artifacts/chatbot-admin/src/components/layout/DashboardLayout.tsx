@@ -1741,8 +1741,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               </Sheet>
 
               {/* Current Page Breadcrumb Pill - Organized for Phone, Tablet, and Desktop */}
-              <div className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm min-w-0 max-w-[135px] xs:max-w-[185px] sm:max-w-xs md:max-w-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-300 shrink-0 hidden sm:inline-block" />
+              <div className="flex items-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm min-w-0 max-w-[135px] xs:max-w-[185px] sm:max-w-xs md:max-w-md">
                 <p className="text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-sm truncate">
                   {currentPage}
                 </p>
