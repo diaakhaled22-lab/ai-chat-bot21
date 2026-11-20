@@ -144,57 +144,57 @@
 }
 
 .dark {
-  --background: 240 10% 4%;      /* #09090B Deep Obsidian Carbon */
-  --foreground: 0 0% 100%;       /* #FFFFFF Pure Crisp White */
+  --background: 218 46% 10%;     /* #0E1726 Cyber Slate Background */
+  --foreground: 214 32% 91%;     /* #E2E8F0 Tech Soft White */
 
-  --border: 240 4% 16%;          /* #27272A Minimalist Dark Border */
+  --border: 220 38% 24%;         /* #263554 Cyber Slate Border */
 
-  --card: 240 6% 10%;            /* #18181B Elevated Card Surface */
-  --card-foreground: 0 0% 100%;
-  --card-border: 240 4% 16%;
+  --card: 221 38% 16%;           /* #192338 Elevated Cyber Card */
+  --card-foreground: 214 32% 91%;
+  --card-border: 220 38% 24%;
 
-  --sidebar: 240 10% 4%;         /* #09090B Obsidian Sidebar */
-  --sidebar-foreground: 0 0% 100%;
-  --sidebar-border: 240 4% 16%;
-  --sidebar-primary: 217 91% 60%; /* #3B82F6 Electric Blue */
+  --sidebar: 220 48% 7%;         /* #0A101D Deep Cyber Sidebar */
+  --sidebar-foreground: 214 32% 91%;
+  --sidebar-border: 220 38% 24%;
+  --sidebar-primary: 199 89% 48%; /* #0EA5E9 Cyber Cyan / Sky Blue */
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4% 16%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-accent: 220 38% 24%;
+  --sidebar-accent-foreground: 214 32% 91%;
+  --sidebar-ring: 199 89% 48%;
 
-  --popover: 240 6% 10%;         /* #18181B */
-  --popover-foreground: 0 0% 100%;
-  --popover-border: 240 4% 16%;
+  --popover: 221 38% 16%;        /* #192338 */
+  --popover-foreground: 214 32% 91%;
+  --popover-border: 220 38% 24%;
 
-  --primary: 217 91% 60%;        /* #3B82F6 Electric Blue */
+  --primary: 199 89% 48%;        /* #0EA5E9 Cyber Cyan / Sky Blue */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 4% 16%;       /* #27272A */
+  --secondary: 220 38% 24%;      /* #263554 */
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 240 4% 16%;          /* #27272A */
-  --muted-foreground: 240 5% 65%; /* #A1A1AA Zinc Muted Text */
+  --muted: 220 38% 24%;          /* #263554 */
+  --muted-foreground: 212 17% 60%; /* #8898AA Muted Text */
 
-  --accent: 217 91% 60%;         /* #3B82F6 */
+  --accent: 199 89% 48%;         /* #0EA5E9 */
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;      /* #EF4444 */
   --destructive-foreground: 0 0% 100%;
 
-  --input: 240 4% 16%;          /* #27272A */
-  --ring: 217 91% 60%;           /* #3B82F6 */
+  --input: 220 38% 24%;          /* #263554 */
+  --ring: 199 89% 48%;           /* #0EA5E9 */
 }
 
 .dark .bg-slate-900 {
-  background-color: #18181b !important;
+  background-color: #192338 !important;
 }
 
 .dark .border-slate-800 {
-  border-color: #27272a !important;
+  border-color: #263554 !important;
 }
 
 .dark .border-l-\[\#2D5BE3\] {
-  border-left-color: #3b82f6 !important;
+  border-left-color: #0ea5e9 !important;
 }
 
 @layer base {
