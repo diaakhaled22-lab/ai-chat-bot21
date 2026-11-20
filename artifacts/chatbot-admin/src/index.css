@@ -144,57 +144,57 @@
 }
 
 .dark {
-  --background: 218 46% 10%;     /* #0E1726 Cyber Slate Background */
-  --foreground: 214 32% 91%;     /* #E2E8F0 Tech Soft White */
+  --background: 223 39% 7%;      /* #0B0F19 Midnight Navy */
+  --foreground: 210 40% 98%;     /* #F8FAFC Crisp White */
 
-  --border: 220 38% 24%;         /* #263554 Cyber Slate Border */
+  --border: 217 33% 17.5%;       /* #1E293B Slate 800 */
 
-  --card: 221 38% 16%;           /* #192338 Elevated Cyber Card */
-  --card-foreground: 214 32% 91%;
-  --card-border: 220 38% 24%;
+  --card: 221 39% 11%;           /* #111827 Dark Surface */
+  --card-foreground: 210 40% 98%;
+  --card-border: 217 33% 17.5%;
 
-  --sidebar: 220 48% 7%;         /* #0A101D Deep Cyber Sidebar */
-  --sidebar-foreground: 214 32% 91%;
-  --sidebar-border: 220 38% 24%;
-  --sidebar-primary: 199 89% 48%; /* #0EA5E9 Cyber Cyan / Sky Blue */
+  --sidebar: 227 56% 6%;         /* #070B19 Deep Midnight Sidebar */
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-border: 217 33% 17.5%;
+  --sidebar-primary: 217 91% 60%; /* #3B82F6 Vibrant Blue */
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 38% 24%;
-  --sidebar-accent-foreground: 214 32% 91%;
-  --sidebar-ring: 199 89% 48%;
+  --sidebar-accent: 217 33% 17.5%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-ring: 217 91% 60%;
 
-  --popover: 221 38% 16%;        /* #192338 */
-  --popover-foreground: 214 32% 91%;
-  --popover-border: 220 38% 24%;
+  --popover: 221 39% 11%;        /* #111827 */
+  --popover-foreground: 210 40% 98%;
+  --popover-border: 217 33% 17.5%;
 
-  --primary: 199 89% 48%;        /* #0EA5E9 Cyber Cyan / Sky Blue */
+  --primary: 217 91% 60%;        /* #3B82F6 Blue Accent */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 38% 24%;      /* #263554 */
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 217 33% 17.5%;    /* #1E293B */
+  --secondary-foreground: 210 40% 98%;
 
-  --muted: 220 38% 24%;          /* #263554 */
-  --muted-foreground: 212 17% 60%; /* #8898AA Muted Text */
+  --muted: 217 33% 17.5%;        /* #1E293B */
+  --muted-foreground: 215 20% 65%; /* #94A3B8 Muted Slate Text */
 
-  --accent: 199 89% 48%;         /* #0EA5E9 */
+  --accent: 217 91% 60%;         /* #3B82F6 */
   --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 84% 60%;      /* #EF4444 */
+  --destructive: 350 89% 60%;    /* #F43F5E Rose 500 */
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 38% 24%;          /* #263554 */
-  --ring: 199 89% 48%;           /* #0EA5E9 */
+  --input: 217 33% 17.5%;        /* #1E293B */
+  --ring: 217 91% 60%;           /* #3B82F6 */
 }
 
 .dark .bg-slate-900 {
-  background-color: #192338 !important;
+  background-color: #111827 !important;
 }
 
 .dark .border-slate-800 {
-  border-color: #263554 !important;
+  border-color: #1e293b !important;
 }
 
 .dark .border-l-\[\#2D5BE3\] {
-  border-left-color: #0ea5e9 !important;
+  border-left-color: #3b82f6 !important;
 }
 
 @layer base {
