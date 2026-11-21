@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Mail, Globe, Sun, Moon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,15 @@ export default function ForgotPassword() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.classList.add("login-page-active");
+    document.body.classList.add("login-page-active");
+    return () => {
+      document.documentElement.classList.remove("login-page-active");
+      document.body.classList.remove("login-page-active");
+    };
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

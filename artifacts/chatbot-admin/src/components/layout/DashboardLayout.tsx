@@ -30,6 +30,7 @@ import {
   ShieldCheck, ShieldAlert, History,
   AlertTriangle,
   Database,
+  BookOpen,
   Cpu,
   Coins,
   Menu, X, Trash2, Mail, Wrench, Calendar as CalendarIcon, FileSpreadsheet, ChevronDown, ChevronRight, UserPlus, CheckCheck, ExternalLink, Stethoscope, Package, Receipt, Lock, PanelLeftClose, PanelLeftOpen, PanelLeft, type LucideIcon,
@@ -1122,6 +1123,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     ),
     { href: "/client/knowledge",        label: t("get_data_title"),      icon: Database },
     { href: "/client/channels",         label: t("nav_channels"),        icon: MessageCircle },
+    { href: "/client/channels-guide",   label: t("nav_channels_guide") || (lang === "ar" ? "دليل ربط القنوات" : "Integration Guide"), icon: BookOpen },
     {
       href: "/client/tools",
       label: t("nav_tools") || (lang === "ar" ? "الأدوات" : "Tools"),
@@ -1171,6 +1173,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     if (href.startsWith("/client/ai-model")) return "ai_model";
     if (href.startsWith("/client/usage") || href.startsWith("/client/api-tokens")) return "usage";
     if (href.startsWith("/client/knowledge")) return "knowledge";
+    if (href.startsWith("/client/channels-guide")) return "channels_guide";
     if (href.startsWith("/client/channels")) return "channels";
     if (href.startsWith("/client/tools")) return "tools";
     if (href.startsWith("/client/chat-logs")) return "chat_logs";
@@ -1187,6 +1190,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const clientLinks = Array.isArray(enabledPages)
     ? fullClientLinks.filter((link) => {
         const pageKey = getClientPageKey(link.href);
+        if (pageKey === "channels_guide") {
+          return enabledPages.includes("channels_guide") || enabledPages.includes("channels");
+        }
         return enabledPages.includes(pageKey);
       })
     : isNewClient
@@ -1198,7 +1204,11 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       if (Array.isArray(enabledPages)) {
         if (location.startsWith("/client")) {
           const currentPageKey = getClientPageKey(location);
-          if (currentPageKey && !enabledPages.includes(currentPageKey)) {
+          if (
+            currentPageKey &&
+            !enabledPages.includes(currentPageKey) &&
+            !(currentPageKey === "channels_guide" && enabledPages.includes("channels"))
+          ) {
             const firstAvailable = clientLinks[0]?.href || "/client/company";
             setLocation(firstAvailable);
           }

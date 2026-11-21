@@ -222,11 +222,30 @@ body.dark,
 }
 
 @media (min-width: 1024px) {
-  body {
+  body:not(.login-page-active):not(:has(.modern-login-wrapper)) {
     zoom: 0.9;
-    width: 100%;
-    height: 100%;
+    width: 111.111111%;
+    height: 111.111111%;
   }
+}
+
+html.login-page-active,
+body.login-page-active,
+html:has(.modern-login-wrapper),
+body:has(.modern-login-wrapper) {
+  zoom: 1 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+html.dark.login-page-active,
+body.dark.login-page-active,
+html.dark:has(.modern-login-wrapper),
+body.dark:has(.modern-login-wrapper) {
+  background-color: #0b0f19 !important;
+  background: linear-gradient(135deg, #090d16 0%, #151336 50%, #0b0f19 100%) !important;
+  background-attachment: fixed !important;
 }
 
 .modal-custom-scroll {

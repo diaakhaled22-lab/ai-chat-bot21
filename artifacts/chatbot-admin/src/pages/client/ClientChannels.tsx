@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   MessageCircle, Send, Loader2, Check,
-  Copy, Layers, Code, Mic, Sparkles,
+  Copy, Layers, Code, Mic, Sparkles, BookOpen,
 } from "lucide-react";
 import {
   useGetClientCompany,
@@ -331,12 +332,52 @@ export default function ClientChannels() {
               </p>
             </div>
           </div>
+
+          <Link href="/client/channels-guide" className="shrink-0 self-start sm:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-white/10 hover:bg-white/20 text-white border-white/25 shadow-sm backdrop-blur-md rounded-xl font-bold flex items-center gap-2 cursor-pointer transition-all hover:scale-[1.02]"
+            >
+              <BookOpen className="w-4 h-4 text-sky-300" />
+              <span>{lang === "ar" ? "دليل الربط بالتفصيل" : "Integration Guide"}</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
       {/* ── Form ─────────────────────────────────────────────── */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+          {/* ── Quick Link to Guide ── */}
+          <div className="relative overflow-hidden rounded-2xl border border-blue-200/80 dark:border-blue-900/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-white dark:from-blue-950/40 dark:via-indigo-950/25 dark:to-slate-900/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-bold text-sm text-foreground">
+                  {lang === "ar" ? "هل تحتاج مساعدة في ربط واتساب أو ماسنجر؟" : "Need help connecting WhatsApp or Messenger?"}
+                </h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {lang === "ar"
+                    ? "استعن بالدليل التفاعلي الشامل لخطوات إنشاء تطبيق Meta وتفعيل الـ Webhook وربط البوت خطوة بخطوة."
+                    : "Use our comprehensive step-by-step interactive guide with live Webhook URLs and tokens."}
+                </p>
+              </div>
+            </div>
+            <Link href="/client/channels-guide" className="shrink-0 self-end sm:self-auto">
+              <Button
+                type="button"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold gap-2 shadow-sm cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>{lang === "ar" ? "فتح دليل الربط" : "Open Guide"}</span>
+              </Button>
+            </Link>
+          </div>
 
           {!hasAnyAllowedChannel && (
             <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-4 shadow-sm">

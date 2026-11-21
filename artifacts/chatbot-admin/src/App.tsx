@@ -52,6 +52,7 @@ const ClientUniversalChat = lazy(() => import("@/pages/client/ClientUniversalCha
 const ClientWebhookHistory = lazy(() => import("@/pages/client/ClientWebhookHistory"));
 const ClientWidgetPreview = lazy(() => import("@/pages/client/ClientWidgetPreview"));
 const ClientChannels = lazy(() => import("@/pages/client/ClientChannels"));
+const ClientChannelsGuide = lazy(() => import("@/pages/client/ClientChannelsGuide"));
 const ClientDashboard = lazy(() => import("@/pages/client/ClientDashboard"));
 const ClientQuickReplies = lazy(() => import("@/pages/client/ClientQuickReplies"));
 const ClientTools = lazy(() => import("@/pages/client/ClientTools"));
@@ -235,6 +236,9 @@ function Router() {
       </Route>
       <Route path="/client/channels">
         {() => <ProtectedRoute component={ClientChannels} allowedRole="client" />}
+      </Route>
+      <Route path="/client/channels-guide">
+        {() => <ProtectedRoute component={ClientChannelsGuide} allowedRole="client" />}
       </Route>
       <Route path="/client/chat-logs">
         {() => <ProtectedRoute component={ClientChatLogs} allowedRole="client" />}
