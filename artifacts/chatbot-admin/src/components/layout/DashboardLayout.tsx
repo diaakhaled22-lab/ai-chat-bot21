@@ -1353,7 +1353,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 text-white flex items-center justify-center font-bold text-sm shadow-inner hover:bg-white/25 transition-all">
                   {user?.name?.charAt(0).toUpperCase() ?? "S"}
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070b19] animate-pulse" />
               </div>
             </TooltipTrigger>
             <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl p-2.5 space-y-1">
@@ -1378,7 +1377,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   {user?.name ?? "softysta.com"}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                   <p className="text-[11px] font-semibold text-slate-200 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
                 </div>
               </div>
