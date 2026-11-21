@@ -215,17 +215,13 @@ body.dark,
   body {
     @apply h-full overflow-hidden font-sans antialiased bg-background text-foreground;
     background-color: hsl(var(--background));
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
   }
   #root {
     @apply h-full w-full;
-  }
-}
-
-@media (min-width: 1024px) {
-  body:not(.login-page-active):not(:has(.modern-login-wrapper)) {
-    zoom: 0.9;
-    width: 111.111111%;
-    height: 111.111111%;
   }
 }
 
@@ -233,7 +229,6 @@ html.login-page-active,
 body.login-page-active,
 html:has(.modern-login-wrapper),
 body:has(.modern-login-wrapper) {
-  zoom: 1 !important;
   width: 100% !important;
   height: 100% !important;
   min-height: 100% !important;
