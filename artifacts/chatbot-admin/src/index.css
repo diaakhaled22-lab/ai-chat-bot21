@@ -199,6 +199,7 @@
 
 html.dark,
 body.dark,
+#root,
 .dark {
   background-color: #0b0f19 !important;
 }

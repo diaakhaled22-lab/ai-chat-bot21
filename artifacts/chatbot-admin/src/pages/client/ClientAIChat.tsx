@@ -219,7 +219,7 @@ export default function ClientAIChat() {
   const isEmpty = messages.length === 0 && !streaming;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] -mt-6 -mx-6 overflow-hidden">
+    <div className="flex h-full min-h-[600px] -mt-6 -mx-6 overflow-hidden">
       {/* Sidebar */}
       <div className="w-64 shrink-0 border-r border-border bg-muted/30 flex flex-col">
         <div className="p-3 border-b border-border">
