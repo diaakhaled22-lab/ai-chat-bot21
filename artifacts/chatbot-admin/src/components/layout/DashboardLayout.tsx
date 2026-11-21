@@ -1357,7 +1357,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </TooltipTrigger>
             <TooltipContent side={lang === "ar" ? "left" : "right"} className="bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl p-2.5 space-y-1">
               <p className="font-bold text-sm text-white">{user?.name ?? "softysta.com"}</p>
-              <p className="text-[11px] text-slate-300 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
               <div className="pt-1.5 border-t border-white/10 mt-1">
                 {role === "admin" ? <LiveStatusBar /> : <ClientLiveStatusBar />}
               </div>
@@ -1376,9 +1375,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 <p className="font-black text-lg tracking-tight text-white drop-shadow-sm truncate leading-tight">
                   {user?.name ?? "softysta.com"}
                 </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <p className="text-[11px] font-semibold text-slate-200 capitalize">{user?.role === "admin" ? "Super Admin" : user?.role}</p>
-                </div>
               </div>
             </div>
 
