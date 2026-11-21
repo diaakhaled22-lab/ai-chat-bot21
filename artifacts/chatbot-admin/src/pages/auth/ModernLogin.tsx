@@ -434,7 +434,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   return (
     <div className="modern-login-wrapper">
       {/* Top Bar with Brand & Controls (Outside the card, perfectly aligned above) */}
-      <div className="w-full max-w-[400px] md:max-w-2xl lg:max-w-3xl flex items-center justify-between px-2 mb-2 sm:mb-3 shrink-0 z-20">
+      <div className="w-full max-w-[400px] md:max-w-2xl lg:max-w-3xl h-9 flex items-center justify-between px-2 mb-2 sm:mb-3 shrink-0 z-20">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white shadow-md shadow-blue-600/30">
             <i className="fa-solid fa-robot text-sm"></i>
@@ -844,6 +844,12 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           </div>
         </div>
       </div>
+
+      {/* Symmetrical Bottom Spacer to guarantee perfectly balanced top & bottom margins */}
+      <div
+        className="w-full max-w-[400px] md:max-w-2xl lg:max-w-3xl h-9 mt-2 sm:mt-3 shrink-0 pointer-events-none invisible"
+        aria-hidden="true"
+      />
 
       {/* New Client Registration Modal with OTP Verification */}
       <Dialog
