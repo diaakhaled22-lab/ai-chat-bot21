@@ -197,23 +197,34 @@
   border-left-color: #3b82f6 !important;
 }
 
+html.dark,
+body.dark,
+.dark {
+  background-color: #0b0f19 !important;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
   html {
-    @apply h-full overflow-hidden;
-  }
-  @media (min-width: 1024px) {
-    html {
-      zoom: 0.9;
-    }
+    @apply h-full overflow-hidden bg-background text-foreground;
+    background-color: hsl(var(--background));
   }
   body {
     @apply h-full overflow-hidden font-sans antialiased bg-background text-foreground;
+    background-color: hsl(var(--background));
   }
   #root {
-    @apply h-full;
+    @apply h-full w-full;
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    zoom: 0.9;
+    width: 111.111111%;
+    height: 111.111111%;
   }
 }
 
