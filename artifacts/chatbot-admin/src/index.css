@@ -292,8 +292,7 @@ body.dark:has(.modern-login-wrapper) {
 /* Admin Unified Glassy Sky Cards (Matching Dashboard) across all admin pages except Bills */
 .admin-dashboard-cards-theme div.bg-card,
 .admin-dashboard-cards-theme [data-slot="card"],
-.admin-dashboard-cards-theme .admin-glass-card,
-.admin-dashboard-cards-theme .admin-glass-transparent {
+.admin-dashboard-cards-theme .admin-glass-card {
   background: linear-gradient(135deg, rgba(240, 249, 255, 0.88) 0%, rgba(224, 242, 254, 0.72) 50%, rgba(186, 230, 253, 0.58) 100%) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
@@ -303,21 +302,13 @@ body.dark:has(.modern-login-wrapper) {
 
 .admin-dashboard-cards-theme div.bg-card:hover,
 .admin-dashboard-cards-theme [data-slot="card"]:hover,
-.admin-dashboard-cards-theme .admin-glass-card:hover,
-.admin-dashboard-cards-theme .admin-glass-transparent:hover {
+.admin-dashboard-cards-theme .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(56, 189, 248, 0.28), 0 10px 15px -5px rgba(56, 189, 248, 0.15) !important;
-}
-
-.admin-dashboard-cards-theme .is-unread {
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95) 0%, rgba(186, 230, 253, 0.8) 100%) !important;
-  border-color: rgba(56, 189, 248, 0.7) !important;
-  box-shadow: 0 12px 28px -5px rgba(2, 132, 199, 0.25) !important;
 }
 
 .dark .admin-dashboard-cards-theme div.bg-card,
 .dark .admin-dashboard-cards-theme [data-slot="card"],
-.dark .admin-dashboard-cards-theme .admin-glass-card,
-.dark .admin-dashboard-cards-theme .admin-glass-transparent {
+.dark .admin-dashboard-cards-theme .admin-glass-card {
   background: rgba(17, 24, 39, 0.85) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
@@ -327,15 +318,8 @@ body.dark:has(.modern-login-wrapper) {
 
 .dark .admin-dashboard-cards-theme div.bg-card:hover,
 .dark .admin-dashboard-cards-theme [data-slot="card"]:hover,
-.dark .admin-dashboard-cards-theme .admin-glass-card:hover,
-.dark .admin-dashboard-cards-theme .admin-glass-transparent:hover {
+.dark .admin-dashboard-cards-theme .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
-}
-
-.dark .admin-dashboard-cards-theme .is-unread {
-  background: rgba(30, 58, 138, 0.45) !important;
-  border-color: rgba(96, 165, 250, 0.4) !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* Admin Dashboard Glassy Sky Cards */
@@ -373,19 +357,21 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* Transparent Glass Cards for Notifications & Admin Views */
+/* Admin Notifications Cards - Light Blue-Gray (Cool Slate / Ice Blue) */
+.admin-notifications-card,
 .admin-glass-transparent {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(240, 249, 255, 0.48) 50%, rgba(224, 242, 254, 0.35) 100%) !important;
-  backdrop-filter: blur(20px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
-  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95), 0 10px 25px -5px rgba(14, 165, 233, 0.18), 0 8px 10px -6px rgba(14, 165, 233, 0.08) !important;
+  background: linear-gradient(135deg, rgba(238, 244, 251, 0.94) 0%, rgba(223, 231, 243, 0.85) 50%, rgba(204, 216, 232, 0.72) 100%) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  box-shadow: 0 10px 25px -5px rgba(100, 116, 139, 0.14), 0 8px 10px -6px rgba(100, 116, 139, 0.08) !important;
 }
 
+.admin-notifications-card:hover,
 .admin-glass-transparent:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(240, 249, 255, 0.60) 100%) !important;
-  border-color: rgba(255, 255, 255, 0.95) !important;
-  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 1), 0 15px 30px -8px rgba(14, 165, 233, 0.28), 0 6px 10px -2px rgba(14, 165, 233, 0.12) !important;
+  background: linear-gradient(135deg, rgba(245, 248, 253, 0.96) 0%, rgba(230, 237, 247, 0.90) 100%) !important;
+  border-color: rgba(148, 163, 184, 0.65) !important;
+  box-shadow: 0 15px 30px -8px rgba(100, 116, 139, 0.22), 0 8px 12px -4px rgba(100, 116, 139, 0.12) !important;
 }
 
 .admin-glass-transparent.border-l-4 {
@@ -408,30 +394,34 @@ body.dark:has(.modern-login-wrapper) {
   border-left-color: #f43f5e !important;
 }
 
+.admin-notifications-card.is-unread,
 .admin-glass-transparent.is-unread {
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.85) 0%, rgba(186, 230, 253, 0.55) 100%) !important;
-  border: 1.5px solid rgba(56, 189, 248, 0.7) !important;
-  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95), 0 12px 28px -5px rgba(2, 132, 199, 0.25) !important;
+  background: linear-gradient(135deg, rgba(224, 235, 250, 0.96) 0%, rgba(199, 216, 239, 0.85) 100%) !important;
+  border: 1px solid rgba(96, 165, 250, 0.6) !important;
+  box-shadow: 0 12px 28px -5px rgba(59, 130, 246, 0.18) !important;
 }
 
+.dark .admin-notifications-card,
 .dark .admin-glass-transparent {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.50) 100%) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), 0 10px 25px -5px rgba(0, 0, 0, 0.55) !important;
+  background: rgba(30, 41, 59, 0.85) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
 }
 
+.dark .admin-notifications-card:hover,
 .dark .admin-glass-transparent:hover {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.65) 100%) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.22), 0 15px 30px -8px rgba(0, 0, 0, 0.7) !important;
+  background: rgba(51, 65, 85, 0.85) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.65) !important;
 }
 
+.dark .admin-notifications-card.is-unread,
 .dark .admin-glass-transparent.is-unread {
-  background: linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.65) 100%) !important;
-  border-color: rgba(96, 165, 250, 0.4) !important;
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+  background: rgba(30, 58, 138, 0.4) !important;
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
 }
 
 
