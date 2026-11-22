@@ -2033,12 +2033,12 @@ export default function AdminBills() {
       </div>
 
       {/* ── KPI Overview Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
-          <CardContent className="p-3 sm:p-5 pb-1">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between rounded-xl">
+          <CardContent className="p-3 sm:px-3.5 sm:py-3 pb-1 sm:pb-1">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <Receipt className="w-4 h-4 text-emerald-500" />
               </div>
               <KpiTrend trend="up" value="+14.3%" />
             </div>
@@ -2046,22 +2046,22 @@ export default function AdminBills() {
               <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate max-w-full">
                 {lang === "ar" ? "إجمالي الفواتير" : "Total Invoices"}
               </p>
-              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 tabular-nums">{stats.totalCount}</h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 font-medium truncate max-w-full">
+              <h3 className="text-lg sm:text-xl font-black text-foreground mt-0.5 tabular-nums leading-tight">{stats.totalCount}</h3>
+              <p className="text-[10px] sm:text-[10.5px] text-muted-foreground mt-0.5 font-medium truncate max-w-full leading-none">
                 {lang === "ar" ? `${stats.paidCount} مسددة • ${stats.unpaidCount} غير مسددة` : `${stats.paidCount} Paid • ${stats.unpaidCount} Unpaid`}
               </p>
             </div>
           </CardContent>
-          <div className="px-2 pb-1.5">
-            <KpiSparkline trend="up" seed="bills-invoices" height={30} />
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="bills-invoices" height={18} className="mt-0.5" />
           </div>
         </Card>
 
-        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
-          <CardContent className="p-3 sm:p-5 pb-1">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between rounded-xl">
+          <CardContent className="p-3 sm:px-3.5 sm:py-3 pb-1 sm:pb-1">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                <DollarSign className="w-4 h-4 text-blue-500" />
               </div>
               <KpiTrend trend="up" value="+18.7%" />
             </div>
@@ -2069,25 +2069,25 @@ export default function AdminBills() {
               <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate max-w-full">
                 {lang === "ar" ? "القيمة الإجمالية" : "Total Value"}
               </p>
-              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 tabular-nums">
+              <h3 className="text-lg sm:text-xl font-black text-foreground mt-0.5 tabular-nums leading-tight">
                 ${stats.totalUsd.toLocaleString()}{" "}
                 <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground">USD</span>
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 font-medium truncate max-w-full">
+              <p className="text-[10px] sm:text-[10.5px] text-muted-foreground mt-0.5 font-medium truncate max-w-full leading-none">
                 ≈ {stats.totalLocal.toLocaleString()} {currencyInfo.symbol}
               </p>
             </div>
           </CardContent>
-          <div className="px-2 pb-1.5">
-            <KpiSparkline trend="up" seed="bills-value" height={30} />
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="bills-value" height={18} className="mt-0.5" />
           </div>
         </Card>
 
-        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
-          <CardContent className="p-3 sm:p-5 pb-1">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between rounded-xl">
+          <CardContent className="p-3 sm:px-3.5 sm:py-3 pb-1 sm:pb-1">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-violet-500" />
               </div>
               <KpiTrend trend="up" value="+6.5%" />
             </div>
@@ -2095,22 +2095,22 @@ export default function AdminBills() {
               <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate max-w-full">
                 {lang === "ar" ? "الشركات المسجلة" : "Companies"}
               </p>
-              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 tabular-nums">{stats.uniqueCompanies}</h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 font-medium truncate max-w-full">
+              <h3 className="text-lg sm:text-xl font-black text-foreground mt-0.5 tabular-nums leading-tight">{stats.uniqueCompanies}</h3>
+              <p className="text-[10px] sm:text-[10.5px] text-muted-foreground mt-0.5 font-medium truncate max-w-full leading-none">
                 {lang === "ar" ? "شركات مسجلة بالفواتير" : "Companies with invoices"}
               </p>
             </div>
           </CardContent>
-          <div className="px-2 pb-1.5">
-            <KpiSparkline trend="up" seed="bills-companies" height={30} />
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="bills-companies" height={18} className="mt-0.5" />
           </div>
         </Card>
 
-        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
-          <CardContent className="p-3 sm:p-5 pb-1">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                <Coins className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between rounded-xl">
+          <CardContent className="p-3 sm:px-3.5 sm:py-3 pb-1 sm:pb-1">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4 text-amber-500" />
               </div>
               <KpiTrend trend="up" value="+22.1%" />
             </div>
@@ -2118,16 +2118,16 @@ export default function AdminBills() {
               <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate max-w-full">
                 {lang === "ar" ? "الباقات والشحن" : "Plans & Top-ups"}
               </p>
-              <h3 className="text-lg sm:text-2xl font-black text-foreground mt-0.5 tabular-nums">
+              <h3 className="text-lg sm:text-xl font-black text-foreground mt-0.5 tabular-nums leading-tight">
                 {stats.planCount + stats.topupCount}
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 font-medium truncate max-w-full">
+              <p className="text-[10px] sm:text-[10.5px] text-muted-foreground mt-0.5 font-medium truncate max-w-full leading-none">
                 {lang === "ar" ? `${stats.planCount} باقة • ${stats.topupCount} شحن` : `${stats.planCount} plans • ${stats.topupCount} topups`}
               </p>
             </div>
           </CardContent>
-          <div className="px-2 pb-1.5">
-            <KpiSparkline trend="up" seed="bills-plans" height={30} />
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="bills-plans" height={18} className="mt-0.5" />
           </div>
         </Card>
       </div>
