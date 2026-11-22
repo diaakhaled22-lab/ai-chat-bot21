@@ -529,14 +529,14 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-4 flex items-center gap-4 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex items-center gap-4 border-s-4 border-s-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
         {icon}
       </div>
       <div className="min-w-0">
         <p className="text-2xl font-bold tabular-nums leading-tight">{value}</p>
-        <p className="text-xs text-muted-foreground font-medium mt-0.5">{label}</p>
-        {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
+        <p className="text-xs text-muted-foreground font-medium mt-1 truncate">{label}</p>
+        {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{sub}</p>}
       </div>
     </div>
   );
@@ -1472,13 +1472,36 @@ export default function AdminCompanies() {
   return (
     <div className="space-y-6">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Monitor subscriptions, channels, and AI agent health across all client companies.
-          </p>
+      {/* ── Operations Hero Header Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <Sparkles className="w-3 h-3 text-sky-300" />
+                {lang === "ar" ? "دليل الشركات والمؤسسات" : "Organizations & Deployments"}
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "إدارة الشركات والمشتركين" : "Companies Directory"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "متابعة اشتراكات الشركات، القنوات المفعلة (واتساب وماسنجر)، وصحة روبوتات الدردشة."
+                  : "Monitor subscriptions, active channels (WhatsApp & Messenger), and AI chatbot health across all client companies."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

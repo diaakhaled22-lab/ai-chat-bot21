@@ -566,11 +566,11 @@ export default function AdminPackages() {
       <div
         className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
-          background: "linear-gradient(135deg, #070b19 0%, #0e1838 50%, #102354 100%)",
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
         }}
       >
-        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-[#2D5BE3]/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-40 -top-10 w-56 h-56 bg-sky-400/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-start gap-3.5 sm:gap-5">

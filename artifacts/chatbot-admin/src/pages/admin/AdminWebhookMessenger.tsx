@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send, ShieldCheck, ShieldAlert, Key, Eye, EyeOff, Lock } from "lucide-react";
+import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send, ShieldCheck, ShieldAlert, Key, Eye, EyeOff, Lock, Sparkles } from "lucide-react";
 import { ChannelIcon } from "@/components/ChannelIcon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -481,15 +481,37 @@ export default function AdminWebhookMessenger() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Webhook className="w-7 h-7 text-primary" />
-          Webhook Channels
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Messenger and WhatsApp webhook configurations across all companies.
-        </p>
+      {/* ── Operations Hero Header Banner ── */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
+        }}
+      >
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="flex items-start gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
+              <Webhook className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
+                <Sparkles className="w-3 h-3 text-sky-300" />
+                {lang === "ar" ? "قنوات الربط والتكامل المباشر" : "Webhook & Messaging Channels"}
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
+                {lang === "ar" ? "قنوات Webhook والماسنجر" : "Webhook Channels & Integrations"}
+              </h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
+                {lang === "ar"
+                  ? "إدارة نقاط النهاية (Endpoints) لـ WhatsApp و Messenger والتحقق التشفيري HMAC-SHA256."
+                  : "Manage WhatsApp, Messenger, and Telegram webhook endpoints with cryptographic signature verification."}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Cryptographic Webhook Security */}
@@ -500,24 +522,20 @@ export default function AdminWebhookMessenger() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="bg-card border-blue-500/20 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
-          <CardContent className="pt-5 pb-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-xl shrink-0">📨</div>
-            <div>
-              <p className="text-2xl font-bold">{isLoading ? "—" : messengerCompanies.length}</p>
-              <p className="text-xs text-muted-foreground">Messenger webhooks configured</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-green-500/20 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
-          <CardContent className="pt-5 pb-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-xl shrink-0">💬</div>
-            <div>
-              <p className="text-2xl font-bold">{isLoading ? "—" : whatsappCompanies.length}</p>
-              <p className="text-xs text-muted-foreground">WhatsApp webhooks configured</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 border-s-4 border-s-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xl shrink-0">📨</div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold tabular-nums leading-tight">{isLoading ? "—" : messengerCompanies.length}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">Messenger webhooks configured</p>
+          </div>
+        </div>
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 border-s-4 border-s-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all">
+          <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-xl shrink-0">💬</div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold tabular-nums leading-tight">{isLoading ? "—" : whatsappCompanies.length}</p>
+            <p className="text-xs text-muted-foreground font-medium mt-1">WhatsApp webhooks configured</p>
+          </div>
+        </div>
       </div>
 
       {/* Messenger section */}
