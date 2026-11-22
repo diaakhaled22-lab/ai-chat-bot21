@@ -357,21 +357,21 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* Admin Notifications Cards - Light Blue-Gray (Cool Slate / Ice Blue) */
+/* Admin Notifications Cards - Off-White with Slight Gray Tint (Light Gray) */
 .admin-notifications-card,
 .admin-glass-transparent {
-  background: linear-gradient(135deg, rgba(238, 244, 251, 0.94) 0%, rgba(223, 231, 243, 0.85) 50%, rgba(204, 216, 232, 0.72) 100%) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.92) 50%, rgba(241, 245, 249, 0.86) 100%) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
-  border: 1px solid rgba(148, 163, 184, 0.45) !important;
-  box-shadow: 0 10px 25px -5px rgba(100, 116, 139, 0.14), 0 8px 10px -6px rgba(100, 116, 139, 0.08) !important;
+  border: 1px solid rgba(203, 213, 225, 0.6) !important;
+  box-shadow: 0 8px 24px -4px rgba(100, 116, 139, 0.08), 0 4px 8px -2px rgba(100, 116, 139, 0.04) !important;
 }
 
 .admin-notifications-card:hover,
 .admin-glass-transparent:hover {
-  background: linear-gradient(135deg, rgba(245, 248, 253, 0.96) 0%, rgba(230, 237, 247, 0.90) 100%) !important;
-  border-color: rgba(148, 163, 184, 0.65) !important;
-  box-shadow: 0 15px 30px -8px rgba(100, 116, 139, 0.22), 0 8px 12px -4px rgba(100, 116, 139, 0.12) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%) !important;
+  border-color: rgba(203, 213, 225, 0.85) !important;
+  box-shadow: 0 14px 28px -6px rgba(100, 116, 139, 0.14), 0 6px 10px -3px rgba(100, 116, 139, 0.06) !important;
 }
 
 .admin-glass-transparent.border-l-4 {
@@ -396,9 +396,9 @@ body.dark:has(.modern-login-wrapper) {
 
 .admin-notifications-card.is-unread,
 .admin-glass-transparent.is-unread {
-  background: linear-gradient(135deg, rgba(224, 235, 250, 0.96) 0%, rgba(199, 216, 239, 0.85) 100%) !important;
-  border: 1px solid rgba(96, 165, 250, 0.6) !important;
-  box-shadow: 0 12px 28px -5px rgba(59, 130, 246, 0.18) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 245, 251, 0.94) 100%) !important;
+  border: 1px solid rgba(147, 197, 253, 0.65) !important;
+  box-shadow: 0 10px 25px -4px rgba(59, 130, 246, 0.14) !important;
 }
 
 .dark .admin-notifications-card,
