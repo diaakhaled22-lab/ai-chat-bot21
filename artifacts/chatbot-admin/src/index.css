@@ -278,9 +278,9 @@ body.dark:has(.modern-login-wrapper) {
 
 /* Bills & Invoices Hero Banner - Light Mode (Original Royal Blue) & Dark Mode (Harmonious Midnight Cosmic Navy) */
 .admin-bills-banner {
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
-  box-shadow: 0 20px 25px -5px rgba(30, 64, 175, 0.22) !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.25) !important;
 }
 
 .dark .admin-bills-banner {

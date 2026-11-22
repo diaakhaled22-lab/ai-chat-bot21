@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch, useGetMe } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
+import { useTheme } from "@/hooks/use-theme";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -455,6 +456,8 @@ function generateInvoiceCardCanvas(
 
 export default function AdminBills() {
   const { lang } = useLanguage();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: me } = useGetMe();
@@ -1970,7 +1973,18 @@ export default function AdminBills() {
   return (
     <div className="space-y-4 sm:space-y-6 pb-16">
       {/* ── Top Header Banner ── */}
-      <div className="admin-bills-banner relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white border transition-all">
+      <div
+        className="admin-bills-banner relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white border transition-all"
+        style={{
+          background: isDark
+            ? "linear-gradient(135deg, #070b19 0%, #0e1838 50%, #172554 100%)"
+            : "linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%)",
+          borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.2)",
+          boxShadow: isDark
+            ? "0 25px 50px -12px rgba(0, 0, 0, 0.7)"
+            : "0 20px 25px -5px rgba(37, 99, 235, 0.25)",
+        }}
+      >
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 dark:bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
 
