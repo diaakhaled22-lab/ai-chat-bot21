@@ -71,7 +71,7 @@ export default function ClientChannelsGuide() {
   const whatsappWebhookUrl =
     platformConfig?.whatsapp?.webhookUrl ?? `${window.location.origin}/api/whatsapp/webhook`;
   const whatsappVerifyToken =
-    platformConfig?.whatsapp?.verifyToken ?? company?.whatsappApiToken ?? "—";
+    platformConfig?.whatsapp?.verifyToken ?? "—";
 
   const messengerWebhookUrl =
     platformConfig?.messenger?.webhookUrl ?? `${window.location.origin}/api/messenger/webhook`;
