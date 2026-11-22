@@ -261,9 +261,9 @@ export default function AdminAttackMonitoring() {
         </Card>
       )}
 
-      {/* ── Security KPI Cards (Compact Height) ── */}
+      {/* ── Security KPI Cards (Compact Height & Matching Left Borders) ── */}
       <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-red-500">
+        <div className="bg-card border border-[#DCE7FF]/80 dark:border-slate-800/70 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-red-600 dark:border-l-red-400">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 shadow-inner">
@@ -283,7 +283,7 @@ export default function AdminAttackMonitoring() {
           <KpiSparkline trend="down" seed="sec-failed-5m" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-amber-500">
+        <div className="bg-card border border-[#DCE7FF]/80 dark:border-slate-800/70 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-amber-600 dark:border-l-amber-400">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
@@ -304,7 +304,7 @@ export default function AdminAttackMonitoring() {
           <KpiSparkline trend="up" seed="sec-warning" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-orange-500">
+        <div className="bg-card border border-[#DCE7FF]/80 dark:border-slate-800/70 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-orange-600 dark:border-l-orange-400">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-inner">
@@ -325,7 +325,7 @@ export default function AdminAttackMonitoring() {
           <KpiSparkline trend="down" seed="sec-lockout" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-rose-500">
+        <div className="bg-card border border-[#DCE7FF]/80 dark:border-slate-800/70 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-rose-600 dark:border-l-rose-400">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner">
@@ -346,7 +346,7 @@ export default function AdminAttackMonitoring() {
           <KpiSparkline trend="down" seed="sec-ipblock" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-blue-600">
+        <div className="bg-card border border-[#DCE7FF]/80 dark:border-slate-800/70 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-blue-600 dark:border-l-blue-400">
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
