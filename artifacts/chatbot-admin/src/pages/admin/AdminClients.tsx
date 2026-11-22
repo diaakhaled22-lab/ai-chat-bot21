@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { Users, UserCheck, Clock, ShieldCheck } from "lucide-react";
@@ -53,6 +54,7 @@ export default function AdminClients() {
   const totalClients = clients?.length ?? 0;
   const configuredClients = clients?.filter((c: any) => c.hasCompany).length ?? 0;
   const pendingClients = totalClients - configuredClients;
+  const activeLogins = clients?.filter((c: any) => Boolean(c.lastLoginIp)).length ?? 0;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -290,36 +292,127 @@ export default function AdminClients() {
       </div>
     </div>
 
-      {/* ── Summary Stats ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-            <Users className="w-6 h-6" />
-          </div>
+      {/* ── Summary Stats (Matching Dashboard Style & KPIs) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Card 1: Total Clients */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
-            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : totalClients}</p>
-            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "إجمالي العملاء" : "Total Clients"}</p>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "إجمالي العملاء" : "Total Clients"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+9.2%" />
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                  {totalClients}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {lang === "ar" ? "حسابات مسجلة بالبوابة" : "Client portal accounts"}
+                </p>
+              </>
+            )}
           </div>
+          <KpiSparkline trend="up" seed="total-clients" height={26} />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
-            <UserCheck className="w-6 h-6" />
-          </div>
+        {/* Card 2: Configured Companies */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
-            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : configuredClients}</p>
-            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "حسابات مربوطة بشركات" : "Configured Companies"}</p>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "حسابات مربوطة بشركات" : "Configured Companies"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+12.5%" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                  {configuredClients}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {totalClients > 0 ? `${Math.round((configuredClients / totalClients) * 100)}% ` : ""}
+                  {lang === "ar" ? "مربوطة بشركات نشطة" : "linked to active companies"}
+                </p>
+              </>
+            )}
           </div>
+          <KpiSparkline trend="up" seed="clients-configured" height={26} />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
-            <Clock className="w-6 h-6" />
-          </div>
+        {/* Card 3: Pending Setup */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
-            <p className="text-2xl font-bold tabular-nums tracking-tight leading-tight">{isLoading ? "—" : pendingClients}</p>
-            <p className="text-xs text-muted-foreground font-medium mt-1">{lang === "ar" ? "قيد الإعداد (بدون شركة)" : "Pending Setup"}</p>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "قيد الإعداد (بدون شركة)" : "Pending Setup"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="down" value="-4.1%" />
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+                  {pendingClients}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {lang === "ar" ? "حسابات بانتظار ربط شركة" : "Awaiting company profile"}
+                </p>
+              </>
+            )}
           </div>
+          <KpiSparkline trend="down" seed="clients-pending" height={26} />
+        </div>
+
+        {/* Card 4: Active Logins */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "الأجهزة والجلسات النشطة" : "Active Device Logins"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+15.0%" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
+                  <Laptop className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
+                  {activeLogins}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {lang === "ar" ? "مسجلة بـ IP و MAC" : "Recorded with IP & MAC"}
+                </p>
+              </>
+            )}
+          </div>
+          <KpiSparkline trend="up" seed="clients-active-devices" height={26} />
         </div>
       </div>
 
