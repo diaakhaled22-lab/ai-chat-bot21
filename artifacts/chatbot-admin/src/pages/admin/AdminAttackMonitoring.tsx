@@ -261,109 +261,109 @@ export default function AdminAttackMonitoring() {
         </Card>
       )}
 
-            {/* ── Security KPI Cards ── */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
+      {/* ── Security KPI Cards (Compact Height) ── */}
+      <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-red-500">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 shadow-inner">
-                <TrendingUp className="w-6 h-6" />
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-red-500/10 text-red-600 dark:text-red-400 shadow-inner">
+                <TrendingUp className="w-4 h-4" />
               </div>
               <KpiTrend trend="down" value="-18.5%" />
             </div>
             <div className="min-w-0">
-              <p className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400 leading-tight">
+              <p className="text-lg sm:text-xl font-bold tabular-nums text-red-600 dark:text-red-400 leading-tight">
                 {analytics?.recentFailedAttempts ?? 0}
               </p>
-              <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate leading-none">
                 {lang === "ar" ? "فشل خلال 5 دقائق" : "Failed in last 5m"}
               </p>
             </div>
           </div>
-          <KpiSparkline trend="down" seed="sec-failed-5m" height={28} />
+          <KpiSparkline trend="down" seed="sec-failed-5m" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-amber-500">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
-                <AlertTriangle className="w-6 h-6" />
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
+                <AlertTriangle className="w-4 h-4" />
               </div>
               <KpiTrend trend="up" value="+2.0%" />
             </div>
             <div className="min-w-0">
-              <p className="text-2xl font-bold tabular-nums leading-tight">
-                {policy.warningThreshold ?? 3} <span className="text-xs font-normal text-muted-foreground">{lang === "ar" ? "مرات" : "fails"}</span>
+              <p className="text-lg sm:text-xl font-bold tabular-nums leading-tight text-amber-600 dark:text-amber-400">
+                {policy.warningThreshold ?? 3} <span className="text-[11px] font-normal text-muted-foreground">{lang === "ar" ? "مرات" : "fails"}</span>
               </p>
-              <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate leading-none">
                 {lang === "ar" ? "حد إرسال التحذير" : "Warning trigger"}
               </p>
-              <p className="text-[10px] text-muted-foreground/70 mt-0.5">{lang === "ar" ? "تنبيه إشعارات وبريد" : "Bell & email"}</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5 leading-none">{lang === "ar" ? "تنبيه إشعارات وبريد" : "Bell & email"}</p>
             </div>
           </div>
-          <KpiSparkline trend="up" seed="sec-warning" height={28} />
+          <KpiSparkline trend="up" seed="sec-warning" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-orange-500">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-inner">
-                <Clock3 className="w-6 h-6" />
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-inner">
+                <Clock3 className="w-4 h-4" />
               </div>
               <KpiTrend trend="down" value="-5.0%" />
             </div>
             <div className="min-w-0">
-              <p className="text-2xl font-bold tabular-nums leading-tight">
-                {policy.maxFailedAttempts} <span className="text-xs font-normal text-muted-foreground">{lang === "ar" ? "مرات" : "fails"}</span>
+              <p className="text-lg sm:text-xl font-bold tabular-nums leading-tight text-orange-600 dark:text-orange-400">
+                {policy.maxFailedAttempts} <span className="text-[11px] font-normal text-muted-foreground">{lang === "ar" ? "مرات" : "fails"}</span>
               </p>
-              <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate leading-none">
                 {lang === "ar" ? "قفل الحساب" : "Account lockout"}
               </p>
-              <p className="text-[10px] text-muted-foreground/70 mt-0.5">{lang === "ar" ? `قفل لمدة ${policy.accountLockoutMinutes} دقيقة` : `Locks for ${policy.accountLockoutMinutes}m`}</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5 leading-none">{lang === "ar" ? `قفل لمدة ${policy.accountLockoutMinutes} دقيقة` : `Locks for ${policy.accountLockoutMinutes}m`}</p>
             </div>
           </div>
-          <KpiSparkline trend="down" seed="sec-lockout" height={28} />
+          <KpiSparkline trend="down" seed="sec-lockout" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-rose-500">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner">
-                <Ban className="w-6 h-6" />
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner">
+                <Ban className="w-4 h-4" />
               </div>
               <KpiTrend trend="down" value="-10.0%" />
             </div>
             <div className="min-w-0">
-              <p className="text-xl font-bold text-rose-600 dark:text-rose-400 leading-tight">
+              <p className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 leading-tight">
                 {lang === "ar" ? "حظر الـ IP" : "IP Block"}
               </p>
-              <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate leading-none">
                 {lang === "ar" ? "نشاط مشبوه" : "Suspicious activity"}
               </p>
-              <p className="text-[10px] text-muted-foreground/70 mt-0.5">{lang === "ar" ? `بعد ${policy.additionalAttemptsBeforeIpBlock} محاولات` : `+${policy.additionalAttemptsBeforeIpBlock} attempts`}</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5 leading-none">{lang === "ar" ? `بعد ${policy.additionalAttemptsBeforeIpBlock} محاولات` : `+${policy.additionalAttemptsBeforeIpBlock} attempts`}</p>
             </div>
           </div>
-          <KpiSparkline trend="down" seed="sec-ipblock" height={28} />
+          <KpiSparkline trend="down" seed="sec-ipblock" height={18} className="mt-1" />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
+        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between shadow-xs hover:shadow-md transition-all border-l-4 border-l-blue-600">
           <div>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-                <Activity className="w-6 h-6" />
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+                <Activity className="w-4 h-4" />
               </div>
               <KpiTrend trend="down" value="-14.2%" />
             </div>
             <div className="min-w-0">
-              <p className="text-2xl font-bold tabular-nums text-foreground leading-tight">
+              <p className="text-lg sm:text-xl font-bold tabular-nums text-blue-600 dark:text-blue-400 leading-tight">
                 {analytics?.totalFailedAttempts ?? 0}
               </p>
-              <p className="text-xs text-muted-foreground font-medium mt-1 truncate">
+              <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate leading-none">
                 {lang === "ar" ? "إجمالي المحاولات الفاشلة" : "Total Failed"}
               </p>
             </div>
           </div>
-          <KpiSparkline trend="down" seed="sec-totalfailed" height={28} />
+          <KpiSparkline trend="down" seed="sec-totalfailed" height={18} className="mt-1" />
         </div>
       </div>
 

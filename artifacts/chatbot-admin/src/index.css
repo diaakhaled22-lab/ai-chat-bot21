@@ -402,6 +402,30 @@ body.dark:has(.modern-login-wrapper) {
   border-left-color: #38bdf8 !important;
 }
 
+.border-l-red-500 {
+  border-left-color: #ef4444 !important;
+}
+.dark .dark\:border-l-red-400,
+.dark .border-l-red-500 {
+  border-left-color: #f87171 !important;
+}
+
+.border-l-orange-500 {
+  border-left-color: #f97316 !important;
+}
+.dark .dark\:border-l-orange-400,
+.dark .border-l-orange-500 {
+  border-left-color: #fb923c !important;
+}
+
+.border-l-rose-500 {
+  border-left-color: #f43f5e !important;
+}
+.dark .dark\:border-l-rose-400,
+.dark .border-l-rose-500 {
+  border-left-color: #fb7185 !important;
+}
+
 .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(56, 189, 248, 0.28), 0 10px 15px -5px rgba(56, 189, 248, 0.15) !important;
 }
