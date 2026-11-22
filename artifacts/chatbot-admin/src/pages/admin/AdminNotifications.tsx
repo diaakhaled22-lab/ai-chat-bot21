@@ -273,7 +273,7 @@ export default function AdminNotifications() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 -m-4 md:-m-8 p-4 md:p-8 min-h-full rounded-2xl bg-gradient-to-b from-sky-200/50 via-sky-100/40 to-blue-100/30 dark:from-[#060b19] dark:via-[#0c1635] dark:to-[#060b19] transition-colors">
       {/* ── Hero Operations Banner matching Bot Manager aesthetic ── */}
       <div className="admin-header-banner relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white border transition-all">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -344,41 +344,49 @@ export default function AdminNotifications() {
 
       {/* ── Summary KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="admin-glass-card rounded-2xl p-4 border-l-4 border-l-blue-600 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-blue-600 transition-all hover:-translate-y-0.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
-            <Bell className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Bell className="w-4 h-4" />
+            </div>
           </div>
-          <p className="text-2xl font-bold mt-2 text-slate-900 dark:text-foreground">{totalCount}</p>
+          <p className="text-2xl font-bold mt-2 text-slate-900 dark:text-white">{totalCount}</p>
         </div>
 
-        <div className="admin-glass-card rounded-2xl p-4 border-l-4 border-l-amber-500 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-amber-500 transition-all hover:-translate-y-0.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">{lang === "ar" ? "غير مقروءة" : "Unread Alerts"}</span>
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "غير مقروءة" : "Unread Alerts"}</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            </div>
           </div>
           <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">{unreadCount}</p>
         </div>
 
-        <div className="admin-glass-card rounded-2xl p-4 border-l-4 border-l-emerald-500 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-emerald-500 transition-all hover:-translate-y-0.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">{lang === "ar" ? "عملاء جدد" : "New Clients"}</span>
-            <UserCheck className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "عملاء جدد" : "New Clients"}</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <UserCheck className="w-4 h-4" />
+            </div>
           </div>
           <p className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">{clientCount}</p>
         </div>
 
-        <div className="admin-glass-card rounded-2xl p-4 border-l-4 border-l-rose-500 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-rose-500 transition-all hover:-translate-y-0.5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-muted-foreground">{lang === "ar" ? "أمان وأعطال" : "Security & Issues"}</span>
-            <ShieldAlert className="w-4 h-4 text-rose-500" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "أمان وأعطال" : "Security & Issues"}</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-500">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
           </div>
           <p className="text-2xl font-bold mt-2 text-rose-600 dark:text-rose-400">{securityCount}</p>
         </div>
       </div>
 
       {/* ── Filter Tabs & Search Bar ── */}
-      <div className="admin-glass-card rounded-2xl p-4 space-y-3">
+      <div className="admin-glass-transparent rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
@@ -401,14 +409,14 @@ export default function AdminNotifications() {
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                     isSelected
                       ? "bg-blue-600 text-white shadow-sm shadow-blue-600/30 font-bold"
-                      : "bg-white/60 dark:bg-muted/60 text-slate-700 dark:text-muted-foreground hover:bg-white/90 dark:hover:bg-muted hover:text-foreground border border-sky-200/50 dark:border-transparent"
+                      : "bg-white/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:bg-white/90 dark:hover:bg-slate-700 border border-white/70 dark:border-white/10"
                   }`}
                 >
                   <span>{tab.label}</span>
                   {tab.count !== undefined && tab.count > 0 && (
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isSelected ? "bg-white/20 text-white" : "bg-blue-600/10 dark:bg-muted-foreground/20 text-blue-700 dark:text-muted-foreground"
+                        isSelected ? "bg-white/20 text-white" : "bg-blue-600/10 text-blue-700 dark:bg-white/15 dark:text-blue-300"
                       }`}
                     >
                       {tab.count}
@@ -426,7 +434,7 @@ export default function AdminNotifications() {
               placeholder={lang === "ar" ? "بحث في الإشعارات..." : "Search notifications..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-xs rounded-xl h-9 bg-white/70 dark:bg-muted/40 border-sky-200/70 dark:border-border text-foreground placeholder:text-muted-foreground focus:bg-white dark:focus:bg-muted/60 transition-colors"
+              className="pl-9 text-xs rounded-xl h-9 bg-white/70 dark:bg-slate-900/60 border-white/80 dark:border-slate-700 text-foreground placeholder:text-muted-foreground focus:bg-white dark:focus:bg-slate-900 shadow-xs"
             />
           </div>
         </div>
@@ -436,7 +444,7 @@ export default function AdminNotifications() {
       <div className="space-y-3">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="p-4 rounded-2xl bg-card border border-border flex items-start gap-4">
+            <div key={i} className="admin-glass-transparent p-4 rounded-2xl flex items-start gap-4">
               <Skeleton className="w-10 h-10 rounded-xl" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-48" />
@@ -446,9 +454,9 @@ export default function AdminNotifications() {
             </div>
           ))
         ) : filteredNotifications.length === 0 ? (
-          <div className="admin-glass-card text-center py-16 rounded-3xl p-8 border-dashed">
-            <div className="w-16 h-16 rounded-2xl bg-sky-100/70 dark:bg-muted/60 flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-muted-foreground border border-sky-200/60 dark:border-border">
-              <Bell className="w-8 h-8 opacity-70" />
+          <div className="admin-glass-transparent text-center py-16 rounded-3xl p-8 border-dashed">
+            <div className="w-16 h-16 rounded-2xl bg-blue-500/15 flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
+              <Bell className="w-8 h-8 opacity-60" />
             </div>
             <h3 className="text-base font-bold text-foreground">
               {search.trim() || activeTab !== "all"
@@ -475,10 +483,10 @@ export default function AdminNotifications() {
                   }
                 }}
                 title={!notif.isRead ? (lang === "ar" ? "اضغط لتحديد الإشعار كمقروء" : "Click to mark as read") : undefined}
-                className={`relative rounded-2xl p-4 sm:p-5 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 select-text ${
+                className={`admin-glass-transparent relative rounded-2xl p-4 sm:p-5 transition-all shadow-sm hover:shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 select-text ${
                   !notif.isRead
-                    ? "admin-glass-card border-l-4 border-l-blue-600 ring-1 ring-sky-400/40 cursor-pointer shadow-md hover:shadow-lg hover:-translate-y-0.5"
-                    : "admin-glass-card-subtle opacity-90 hover:opacity-100 hover:-translate-y-0.5"
+                    ? "is-unread ring-2 ring-blue-500/30 cursor-pointer"
+                    : ""
                 }`}
               >
                 {/* Left side: Icon + content */}

@@ -276,35 +276,22 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
-/* Admin Glassy Sky Cards */
+/* Admin Dashboard Glassy Sky Cards */
 .admin-glass-card {
-  background: linear-gradient(135deg, rgba(240, 249, 255, 0.84) 0%, rgba(224, 242, 254, 0.68) 50%, rgba(186, 230, 253, 0.52) 100%) !important;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.88) 0%, rgba(224, 242, 254, 0.72) 50%, rgba(186, 230, 253, 0.58) 100%) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
-  border: 1px solid rgba(56, 189, 248, 0.38) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
   box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.16), 0 8px 10px -6px rgba(56, 189, 248, 0.1) !important;
 }
 
 .admin-glass-card.border-l-4 {
   border-left-width: 4px !important;
+  border-left-color: #2563eb !important;
 }
 
 .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(56, 189, 248, 0.28), 0 10px 15px -5px rgba(56, 189, 248, 0.15) !important;
-}
-
-.admin-glass-card-subtle {
-  background: linear-gradient(135deg, rgba(240, 249, 255, 0.68) 0%, rgba(224, 242, 254, 0.50) 50%, rgba(186, 230, 253, 0.36) 100%) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(56, 189, 248, 0.28) !important;
-  box-shadow: 0 4px 15px -2px rgba(56, 189, 248, 0.08) !important;
-}
-
-.admin-glass-card-subtle:hover {
-  background: linear-gradient(135deg, rgba(240, 249, 255, 0.82) 0%, rgba(224, 242, 254, 0.64) 50%, rgba(186, 230, 253, 0.48) 100%) !important;
-  border-color: rgba(56, 189, 248, 0.45) !important;
-  box-shadow: 0 10px 20px -5px rgba(56, 189, 248, 0.18) !important;
 }
 
 .dark .admin-glass-card {
@@ -317,23 +304,72 @@ body.dark:has(.modern-login-wrapper) {
 
 .dark .admin-glass-card.border-l-4 {
   border-left-width: 4px !important;
+  border-left-color: #3b82f6 !important;
 }
 
 .dark .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
 }
 
-.dark .admin-glass-card-subtle {
-  background: rgba(17, 24, 39, 0.65) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(30, 41, 59, 0.7) !important;
-  box-shadow: 0 4px 15px -2px rgba(0, 0, 0, 0.3) !important;
+/* Transparent Glass Cards for Notifications & Admin Views */
+.admin-glass-transparent {
+  background: rgba(255, 255, 255, 0.58) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.12), 0 4px 6px -2px rgba(56, 189, 248, 0.05) !important;
 }
 
-.dark .admin-glass-card-subtle:hover {
-  background: rgba(17, 24, 39, 0.82) !important;
-  border-color: rgba(59, 130, 246, 0.35) !important;
+.admin-glass-transparent:hover {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 15px 30px -8px rgba(56, 189, 248, 0.22), 0 6px 10px -2px rgba(56, 189, 248, 0.1) !important;
+}
+
+.admin-glass-transparent.border-l-4 {
+  border-left-width: 4px !important;
+}
+
+.admin-glass-transparent.border-l-blue-600 {
+  border-left-color: #2563eb !important;
+}
+
+.admin-glass-transparent.border-l-amber-500 {
+  border-left-color: #f59e0b !important;
+}
+
+.admin-glass-transparent.border-l-emerald-500 {
+  border-left-color: #10b981 !important;
+}
+
+.admin-glass-transparent.border-l-rose-500 {
+  border-left-color: #f43f5e !important;
+}
+
+.admin-glass-transparent.is-unread {
+  background: rgba(238, 246, 255, 0.78) !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2) !important;
+}
+
+.dark .admin-glass-transparent {
+  background: rgba(15, 23, 42, 0.55) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45) !important;
+}
+
+.dark .admin-glass-transparent:hover {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .admin-glass-transparent.is-unread {
+  background: rgba(30, 58, 138, 0.32) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.55) !important;
 }
 
 
