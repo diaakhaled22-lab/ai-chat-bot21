@@ -151,7 +151,7 @@ export function KpiSparkline({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden mt-2.5 rounded-xl border border-blue-200/50 dark:border-blue-900/40 bg-gradient-to-b from-[#e5edfa]/80 to-[#d8e5f8]/90 dark:from-slate-900/60 dark:to-blue-950/40 backdrop-blur-xs px-1 py-0.5 pointer-events-none shadow-[inset_0_1px_2px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]",
+        "relative w-full overflow-hidden mt-2 pointer-events-none",
         className
       )}
       style={{ height }}
@@ -162,11 +162,11 @@ export function KpiSparkline({
         className="w-full h-full overflow-visible"
       >
         <defs>
-          {/* Dark Glassy Blue Gradient matching reference image */}
+          {/* Glassy Blue Gradient */}
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.35" />
-            <stop offset="55%" stopColor="#1e40af" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#172554" stopOpacity="0.04" />
+            <stop offset="0%" stopColor="#1e3a8a" stopOpacity="0.30" />
+            <stop offset="60%" stopColor="#1e40af" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#172554" stopOpacity="0" />
           </linearGradient>
         </defs>
 
