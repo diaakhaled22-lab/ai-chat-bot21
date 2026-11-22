@@ -1971,24 +1971,24 @@ export default function AdminBills() {
     <div className="space-y-4 sm:space-y-6 pb-16">
       {/* ── Top Header Banner ── */}
       <div
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-emerald-600/10 border border-white/10"
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
         style={{
-          background: "linear-gradient(135deg, #091e2f 0%, #0c334d 50%, #065f46 100%)",
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
         }}
       >
-        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-40 -top-10 w-56 h-56 bg-teal-400/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold">
-              <Receipt className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-blue-100 text-xs font-semibold backdrop-blur-md">
+              <Receipt className="w-3.5 h-3.5 text-sky-300" />
               <span>{lang === "ar" ? "إدارة الفواتير والاشتراكات" : "Bills & Invoices Center"}</span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
               {lang === "ar" ? "الفواتير وسندات القبض" : "Billing & Invoices"}
             </h1>
-            <p className="text-emerald-100/80 text-xs sm:text-sm leading-relaxed">
+            <p className="text-blue-100/90 text-xs sm:text-sm leading-relaxed">
               {lang === "ar"
                 ? "كشف شامل لكافة فواتير الاشتراكات، شحن الرصيد، واستهلاك الحصص. يمكنك إرسال نسخة رسمية من أي فاتورة للعميل عبر البريد الإلكتروني أو الواتساب بنقرة واحدة."
                 : "Manage and inspect all subscription plan, top-up, and quota usage invoices. Send a copy of any invoice via Email or WhatsApp instantly."}
@@ -2003,7 +2003,7 @@ export default function AdminBills() {
               className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm justify-center cursor-pointer"
               title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
             >
-              <Download className="w-4 h-4 text-emerald-300 shrink-0" />
+              <Download className="w-4 h-4 text-sky-300 shrink-0" />
               <span>{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
             </Button>
 

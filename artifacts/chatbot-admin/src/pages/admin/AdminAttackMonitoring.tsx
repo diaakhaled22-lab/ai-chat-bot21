@@ -201,33 +201,28 @@ export default function AdminAttackMonitoring() {
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-          <div className="flex items-start gap-3.5 sm:gap-5">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
-              <i className="fa-solid fa-shield-halved text-xl sm:text-3xl text-white"></i>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-blue-100 text-xs font-semibold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-sky-300" />
+              <span>{lang === "ar" ? "درع الحماية ومراقبة الهجمات" : "Security & Intrusion Telemetry"}</span>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                <Sparkles className="w-3 h-3 text-sky-300" />
-                {lang === "ar" ? "درع الحماية ومراقبة الهجمات" : "Security & Intrusion Telemetry"}
-              </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
-                {lang === "ar" ? "مراقبة الهجمات والأمان" : "Attack & Threat Monitoring"}
-              </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "رصد محاولات تسجيل الدخول الفاشلة، وحظر العناوين المشبوهة، وحماية الحسابات تلقائياً."
-                  : "Monitor failed login attempts, account lockouts, and suspicious IP activity in real time."}
-              </p>
-            </div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
+              {lang === "ar" ? "مراقبة الهجمات والأمان" : "Attack & Threat Monitoring"}
+            </h1>
+            <p className="text-blue-100/90 text-xs sm:text-sm leading-relaxed">
+              {lang === "ar"
+                ? "رصد محاولات تسجيل الدخول الفاشلة، وحظر العناوين المشبوهة، وحماية الحسابات تلقائياً."
+                : "Monitor failed login attempts, account lockouts, and suspicious IP activity in real time."}
+            </p>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0">
             {data?.logs && data.logs.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full sm:w-auto justify-center gap-2 bg-white/15 hover:bg-red-500/30 text-white border-white/20 rounded-xl cursor-pointer h-9 px-3.5 text-xs transition-colors shrink-0"
+                className="w-full sm:w-auto justify-center gap-2 bg-white/10 hover:bg-red-500/30 text-white border-white/20 rounded-xl cursor-pointer h-9 px-3.5 text-xs transition-colors backdrop-blur-sm shrink-0"
                 onClick={() => {
                   if (window.confirm(lang === "ar" ? "هل أنت متأكد من مسح جميع سجلات الهجمات؟" : "Are you sure you want to clear all recorded attack logs?")) {
                     clearLogsMutation.mutate();
@@ -240,13 +235,14 @@ export default function AdminAttackMonitoring() {
               </Button>
             )}
             <Button
+              variant="outline"
               size="sm"
-              className="w-full sm:w-auto justify-center gap-2 bg-white hover:bg-blue-50 text-blue-700 font-bold shadow-lg shadow-black/10 rounded-xl px-4 py-2 text-xs cursor-pointer h-9 shrink-0"
+              className="w-full sm:w-auto justify-center gap-2 bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl px-3.5 py-2 text-xs font-semibold backdrop-blur-sm cursor-pointer h-9 shrink-0 shadow-sm"
               onClick={() => testAlertMutation.mutate()}
               disabled={testAlertMutation.isPending}
             >
-              {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Bell className="w-4 h-4 text-amber-500 shrink-0" />}
-              <span className="truncate">{lang === "ar" ? "إرسال تنبيه أمني تجريبي" : "Send Test Security Alert"}</span>
+              {testAlertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Bell className="w-4 h-4 text-amber-300 shrink-0" />}
+              <span className="truncate">{lang === "ar" ? "إرسال تنبيه تجريبي" : "Send Test Alert"}</span>
             </Button>
           </div>
         </div>

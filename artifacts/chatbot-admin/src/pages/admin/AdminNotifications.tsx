@@ -273,7 +273,12 @@ export default function AdminNotifications() {
   };
 
   return (
-    <div className="space-y-6 -m-4 md:-m-8 p-4 md:p-8 min-h-full rounded-2xl bg-gradient-to-b from-sky-200/50 via-sky-100/40 to-blue-100/30 dark:from-[#060b19] dark:via-[#0c1635] dark:to-[#060b19] transition-colors">
+    <div className="space-y-6 relative">
+      {/* Luminous ambient floating orbs to enhance glassmorphism refraction */}
+      <div className="absolute top-12 -left-12 w-80 h-80 bg-sky-400/25 dark:bg-sky-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/3 -right-12 w-96 h-96 bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute bottom-16 left-1/3 w-80 h-80 bg-cyan-300/20 dark:bg-indigo-600/10 rounded-full blur-3xl pointer-events-none -z-10" />
+
       {/* ── Hero Operations Banner matching Bot Manager aesthetic ── */}
       <div className="admin-header-banner relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white border transition-all">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />

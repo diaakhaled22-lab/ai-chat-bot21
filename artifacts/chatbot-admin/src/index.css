@@ -313,17 +313,17 @@ body.dark:has(.modern-login-wrapper) {
 
 /* Transparent Glass Cards for Notifications & Admin Views */
 .admin-glass-transparent {
-  background: rgba(255, 255, 255, 0.58) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
-  box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.12), 0 4px 6px -2px rgba(56, 189, 248, 0.05) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(240, 249, 255, 0.48) 50%, rgba(224, 242, 254, 0.35) 100%) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95), 0 10px 25px -5px rgba(14, 165, 233, 0.18), 0 8px 10px -6px rgba(14, 165, 233, 0.08) !important;
 }
 
 .admin-glass-transparent:hover {
-  background: rgba(255, 255, 255, 0.75) !important;
-  border-color: rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 0 15px 30px -8px rgba(56, 189, 248, 0.22), 0 6px 10px -2px rgba(56, 189, 248, 0.1) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(240, 249, 255, 0.60) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 1), 0 15px 30px -8px rgba(14, 165, 233, 0.28), 0 6px 10px -2px rgba(14, 165, 233, 0.12) !important;
 }
 
 .admin-glass-transparent.border-l-4 {
@@ -347,29 +347,29 @@ body.dark:has(.modern-login-wrapper) {
 }
 
 .admin-glass-transparent.is-unread {
-  background: rgba(238, 246, 255, 0.78) !important;
-  border-color: rgba(59, 130, 246, 0.45) !important;
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2) !important;
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.85) 0%, rgba(186, 230, 253, 0.55) 100%) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.7) !important;
+  box-shadow: inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95), 0 12px 28px -5px rgba(2, 132, 199, 0.25) !important;
 }
 
 .dark .admin-glass-transparent {
-  background: rgba(15, 23, 42, 0.55) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45) !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.50) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), 0 10px 25px -5px rgba(0, 0, 0, 0.55) !important;
 }
 
 .dark .admin-glass-transparent:hover {
-  background: rgba(15, 23, 42, 0.7) !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.65) 100%) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 15px 30px -8px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.22), 0 15px 30px -8px rgba(0, 0, 0, 0.7) !important;
 }
 
 .dark .admin-glass-transparent.is-unread {
-  background: rgba(30, 58, 138, 0.32) !important;
-  border-color: rgba(96, 165, 250, 0.35) !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.55) !important;
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.65) 100%) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
 }
 
 

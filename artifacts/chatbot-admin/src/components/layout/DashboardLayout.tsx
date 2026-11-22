@@ -1964,7 +1964,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 bg-[#F3F7FF] dark:bg-background">
+          <div className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 ${
+            location === "/admin/notifications"
+              ? (isLightAdmin
+                  ? "bg-gradient-to-br from-[#bae6fd] via-[#e0f2fe] to-[#bfdbfe]"
+                  : "bg-gradient-to-b from-[#070d1e] via-[#0c1736] to-[#070d1e]")
+              : "bg-[#F3F7FF] dark:bg-background"
+          }`}>
             <div className={isAdmin || location === "/client/support" || location === "/client/settings" || location === "/client/company" || location === "/client/ai-model" ? "w-full max-w-7xl mx-auto" : "max-w-6xl mx-auto"}>
               {children}
             </div>
