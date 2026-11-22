@@ -197,12 +197,7 @@ export default function AdminAttackMonitoring() {
   return (
     <div className="space-y-6">
       {/* ── Hero Operations Banner matching Bot Manager Login aesthetic ── */}
-      <div
-        className="relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
-        style={{
-          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
-        }}
-      >
+      <div className="admin-header-banner relative overflow-hidden rounded-3xl p-4 sm:p-6 md:p-8 text-white border transition-all">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute right-40 -top-10 w-48 h-48 bg-blue-300/20 rounded-full blur-xl pointer-events-none" />
 
