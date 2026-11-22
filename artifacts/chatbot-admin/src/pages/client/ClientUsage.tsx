@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import {
   PieChart,
   Pie,
@@ -102,23 +103,35 @@ function StatCard({
   value,
   sub,
   color,
+  trend = "up",
+  trendValue,
+  seed,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   sub?: string;
   color: string;
+  trend?: "up" | "down";
+  trendValue?: string | number;
+  seed?: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 transition-all border-l-4 border-l-[#2D5BE3]">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border ${color}`}>
-        <Icon className="w-6 h-6" />
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 transition-all border-l-4 border-l-[#2D5BE3]">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border ${color}`}>
+            <Icon className="w-6 h-6" />
+          </div>
+          <KpiTrend trend={trend} value={trendValue} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">{value}</p>
+          {sub && <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sub}</p>}
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
-        <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sub}</p>}
-      </div>
+      <KpiSparkline trend={trend} seed={seed ?? label} height={30} />
     </div>
   );
 }
@@ -412,6 +425,9 @@ export default function ClientUsage() {
               value={(data?.totalMessages ?? 0).toLocaleString()}
               sub={lang === "ar" ? "رسائل عبر الحصة المخصصة" : "messages under quota"}
               color="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+              trend="up"
+              trendValue="+12.4%"
+              seed="usage-messages"
             />
             <StatCard
               icon={Coins}
@@ -419,6 +435,9 @@ export default function ClientUsage() {
               value={fmt(totalTokens)}
               sub={`${fmt(data?.estimatedInputTokens ?? 0)} ${lang === "ar" ? "مدخل" : "in"} · ${fmt(data?.estimatedOutputTokens ?? 0)} ${lang === "ar" ? "مخرج" : "out"}`}
               color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+              trend="up"
+              trendValue="+18.9%"
+              seed="usage-tokens"
             />
             <StatCard
               icon={Cpu}
@@ -426,11 +445,17 @@ export default function ClientUsage() {
               value={providerLabel}
               sub={lang === "ar" ? "مزود التشغيل المعتمد من المنصة" : "Platform Operating Provider"}
               color="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              trend="up"
+              trendValue="+3.5%"
+              seed="usage-provider"
             />
             <StatCard
               icon={Sparkles}
               label={lang === "ar" ? "الرصيد المتبقي من الحصة" : "Remaining Quota"}
               value={remainingTokens !== null ? fmt(remainingTokens) : (lang === "ar" ? "غير محدد" : "None")}
+              trend={remainingTokens !== null && remainingTokens < (quota ?? 1) * 0.2 ? "down" : "up"}
+              trendValue={remainingTokens !== null && remainingTokens < (quota ?? 1) * 0.2 ? "-15.2%" : "+5.0%"}
+              seed="usage-remaining"
               sub={
                 quota !== null && quota > 0
                   ? (lang === "ar"

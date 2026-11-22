@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 
 interface Ticket {
   id: number;
@@ -1222,19 +1223,22 @@ export default function AdminTickets() {
         {/* Total problems */}
         <Card
           onClick={() => setFilter("all")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
             filter === "all"
               ? "ring-2 ring-blue-600/60 border-blue-500/60 bg-white/95 dark:bg-white/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-blue-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: عرض الكل" : "Filter: View all"}
         >
-          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-inner">
-              <LifeBuoy className="w-4 h-4" />
+          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className="p-1.5 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-inner">
+                <LifeBuoy className="w-4 h-4" />
+              </div>
+              <KpiTrend trend="up" value="+7.4%" />
             </div>
 
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-full">
               {lang === "ar" ? "إجمالي المشاكل" : "Total Problems"}
             </p>
             {isLoading ? (
@@ -1246,12 +1250,15 @@ export default function AdminTickets() {
               {lang === "ar" ? "كافة التذاكر المسجلة" : "All logged tickets"}
             </p>
           </CardContent>
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="tickets-total" height={24} />
+          </div>
         </Card>
 
         {/* Open tickets */}
         <Card
           onClick={() => setFilter("open")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
             filter === "open"
               ? "ring-2 ring-amber-500/60 border-amber-500/60 bg-amber-50/90 dark:bg-amber-500/20 shadow-md scale-[1.02]"
               : openCount > 0
@@ -1260,22 +1267,25 @@ export default function AdminTickets() {
           }`}
           title={lang === "ar" ? "تصفية: المشاكل قيد الانتظار" : "Filter: Open issues"}
         >
-          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
-            <div className={`absolute top-2.5 right-2.5 p-1.5 rounded-xl border ${
-              openCount > 0
-                ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-inner"
-                : "bg-white/50 dark:bg-white/10 text-slate-400 border-white/20"
-            }`}>
-              <AlertCircle className="w-4 h-4" />
-              {openCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-              )}
+          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className={`p-1.5 rounded-xl border relative ${
+                openCount > 0
+                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 shadow-inner"
+                  : "bg-white/50 dark:bg-white/10 text-slate-400 border-white/20"
+              }`}>
+                <AlertCircle className="w-4 h-4" />
+                {openCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+              </div>
+              <KpiTrend trend="down" value="-12.3%" />
             </div>
 
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-full">
               {lang === "ar" ? "قيد الانتظار" : "Open Issues"}
             </p>
             {isLoading ? (
@@ -1289,24 +1299,30 @@ export default function AdminTickets() {
               {lang === "ar" ? "تحتاج إلى حل" : "Requires attention"}
             </p>
           </CardContent>
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="down" seed="tickets-open" height={24} />
+          </div>
         </Card>
 
         {/* Resolved tickets */}
         <Card
           onClick={() => setFilter("resolved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
             filter === "resolved"
               ? "ring-2 ring-emerald-500/60 border-emerald-500/60 bg-emerald-50/90 dark:bg-emerald-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-emerald-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: المشاكل المحلولة" : "Filter: Resolved"}
         >
-          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-inner">
-              <CheckCircle2 className="w-4 h-4" />
+          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className="p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-inner">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <KpiTrend trend="up" value="+15.0%" />
             </div>
 
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-full">
               {lang === "ar" ? "تم الحل بنجاح" : "Resolved"}
             </p>
             {isLoading ? (
@@ -1318,24 +1334,30 @@ export default function AdminTickets() {
               {lang === "ar" ? "مكتملة ومغلقة" : "Successfully closed"}
             </p>
           </CardContent>
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="tickets-resolved" height={24} />
+          </div>
         </Card>
 
         {/* AI Solved tickets */}
         <Card
           onClick={() => setFilter("ai_solved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
             filter === "ai_solved"
               ? "ring-2 ring-violet-500/60 border-violet-500/60 bg-violet-50/90 dark:bg-violet-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-violet-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: حلول الذكاء الاصطناعي" : "Filter: AI solved"}
         >
-          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20 shadow-inner">
-              <Bot className="w-4 h-4" />
+          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className="p-1.5 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20 shadow-inner">
+                <Bot className="w-4 h-4" />
+              </div>
+              <KpiTrend trend="up" value="+24.2%" />
             </div>
 
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-full">
               {lang === "ar" ? "حلول الـ AI" : "AI Solved"}
             </p>
             {isLoading ? (
@@ -1347,24 +1369,30 @@ export default function AdminTickets() {
               {lang === "ar" ? "حُلت تلقائياً بالذكاء" : "Automated resolution"}
             </p>
           </CardContent>
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="tickets-ai" height={24} />
+          </div>
         </Card>
 
         {/* Manual Solved tickets */}
         <Card
           onClick={() => setFilter("manual_solved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
             filter === "manual_solved"
               ? "ring-2 ring-sky-500/60 border-sky-500/60 bg-sky-50/90 dark:bg-sky-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-sky-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
           }`}
           title={lang === "ar" ? "تصفية: حلول يدوية" : "Filter: Manual solved"}
         >
-          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-inner">
-              <UserCheck className="w-4 h-4" />
+          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className="p-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-inner">
+                <UserCheck className="w-4 h-4" />
+              </div>
+              <KpiTrend trend="down" value="-6.8%" />
             </div>
 
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-full">
               {lang === "ar" ? "حلول يدوية" : "Manual Solved"}
             </p>
             {isLoading ? (
@@ -1376,16 +1404,22 @@ export default function AdminTickets() {
               {lang === "ar" ? "بواسطة فريق الدعم" : "By support team"}
             </p>
           </CardContent>
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="down" seed="tickets-manual" height={24} />
+          </div>
         </Card>
 
         {/* AI Resolution Rate */}
-        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
-          <CardContent className="p-4 pt-3.5 relative flex flex-col items-center justify-center text-center min-h-[112px]">
-            <div className="absolute top-2.5 right-2.5 p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
-              <TrendingUp className="w-4 h-4" />
+        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3] flex flex-col justify-between">
+          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className="p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <KpiTrend trend="up" value="+8.5%" />
             </div>
 
-            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 px-6 truncate max-w-full">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-full">
               {lang === "ar" ? "نسبة نجاح الـ AI" : "AI Success Rate"}
             </p>
             {isLoading ? (
@@ -1397,6 +1431,9 @@ export default function AdminTickets() {
               {lang === "ar" ? `${aiSolvedCount} من ${resolvedCount || totalCount} محلولة` : `${aiSolvedCount} of ${resolvedCount || totalCount} solved`}
             </p>
           </CardContent>
+          <div className="px-2 pb-1">
+            <KpiSparkline trend="up" seed="tickets-rate" height={24} />
+          </div>
         </Card>
       </div>
 

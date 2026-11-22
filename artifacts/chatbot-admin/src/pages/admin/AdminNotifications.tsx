@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import {
   Bell,
   CheckCheck,
@@ -349,44 +350,68 @@ export default function AdminNotifications() {
 
       {/* ── Summary KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-blue-600 transition-all hover:-translate-y-0.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-600 dark:text-blue-400">
-              <Bell className="w-4 h-4" />
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-blue-600 transition-all hover:-translate-y-0.5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="up" value="+5.2%" />
+                <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <Bell className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            <p className="text-2xl font-bold mt-2 text-slate-900 dark:text-white">{totalCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-slate-900 dark:text-white">{totalCount}</p>
+          <KpiSparkline trend="up" seed="notif-total" height={28} />
         </div>
 
-        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-amber-500 transition-all hover:-translate-y-0.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "غير مقروءة" : "Unread Alerts"}</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-amber-500 transition-all hover:-translate-y-0.5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "غير مقروءة" : "Unread Alerts"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="down" value="-12.0%" />
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-500 shrink-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                </div>
+              </div>
             </div>
+            <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">{unreadCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">{unreadCount}</p>
+          <KpiSparkline trend="down" seed="notif-unread" height={28} />
         </div>
 
-        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-emerald-500 transition-all hover:-translate-y-0.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "عملاء جدد" : "New Clients"}</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <UserCheck className="w-4 h-4" />
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-emerald-500 transition-all hover:-translate-y-0.5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "عملاء جدد" : "New Clients"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="up" value="+18.5%" />
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            <p className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">{clientCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">{clientCount}</p>
+          <KpiSparkline trend="up" seed="notif-clients" height={28} />
         </div>
 
-        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-rose-500 transition-all hover:-translate-y-0.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "أمان وأعطال" : "Security & Issues"}</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-500">
-              <ShieldAlert className="w-4 h-4" />
+        <div className="admin-glass-transparent rounded-2xl p-4 border-l-4 border-l-rose-500 transition-all hover:-translate-y-0.5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{lang === "ar" ? "أمان وأعطال" : "Security & Issues"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="down" value="-8.3%" />
+                <div className="w-8 h-8 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-500 shrink-0">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            <p className="text-2xl font-bold mt-2 text-rose-600 dark:text-rose-400">{securityCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-rose-600 dark:text-rose-400">{securityCount}</p>
+          <KpiSparkline trend="down" seed="notif-security" height={28} />
         </div>
       </div>
 

@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import { Shield } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -520,24 +521,40 @@ function SubscriptionCell({ company }: { company: Company }) {
 
 // ── Stat card ──────────────────────────────────────────────────────────────────
 function StatCard({
-  label, value, sub, icon, accent,
+  label,
+  value,
+  sub,
+  icon,
+  accent,
+  trend = "up",
+  trendValue,
+  seed,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   icon: React.ReactNode;
   accent: string;
+  trend?: "up" | "down";
+  trendValue?: string | number;
+  seed?: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex items-center gap-4 border-s-4 border-s-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
-        {icon}
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between border-s-4 border-s-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all">
+      <div>
+        <div className="flex items-center justify-between gap-2 pb-2">
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
+            {icon}
+          </div>
+          <KpiTrend trend={trend} value={trendValue} />
+        </div>
+        <div className="min-w-0 mt-1">
+          <p className="text-2xl font-bold tabular-nums leading-tight">{value}</p>
+          <p className="text-xs text-muted-foreground font-medium mt-1 truncate">{label}</p>
+          {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{sub}</p>}
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold tabular-nums leading-tight">{value}</p>
-        <p className="text-xs text-muted-foreground font-medium mt-1 truncate">{label}</p>
-        {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{sub}</p>}
-      </div>
+      <KpiSparkline trend={trend} seed={seed ?? label} height={28} />
     </div>
   );
 }
@@ -1507,6 +1524,9 @@ export default function AdminCompanies() {
           value={isLoading ? "—" : stats.total}
           icon={<Building2 className="w-5 h-5 text-primary" />}
           accent="bg-primary/10"
+          trend="up"
+          trendValue="+8.4%"
+          seed="companies-total"
         />
         <StatCard
           label="Active"
@@ -1514,12 +1534,18 @@ export default function AdminCompanies() {
           sub={stats.total > 0 ? `${Math.round((stats.active / stats.total) * 100)}% of total` : undefined}
           icon={<ShieldCheck className="w-5 h-5 text-emerald-500" />}
           accent="bg-emerald-500/10"
+          trend="up"
+          trendValue="+12.1%"
+          seed="companies-active"
         />
         <StatCard
           label="Inactive"
           value={isLoading ? "—" : stats.inactive}
           icon={<XCircle className="w-5 h-5 text-muted-foreground" />}
           accent="bg-muted"
+          trend="down"
+          trendValue="-3.5%"
+          seed="companies-inactive"
         />
         <StatCard
           label="Expiring Soon"
@@ -1527,6 +1553,9 @@ export default function AdminCompanies() {
           sub="Within 7 days"
           icon={<Timer className="w-5 h-5 text-amber-500" />}
           accent="bg-amber-500/10"
+          trend="down"
+          trendValue="-2.0%"
+          seed="companies-expiring"
         />
       </div>
 

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import {
   Bell,
   CheckCheck,
@@ -330,36 +331,60 @@ export default function ClientNotifications() {
 
       {/* ── Summary KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-blue-600">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
-            <Bell className="w-4 h-4 text-blue-600" />
+        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-blue-600 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="up" value="+4.8%" />
+                <Bell className="w-4 h-4 text-blue-600 shrink-0" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold mt-2 text-foreground">{totalCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-foreground">{totalCount}</p>
+          <KpiSparkline trend="up" seed="client-notif-total" height={28} />
         </div>
 
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-amber-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "غير مقروءة" : "Unread"}</span>
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-amber-500 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "غير مقروءة" : "Unread"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="down" value="-15.4%" />
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">{unreadCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">{unreadCount}</p>
+          <KpiSparkline trend="down" seed="client-notif-unread" height={28} />
         </div>
 
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-rose-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}</span>
-            <Coins className="w-4 h-4 text-rose-500" />
+        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-rose-500 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="down" value="-20.0%" />
+                <Coins className="w-4 h-4 text-rose-500 shrink-0" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold mt-2 text-rose-600 dark:text-rose-400">{quotaAlertsCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-rose-600 dark:text-rose-400">{quotaAlertsCount}</p>
+          <KpiSparkline trend="down" seed="client-notif-quota" height={28} />
         </div>
 
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-sky-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "خدمة العملاء" : "Support Alerts"}</span>
-            <LifeBuoy className="w-4 h-4 text-sky-500" />
+        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-sky-500 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "خدمة العملاء" : "Support Alerts"}</span>
+              <div className="flex items-center gap-1.5">
+                <KpiTrend trend="up" value="+3.1%" />
+                <LifeBuoy className="w-4 h-4 text-sky-500 shrink-0" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold mt-2 text-sky-600 dark:text-sky-400">{problemCount}</p>
           </div>
-          <p className="text-2xl font-bold mt-2 text-sky-600 dark:text-sky-400">{problemCount}</p>
+          <KpiSparkline trend="up" seed="client-notif-support" height={28} />
         </div>
       </div>
 

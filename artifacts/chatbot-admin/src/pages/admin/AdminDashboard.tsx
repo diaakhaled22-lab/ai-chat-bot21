@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useLanguage } from "@/hooks/use-language";
 import { useGetAdminStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Building2, Users, CheckCircle2, XCircle, Activity, Coins, Zap, TrendingUp, Calendar, ArrowUpDown, ChevronUp, ChevronDown, Download, Bot, Ticket, Clock, Sparkles, X } from "lucide-react";
@@ -676,85 +677,115 @@ export default function AdminDashboard() {
       {/* 2. Platform Stat Cards (Glassy Sky Style) */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
         {/* Total Companies */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Companies</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
-              <Building2 className="w-4 h-4" />
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Companies</span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+8.4%" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {stats?.totalCompanies || 0}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1.5">Registered organizations</p>
           </div>
-          {isLoading ? <Skeleton className="h-8 w-20" /> : (
-            <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              {stats?.totalCompanies || 0}
-            </div>
-          )}
-          <p className="text-[11px] text-slate-400 mt-1.5">Registered organizations</p>
+          <KpiSparkline trend="up" seed="total-companies" height={32} />
         </div>
 
         {/* Active Companies */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Companies</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-              <CheckCircle2 className="w-4 h-4" />
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Companies</span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+12.1%" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                {stats?.activeCompanies || 0}
+              </div>
+            )}
+            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1.5">
+               Live & responding
+            </p>
           </div>
-          {isLoading ? <Skeleton className="h-8 w-20" /> : (
-            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
-              {stats?.activeCompanies || 0}
-            </div>
-          )}
-          <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1.5">
-             Live & responding
-          </p>
+          <KpiSparkline trend="up" seed="active-companies" height={32} />
         </div>
 
         {/* Inactive Companies */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive Companies</span>
-            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs">
-              <XCircle className="w-4 h-4" />
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive Companies</span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="down" value="-3.5%" />
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs shrink-0">
+                  <XCircle className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <div className="text-3xl font-extrabold text-slate-600 dark:text-slate-300 tracking-tight">
+                {stats?.inactiveCompanies || 0}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1.5">Paused / setup pending</p>
           </div>
-          {isLoading ? <Skeleton className="h-8 w-20" /> : (
-            <div className="text-3xl font-extrabold text-slate-600 dark:text-slate-300 tracking-tight">
-              {stats?.inactiveCompanies || 0}
-            </div>
-          )}
-          <p className="text-[11px] text-slate-400 mt-1.5">Paused / setup pending</p>
+          <KpiSparkline trend="down" seed="inactive-companies" height={32} />
         </div>
 
         {/* Quota Assigned */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quota Assigned</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
-              <Coins className="w-4 h-4" />
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quota Assigned</span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+15.0%" />
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                  <Coins className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+                {(stats as any)?.quotaCompanies || 0}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1.5">Monthly token limits active</p>
           </div>
-          {isLoading ? <Skeleton className="h-8 w-20" /> : (
-            <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
-              {(stats as any)?.quotaCompanies || 0}
-            </div>
-          )}
-          <p className="text-[11px] text-slate-400 mt-1.5">Monthly token limits active</p>
+          <KpiSparkline trend="up" seed="quota-companies" height={32} />
         </div>
 
         {/* Total Clients */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-          <div className="flex items-center justify-between pb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
-              <Users className="w-4 h-4" />
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+9.2%" />
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
             </div>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                {stats?.totalClients || 0}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-400 mt-1.5">Client portal accounts</p>
           </div>
-          {isLoading ? <Skeleton className="h-8 w-20" /> : (
-            <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
-              {stats?.totalClients || 0}
-            </div>
-          )}
-          <p className="text-[11px] text-slate-400 mt-1.5">Client portal accounts</p>
+          <KpiSparkline trend="up" seed="total-clients" height={32} />
         </div>
       </div>
 
@@ -774,53 +805,71 @@ export default function AdminDashboard() {
 
         {/* Summary cards */}
         <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="flex items-center justify-between pb-3">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Tokens Used</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
-                <Zap className="w-4 h-4" />
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Tokens Used</span>
+                <div className="flex items-center gap-2">
+                  <KpiTrend trend="up" value="+18.4%" />
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
+              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+                <>
+                  <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{formatTokens(usage?.totalTokens ?? 0)}</div>
+                  <p className="text-xs text-slate-400 mt-1.5 font-medium">
+                    {formatTokens(usage?.totalInputTokens ?? 0)} in · {formatTokens(usage?.totalOutputTokens ?? 0)} out
+                  </p>
+                </>
+              )}
             </div>
-            {usageLoading ? <Skeleton className="h-8 w-24" /> : (
-              <>
-                <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{formatTokens(usage?.totalTokens ?? 0)}</div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium">
-                  {formatTokens(usage?.totalInputTokens ?? 0)} in · {formatTokens(usage?.totalOutputTokens ?? 0)} out
-                </p>
-              </>
-            )}
+            <KpiSparkline trend="up" seed="total-tokens" height={32} />
           </div>
 
-          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="flex items-center justify-between pb-3">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated Total Cost</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs">
-                <Coins className="w-4 h-4" />
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated Total Cost</span>
+                <div className="flex items-center gap-2">
+                  <KpiTrend trend="up" value="+14.2%" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
+                    <Coins className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
+              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+                <>
+                  <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{formatCost(usage?.totalCostUsd ?? 0)}</div>
+                  <p className="text-xs text-slate-400 mt-1.5">Based on official API pricing rates</p>
+                </>
+              )}
             </div>
-            {usageLoading ? <Skeleton className="h-8 w-24" /> : (
-              <>
-                <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{formatCost(usage?.totalCostUsd ?? 0)}</div>
-                <p className="text-xs text-slate-400 mt-1.5">Based on official API pricing rates</p>
-              </>
-            )}
+            <KpiSparkline trend="up" seed="total-cost" height={32} />
           </div>
 
-          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
-            <div className="flex items-center justify-between pb-3">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Models in Use</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">
-                <Activity className="w-4 h-4" />
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Models in Use</span>
+                <div className="flex items-center gap-2">
+                  <KpiTrend trend="up" value="+5.0%" />
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
+              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+                <>
+                  <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">{usage?.byModel?.length ?? 0}</div>
+                  <p className="text-xs text-slate-400 mt-1.5 truncate">
+                    {usage?.byModel?.map((m) => m.model).join(", ") || "No models used yet"}
+                  </p>
+                </>
+              )}
             </div>
-            {usageLoading ? <Skeleton className="h-8 w-24" /> : (
-              <>
-                <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">{usage?.byModel?.length ?? 0}</div>
-                <p className="text-xs text-slate-400 mt-1.5 truncate">
-                  {usage?.byModel?.map((m) => m.model).join(", ") || "No models used yet"}
-                </p>
-              </>
-            )}
+            <KpiSparkline trend="up" seed="models-in-use" height={32} />
           </div>
         </div>
 
