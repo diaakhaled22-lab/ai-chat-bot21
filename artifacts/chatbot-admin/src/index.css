@@ -333,7 +333,39 @@ body.dark:has(.modern-login-wrapper) {
 
 .admin-glass-card.border-l-4 {
   border-left-width: 4px !important;
+  border-left-color: #2563eb;
+}
+
+.admin-glass-card.border-l-indigo-600 {
+  border-left-color: #4f46e5 !important;
+}
+.dark .admin-glass-card.dark\:border-l-indigo-400,
+.dark .admin-glass-card.border-l-indigo-600 {
+  border-left-color: #818cf8 !important;
+}
+
+.admin-glass-card.border-l-emerald-600 {
+  border-left-color: #059669 !important;
+}
+.dark .admin-glass-card.dark\:border-l-emerald-400,
+.dark .admin-glass-card.border-l-emerald-600 {
+  border-left-color: #34d399 !important;
+}
+
+.admin-glass-card.border-l-amber-600 {
+  border-left-color: #d97706 !important;
+}
+.dark .admin-glass-card.dark\:border-l-amber-400,
+.dark .admin-glass-card.border-l-amber-600 {
+  border-left-color: #fbbf24 !important;
+}
+
+.admin-glass-card.border-l-blue-600 {
   border-left-color: #2563eb !important;
+}
+.dark .admin-glass-card.dark\:border-l-blue-400,
+.dark .admin-glass-card.border-l-blue-600 {
+  border-left-color: #60a5fa !important;
 }
 
 .admin-glass-card:hover {
@@ -350,7 +382,7 @@ body.dark:has(.modern-login-wrapper) {
 
 .dark .admin-glass-card.border-l-4 {
   border-left-width: 4px !important;
-  border-left-color: #3b82f6 !important;
+  border-left-color: #3b82f6;
 }
 
 .dark .admin-glass-card:hover {

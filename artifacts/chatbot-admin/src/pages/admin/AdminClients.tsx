@@ -295,7 +295,7 @@ export default function AdminClients() {
       {/* ── Summary Stats (Matching Dashboard Style & KPIs) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Card 1: Total Clients */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-indigo-600 dark:border-l-indigo-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 gap-2">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -325,7 +325,7 @@ export default function AdminClients() {
         </div>
 
         {/* Card 2: Configured Companies */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-emerald-600 dark:border-l-emerald-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 gap-2">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -356,7 +356,7 @@ export default function AdminClients() {
         </div>
 
         {/* Card 3: Pending Setup */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-amber-600 dark:border-l-amber-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 gap-2">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -386,7 +386,7 @@ export default function AdminClients() {
         </div>
 
         {/* Card 4: Active Logins */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-blue-600 dark:border-l-blue-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 gap-2">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
