@@ -336,36 +336,70 @@ body.dark:has(.modern-login-wrapper) {
   border-left-color: #2563eb;
 }
 
-.admin-glass-card.border-l-indigo-600 {
+.admin-glass-card.border-l-indigo-600,
+.border-l-indigo-600 {
   border-left-color: #4f46e5 !important;
 }
 .dark .admin-glass-card.dark\:border-l-indigo-400,
-.dark .admin-glass-card.border-l-indigo-600 {
+.dark .admin-glass-card.border-l-indigo-600,
+.dark .dark\:border-l-indigo-400,
+.dark .border-l-indigo-600 {
   border-left-color: #818cf8 !important;
 }
 
-.admin-glass-card.border-l-emerald-600 {
+.admin-glass-card.border-l-emerald-600,
+.border-l-emerald-600 {
   border-left-color: #059669 !important;
 }
 .dark .admin-glass-card.dark\:border-l-emerald-400,
-.dark .admin-glass-card.border-l-emerald-600 {
+.dark .admin-glass-card.border-l-emerald-600,
+.dark .dark\:border-l-emerald-400,
+.dark .border-l-emerald-600 {
   border-left-color: #34d399 !important;
 }
 
-.admin-glass-card.border-l-amber-600 {
+.admin-glass-card.border-l-amber-600,
+.border-l-amber-600 {
   border-left-color: #d97706 !important;
 }
 .dark .admin-glass-card.dark\:border-l-amber-400,
-.dark .admin-glass-card.border-l-amber-600 {
+.dark .admin-glass-card.border-l-amber-600,
+.dark .dark\:border-l-amber-400,
+.dark .border-l-amber-600 {
   border-left-color: #fbbf24 !important;
 }
 
-.admin-glass-card.border-l-blue-600 {
+.admin-glass-card.border-l-blue-600,
+.border-l-blue-600 {
   border-left-color: #2563eb !important;
 }
 .dark .admin-glass-card.dark\:border-l-blue-400,
-.dark .admin-glass-card.border-l-blue-600 {
+.dark .admin-glass-card.border-l-blue-600,
+.dark .dark\:border-l-blue-400,
+.dark .border-l-blue-600 {
   border-left-color: #60a5fa !important;
+}
+
+.admin-glass-card.border-l-violet-600,
+.border-l-violet-600 {
+  border-left-color: #7c3aed !important;
+}
+.dark .admin-glass-card.dark\:border-l-violet-400,
+.dark .admin-glass-card.border-l-violet-600,
+.dark .dark\:border-l-violet-400,
+.dark .border-l-violet-600 {
+  border-left-color: #a78bfa !important;
+}
+
+.admin-glass-card.border-l-sky-600,
+.border-l-sky-600 {
+  border-left-color: #0284c7 !important;
+}
+.dark .admin-glass-card.dark\:border-l-sky-400,
+.dark .admin-glass-card.border-l-sky-600,
+.dark .dark\:border-l-sky-400,
+.dark .border-l-sky-600 {
+  border-left-color: #38bdf8 !important;
 }
 
 .admin-glass-card:hover {

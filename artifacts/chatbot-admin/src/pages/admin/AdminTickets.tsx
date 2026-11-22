@@ -1218,12 +1218,12 @@ export default function AdminTickets() {
         </div>
       </div>
 
-      {/* ── KPI Metric Cards (Transparent White Frosted Glass with Left Border #2D5BE3) ── */}
+      {/* ── KPI Metric Cards (Transparent White Frosted Glass with Left Border matching number color) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {/* Total problems */}
         <Card
           onClick={() => setFilter("all")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-blue-600 dark:border-l-blue-400 shadow-md shadow-blue-500/15 flex flex-col justify-between ${
             filter === "all"
               ? "ring-2 ring-blue-600/60 border-blue-500/60 bg-white/95 dark:bg-white/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-blue-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -1244,7 +1244,7 @@ export default function AdminTickets() {
             {isLoading ? (
               <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-foreground tracking-tight tabular-nums">{totalCount}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-blue-600 dark:text-blue-400 tracking-tight tabular-nums">{totalCount}</h3>
             )}
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium truncate max-w-full">
               {lang === "ar" ? "كافة التذاكر المسجلة" : "All logged tickets"}
@@ -1258,7 +1258,7 @@ export default function AdminTickets() {
         {/* Open tickets */}
         <Card
           onClick={() => setFilter("open")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-amber-600 dark:border-l-amber-400 shadow-md shadow-amber-500/15 flex flex-col justify-between ${
             filter === "open"
               ? "ring-2 ring-amber-500/60 border-amber-500/60 bg-amber-50/90 dark:bg-amber-500/20 shadow-md scale-[1.02]"
               : openCount > 0
@@ -1291,7 +1291,7 @@ export default function AdminTickets() {
             {isLoading ? (
               <Skeleton className="h-7 w-14 mt-1.5 rounded-lg" />
             ) : (
-              <h3 className={`text-2xl sm:text-3xl font-black mt-1 tracking-tight tabular-nums ${openCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+              <h3 className="text-2xl sm:text-3xl font-black mt-1 text-amber-600 dark:text-amber-400 tracking-tight tabular-nums">
                 {openCount}
               </h3>
             )}
@@ -1307,7 +1307,7 @@ export default function AdminTickets() {
         {/* Resolved tickets */}
         <Card
           onClick={() => setFilter("resolved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-emerald-600 dark:border-l-emerald-400 shadow-md shadow-emerald-500/15 flex flex-col justify-between ${
             filter === "resolved"
               ? "ring-2 ring-emerald-500/60 border-emerald-500/60 bg-emerald-50/90 dark:bg-emerald-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-emerald-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -1342,7 +1342,7 @@ export default function AdminTickets() {
         {/* AI Solved tickets */}
         <Card
           onClick={() => setFilter("ai_solved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-violet-600 dark:border-l-violet-400 shadow-md shadow-violet-500/15 flex flex-col justify-between ${
             filter === "ai_solved"
               ? "ring-2 ring-violet-500/60 border-violet-500/60 bg-violet-50/90 dark:bg-violet-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-violet-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -1377,7 +1377,7 @@ export default function AdminTickets() {
         {/* Manual Solved tickets */}
         <Card
           onClick={() => setFilter("manual_solved")}
-          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 flex flex-col justify-between ${
+          className={`cursor-pointer rounded-2xl transition-all backdrop-blur-md relative overflow-hidden border-l-4 border-l-sky-600 dark:border-l-sky-400 shadow-md shadow-sky-500/15 flex flex-col justify-between ${
             filter === "manual_solved"
               ? "ring-2 ring-sky-500/60 border-sky-500/60 bg-sky-50/90 dark:bg-sky-500/20 shadow-md scale-[1.02]"
               : "bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 hover:border-sky-400/50 hover:bg-white/90 dark:hover:bg-white/10 shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -1410,7 +1410,7 @@ export default function AdminTickets() {
         </Card>
 
         {/* AI Resolution Rate */}
-        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3] flex flex-col justify-between">
+        <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-md shadow-indigo-500/15 hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 border-l-4 border-l-indigo-600 dark:border-l-indigo-400 flex flex-col justify-between">
           <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className="p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
