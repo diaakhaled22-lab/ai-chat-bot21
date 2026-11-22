@@ -1978,26 +1978,26 @@ export default function AdminBills() {
         style={{
           background: isDark
             ? "linear-gradient(135deg, #070b19 0%, #0e1838 50%, #172554 100%)"
-            : "linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%)",
-          borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.2)",
+            : "linear-gradient(135deg, #091e2f 0%, #0c334d 50%, #065f46 100%)",
+          borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(16, 185, 129, 0.25)",
           boxShadow: isDark
             ? "0 25px 50px -12px rgba(0, 0, 0, 0.7)"
-            : "0 20px 25px -5px rgba(37, 99, 235, 0.25)",
+            : "0 20px 25px -5px rgba(5, 150, 105, 0.2)",
         }}
       >
-        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 dark:bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-emerald-500/15 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-56 h-56 bg-teal-400/15 dark:bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-blue-100 text-xs font-semibold backdrop-blur-md">
-              <Receipt className="w-3.5 h-3.5 text-sky-300" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 dark:bg-white/10 border border-emerald-400/30 dark:border-white/10 text-emerald-300 dark:text-blue-100 text-xs font-semibold backdrop-blur-md">
+              <Receipt className="w-3.5 h-3.5 text-emerald-300 dark:text-sky-300" />
               <span>{lang === "ar" ? "إدارة الفواتير والاشتراكات" : "Bills & Invoices Center"}</span>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
               {lang === "ar" ? "الفواتير وسندات القبض" : "Billing & Invoices"}
             </h1>
-            <p className="text-blue-100/90 text-xs sm:text-sm leading-relaxed">
+            <p className="text-emerald-100/80 dark:text-blue-100/90 text-xs sm:text-sm leading-relaxed">
               {lang === "ar"
                 ? "كشف شامل لكافة فواتير الاشتراكات، شحن الرصيد، واستهلاك الحصص. يمكنك إرسال نسخة رسمية من أي فاتورة للعميل عبر البريد الإلكتروني أو الواتساب بنقرة واحدة."
                 : "Manage and inspect all subscription plan, top-up, and quota usage invoices. Send a copy of any invoice via Email or WhatsApp instantly."}
@@ -2012,7 +2012,7 @@ export default function AdminBills() {
               className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 gap-1.5 rounded-xl backdrop-blur-sm justify-center cursor-pointer"
               title={lang === "ar" ? "تحميل كشف الفواتير كملف CSV" : "Export invoices as CSV"}
             >
-              <Download className="w-4 h-4 text-sky-300 shrink-0" />
+              <Download className="w-4 h-4 text-emerald-300 dark:text-sky-300 shrink-0" />
               <span>{lang === "ar" ? "تصدير (CSV)" : "Export CSV"}</span>
             </Button>
 
@@ -2024,7 +2024,7 @@ export default function AdminBills() {
               className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs h-9 px-3 rounded-xl backdrop-blur-sm shrink-0 cursor-pointer justify-center"
               title={lang === "ar" ? "تحديث" : "Refresh"}
             >
-              <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isRefetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 shrink-0 text-emerald-300 dark:text-sky-300 ${isRefetching ? "animate-spin" : ""}`} />
               <span className="sm:hidden">{lang === "ar" ? "تحديث" : "Refresh"}</span>
             </Button>
           </div>

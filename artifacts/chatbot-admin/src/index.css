@@ -276,11 +276,11 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
-/* Bills & Invoices Hero Banner - Light Mode (Original Royal Blue) & Dark Mode (Harmonious Midnight Cosmic Navy) */
+/* Bills & Invoices Hero Banner - Light Mode (Original Emerald Gradient) & Dark Mode (Harmonious Midnight Cosmic Navy) */
 .admin-bills-banner {
-  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.25) !important;
+  background: linear-gradient(135deg, #091e2f 0%, #0c334d 50%, #065f46 100%) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  box-shadow: 0 20px 25px -5px rgba(5, 150, 105, 0.2) !important;
 }
 
 .dark .admin-bills-banner {
