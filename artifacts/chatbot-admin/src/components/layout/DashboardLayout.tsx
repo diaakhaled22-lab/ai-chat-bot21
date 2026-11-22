@@ -237,8 +237,8 @@ function NotificationBell({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
           type="button"
           className={`relative p-2 rounded-xl backdrop-blur-md transition-all shadow-sm flex items-center justify-center cursor-pointer ${
             isLightAdmin
-              ? `bg-white/80 hover:bg-white border border-sky-300/60 text-slate-700 hover:text-blue-900 ${
-                  open ? "bg-white ring-2 ring-sky-400" : ""
+              ? `bg-white/85 hover:bg-white border border-white/70 text-slate-800 hover:text-blue-950 shadow-sm ${
+                  open ? "bg-white ring-2 ring-blue-500" : ""
                 }`
               : `bg-white/10 hover:bg-white/20 border border-white/15 text-white ${
                   open ? "bg-white/25 ring-2 ring-white/30" : ""
@@ -247,7 +247,7 @@ function NotificationBell({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
           aria-label="Notifications"
           title={lang === "ar" ? "الإشعارات" : "Notifications"}
         >
-          <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-500" : isLightAdmin ? "text-blue-600" : "text-white/80"}`} />
+          <Bell className={`w-4 h-4 ${totalBadge > 0 ? "text-amber-500" : isLightAdmin ? "text-blue-700" : "text-white/80"}`} />
           {totalBadge > 0 && (
             <span
               className={`absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-none transition-all shadow-md ${
@@ -983,7 +983,7 @@ function ThemeToggle({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
       onClick={toggle}
       className={`p-2 rounded-xl backdrop-blur-md transition-all shadow-sm flex items-center justify-center hover:scale-105 active:scale-95 shrink-0 cursor-pointer ${
         isLightAdmin
-          ? "bg-white/80 hover:bg-white border border-sky-300/60 text-slate-700 hover:text-blue-900 shadow-sm"
+          ? "bg-white/85 hover:bg-white border border-white/70 text-slate-800 hover:text-blue-950 shadow-sm"
           : "bg-white/10 hover:bg-white/20 border border-white/15 text-white"
       }`}
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -992,7 +992,7 @@ function ThemeToggle({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
       {theme === "dark" ? (
         <Sun className="w-4 h-4 text-amber-300" />
       ) : (
-        <Moon className={`w-4 h-4 ${isLightAdmin ? "text-blue-600" : "text-blue-200"}`} />
+        <Moon className={`w-4 h-4 ${isLightAdmin ? "text-blue-700" : "text-blue-200"}`} />
       )}
     </button>
   );
@@ -1007,13 +1007,13 @@ function LanguageToggle({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
       onClick={() => setLang(next)}
       className={`px-2 sm:px-2.5 py-1.5 rounded-xl backdrop-blur-md transition-all shadow-sm flex items-center gap-1 sm:gap-1.5 hover:scale-105 active:scale-95 shrink-0 cursor-pointer ${
         isLightAdmin
-          ? "bg-white/80 hover:bg-white border border-sky-300/60 text-slate-700 hover:text-blue-900 shadow-sm"
+          ? "bg-white/85 hover:bg-white border border-white/70 text-slate-800 hover:text-blue-950 shadow-sm"
           : "bg-white/10 hover:bg-white/20 border border-white/15 text-white"
       }`}
       title={lang === "en" ? "Switch to Arabic" : "Switch to English"}
       aria-label={lang === "en" ? "Switch to Arabic" : "Switch to English"}
     >
-      <Globe className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLightAdmin ? "text-blue-600" : "text-blue-200"}`} />
+      <Globe className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLightAdmin ? "text-blue-700" : "text-blue-200"}`} />
       <span className="text-xs font-bold leading-none">{lang === "en" ? "AR" : "EN"}</span>
     </button>
   );
@@ -1270,14 +1270,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const isLightAdmin = isAdmin && theme !== "dark";
 
   const sidebarAsideBg = isLightAdmin
-    ? "bg-gradient-to-b from-[#e0f2fe]/95 via-[#bae6fd]/80 to-[#e0f2fe]/90 backdrop-blur-2xl text-slate-800 border-r border-sky-300/40 shadow-[4px_0_24px_rgba(56,189,248,0.12)]"
+    ? "bg-gradient-to-b from-[#7dd3fc] via-[#38bdf8] to-[#0284c7]/60 backdrop-blur-2xl text-slate-900 border-r border-sky-400/50 shadow-[4px_0_24px_rgba(2,132,199,0.2)]"
     : "bg-[#070b19] text-white";
 
   const sidebarHeaderBg = "bg-transparent";
   const sidebarFooterBg = "bg-transparent";
 
   const navbarBg = isLightAdmin
-    ? "bg-gradient-to-r from-[#e0f2fe]/95 via-[#bae6fd]/90 to-[#e0f2fe]/95 backdrop-blur-2xl text-slate-800 border-b border-sky-300/40 shadow-[0_4px_20px_rgba(56,189,248,0.08)]"
+    ? "bg-gradient-to-r from-[#7dd3fc] via-[#38bdf8] to-[#7dd3fc] backdrop-blur-2xl text-slate-900 border-b border-sky-400/50 shadow-[0_4px_20px_rgba(2,132,199,0.18)]"
     : "bg-[#0e1838] bg-gradient-to-r from-[#0e1838] via-[#102354] to-[#070b19]";
 
   const renderSidebarContent = (isCollapsed: boolean) => (
@@ -1285,26 +1285,26 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {isLightAdmin ? (
           <>
-            {/* Base light sky-blue translucent glass background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#e0f2fe]/95 via-[#bae6fd]/80 to-[#e0f2fe]/90 backdrop-blur-2xl" />
+            {/* Base rich sky-blue translucent glass background */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#7dd3fc] via-[#38bdf8] to-[#0284c7]/60 backdrop-blur-2xl" />
 
             {/* Top-right soft cyan/sky radiant glass glow */}
-            <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-sky-400/25 via-blue-400/15 to-transparent blur-3xl pointer-events-none" />
-            <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-cyan-300/30 blur-2xl pointer-events-none" />
+            <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-gradient-to-br from-blue-600/30 via-sky-500/25 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute -top-6 -right-6 w-44 h-44 rounded-full bg-cyan-400/35 blur-2xl pointer-events-none" />
 
-            {/* Large 3D spherical glass arc with light sky-blue glass styling */}
+            {/* Large 3D spherical glass arc with rich sky-blue glass styling */}
             <svg className="absolute bottom-0 -left-10 w-[380px] h-[480px] pointer-events-none" viewBox="0 0 380 480" fill="none">
               <defs>
                 <radialGradient id="sphereGradLight" cx="30%" cy="30%" r="70%">
-                  <stop offset="0%" stopColor="#bae6fd" stopOpacity="0.45" />
-                  <stop offset="40%" stopColor="#7dd3fc" stopOpacity="0.3" />
-                  <stop offset="75%" stopColor="#e0f2fe" stopOpacity="0.45" />
-                  <stop offset="100%" stopColor="#f0f9ff" stopOpacity="0.6" />
+                  <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.6" />
+                  <stop offset="40%" stopColor="#0ea5e9" stopOpacity="0.45" />
+                  <stop offset="75%" stopColor="#0284c7" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#7dd3fc" stopOpacity="0.7" />
                 </radialGradient>
                 <linearGradient id="arcHighlightLight" x1="0%" y1="60%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#0284c7" stopOpacity="0.4" />
-                  <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.2" />
+                  <stop offset="0%" stopColor="#0369a1" stopOpacity="0.6" />
+                  <stop offset="50%" stopColor="#0284c7" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.4" />
                 </linearGradient>
               </defs>
               <path
@@ -1315,12 +1315,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 d="M-10,130 Q110,40 380,220"
                 stroke="url(#arcHighlightLight)"
                 strokeWidth="1.5"
-                filter="drop-shadow(0 0 6px rgba(56,189,248,0.25))"
+                filter="drop-shadow(0 0 6px rgba(14,165,233,0.35))"
               />
             </svg>
 
             {/* Secondary bottom soft glow */}
-            <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-sky-300/30 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-72 h-72 rounded-full bg-blue-500/30 blur-3xl pointer-events-none" />
           </>
         ) : (
           <>
@@ -1366,7 +1366,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
       {/* Top Header - Bot Manager Logo & Toggle */}
       {isCollapsed ? (
-        <div className={`h-16 flex items-center justify-center border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-300/40" : "border-white/10"}`}>
+        <div className={`h-16 flex items-center justify-center border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -1374,13 +1374,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 onClick={toggleSidebar}
                 className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md transition-all cursor-pointer group shadow-sm hover:scale-105 active:scale-95 ${
                   isLightAdmin
-                    ? "bg-white/70 text-slate-700 hover:text-blue-900 hover:bg-white border border-sky-300/50"
+                    ? "bg-white/80 text-slate-800 hover:text-blue-950 hover:bg-white border border-white/70 shadow-sm"
                     : "text-white border border-white/20 bg-white/10 hover:bg-white/20"
                 }`}
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
-                <i className={`fa-solid fa-robot text-lg group-hover:hidden ${isLightAdmin ? "text-blue-600" : "text-white"}`}></i>
-                <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-700" : "text-sky-300"}`} />
+                <i className={`fa-solid fa-robot text-lg group-hover:hidden ${isLightAdmin ? "text-blue-700" : "text-white"}`}></i>
+                <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
             <TooltipContent side={lang === "ar" ? "left" : "right"} className={isLightAdmin ? "bg-white/95 border border-sky-300/60 text-slate-800 font-medium shadow-xl" : "bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl"}>
@@ -1389,19 +1389,19 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </Tooltip>
         </div>
       ) : (
-        <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-300/40" : "border-white/10"}`}>
+        <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md ${
                 isLightAdmin
-                  ? "bg-gradient-to-br from-blue-600 to-sky-500 text-white border border-sky-400/40 shadow-blue-500/20"
+                  ? "bg-gradient-to-br from-blue-700 to-sky-500 text-white border border-white/40 shadow-blue-900/20"
                   : "text-white border border-white/20 bg-white/10"
               }`}
             >
               <i className="fa-solid fa-robot text-lg text-white"></i>
             </div>
             <div className="flex flex-col min-w-0">
-              <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950" : "text-white drop-shadow-sm"}`}>
+              <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950 drop-shadow-sm" : "text-white drop-shadow-sm"}`}>
                 Bot Manager
               </span>
             </div>
@@ -1413,7 +1413,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             onClick={toggleSidebar}
             className={`h-8 w-8 rounded-lg transition-colors cursor-pointer shrink-0 hidden lg:inline-flex ${
               isLightAdmin
-                ? "text-slate-600 hover:text-blue-900 hover:bg-sky-400/20 border border-sky-200/60 bg-white/50 backdrop-blur-sm"
+                ? "text-slate-800 hover:text-blue-950 hover:bg-white/40 border border-white/60 bg-white/70 backdrop-blur-sm shadow-sm"
                 : "text-white/70 hover:text-white hover:bg-white/15"
             }`}
             title={lang === "ar" ? "طي القائمة الجانبية" : "Collapse sidebar"}
@@ -1429,7 +1429,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             onClick={() => setMobileMenuOpen(false)}
             className={`h-8 w-8 rounded-lg transition-colors cursor-pointer shrink-0 lg:hidden ${
               isLightAdmin
-                ? "text-slate-700 hover:text-blue-900 hover:bg-sky-400/20"
+                ? "text-slate-800 hover:text-blue-950 hover:bg-white/40"
                 : "text-white/80 hover:text-white hover:bg-white/15"
             }`}
             title={lang === "ar" ? "إغلاق القائمة" : "Close menu"}
@@ -1448,7 +1448,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <div className="relative cursor-pointer">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-inner transition-all ${
                   isLightAdmin
-                    ? "bg-gradient-to-br from-blue-600 to-sky-500 text-white border border-sky-400/40"
+                    ? "bg-gradient-to-br from-blue-700 to-sky-500 text-white border border-white/40 shadow-sm"
                     : "bg-white/15 border border-white/20 text-white hover:bg-white/25"
                 }`}>
                   {user?.name?.charAt(0).toUpperCase() ?? "S"}
@@ -1457,7 +1457,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             </TooltipTrigger>
             <TooltipContent side={lang === "ar" ? "left" : "right"} className={isLightAdmin ? "bg-white/95 border border-sky-300/60 text-slate-800 font-medium shadow-xl p-2.5 space-y-1" : "bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl p-2.5 space-y-1"}>
               <p className={`font-bold text-sm ${isLightAdmin ? "text-blue-950" : "text-white"}`}>{user?.name ?? "softysta.com"}</p>
-              <div className={`pt-1.5 border-t mt-1 ${isLightAdmin ? "border-sky-200/80" : "border-white/10"}`}>
+              <div className={`pt-1.5 border-t mt-1 ${isLightAdmin ? "border-sky-300/60" : "border-white/10"}`}>
                 {role === "admin" ? <LiveStatusBar isLightAdmin={isLightAdmin} /> : <ClientLiveStatusBar />}
               </div>
             </TooltipContent>
@@ -1467,14 +1467,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
           <div className={`rounded-2xl backdrop-blur-xl p-2.5 space-y-2 ${
             isLightAdmin
-              ? "bg-white/80 border border-sky-300/60 shadow-[0_4px_20px_rgba(56,189,248,0.15)] text-slate-800"
+              ? "bg-white/85 border border-white/70 shadow-[0_4px_20px_rgba(2,132,199,0.18)] text-slate-800"
               : "bg-white/[0.08] border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] text-white"
           }`}>
             {/* User profile row */}
             <div className="flex items-center gap-2.5">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-inner shrink-0 ${
                 isLightAdmin
-                  ? "bg-gradient-to-br from-blue-600 to-sky-500 text-white border border-blue-400/30"
+                  ? "bg-gradient-to-br from-blue-700 to-sky-500 text-white border border-white/40"
                   : "bg-white/15 border border-white/20 text-white"
               }`}>
                 {user?.name?.charAt(0).toUpperCase() ?? "S"}
@@ -1599,10 +1599,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                       className={`relative w-11 h-11 mx-auto rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                         isNotifActive
                           ? isLightAdmin
-                            ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold border border-blue-500 shadow-md shadow-blue-500/25 ring-1 ring-blue-400/40"
+                            ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white font-bold border border-blue-400 shadow-md shadow-blue-950/20 ring-1 ring-blue-400/40"
                             : "bg-white/25 text-white font-bold border border-white/30 shadow-lg shadow-black/30 ring-1 ring-white/30"
                           : isLightAdmin
-                          ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+                          ? "text-slate-800 hover:text-blue-950 hover:bg-white/40"
                           : "text-slate-200 hover:text-white hover:bg-white/15"
                       }`}
                       aria-label={link.label}
@@ -1610,7 +1610,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                       <Icon className={`w-5 h-5 shrink-0 transition-colors ${
                         isNotifActive
                           ? isLightAdmin ? "text-white" : "text-amber-300"
-                          : isLightAdmin ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-white"
+                          : isLightAdmin ? "text-blue-800 hover:text-blue-950" : "text-sky-300 hover:text-white"
                       }`} />
                       {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isNotifActive} compact />}
                       {link.notifBadge && role === "client" && <ClientNotificationBadge isActive={isNotifActive} compact />}
@@ -1646,16 +1646,16 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                         ? "opacity-60 text-slate-400 cursor-not-allowed"
                         : isActive
                         ? isLightAdmin
-                          ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold border border-blue-500 shadow-md shadow-blue-500/25"
+                          ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white font-bold border border-blue-400 shadow-md shadow-blue-950/20"
                           : "bg-white/25 text-white font-bold border border-white/30 shadow-lg shadow-black/30"
                         : isLightAdmin
-                        ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+                        ? "text-slate-800 hover:text-blue-950 hover:bg-white/40"
                         : "text-slate-200 hover:text-white hover:bg-white/15"
                     }`}
                     aria-label={link.label}
                   >
                     <Icon className={`w-5 h-5 shrink-0 transition-colors ${
-                      link.isLocked ? "text-slate-400" : isActive ? "text-white" : isLightAdmin ? "text-blue-600" : "text-sky-300 hover:text-white"
+                      link.isLocked ? "text-slate-400" : isActive ? "text-white" : isLightAdmin ? "text-blue-800 hover:text-blue-950" : "text-sky-300 hover:text-white"
                     }`} />
                     {link.isLocked && (
                       <Lock className="w-3 h-3 text-amber-400 absolute -bottom-0.5 -right-0.5" />
@@ -1693,22 +1693,22 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none ${
                     isParentActive
                       ? isLightAdmin
-                        ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold border border-blue-500/40 shadow-md shadow-blue-500/25"
+                        ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white font-bold border border-blue-400/40 shadow-md shadow-blue-950/20"
                         : "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/20"
                       : isLightAdmin
-                      ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+                      ? "text-slate-800 hover:text-blue-950 hover:bg-white/40 font-semibold"
                       : "text-slate-100 hover:text-white hover:bg-white/12"
                   }`}
                 >
                   <Icon className={`w-5 h-5 shrink-0 transition-colors ${
-                    isParentActive ? "text-white" : isLightAdmin ? "text-blue-600 group-hover:text-blue-800" : "text-sky-300 group-hover:text-white"
+                    isParentActive ? "text-white" : isLightAdmin ? "text-blue-800 group-hover:text-blue-950" : "text-sky-300 group-hover:text-white"
                   }`} />
                   <span className="flex-1 truncate">{link.label}</span>
                   <ChevronDown
                     className={`w-4 h-4 transition-transform duration-200 ${
                       isExpanded
-                        ? isLightAdmin && isParentActive ? "rotate-0 text-white" : isLightAdmin ? "rotate-0 text-blue-900" : "rotate-0 text-white"
-                        : isLightAdmin ? "-rotate-90 text-slate-500" : "-rotate-90 text-slate-300"
+                        ? isLightAdmin && isParentActive ? "rotate-0 text-white" : isLightAdmin ? "rotate-0 text-blue-950" : "rotate-0 text-white"
+                        : isLightAdmin ? "-rotate-90 text-slate-700" : "-rotate-90 text-slate-300"
                     }`}
                   />
                 </div>
@@ -1716,7 +1716,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 {isExpanded && (
                   <div className={`ps-3.5 pe-1.5 space-y-1 pt-1.5 pb-1.5 rounded-xl my-1 ${
                     isLightAdmin
-                      ? "bg-white/70 backdrop-blur-md border border-sky-300/60 shadow-sm"
+                      ? "bg-white/85 backdrop-blur-md border border-white/70 shadow-sm"
                       : "bg-black/25 backdrop-blur-sm border border-white/10"
                   }`}>
                     {link.children.map((child) => {
@@ -1733,12 +1733,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                                 ? "bg-blue-600 text-white font-bold shadow-sm"
                                 : "bg-white/20 text-white font-bold shadow-sm border border-white/25"
                               : isLightAdmin
-                              ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+                              ? "text-slate-800 hover:text-blue-950 hover:bg-sky-400/25 font-semibold"
                               : "text-slate-200 hover:text-white hover:bg-white/12"
                           }`}
                         >
                           <ChildIcon className={`w-4 h-4 shrink-0 transition-colors ${
-                            isSubActive ? "text-white" : isLightAdmin ? "text-blue-600" : "text-sky-300/90 group-hover:text-white"
+                            isSubActive ? "text-white" : isLightAdmin ? "text-blue-700" : "text-sky-300/90 group-hover:text-white"
                           }`} />
                           <span className="flex-1 truncate">{child.label}</span>
                         </Link>
@@ -1763,17 +1763,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 className={`group w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-start cursor-pointer select-none ${
                   isNotifActive
                     ? isLightAdmin
-                      ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold border border-blue-500/40 shadow-md shadow-blue-500/25 ring-1 ring-blue-400/40"
+                      ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white font-bold border border-blue-400/40 shadow-md shadow-blue-950/20 ring-1 ring-blue-400/40"
                       : "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/25 ring-1 ring-white/30"
                     : isLightAdmin
-                    ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+                    ? "text-slate-800 hover:text-blue-950 hover:bg-white/40 font-semibold"
                     : "text-slate-100 hover:text-white hover:bg-white/12"
                 }`}
               >
                 <Icon className={`w-5 h-5 shrink-0 transition-colors ${
                   isNotifActive
                     ? isLightAdmin ? "text-white" : "text-amber-300"
-                    : isLightAdmin ? "text-blue-600 group-hover:text-blue-800" : "text-sky-300 group-hover:text-white"
+                    : isLightAdmin ? "text-blue-800 group-hover:text-blue-950" : "text-sky-300 group-hover:text-white"
                 }`} />
                 <span className="flex-1 truncate">{link.label}</span>
                 {link.notifBadge && role === "admin" && <AdminNotificationBadge isActive={isNotifActive} />}
@@ -1805,10 +1805,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   ? "opacity-60 text-slate-400 cursor-not-allowed hover:bg-transparent"
                   : isActive
                   ? isLightAdmin
-                    ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white font-bold border border-blue-500/40 shadow-md shadow-blue-500/25"
+                    ? "bg-gradient-to-r from-blue-700 to-indigo-600 text-white font-bold border border-blue-400/40 shadow-md shadow-blue-950/20"
                     : "bg-white/20 backdrop-blur-md text-white font-bold border border-white/25 shadow-md shadow-black/25"
                   : isLightAdmin
-                  ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+                  ? "text-slate-800 hover:text-blue-950 hover:bg-white/40 font-semibold"
                   : "text-slate-100 hover:text-white hover:bg-white/12"
               }`}
             >
@@ -1818,7 +1818,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   : isActive
                   ? "text-white"
                   : isLightAdmin
-                  ? "text-blue-600 group-hover:text-blue-800"
+                  ? "text-blue-800 group-hover:text-blue-950"
                   : "text-sky-300 group-hover:text-white"
               }`} />
               <span className="flex-1 truncate">{link.label}</span>
@@ -1838,7 +1838,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       {/* Sign out */}
       {isCollapsed ? (
         <div className={`p-3 border-t ${sidebarFooterBg} shrink-0 relative z-10 flex items-center justify-center ${
-          isLightAdmin ? "border-sky-300/40" : "border-white/10"
+          isLightAdmin ? "border-sky-400/40" : "border-white/10"
         }`}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1847,7 +1847,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 size="icon"
                 className={`w-11 h-11 rounded-xl transition-all cursor-pointer ${
                   isLightAdmin
-                    ? "text-rose-700 hover:text-rose-900 hover:bg-rose-500/20 bg-rose-50/50 border border-rose-200/60 shadow-sm"
+                    ? "text-rose-700 hover:text-rose-900 hover:bg-rose-500/20 bg-white/70 border border-white/60 shadow-sm"
                     : "text-slate-100 hover:text-white hover:bg-rose-500/25"
                 }`}
                 onClick={handleLogout}
@@ -1864,13 +1864,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
       ) : (
         <div className={`p-3 border-t ${sidebarFooterBg} shrink-0 relative z-10 ${
-          isLightAdmin ? "border-sky-300/40" : "border-white/10"
+          isLightAdmin ? "border-sky-400/40" : "border-white/10"
         }`}>
           <Button
             variant="ghost"
             className={`w-full justify-start gap-3 font-medium rounded-xl transition-all ${
               isLightAdmin
-                ? "text-rose-700 hover:text-rose-900 hover:bg-rose-500/15 font-bold border border-rose-200/60 bg-rose-50/60 shadow-sm"
+                ? "text-rose-700 hover:text-rose-900 hover:bg-rose-50 font-bold border border-white/70 bg-white/75 shadow-sm"
                 : "text-slate-100 hover:text-white hover:bg-rose-500/20"
             }`}
             onClick={handleLogout}
@@ -1889,17 +1889,17 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     <TooltipProvider delayDuration={150}>
       <div className="flex h-full w-full bg-[#F3F7FF] dark:bg-background overflow-hidden text-foreground">
         {/* Sidebar */}
-        <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} border-r ${isLightAdmin ? "border-sky-300/40" : "border-white/10"} ${sidebarAsideBg} hidden lg:flex flex-col overflow-hidden shrink-0 shadow-2xl relative transition-[width] duration-300 ease-in-out`}>
+        <aside className={`${sidebarCollapsed ? "w-20" : "w-64"} border-r ${isLightAdmin ? "border-sky-400/40" : "border-white/10"} ${sidebarAsideBg} hidden lg:flex flex-col overflow-hidden shrink-0 shadow-2xl relative transition-[width] duration-300 ease-in-out`}>
           {renderSidebarContent(sidebarCollapsed)}
         </aside>
 
         {/* Main content */}
         <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#F3F7FF] dark:bg-background">
-          <header className={`relative z-20 h-16 px-3 sm:px-6 md:px-8 ${navbarBg} border-b ${isLightAdmin ? "border-sky-300/40" : "border-white/10"} shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
+          <header className={`relative z-20 h-16 px-3 sm:px-6 md:px-8 ${navbarBg} border-b ${isLightAdmin ? "border-sky-400/40" : "border-white/10"} shadow-sm flex items-center justify-between shrink-0 overflow-hidden`}>
             {isLightAdmin ? (
               <>
-                <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-sky-400/20 blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-blue-400/15 blur-2xl pointer-events-none" />
+                <div className="absolute -top-10 left-10 w-72 h-28 rounded-full bg-blue-600/25 blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-10 right-1/4 w-72 h-28 rounded-full bg-sky-500/30 blur-2xl pointer-events-none" />
               </>
             ) : (
               <>
@@ -1917,7 +1917,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     onClick={() => setMobileMenuOpen(true)}
                     className={`lg:hidden backdrop-blur-md rounded-xl h-9 w-9 shrink-0 cursor-pointer ${
                       isLightAdmin
-                        ? "bg-white/80 hover:bg-white text-slate-700 hover:text-blue-900 border border-sky-300/60 shadow-sm"
+                        ? "bg-white/85 hover:bg-white text-slate-800 hover:text-blue-950 border border-white/70 shadow-sm"
                         : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
                     }`}
                     aria-label="Menu"
@@ -1942,7 +1942,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               {/* Current Page Breadcrumb Pill - Organized for Phone, Tablet, and Desktop */}
               <div className={`flex items-center px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl backdrop-blur-md shadow-sm min-w-0 max-w-[135px] xs:max-w-[185px] sm:max-w-xs md:max-w-md ${
                 isLightAdmin
-                  ? "bg-white/80 border border-sky-300/60 text-blue-950 font-bold"
+                  ? "bg-white/85 border border-white/70 text-blue-950 font-bold shadow-sm"
                   : "bg-white/10 border border-white/15 text-white"
               }`}>
                 <p className={`text-xs sm:text-sm font-bold tracking-tight truncate ${
@@ -1996,7 +1996,7 @@ function LiveStatusBar({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
       href="/admin/malfunctions"
       className={`flex items-center gap-2 text-xs px-1.5 py-1 transition-colors rounded-lg ${
         isLightAdmin
-          ? "text-slate-700 hover:text-blue-950 hover:bg-sky-400/20"
+          ? "text-slate-800 hover:text-blue-950 hover:bg-white/40 font-semibold"
           : "text-slate-100 hover:text-white hover:bg-white/10"
       }`}
     >
@@ -2004,12 +2004,12 @@ function LiveStatusBar({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span className={hasMalfunction ? (isLightAdmin ? "text-rose-600 font-bold" : "text-rose-300 font-bold") : (isLightAdmin ? "font-bold text-slate-800" : "font-semibold text-slate-100")}>
+      <span className={hasMalfunction ? (isLightAdmin ? "text-rose-600 font-bold" : "text-rose-300 font-bold") : (isLightAdmin ? "font-black text-slate-900" : "font-semibold text-slate-100")}>
         {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues") : (lang === "ar" ? "النظام يعمل" : "Live")}
       </span>
       {stats?.activeCompanies !== undefined && (
-        <span className={`ms-auto flex items-center gap-1.5 font-bold ${isLightAdmin ? "text-blue-700" : "text-sky-200"} ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
-          <Activity className={`w-3.5 h-3.5 ${isLightAdmin ? "text-blue-600" : "text-sky-300"}`} />
+        <span className={`ms-auto flex items-center gap-1.5 font-bold ${isLightAdmin ? "text-blue-800" : "text-sky-200"} ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`} title="Active Companies">
+          <Activity className={`w-3.5 h-3.5 ${isLightAdmin ? "text-blue-700" : "text-sky-300"}`} />
           <span>{stats.activeCompanies} {lang === "ar" ? "نشط" : "active"}</span>
         </span>
       )}
