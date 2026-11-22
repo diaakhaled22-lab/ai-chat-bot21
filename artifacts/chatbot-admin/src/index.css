@@ -276,3 +276,39 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
+/* Admin Dashboard Glassy Sky Cards */
+.admin-glass-card {
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.88) 0%, rgba(224, 242, 254, 0.72) 50%, rgba(186, 230, 253, 0.58) 100%) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.16), 0 8px 10px -6px rgba(56, 189, 248, 0.1) !important;
+}
+
+.admin-glass-card.border-l-4 {
+  border-left-width: 4px !important;
+  border-left-color: #2563eb !important;
+}
+
+.admin-glass-card:hover {
+  box-shadow: 0 20px 30px -10px rgba(56, 189, 248, 0.28), 0 10px 15px -5px rgba(56, 189, 248, 0.15) !important;
+}
+
+.dark .admin-glass-card {
+  background: rgba(17, 24, 39, 0.85) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(30, 41, 59, 0.8) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .admin-glass-card.border-l-4 {
+  border-left-width: 4px !important;
+  border-left-color: #3b82f6 !important;
+}
+
+.dark .admin-glass-card:hover {
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
+}
+
+

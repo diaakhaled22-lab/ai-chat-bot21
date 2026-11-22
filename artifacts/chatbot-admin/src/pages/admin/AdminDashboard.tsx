@@ -673,10 +673,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 2. Platform Stat Cards (Rounded 2xl with soft shadows & vibrant badges) */}
+      {/* 2. Platform Stat Cards (Glassy Sky Style) */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
         {/* Total Companies */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2D5BE3]/25 border-l-4 border-l-[#2D5BE3]">
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Companies</span>
             <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
@@ -692,7 +692,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Active Companies */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2D5BE3]/25 border-l-4 border-l-[#2D5BE3]">
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Companies</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
@@ -710,7 +710,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Inactive Companies */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2D5BE3]/25 border-l-4 border-l-[#2D5BE3]">
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive Companies</span>
             <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs">
@@ -726,7 +726,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quota Assigned */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2D5BE3]/25 border-l-4 border-l-[#2D5BE3]">
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quota Assigned</span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
@@ -742,7 +742,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Total Clients */}
-        <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2D5BE3]/25 border-l-4 border-l-[#2D5BE3]">
+        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
           <div className="flex items-center justify-between pb-3">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</span>
             <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
@@ -766,7 +766,7 @@ export default function AdminDashboard() {
             <TrendingUp className="w-5 h-5 text-blue-600" />
             AI Usage &amp; Cost Estimation
           </h2>
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 border border-[#DCE7FF] dark:border-slate-700 px-3 py-1 rounded-lg flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-blue-900 dark:text-slate-300 bg-sky-100/60 dark:bg-slate-800/80 border border-sky-200/70 dark:border-slate-700 px-3 py-1 rounded-lg flex items-center gap-1.5 backdrop-blur-xs">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             Showing: {rangeLabel}
           </span>
@@ -774,7 +774,7 @@ export default function AdminDashboard() {
 
         {/* Summary cards */}
         <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Tokens Used</span>
               <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
@@ -791,7 +791,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated Total Cost</span>
               <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs">
@@ -806,7 +806,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Models in Use</span>
               <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">
@@ -825,8 +825,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Pie chart + model table */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 mb-6 overflow-hidden border-l-4 border-l-[#2D5BE3]">
-          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+        <Card className="admin-glass-card rounded-2xl mb-6 overflow-hidden border-l-4">
+          <CardHeader className="border-b border-sky-200/50 dark:border-slate-800/80 pb-4">
             <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Cost Breakdown by Model</CardTitle>
             <p className="text-xs text-muted-foreground">Estimated USD cost per AI model · {rangeLabel}</p>
           </CardHeader>
@@ -892,8 +892,8 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Per-company breakdown table */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 overflow-hidden mb-6 border-l-4 border-l-[#2D5BE3]">
-          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+        <Card className="admin-glass-card rounded-2xl overflow-hidden mb-6 border-l-4">
+          <CardHeader className="border-b border-sky-200/50 dark:border-slate-800/80 pb-4">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
                 <Building2 className="w-4 h-4 text-blue-600" />
@@ -902,7 +902,7 @@ export default function AdminDashboard() {
               <button
                 onClick={exportCSV}
                 disabled={sortedCompanies.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#DCE7FF] dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-sky-300/60 dark:border-slate-700 bg-white/70 dark:bg-slate-800 hover:bg-sky-100/80 dark:hover:bg-slate-700 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs backdrop-blur-xs cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export CSV
@@ -924,7 +924,7 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-border/50 bg-slate-50/70 dark:bg-slate-800/40">
+                    <tr className="border-b border-sky-200/40 dark:border-border/50 bg-sky-100/50 dark:bg-slate-800/40">
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Company</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Model</th>
                       <th
@@ -961,12 +961,12 @@ export default function AdminDashboard() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/30">
+                  <tbody className="divide-y divide-sky-200/20 dark:divide-border/30">
                     {sortedCompanies.map((c, i) => {
                       const totalTokens = usage?.totalTokens ?? 0;
                       const share = totalTokens > 0 ? ((c.inputTokens + c.outputTokens) / totalTokens) * 100 : 0;
                       return (
-                        <tr key={c.companyId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <tr key={c.companyId} className="hover:bg-sky-100/40 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2.5">
                               <span className="w-5 h-5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -1000,7 +1000,7 @@ export default function AdminDashboard() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-border bg-slate-50/50 dark:bg-slate-800/50">
+                    <tr className="border-t border-sky-200/50 dark:border-border bg-sky-100/40 dark:bg-slate-800/50">
                       <td className="px-4 py-3 text-xs font-bold text-foreground" colSpan={2}>Total</td>
                       <td className="px-4 py-3 text-right text-xs font-bold tabular-nums">
                         {sortedCompanies.reduce((s, c) => s + c.messages, 0).toLocaleString()}
@@ -1023,14 +1023,14 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Quota Assigned Companies table */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
-          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+        <Card className="admin-glass-card rounded-2xl overflow-hidden border-l-4">
+          <CardHeader className="border-b border-sky-200/50 dark:border-slate-800/80 pb-4">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
                 <Coins className="w-4 h-4 text-amber-500" />
                 Quota Assigned Companies
               </CardTitle>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 border border-[#DCE7FF] dark:border-slate-700">
+              <span className="text-xs font-semibold text-blue-900 dark:text-slate-300 bg-sky-100/60 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg flex items-center gap-1.5 border border-sky-200/70 dark:border-slate-700">
                 <Calendar className="w-3 h-3 text-blue-600" />
                 {rangeLabel}
               </span>
@@ -1051,7 +1051,7 @@ export default function AdminDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-border/50 bg-slate-50/70 dark:bg-slate-800/40">
+                    <tr className="border-b border-sky-200/40 dark:border-border/50 bg-sky-100/50 dark:bg-slate-800/40">
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Company</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Model</th>
                       <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Quota Assigned</th>
@@ -1060,12 +1060,12 @@ export default function AdminDashboard() {
                       <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Est. Cost</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/30">
+                  <tbody className="divide-y divide-sky-200/20 dark:divide-border/30">
                     {quotaCompanies.map((c, i) => {
                       const totalUsed = c.inputTokens + c.outputTokens;
                       const quotaShare = c.monthlyTokenQuota > 0 ? (totalUsed / c.monthlyTokenQuota) * 100 : 0;
                       return (
-                        <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <tr key={c.id} className="hover:bg-sky-100/40 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2.5">
                               <span className="w-5 h-5 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -1114,7 +1114,7 @@ export default function AdminDashboard() {
             <Ticket className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Support Ticket Analytics</h2>
           </div>
-          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg flex items-center gap-1.5 border border-[#DCE7FF] dark:border-slate-700">
+          <span className="text-xs font-semibold text-blue-900 dark:text-slate-300 bg-sky-100/60 dark:bg-slate-800 px-3 py-1 rounded-lg flex items-center gap-1.5 border border-sky-200/70 dark:border-slate-700">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             Showing: {rangeLabel}
           </span>
@@ -1122,7 +1122,7 @@ export default function AdminDashboard() {
 
         {/* Summary cards */}
         <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">AI Solve Rate</span>
               <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-900/30 text-violet-500 flex items-center justify-center shadow-xs">
@@ -1146,7 +1146,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Avg. Resolution Time</span>
               <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs">
@@ -1174,7 +1174,7 @@ export default function AdminDashboard() {
             })()}
           </div>
 
-          <div className="rounded-2xl p-5 bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 transition-all hover:-translate-y-0.5 border-l-4 border-l-[#2D5BE3]">
+          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl">
             <div className="flex items-center justify-between pb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Open vs Resolved</span>
               <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs">
@@ -1199,8 +1199,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Model breakdown */}
-        <Card className="rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 overflow-hidden border-l-4 border-l-[#2D5BE3]">
-          <CardHeader className="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+        <Card className="admin-glass-card rounded-2xl overflow-hidden border-l-4">
+          <CardHeader className="border-b border-sky-200/50 dark:border-slate-800/80 pb-4">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
               <Bot className="w-4 h-4 text-violet-500" />
               AI Models Used for Support
@@ -1259,7 +1259,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 5. System Status Operations Card */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-[#DCE7FF] dark:border-slate-800 shadow-lg shadow-[#2D5BE3]/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-l-4 border-l-[#2D5BE3]">
+      <div className="admin-glass-card p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-l-4">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
             <Activity className="w-6 h-6" />
