@@ -540,21 +540,21 @@ function StatCard({
   seed?: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between border-s-4 border-s-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all">
+    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-3 sm:px-3.5 sm:py-3 flex flex-col justify-between border-s-4 border-s-[#2D5BE3] shadow-xs hover:shadow-md hover:shadow-[#2D5BE3]/15 transition-all">
       <div>
-        <div className="flex items-center justify-between gap-2 pb-2">
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${accent}`}>
+        <div className="flex items-center justify-between gap-2 pb-1.5">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4 ${accent}`}>
             {icon}
           </div>
           <KpiTrend trend={trend} value={trendValue} />
         </div>
-        <div className="min-w-0 mt-1">
-          <p className="text-2xl font-bold tabular-nums leading-tight">{value}</p>
-          <p className="text-xs text-muted-foreground font-medium mt-1 truncate">{label}</p>
-          {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{sub}</p>}
+        <div className="min-w-0 mt-0.5">
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{value}</p>
+          <p className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-0.5 truncate">{label}</p>
+          {sub && <p className="text-[10px] text-muted-foreground/60 leading-none mt-0.5 truncate">{sub}</p>}
         </div>
       </div>
-      <KpiSparkline trend={trend} seed={seed ?? label} height={28} />
+      <KpiSparkline trend={trend} seed={seed ?? label} height={18} className="mt-1" />
     </div>
   );
 }
