@@ -276,22 +276,35 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
-/* Admin Dashboard Glassy Sky Cards */
+/* Admin Glassy Sky Cards */
 .admin-glass-card {
-  background: linear-gradient(135deg, rgba(240, 249, 255, 0.88) 0%, rgba(224, 242, 254, 0.72) 50%, rgba(186, 230, 253, 0.58) 100%) !important;
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.84) 0%, rgba(224, 242, 254, 0.68) 50%, rgba(186, 230, 253, 0.52) 100%) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
-  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  border: 1px solid rgba(56, 189, 248, 0.38) !important;
   box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.16), 0 8px 10px -6px rgba(56, 189, 248, 0.1) !important;
 }
 
 .admin-glass-card.border-l-4 {
   border-left-width: 4px !important;
-  border-left-color: #2563eb !important;
 }
 
 .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(56, 189, 248, 0.28), 0 10px 15px -5px rgba(56, 189, 248, 0.15) !important;
+}
+
+.admin-glass-card-subtle {
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.68) 0%, rgba(224, 242, 254, 0.50) 50%, rgba(186, 230, 253, 0.36) 100%) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.28) !important;
+  box-shadow: 0 4px 15px -2px rgba(56, 189, 248, 0.08) !important;
+}
+
+.admin-glass-card-subtle:hover {
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.82) 0%, rgba(224, 242, 254, 0.64) 50%, rgba(186, 230, 253, 0.48) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  box-shadow: 0 10px 20px -5px rgba(56, 189, 248, 0.18) !important;
 }
 
 .dark .admin-glass-card {
@@ -304,11 +317,24 @@ body.dark:has(.modern-login-wrapper) {
 
 .dark .admin-glass-card.border-l-4 {
   border-left-width: 4px !important;
-  border-left-color: #3b82f6 !important;
 }
 
 .dark .admin-glass-card:hover {
   box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
 }
+
+.dark .admin-glass-card-subtle {
+  background: rgba(17, 24, 39, 0.65) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(30, 41, 59, 0.7) !important;
+  box-shadow: 0 4px 15px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .admin-glass-card-subtle:hover {
+  background: rgba(17, 24, 39, 0.82) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
 
 
