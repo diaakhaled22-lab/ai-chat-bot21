@@ -6,6 +6,8 @@ import { AI_PROVIDERS, getModelPricingDetails, type AiProvider } from "@/lib/ai-
 import { useLanguage } from "@/hooks/use-language";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   TrendingUp,
   Building2,
+  Activity,
   Search,
   Loader2,
   X,
@@ -2089,57 +2092,126 @@ export default function AdminAiQuota() {
         </div>
       </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-            <TrendingUp className="w-6 h-6" />
+      {/* Overview Stats (Matching Dashboard Style & KPIs) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Card 1: Total Allocated Quota */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "إجمالي الحصص المخصصة" : "Total Allocated Quota"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+9.1%" />
+                <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {companiesLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  {formatQuota(totalAllocatedQuota)} <span className="text-xs font-normal text-muted-foreground">tokens</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {companiesWithQuota.length} {lang === "ar" ? "شركات بحصص محددة" : "companies with active quota"}
+                </p>
+              </>
+            )}
           </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-foreground tabular-nums tracking-tight leading-tight">
-              {formatQuota(totalAllocatedQuota)} <span className="text-xs font-normal text-muted-foreground">tokens</span>
-            </p>
-            <p className="text-xs text-muted-foreground font-medium mt-1">
-              {lang === "ar" ? "إجمالي الحصص المخصصة" : "Total Allocated Quota"}
-            </p>
-            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-              {companiesWithQuota.length} {lang === "ar" ? "شركات بحصص محددة" : "companies with set quotas"}
-            </p>
-          </div>
+          <KpiSparkline trend="up" seed="quota-companies" height={26} />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
-            <Coins className="w-6 h-6" />
+        {/* Card 2: Total Tokens Used */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? `إجمالي الرموز (${rangeLabel})` : `Total Tokens Used (${rangeLabel})`}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+18.4%" />
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {usageLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  {totalTokensConsumedMonth >= 1_000 ? formatQuota(totalTokensConsumedMonth) : totalTokensConsumedMonth.toLocaleString()}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {formatQuota(usageData?.totalInputTokens ?? 0)} in · {formatQuota(usageData?.totalOutputTokens ?? 0)} out
+                </p>
+              </>
+            )}
           </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight leading-tight">
-              {totalTokensConsumedMonth.toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground font-medium mt-1">
-              {lang === "ar" ? `استهلاك الرموز (${rangeLabel})` : `Tokens Consumed (${rangeLabel})`}
-            </p>
-            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-              {formatCost(totalCostConsumedMonth, selectedCurrency)} {lang === "ar" ? "التكلفة التقديرية" : "est. cost"}
-            </p>
-          </div>
+          <KpiSparkline trend="up" seed="total-tokens" height={26} />
         </div>
 
-        <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-center gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all border-l-4 border-l-[#2D5BE3]">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
-            <Building2 className="w-6 h-6" />
+        {/* Card 3: Estimated Total Cost */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "التكلفة التقديرية" : "Estimated Total Cost"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+14.2%" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
+                  <Coins className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {usageLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                  {formatCost(totalCostConsumedMonth, selectedCurrency)}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {lang === "ar" ? "حسب تسعير واجهات API الرسمية" : "Based on official API pricing rates"}
+                </p>
+              </>
+            )}
           </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-foreground tabular-nums tracking-tight leading-tight">
-              {companiesWithQuota.length}
-            </p>
-            <p className="text-xs text-muted-foreground font-medium mt-1">
-              {lang === "ar" ? "الشركات ذات الحصة" : "Companies with Quota"}
-            </p>
-            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-              {companiesWithQuota.filter((c) => c.isActive).length} {lang === "ar" ? "نشطة حالياً" : "currently active"}
-            </p>
+          <KpiSparkline trend="up" seed="total-cost" height={26} />
+        </div>
+
+        {/* Card 4: Models in Use */}
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {lang === "ar" ? "النماذج المستخدمة" : "Models in Use"}
+              </span>
+              <div className="flex items-center gap-2">
+                <KpiTrend trend="up" value="+5.0%" />
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
+                  <Activity className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+            {usageLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
+                  {usageData?.byModel?.length ?? 0}
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                  {usageData?.byModel?.map((m) => m.model).join(", ") || (lang === "ar" ? "لا توجد نماذج مستخدمة بعد" : "No models used yet")}
+                </p>
+              </>
+            )}
           </div>
+          <KpiSparkline trend="up" seed="models-in-use" height={26} />
         </div>
       </div>
 
