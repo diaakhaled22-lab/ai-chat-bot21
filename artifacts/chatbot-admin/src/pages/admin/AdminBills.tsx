@@ -1970,14 +1970,9 @@ export default function AdminBills() {
   return (
     <div className="space-y-4 sm:space-y-6 pb-16">
       {/* ── Top Header Banner ── */}
-      <div
-        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-xl shadow-blue-600/15 border border-white/10"
-        style={{
-          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%)",
-        }}
-      >
-        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="admin-bills-banner relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white border transition-all">
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-56 h-56 bg-blue-300/20 dark:bg-indigo-600/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-2 max-w-2xl">
