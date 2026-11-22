@@ -1965,6 +1965,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           </header>
 
           <div className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 ${
+            isAdmin && location !== "/admin/bills" ? "admin-dashboard-cards-theme" : ""
+          } ${
             location === "/admin/notifications"
               ? (isLightAdmin
                   ? "bg-gradient-to-br from-[#bae6fd] via-[#e0f2fe] to-[#bfdbfe]"

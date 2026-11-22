@@ -289,6 +289,55 @@ body.dark:has(.modern-login-wrapper) {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
+/* Admin Unified Glassy Sky Cards (Matching Dashboard) across all admin pages except Bills */
+.admin-dashboard-cards-theme div.bg-card,
+.admin-dashboard-cards-theme [data-slot="card"],
+.admin-dashboard-cards-theme .admin-glass-card,
+.admin-dashboard-cards-theme .admin-glass-transparent {
+  background: linear-gradient(135deg, rgba(240, 249, 255, 0.88) 0%, rgba(224, 242, 254, 0.72) 50%, rgba(186, 230, 253, 0.58) 100%) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.16), 0 8px 10px -6px rgba(56, 189, 248, 0.1) !important;
+}
+
+.admin-dashboard-cards-theme div.bg-card:hover,
+.admin-dashboard-cards-theme [data-slot="card"]:hover,
+.admin-dashboard-cards-theme .admin-glass-card:hover,
+.admin-dashboard-cards-theme .admin-glass-transparent:hover {
+  box-shadow: 0 20px 30px -10px rgba(56, 189, 248, 0.28), 0 10px 15px -5px rgba(56, 189, 248, 0.15) !important;
+}
+
+.admin-dashboard-cards-theme .is-unread {
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95) 0%, rgba(186, 230, 253, 0.8) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.7) !important;
+  box-shadow: 0 12px 28px -5px rgba(2, 132, 199, 0.25) !important;
+}
+
+.dark .admin-dashboard-cards-theme div.bg-card,
+.dark .admin-dashboard-cards-theme [data-slot="card"],
+.dark .admin-dashboard-cards-theme .admin-glass-card,
+.dark .admin-dashboard-cards-theme .admin-glass-transparent {
+  background: rgba(17, 24, 39, 0.85) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border-color: rgba(30, 41, 59, 0.8) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .admin-dashboard-cards-theme div.bg-card:hover,
+.dark .admin-dashboard-cards-theme [data-slot="card"]:hover,
+.dark .admin-dashboard-cards-theme .admin-glass-card:hover,
+.dark .admin-dashboard-cards-theme .admin-glass-transparent:hover {
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .admin-dashboard-cards-theme .is-unread {
+  background: rgba(30, 58, 138, 0.45) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+
 /* Admin Dashboard Glassy Sky Cards */
 .admin-glass-card {
   background: linear-gradient(135deg, rgba(240, 249, 255, 0.88) 0%, rgba(224, 242, 254, 0.72) 50%, rgba(186, 230, 253, 0.58) 100%) !important;
