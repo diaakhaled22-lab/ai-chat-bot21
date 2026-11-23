@@ -93,16 +93,21 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS resend_api_key TEXT;
 
-      -- Ensure all companies have an active monthly token quota assigned (default: 500,000)
+      -- Ensure active companies have an assigned monthly token quota
       UPDATE companies
       SET monthly_token_quota = 500000
-      WHERE monthly_token_quota IS NULL OR monthly_token_quota = 0;
+      WHERE (monthly_token_quota IS NULL OR monthly_token_quota = 0) AND is_active = true;
 
-      -- Mark existing companies that already have active subscriptions or custom quotas as having claimed free trial
+      -- Mark existing companies that have active subscriptions or past activations as having claimed free trial
       UPDATE companies
       SET free_trial_claimed = true
-      WHERE (is_active = true OR monthly_token_quota > 25000 OR activation_end IS NOT NULL)
+      WHERE (is_active = true OR activation_end IS NOT NULL)
         AND free_trial_claimed = false;
+
+      -- Restore unactivated onboarding companies (like newly registered clients) so their free trial is available
+      UPDATE companies
+      SET monthly_token_quota = 0, free_trial_claimed = false
+      WHERE is_active = false AND activation_end IS NULL;
 
       -- Sync Auto-Delete retention for companies on Professional Plan or Fairouz if set to legacy 30 days
       UPDATE companies
@@ -132,13 +137,16 @@ export async function ensureDataSourcePermissionsSchema(): Promise<void> {
         if (Array.isArray(parsed.packages)) {
           let modified = false;
 
-          const hasFreeTrial = parsed.packages.some((p: any) => p.id === "free_trial");
-          if (!hasFreeTrial) {
+          const existingTrial = parsed.packages.find((p: any) => p.id === "free_trial");
+          if (!existingTrial) {
             const freeTrialPkg = DEFAULT_PACKAGES_CATALOG.packages.find((p) => p.id === "free_trial");
             if (freeTrialPkg) {
               parsed.packages = [freeTrialPkg, ...parsed.packages];
               modified = true;
             }
+          } else if (existingTrial.isActive === false) {
+            existingTrial.isActive = true;
+            modified = true;
           }
 
           // Ensure plan tokens and feature strings are synchronized

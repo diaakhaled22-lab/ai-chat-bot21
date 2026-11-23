@@ -2288,7 +2288,7 @@ router.post("/client/tickets", async (req, res) => {
       (title || "").includes("الباقة التجريبية المجانية") ||
       (title || "").includes("Free 7-Day Trial");
 
-    if (isRequestingFreeTrial && company && (company as any).freeTrialClaimed) {
+    if (isRequestingFreeTrial && company && (company as any).freeTrialClaimed && ((company as any).isActive || (company as any).activationEnd)) {
       res.status(400).json({
         error: "لقد استفدت مسبقاً من الباقة التجريبية المجانية (7 أيام). هذه الباقة متاحة للعملاء الجدد فقط ولمرة واحدة. يمكنك اختيار إحدى باقاتنا المتاحة.",
       });

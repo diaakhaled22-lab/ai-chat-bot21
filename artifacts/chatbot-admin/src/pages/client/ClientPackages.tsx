@@ -387,7 +387,7 @@ export default function ClientPackages() {
 
   // 1. Determine company active plan ID directly from server or dynamic catalog match
   const companyActivePlanId = useMemo(() => {
-    if (!company) return null;
+    if (!company || !(company as any).isActive) return null;
     const quota = (company as any).monthlyTokenQuota;
     if (quota && quota > 0) {
       const exact = plans.find((p) => p.tokensMonthly === quota);
@@ -396,7 +396,6 @@ export default function ClientPackages() {
     if ((company as any).activePlanId) {
       return (company as any).activePlanId;
     }
-    if (!(company as any).isActive) return null;
     if (!quota) return null;
     let best = plans[0];
     let minDiff = Infinity;
@@ -572,11 +571,13 @@ export default function ClientPackages() {
   });
 
   const hasActiveQuotaOrPlan = Boolean(
-    (company as any)?.isActive ||
-    ((company as any)?.monthlyTokenQuota && (company as any).monthlyTokenQuota > 25_000) ||
-    (company as any)?.activationEnd
+    (company as any)?.isActive &&
+    (((company as any)?.monthlyTokenQuota && (company as any).monthlyTokenQuota > 25_000) || (company as any)?.activationEnd)
   );
-  const isFreeTrialClaimed = Boolean((company as any)?.freeTrialClaimed) || hasActiveQuotaOrPlan;
+  const isFreeTrialClaimed = Boolean(
+    ((company as any)?.freeTrialClaimed && ((company as any)?.isActive || (company as any)?.activationEnd)) ||
+    hasActiveQuotaOrPlan
+  );
 
   const handleOpenSubscribe = (plan: PlanDef) => {
     if (plan.id === "free_trial" && isFreeTrialClaimed) {
@@ -1168,7 +1169,7 @@ export default function ClientPackages() {
       )}
 
       {/* ── Main Plans Cards Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
         {plans
           .filter((plan) => {
             // Free trial plan is strictly for new clients. If client is an existing customer or has already claimed a trial, hide it.
