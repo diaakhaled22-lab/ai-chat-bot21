@@ -441,13 +441,20 @@ export default function ClientPackages() {
 
   // Keep activeSelectedPlanId strictly in sync with companyActivePlanId (overrides stale localStorage)
   useEffect(() => {
+    if (!company || !(company as any).isActive) {
+      setActiveSelectedPlanId(null);
+      try {
+        localStorage.removeItem(activePlanStorageKey);
+      } catch {}
+      return;
+    }
     if (companyActivePlanId) {
       setActiveSelectedPlanId(companyActivePlanId);
       try {
         localStorage.setItem(activePlanStorageKey, companyActivePlanId);
       } catch {}
     }
-  }, [companyActivePlanId, activePlanStorageKey]);
+  }, [company, companyActivePlanId, activePlanStorageKey]);
 
   // Sync pendingPlanId from server response
   useEffect(() => {
@@ -466,14 +473,16 @@ export default function ClientPackages() {
       if (saved) {
         setSubmittedPlans((prev) => ({ ...JSON.parse(saved), ...prev }));
       }
-      if (!companyActivePlanId) {
+      if (company && (company as any).isActive && !companyActivePlanId) {
         const savedActive = localStorage.getItem(activePlanStorageKey);
         if (savedActive) {
           setActiveSelectedPlanId(savedActive);
         }
+      } else if (company && !(company as any).isActive) {
+        setActiveSelectedPlanId(null);
       }
     } catch {}
-  }, [storageKey, activePlanStorageKey, companyActivePlanId]);
+  }, [storageKey, activePlanStorageKey, company, companyActivePlanId]);
 
   // Sync with remote tickets so requests on file persist across devices/sessions
   const { data: clientTickets } = useQuery<any[]>({
@@ -1208,7 +1217,7 @@ export default function ClientPackages() {
           })
           .map((plan) => {
           const price = calcPrice(plan.monthlyPriceUsd);
-          const isActivePlan = activeSelectedPlanId === plan.id;
+          const isActivePlan = Boolean(company && (company as any).isActive) && activeSelectedPlanId === plan.id;
           const isPendingPlan = !isActivePlan && pendingPlanId === plan.id;
           const isPop = plan.popular;
           const isTrial = plan.id === "free_trial";
@@ -1240,11 +1249,19 @@ export default function ClientPackages() {
                     {lang === "ar" ? "طلب ترقية قيد المراجعة ⏳" : "Upgrade Request Pending ⏳"}
                   </span>
                 </div>
-              ) : isPop ? (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="px-4 py-1 rounded-full text-xs font-black bg-gradient-to-r from-[#2D5BE3] to-blue-600 text-white shadow-md flex items-center gap-1.5">
-                    <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-                    {lang === "ar" ? plan.badgeAr : plan.badgeEn}
+              ) : plan.badgeAr || plan.badgeEn ? (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                  <span className={`px-3.5 py-1 rounded-full text-xs font-black shadow-md flex items-center gap-1.5 whitespace-nowrap border ${
+                    isTrial
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-white/20 shadow-emerald-500/25"
+                      : isPop
+                      ? "bg-gradient-to-r from-[#2D5BE3] to-blue-600 text-white border-white/20 shadow-blue-500/25"
+                      : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-white/20 shadow-purple-500/25"
+                  }`}>
+                    {isPop && <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />}
+                    {isTrial && <Sparkles className="w-3.5 h-3.5 text-white" />}
+                    {!isPop && !isTrial && <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />}
+                    <span>{lang === "ar" ? plan.badgeAr : plan.badgeEn}</span>
                   </span>
                 </div>
               ) : null}
@@ -1261,11 +1278,6 @@ export default function ClientPackages() {
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     )}
                   </h3>
-                  {!isPop && plan.badgeAr && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                      {lang === "ar" ? plan.badgeAr : plan.badgeEn}
-                    </span>
-                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 line-clamp-2 min-h-[32px]">
                   {lang === "ar" ? plan.descriptionAr : plan.descriptionEn}

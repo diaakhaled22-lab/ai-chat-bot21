@@ -87,7 +87,7 @@ async function resolveEffectiveClientPages(company: typeof companiesTable.$infer
 async function resolveCompanyActivePlanId(
   company: typeof companiesTable.$inferSelect
 ): Promise<string | null> {
-  if (!company.isActive && (!company.monthlyTokenQuota || company.monthlyTokenQuota <= 0)) {
+  if (!company.isActive) {
     return null;
   }
 
