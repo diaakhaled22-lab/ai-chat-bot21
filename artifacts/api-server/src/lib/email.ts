@@ -1,9 +1,17 @@
+import dns from "node:dns";
 import nodemailer from "nodemailer";
 import { db, adminConfigTable, notificationsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { escapeHtml } from "./security";
 import { eq } from "drizzle-orm";
 import { createApprovalToken } from "./planApproval";
+
+// Force IPv4 DNS lookup order across Node.js to prevent ENETUNREACH on Railway/Docker IPv6
+if (typeof dns.setDefaultResultOrder === "function") {
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch {}
+}
 
 const EMAIL_KEYS = [
   "notif_recipient_email",
@@ -73,6 +81,14 @@ export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>
       minVersion: "TLSv1.2",
     },
     family: 4, // CRITICAL: Force IPv4 on cloud hosts (Railway/Docker) to prevent Google SMTP IPv6 timeouts
+    // Custom DNS lookup to guarantee ONLY IPv4 addresses are returned:
+    // Prevents Node.js from attempting to connect to 2607:f8b0:... IPv6 on Railway (ENETUNREACH)
+    lookup: (hostname: string, _opts: any, callback: (err: Error | null, address?: string, family?: number) => void) => {
+      dns.lookup(hostname, { family: 4 }, (err, address) => {
+        if (err) return callback(err);
+        callback(null, address, 4);
+      });
+    },
     connectionTimeout: 15000,
     greetingTimeout: 10000,
     socketTimeout: 20000,

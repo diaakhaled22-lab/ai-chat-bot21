@@ -1,3 +1,10 @@
+import dns from "node:dns";
+if (typeof dns.setDefaultResultOrder === "function") {
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch {}
+}
+
 import http from "http";
 import { exec, execSync } from "child_process";
 import app from "./app";
