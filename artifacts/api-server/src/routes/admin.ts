@@ -5840,7 +5840,11 @@ router.post("/admin/email-settings/test", async (req, res) => {
     res.json({ ok: true });
   } catch (err: any) {
     logger.error({ err }, "Test email error");
-    res.status(400).json({ error: err?.message ?? "Failed to send test email" });
+    // H4: أعد رسالة ثابتة بدل err.message
+    const error = err?.message === "حدّد بريد مستلم"
+      ? "حدّد بريد مستلم"
+      : "فشل إرسال البريد التجريبي";
+    res.status(400).json({ error });
   }
 });
 

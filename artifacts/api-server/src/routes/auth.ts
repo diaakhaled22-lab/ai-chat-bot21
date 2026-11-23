@@ -964,38 +964,15 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
     }
 
     if (!emailSent) {
-      logger.error({ email: cleanEmail, lastError }, "Failed to deliver registration email to recipient");
-      let friendlyError = isAr
+      // H1: Log the raw error internally only, no details leaked to the client
+      logger.error({ email: cleanEmail, rawError: lastError }, "Failed to deliver registration email to recipient");
+
+      // H1: Return a generic message with the original status code (500) and no details
+      const genericError = isAr
         ? "تعذر إرسال رسالة التحقق إلى بريدك الإلكتروني حالياً. يرجى التأكد من صحة البريد أو المحاولة لاحقاً."
         : "Failed to send verification email. Please verify your email or try again later.";
-      
-      const lowerErr = (lastError || "").toLowerCase();
-      if (
-        lowerErr.includes("invalid login") ||
-        lowerErr.includes("badcredentials") ||
-        lowerErr.includes("535") ||
-        lowerErr.includes("username and password not accepted")
-      ) {
-        friendlyError = isAr
-          ? "فشل التحقق من بريد الإرسال: تأكد من كتابة إيميل SMTP صحيح وكلمة مرور تطبيقات (App Password من 16 حرفاً)."
-          : "SMTP authentication failed: Invalid username or App Password.";
-      } else if (
-        lowerErr.includes("etimedout") ||
-        lowerErr.includes("econnrefused") ||
-        lowerErr.includes("enetunreach") ||
-        lowerErr.includes("timeout")
-      ) {
-        friendlyError = isAr
-          ? "تعذر الاتصال بخادم البريد (انتهت المهلة). قد يكون منفذ SMTP محظوراً في بيئة الاستضافة."
-          : "Could not connect to SMTP server (connection timeout). Port may be blocked by host.";
-      } else if (lastError.includes("testing emails")) {
-        friendlyError = isAr
-          ? "يرجى التأكد من إعدادات الـ SMTP في لوحة التحكم أو توثيق الدومين في Resend."
-          : "Delivery restriction: Please configure Admin SMTP or verify custom domain in Resend.";
-      }
 
-      // Return status 400 so Express error sanitizer does NOT replace with generic 500 error in production
-      res.status(400).json({ error: friendlyError, details: lastError });
+      res.status(500).json({ error: genericError });
       return;
     }
 

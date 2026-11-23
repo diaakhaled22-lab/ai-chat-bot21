@@ -77,7 +77,7 @@ export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>
       pass: cleanPass,
     },
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
       minVersion: "TLSv1.2",
     },
     family: 4, // CRITICAL: Force IPv4 on cloud hosts (Railway/Docker) to prevent Google SMTP IPv6 timeouts
@@ -311,10 +311,15 @@ export async function sendTestEmail() {
   const { apiKey: resendApiKey, fromEmail } = await getResendConfig();
   const cfg = await getEmailConfig();
 
+  // H3: استبدل البريد الثابت بخطأ صريح "حدّد بريد مستلم"
+  const recipient = (cfg.recipientEmail || cfg.smtpUser || "").trim();
+  if (!recipient) {
+    throw new Error("حدّد بريد مستلم");
+  }
+
   // If Resend API Key is configured, prioritize Resend HTTP API (works 100% on Railway over HTTPS port 443)
   if (resendApiKey) {
     const sender = fromEmail || "Bot Manager <onboarding@resend.dev>";
-    const recipient = cfg.recipientEmail || cfg.smtpUser || "diaakhaled22@gmail.com";
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -357,7 +362,7 @@ export async function sendTestEmail() {
     const transporter = buildTransporter(cfg);
     await transporter.sendMail({
       from: `"Bot Manager" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
+      to: recipient,
       subject: "Bot Manager — Test Email",
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
@@ -379,7 +384,7 @@ export async function sendTestEmail() {
         const altTransporter = buildTransporter(altCfg);
         await altTransporter.sendMail({
           from: `"Bot Manager" <${cfg.smtpUser}>`,
-          to: cfg.recipientEmail,
+          to: recipient,
           subject: "Bot Manager — Test Email (via fallback port)",
           html: `
             <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
