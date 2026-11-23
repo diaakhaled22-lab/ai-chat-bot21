@@ -319,6 +319,34 @@ function formatPlanFeature(feat: string, plan: PlanDef, isAr: boolean): string {
   return feat;
 }
 
+function getPlanButtonClass(
+  plan: PlanDef,
+  isActivePlan: boolean,
+  isPendingPlan: boolean,
+  isTrial: boolean,
+  isPop: boolean
+): string {
+  if (isActivePlan) {
+    return "bg-blue-600 hover:bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40 cursor-default opacity-95";
+  }
+  if (isPendingPlan) {
+    return "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/30 ring-2 ring-amber-400/40 cursor-pointer";
+  }
+  if (isTrial || plan.id === "free_trial") {
+    return "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/30 font-bold border border-emerald-500/30 cursor-pointer";
+  }
+  if (plan.id === "starter") {
+    return "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 font-bold border border-blue-500/30 cursor-pointer";
+  }
+  if (isPop || plan.id === "pro") {
+    return "bg-[#2D5BE3] hover:bg-[#2048c4] text-white shadow-lg shadow-blue-600/35 font-bold border border-blue-400/30 cursor-pointer";
+  }
+  if (plan.id === "enterprise") {
+    return "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/30 font-bold border border-purple-500/30 cursor-pointer";
+  }
+  return "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-600/25 font-bold border border-blue-500/20 cursor-pointer";
+}
+
 export default function ClientPackages() {
   const { lang } = useLanguage();
   const { toast } = useToast();
@@ -1401,17 +1429,13 @@ export default function ClientPackages() {
                 <Button
                   onClick={() => handleOpenSubscribe(plan)}
                   disabled={(isTrial && isFreeTrialClaimed && !isActivePlan) || isActivePlan}
-                  className={`w-full py-5 rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all gap-2 ${
-                    isActivePlan
-                      ? "bg-blue-600 hover:bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40 cursor-default opacity-95"
-                      : isPendingPlan
-                      ? "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/30 ring-2 ring-amber-400/40 cursor-pointer"
-                      : isTrial
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 cursor-pointer"
-                      : isPop
-                      ? "bg-[#2D5BE3] hover:bg-[#254ec2] text-white shadow-blue-500/25 cursor-pointer"
-                      : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 cursor-pointer"
-                  }`}
+                  className={`w-full py-5 rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all gap-2 ${getPlanButtonClass(
+                    plan,
+                    isActivePlan,
+                    isPendingPlan,
+                    isTrial,
+                    Boolean(isPop)
+                  )}`}
                 >
                   {isActivePlan ? (
                     <>
