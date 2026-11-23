@@ -935,6 +935,31 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       } catch (smtpErr: any) {
         lastError = smtpErr?.message || "SMTP error";
         logger.error({ err: smtpErr, email: cleanEmail }, "SMTP failed to send registration email");
+        const isGmail =
+          (smtpCfg.smtpHost || "").toLowerCase().includes("gmail") ||
+          (smtpCfg.smtpUser || "").toLowerCase().endsWith("@gmail.com");
+        if (isGmail && (smtpErr?.code === "ETIMEDOUT" || smtpErr?.code === "ECONNREFUSED" || smtpErr?.message?.includes("timeout"))) {
+          try {
+            const altPort = Number(smtpCfg.smtpPort) === 465 ? 587 : 465;
+            const altCfg = {
+              ...smtpCfg,
+              smtpPort: altPort,
+              smtpEncryption: (altPort === 465 ? "ssl" : "tls") as import("../lib/email").SmtpEncryption,
+            };
+            const altTransporter = buildTransporter(altCfg);
+            await altTransporter.sendMail({
+              from: `"Bot Manager" <${smtpCfg.smtpUser}>`,
+              to: email.trim(),
+              subject,
+              html,
+            });
+            emailSent = true;
+            logger.info({ email: cleanEmail, isTaken, via: `SMTP (port ${altPort})` }, "Registration email sent successfully via SMTP fallback port");
+          } catch (altErr: any) {
+            lastError = altErr?.message || lastError;
+            logger.error({ err: altErr, email: cleanEmail }, "SMTP alternate port failed too");
+          }
+        }
       }
     }
 
@@ -943,12 +968,34 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
       let friendlyError = isAr
         ? "تعذر إرسال رسالة التحقق إلى بريدك الإلكتروني حالياً. يرجى التأكد من صحة البريد أو المحاولة لاحقاً."
         : "Failed to send verification email. Please verify your email or try again later.";
-      if (lastError.includes("testing emails")) {
+      
+      const lowerErr = (lastError || "").toLowerCase();
+      if (
+        lowerErr.includes("invalid login") ||
+        lowerErr.includes("badcredentials") ||
+        lowerErr.includes("535") ||
+        lowerErr.includes("username and password not accepted")
+      ) {
+        friendlyError = isAr
+          ? "فشل التحقق من بريد الإرسال: تأكد من كتابة إيميل SMTP صحيح وكلمة مرور تطبيقات (App Password من 16 حرفاً)."
+          : "SMTP authentication failed: Invalid username or App Password.";
+      } else if (
+        lowerErr.includes("etimedout") ||
+        lowerErr.includes("econnrefused") ||
+        lowerErr.includes("enetunreach") ||
+        lowerErr.includes("timeout")
+      ) {
+        friendlyError = isAr
+          ? "تعذر الاتصال بخادم البريد (انتهت المهلة). قد يكون منفذ SMTP محظوراً في بيئة الاستضافة."
+          : "Could not connect to SMTP server (connection timeout). Port may be blocked by host.";
+      } else if (lastError.includes("testing emails")) {
         friendlyError = isAr
           ? "يرجى التأكد من إعدادات الـ SMTP في لوحة التحكم أو توثيق الدومين في Resend."
           : "Delivery restriction: Please configure Admin SMTP or verify custom domain in Resend.";
       }
-      res.status(500).json({ error: friendlyError });
+
+      // Return status 400 so Express error sanitizer does NOT replace with generic 500 error in production
+      res.status(400).json({ error: friendlyError, details: lastError });
       return;
     }
 

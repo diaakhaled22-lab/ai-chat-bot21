@@ -41,42 +41,42 @@ export function isEmailConfigured(cfg: Awaited<ReturnType<typeof getEmailConfig>
 }
 
 export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>) {
-  const enc = cfg.smtpEncryption;
-  const cleanHost = (cfg.smtpHost || "").trim().toLowerCase();
+  const enc = (cfg.smtpEncryption || "tls").toLowerCase();
+  const rawHost = (cfg.smtpHost || "").trim();
   const cleanUser = (cfg.smtpUser || "").trim();
-  const isGmail = cleanHost.includes("gmail") || cleanHost.includes("googlemail") || cleanUser.toLowerCase().endsWith("@gmail.com");
-  // Clean password: strip spaces (critical for Google App Passwords copied as "xxxx xxxx xxxx xxxx")
-  const cleanPass = isGmail ? (cfg.smtpPass || "").replace(/\s+/g, "") : (cfg.smtpPass || "").trim();
+  const isGmail =
+    rawHost.toLowerCase().includes("gmail") ||
+    rawHost.toLowerCase().includes("googlemail") ||
+    cleanUser.toLowerCase().endsWith("@gmail.com");
 
-  if (isGmail) {
-    return nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: cleanUser,
-        pass: cleanPass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-  }
+  // Google App Passwords are 16 letters: remove all spaces, dashes, or non-alphanumeric chars
+  const cleanPass = isGmail
+    ? (cfg.smtpPass || "").replace(/[^a-zA-Z0-9]/g, "")
+    : (cfg.smtpPass || "").trim();
 
-  const port = Number(cfg.smtpPort) || 587;
-  const isSsl = enc === "ssl" || port === 465;
+  const host = isGmail && (!rawHost || rawHost === "localhost") ? "smtp.gmail.com" : (rawHost || "smtp.gmail.com");
+  const configuredPort = Number(cfg.smtpPort) || 587;
+  const isSsl = enc === "ssl" || configuredPort === 465;
 
   return nodemailer.createTransport({
-    host: cfg.smtpHost.trim(),
-    port,
+    host,
+    port: isSsl ? 465 : configuredPort,
     secure: isSsl,
+    requireTLS: !isSsl && enc !== "none",
     ignoreTLS: enc === "none",
-    tls: {
-      rejectUnauthorized: false,
-    },
     auth: {
       user: cleanUser,
       pass: cleanPass,
     },
-  });
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: "TLSv1.2",
+    },
+    family: 4, // CRITICAL: Force IPv4 on cloud hosts (Railway/Docker) to prevent Google SMTP IPv6 timeouts
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+  } as any);
 }
 
 export async function sendNewTicketNotification(ticket: {
@@ -293,20 +293,50 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
 export async function sendTestEmail() {
   const cfg = await getEmailConfig();
   if (!isEmailConfigured(cfg)) {
-    throw new Error("Email not configured");
+    throw new Error("Email not configured. Please fill in Recipient Email, SMTP Username, and SMTP Password.");
   }
-  const transporter = buildTransporter(cfg);
-  await transporter.sendMail({
-    from: `"Bot Manager" <${cfg.smtpUser}>`,
-    to: cfg.recipientEmail,
-    subject: "Bot Manager — Test Email",
-    html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
-        <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
-        <p style="color:#71717a;margin:0;">Your email notifications are working correctly. You'll receive an alert like this whenever a customer submits a new problem.</p>
-      </div>
-    `,
-  });
+  const isGmail =
+    (cfg.smtpHost || "").toLowerCase().includes("gmail") ||
+    (cfg.smtpUser || "").toLowerCase().endsWith("@gmail.com");
+
+  try {
+    const transporter = buildTransporter(cfg);
+    await transporter.sendMail({
+      from: `"Bot Manager" <${cfg.smtpUser}>`,
+      to: cfg.recipientEmail,
+      subject: "Bot Manager — Test Email",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
+          <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
+          <p style="color:#71717a;margin:0;">Your email notifications are working correctly. You'll receive an alert like this whenever a customer submits a new problem.</p>
+        </div>
+      `,
+    });
+  } catch (err: any) {
+    if (isGmail && (err?.code === "ETIMEDOUT" || err?.code === "ECONNREFUSED" || err?.message?.includes("timeout"))) {
+      const currentPort = Number(cfg.smtpPort) || 587;
+      const altPort = currentPort === 465 ? 587 : 465;
+      const altCfg = {
+        ...cfg,
+        smtpPort: altPort,
+        smtpEncryption: (altPort === 465 ? "ssl" : "tls") as SmtpEncryption,
+      };
+      const altTransporter = buildTransporter(altCfg);
+      await altTransporter.sendMail({
+        from: `"Bot Manager" <${cfg.smtpUser}>`,
+        to: cfg.recipientEmail,
+        subject: "Bot Manager — Test Email (via fallback port)",
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
+            <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
+            <p style="color:#71717a;margin:0;">Your email notifications are working correctly via port ${altPort}.</p>
+          </div>
+        `,
+      });
+      return;
+    }
+    throw err;
+  }
 }
 
 
