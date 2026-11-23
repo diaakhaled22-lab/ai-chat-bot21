@@ -389,7 +389,7 @@ function NotificationBell({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
   );
 }
 
-function ClientNotificationBell() {
+function ClientNotificationBell({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { lang } = useLanguage();
@@ -514,8 +514,14 @@ function ClientNotificationBell() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`relative p-2 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-white transition-all shadow-sm flex items-center justify-center cursor-pointer ${
-            open ? "bg-white/25 ring-2 ring-white/30" : ""
+          className={`relative p-2 rounded-xl backdrop-blur-md transition-all shadow-sm flex items-center justify-center cursor-pointer ${
+            isLightAdmin
+              ? `bg-white/85 hover:bg-white border border-white/70 text-slate-800 hover:text-blue-950 shadow-sm ${
+                  open ? "bg-white ring-2 ring-blue-500" : ""
+                }`
+              : `bg-white/10 hover:bg-white/20 border border-white/15 text-white ${
+                  open ? "bg-white/25 ring-2 ring-white/30" : ""
+                }`
           } ${pulse || hasUnreadRed ? "animate-bounce" : ""}`}
           aria-label="Notifications"
           title={lang === "ar" ? "الإشعارات" : "Notifications"}
@@ -523,11 +529,13 @@ function ClientNotificationBell() {
           <Bell
             className={`w-4 h-4 ${
               hasUnreadRed
-                ? "text-rose-300 animate-pulse"
+                ? "text-rose-500 animate-pulse"
                 : hasUnreadAmber
-                ? "text-amber-300"
+                ? "text-amber-500"
                 : unread > 0
-                ? "text-amber-300"
+                ? "text-amber-500"
+                : isLightAdmin
+                ? "text-blue-700"
                 : "text-white/80"
             }`}
           />
@@ -1267,7 +1275,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const currentPage = allLinks.find((l) => l.href === location)?.label ?? "";
 
   const isAdmin = role === "admin";
-  const isLightAdmin = isAdmin && theme !== "dark";
+  const isLightAdmin = theme !== "dark";
 
   const sidebarAsideBg = isLightAdmin
     ? "bg-gradient-to-b from-[#7dd3fc] via-[#38bdf8] to-[#0284c7]/60 backdrop-blur-2xl text-slate-900 border-r border-sky-400/50 shadow-[4px_0_24px_rgba(2,132,199,0.2)]"
@@ -1458,7 +1466,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             <TooltipContent side={lang === "ar" ? "left" : "right"} className={isLightAdmin ? "bg-white/95 border border-sky-300/60 text-slate-800 font-medium shadow-xl p-2.5 space-y-1" : "bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl p-2.5 space-y-1"}>
               <p className={`font-bold text-sm ${isLightAdmin ? "text-blue-950" : "text-white"}`}>{user?.name ?? "softysta.com"}</p>
               <div className={`pt-1.5 border-t mt-1 ${isLightAdmin ? "border-sky-300/60" : "border-white/10"}`}>
-                {role === "admin" ? <LiveStatusBar isLightAdmin={isLightAdmin} /> : <ClientLiveStatusBar />}
+                {role === "admin" ? <LiveStatusBar isLightAdmin={isLightAdmin} /> : <ClientLiveStatusBar isLightAdmin={isLightAdmin} />}
               </div>
             </TooltipContent>
           </Tooltip>
@@ -1490,7 +1498,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
             {/* Live status row */}
             <div className={`pt-2 border-t ${isLightAdmin ? "border-sky-200/80" : "border-white/10"}`}>
-              {role === "admin" ? <LiveStatusBar isLightAdmin={isLightAdmin} /> : <ClientLiveStatusBar />}
+              {role === "admin" ? <LiveStatusBar isLightAdmin={isLightAdmin} /> : <ClientLiveStatusBar isLightAdmin={isLightAdmin} />}
             </div>
           </div>
         </div>
@@ -1959,15 +1967,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               {role === "admin" ? (
                 <NotificationBell isLightAdmin={isLightAdmin} />
               ) : (
-                <ClientNotificationBell />
+                <ClientNotificationBell isLightAdmin={isLightAdmin} />
               )}
             </div>
           </header>
 
           <div className={`flex-1 overflow-y-auto overflow-x-hidden w-full p-4 md:p-8 ${
-            isAdmin && location !== "/admin/bills" ? "admin-dashboard-cards-theme" : ""
+            location !== "/admin/bills" ? "admin-dashboard-cards-theme" : ""
           } ${
-            location === "/admin/notifications"
+            location === "/admin/notifications" || location === "/client/notifications"
               ? (isLightAdmin
                   ? "bg-gradient-to-br from-[#bae6fd] via-[#e0f2fe] to-[#bfdbfe]"
                   : "bg-gradient-to-b from-[#070d1e] via-[#0c1736] to-[#070d1e]")
@@ -2025,7 +2033,7 @@ function LiveStatusBar({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
   );
 }
 
-function ClientLiveStatusBar() {
+function ClientLiveStatusBar({ isLightAdmin }: { isLightAdmin?: boolean } = {}) {
   const { lang } = useLanguage();
   const today = new Date().toISOString().split("T")[0];
   const { data: usage, isError: isUsageError } = useQuery<any>({
@@ -2047,18 +2055,22 @@ function ClientLiveStatusBar() {
   return (
     <Link
       href="/client/malfunctions"
-      className="flex items-center gap-2 text-xs text-slate-100 hover:text-white px-1.5 py-1 transition-colors rounded-lg hover:bg-white/10"
+      className={`flex items-center gap-2 text-xs px-1.5 py-1 transition-colors rounded-lg ${
+        isLightAdmin
+          ? "text-slate-800 hover:text-blue-950 hover:bg-white/40 font-semibold"
+          : "text-slate-100 hover:text-white hover:bg-white/10"
+      }`}
     >
       <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColor} opacity-75`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`} />
       </span>
-      <span className={hasMalfunction ? "text-rose-300 font-bold" : "font-semibold text-slate-100"}>
+      <span className={hasMalfunction ? (isLightAdmin ? "text-rose-600 font-bold" : "text-rose-300 font-bold") : (isLightAdmin ? "font-black text-slate-900" : "font-semibold text-slate-100")}>
         {hasMalfunction ? (lang === "ar" ? "يوجد عطل" : "Issues") : (lang === "ar" ? "النظام يعمل" : "Live")}
       </span>
       {usage && (
-        <span className={`ms-auto flex items-center gap-1.5 text-sky-200 font-bold ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
-          <Activity className="w-3.5 h-3.5 text-sky-300" />
+        <span className={`ms-auto flex items-center gap-1.5 font-bold ${isLightAdmin ? "text-blue-800" : "text-sky-200"} ${lang === "ar" ? "flex-row-reverse space-x-reverse" : ""}`}>
+          <Activity className={`w-3.5 h-3.5 ${isLightAdmin ? "text-blue-700" : "text-sky-300"}`} />
           <span>{lang === "ar" ? `اليوم ${usage.totalMessages}` : `${usage.totalMessages} today`}</span>
         </span>
       )}

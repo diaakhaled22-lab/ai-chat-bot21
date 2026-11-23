@@ -263,14 +263,42 @@ body.dark:has(.modern-login-wrapper) {
   background: hsl(var(--primary) / 0.9) !important;
 }
 
-/* Admin Operations Hero Banner - Harmonious Light & Dark Theming */
-.admin-header-banner {
+/* Admin & Client Operations Hero Banner - Harmonious Light & Dark Theming */
+.admin-header-banner,
+.client-header-banner,
+.client-hero-banner,
+div.rounded-3xl[style*="1e40af"],
+div.rounded-2xl[style*="1e40af"],
+div.rounded-3xl[style*="1e3a8a"],
+div.rounded-2xl[style*="1e3a8a"],
+div.rounded-3xl[style*="0e1838"],
+div.rounded-2xl[style*="0e1838"],
+div.rounded-3xl[style*="102A6B"],
+div.rounded-2xl[style*="102A6B"],
+div.rounded-3xl[style*="0f766e"],
+div.rounded-2xl[style*="0f766e"],
+div.rounded-3xl.bg-gradient-to-r.from-blue-700,
+div.rounded-2xl.bg-gradient-to-r.from-blue-700 {
   background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #0284c7 80%, #38bdf8 100%) !important;
   border-color: rgba(56, 189, 248, 0.4) !important;
   box-shadow: 0 20px 25px -5px rgba(14, 165, 233, 0.18), 0 8px 10px -6px rgba(14, 165, 233, 0.12) !important;
 }
 
-.dark .admin-header-banner {
+.dark .admin-header-banner,
+.dark .client-header-banner,
+.dark .client-hero-banner,
+.dark div.rounded-3xl[style*="1e40af"],
+.dark div.rounded-2xl[style*="1e40af"],
+.dark div.rounded-3xl[style*="1e3a8a"],
+.dark div.rounded-2xl[style*="1e3a8a"],
+.dark div.rounded-3xl[style*="0e1838"],
+.dark div.rounded-2xl[style*="0e1838"],
+.dark div.rounded-3xl[style*="102A6B"],
+.dark div.rounded-2xl[style*="102A6B"],
+.dark div.rounded-3xl[style*="0f766e"],
+.dark div.rounded-2xl[style*="0f766e"],
+.dark div.rounded-3xl.bg-gradient-to-r.from-blue-700,
+.dark div.rounded-2xl.bg-gradient-to-r.from-blue-700 {
   background: linear-gradient(135deg, #070b19 0%, #0e1838 50%, #172554 100%) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
