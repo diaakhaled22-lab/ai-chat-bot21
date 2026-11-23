@@ -2721,8 +2721,14 @@ router.put("/client/chat-log-retention", async (req, res) => {
 });
 
 // PUT /client/settings
-router.put("/client/settings", async (req, res) => {
+router.put("/client/settings", requireClient, async (req, res) => {
   try {
+    const userId = req.session.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     const parsed = UpdateClientSettingsBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid input" });
@@ -2730,7 +2736,7 @@ router.put("/client/settings", async (req, res) => {
     }
     const { currentPassword, newPassword, newUsername, notificationEmail, resendApiKey } = parsed.data as any;
 
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
     if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
@@ -2779,14 +2785,14 @@ router.put("/client/settings", async (req, res) => {
       await db
         .update(companiesTable)
         .set({ notificationEmail: trimmedEmail })
-        .where(eq(companiesTable.clientId, req.session.userId!));
+        .where(eq(companiesTable.clientId, userId));
 
       if (trimmedEmail && trimmedEmail !== user.notificationEmail) {
         changes.push(`notification email set to "${trimmedEmail}"`);
         const [comp] = await db
           .select({ id: companiesTable.id, name: companiesTable.name })
           .from(companiesTable)
-          .where(eq(companiesTable.clientId, req.session.userId!))
+          .where(eq(companiesTable.clientId, userId))
           .limit(1);
 
         if (comp) {
@@ -2815,26 +2821,33 @@ router.put("/client/settings", async (req, res) => {
     if (resendApiKey !== undefined) {
       const trimmedKey = resendApiKey === "" ? null : resendApiKey.trim();
       const [comp] = await db
-        .select({ resendApiKey: companiesTable.resendApiKey })
+        .select({ id: companiesTable.id, resendApiKey: companiesTable.resendApiKey })
         .from(companiesTable)
-        .where(eq(companiesTable.clientId, req.session.userId!))
+        .where(eq(companiesTable.clientId, userId))
         .limit(1);
 
       const existingKey = user.resendApiKey || comp?.resendApiKey || null;
       const resolvedKey = preserveMaskedSecret(trimmedKey, existingKey);
       updates.resendApiKey = resolvedKey;
       changes.push(`Resend API key ${resolvedKey ? "updated" : "removed"}`);
-      await db
-        .update(companiesTable)
-        .set({ resendApiKey: resolvedKey })
-        .where(eq(companiesTable.clientId, req.session.userId!));
+      if (comp) {
+        await db
+          .update(companiesTable)
+          .set({ resendApiKey: resolvedKey })
+          .where(eq(companiesTable.id, comp.id));
+      } else {
+        await db
+          .update(companiesTable)
+          .set({ resendApiKey: resolvedKey })
+          .where(eq(companiesTable.clientId, userId));
+      }
     }
 
     if (Object.keys(updates).length > 0) {
-      await db.update(usersTable).set(updates).where(eq(usersTable.id, req.session.userId!));
+      await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
 
       if (updates.passwordHash) {
-        await revokeAllUserSessions(req.session.userId!, req.sessionID);
+        await revokeAllUserSessions(userId, req.sessionID);
       }
 
       // Notify all admin users about the change
