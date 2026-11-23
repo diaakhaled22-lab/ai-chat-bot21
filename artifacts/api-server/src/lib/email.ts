@@ -307,10 +307,48 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
 }
 
 export async function sendTestEmail() {
+  const { getResendConfig } = await import("./companyNotification");
+  const { apiKey: resendApiKey, fromEmail } = await getResendConfig();
   const cfg = await getEmailConfig();
-  if (!isEmailConfigured(cfg)) {
-    throw new Error("Email not configured. Please fill in Recipient Email, SMTP Username, and SMTP Password.");
+
+  // If Resend API Key is configured, prioritize Resend HTTP API (works 100% on Railway over HTTPS port 443)
+  if (resendApiKey) {
+    const sender = fromEmail || "Bot Manager <onboarding@resend.dev>";
+    const recipient = cfg.recipientEmail || cfg.smtpUser || "diaakhaled22@gmail.com";
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: sender,
+        to: [recipient],
+        subject: "Bot Manager — Test Email (via Resend)",
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
+            <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
+            <p style="color:#71717a;margin:0;">Your email service is working successfully via Resend API (HTTPS Port 443).</p>
+          </div>
+        `,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      let parsedMsg = errText;
+      try {
+        const j = JSON.parse(errText);
+        parsedMsg = j.message || errText;
+      } catch {}
+      throw new Error(`Resend Error: ${parsedMsg}`);
+    }
+    return;
   }
+
+  if (!isEmailConfigured(cfg)) {
+    throw new Error("لم يتم تهيئة البريد. يرجى إدخال مفتاح Resend API أو إعدادات SMTP.");
+  }
+
   const isGmail =
     (cfg.smtpHost || "").toLowerCase().includes("gmail") ||
     (cfg.smtpUser || "").toLowerCase().endsWith("@gmail.com");
@@ -329,7 +367,7 @@ export async function sendTestEmail() {
       `,
     });
   } catch (err: any) {
-    if (isGmail && (err?.code === "ETIMEDOUT" || err?.code === "ECONNREFUSED" || err?.message?.includes("timeout"))) {
+    if (isGmail && (err?.code === "ETIMEDOUT" || err?.code === "ECONNREFUSED" || err?.code === "ENETUNREACH" || err?.message?.includes("timeout"))) {
       const currentPort = Number(cfg.smtpPort) || 587;
       const altPort = currentPort === 465 ? 587 : 465;
       const altCfg = {
@@ -337,19 +375,24 @@ export async function sendTestEmail() {
         smtpPort: altPort,
         smtpEncryption: (altPort === 465 ? "ssl" : "tls") as SmtpEncryption,
       };
-      const altTransporter = buildTransporter(altCfg);
-      await altTransporter.sendMail({
-        from: `"Bot Manager" <${cfg.smtpUser}>`,
-        to: cfg.recipientEmail,
-        subject: "Bot Manager — Test Email (via fallback port)",
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
-            <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
-            <p style="color:#71717a;margin:0;">Your email notifications are working correctly via port ${altPort}.</p>
-          </div>
-        `,
-      });
-      return;
+      try {
+        const altTransporter = buildTransporter(altCfg);
+        await altTransporter.sendMail({
+          from: `"Bot Manager" <${cfg.smtpUser}>`,
+          to: cfg.recipientEmail,
+          subject: "Bot Manager — Test Email (via fallback port)",
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
+              <h2 style="margin:0 0 8px;color:#18181b;">Test Email ✓</h2>
+              <p style="color:#71717a;margin:0;">Your email notifications are working correctly via port ${altPort}.</p>
+            </div>
+          `,
+        });
+        return;
+      } catch (altErr: any) {
+        // If both ports fail due to Railway network block, give friendly actionable message
+        throw new Error("مزود الاستضافة (Railway) يحظر منافذ البريد المباشرة (587 / 465). يُوصى باستخدام مفتاح Resend API المجاني للإرسال عبر HTTPS بأمان تام وبدون أي حظر.");
+      }
     }
     throw err;
   }

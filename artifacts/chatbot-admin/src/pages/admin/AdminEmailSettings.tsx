@@ -17,6 +17,9 @@ interface EmailSettings {
   smtpUser: string;
   smtpEncryption: SmtpEncryption;
   hasPass: boolean;
+  resendApiKey?: string;
+  hasResendApiKey?: boolean;
+  resendFromEmail?: string;
   configured: boolean;
 }
 
@@ -32,6 +35,8 @@ export default function AdminEmailSettings() {
     smtpUser: "",
     smtpPass: "",
     smtpEncryption: "tls" as SmtpEncryption,
+    resendApiKey: "",
+    resendFromEmail: "",
   });
 
   const { data, isLoading } = useQuery<EmailSettings>({
@@ -48,6 +53,7 @@ export default function AdminEmailSettings() {
         smtpPort: data.smtpPort || "587",
         smtpUser: data.smtpUser || "",
         smtpEncryption: data.smtpEncryption || "tls",
+        resendFromEmail: data.resendFromEmail || "",
       }));
     }
   }, [data]);
@@ -61,7 +67,7 @@ export default function AdminEmailSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-email-settings"] });
       toast({ title: "Email settings saved" });
-      setForm((f) => ({ ...f, smtpPass: "" }));
+      setForm((f) => ({ ...f, smtpPass: "", resendApiKey: "" }));
     },
     onError: () => toast({ title: "Failed to save email settings", variant: "destructive" }),
   });
@@ -96,6 +102,57 @@ export default function AdminEmailSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Resend Cloud API (Recommended for Railway & Cloud) */}
+        <div className="p-4 rounded-xl border border-sky-400/40 bg-sky-500/10 dark:bg-sky-950/20 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                ⚡ Resend HTTP API (الموصى به لاستضافة Railway)
+              </span>
+              {data?.hasResendApiKey && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30">
+                  مفعل (Active)
+                </span>
+              )}
+            </div>
+            <a
+              href="https://resend.com/api-keys"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold"
+            >
+              إنشاء مفتاح مجاني من resend.com ↗
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            استضافة Railway تحظر منافذ البريد المباشرة (587 و 465). خدمة <strong>Resend</strong> ترسل البريد عبر <strong>HTTPS Port 443</strong> وهو مفتوح دائماً ولا يمكن حظره، ومجانية حتى 3,000 إيميل شهرياً.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium block">
+              Resend API Key {data?.hasResendApiKey && !form.resendApiKey && <span className="text-emerald-500 font-bold ml-1">(محفوظ)</span>}
+            </label>
+            <Input
+              type="password"
+              placeholder={data?.hasResendApiKey ? "re_•••••••••••••••• (أدخل مفتاح جديد للاستبدال)" : "re_123456789_..."}
+              value={form.resendApiKey}
+              onChange={(e) => set("resendApiKey", e.target.value)}
+              className="bg-background font-mono text-sm"
+            />
+          </div>
+        </div>
+
+        {/* SMTP Configuration Divider */}
+        <div className="relative py-1">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground font-semibold">
+              أو عبر خادم SMTP المباشر (Direct SMTP)
+            </span>
+          </div>
+        </div>
+
         {/* Hint */}
         <div className="flex gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-300">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -209,7 +266,12 @@ export default function AdminEmailSettings() {
           <Button
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 px-5"
             onClick={() => saveMutation.mutate()}
-            disabled={!form.recipientEmail.trim() || !form.smtpHost.trim() || !form.smtpUser.trim() || saveMutation.isPending}
+            disabled={
+              saveMutation.isPending ||
+              (!form.resendApiKey.trim() &&
+                !data?.hasResendApiKey &&
+                (!form.recipientEmail.trim() || !form.smtpHost.trim() || !form.smtpUser.trim()))
+            }
           >
             {saveMutation.isPending ? "Saving…" : "Save Settings"}
           </Button>

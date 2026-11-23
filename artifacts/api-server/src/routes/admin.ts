@@ -5759,7 +5759,9 @@ router.get("/admin/quota-ai-status", async (req, res) => {
 router.get("/admin/email-settings", async (req, res) => {
   try {
     const { getEmailConfig, isEmailConfigured } = await import("../lib/email");
+    const { getResendConfig } = await import("../lib/companyNotification");
     const cfg = await getEmailConfig();
+    const resendCfg = await getResendConfig();
     res.json({
       recipientEmail: cfg.recipientEmail,
       smtpHost: cfg.smtpHost,
@@ -5767,7 +5769,10 @@ router.get("/admin/email-settings", async (req, res) => {
       smtpUser: cfg.smtpUser,
       smtpEncryption: cfg.smtpEncryption,
       hasPass: !!cfg.smtpPass,
-      configured: isEmailConfigured(cfg),
+      resendApiKey: resendCfg.apiKey ? `${resendCfg.apiKey.slice(0, 7)}...` : "",
+      hasResendApiKey: Boolean(resendCfg.apiKey),
+      resendFromEmail: resendCfg.fromEmail || "",
+      configured: Boolean(resendCfg.apiKey) || isEmailConfigured(cfg),
     });
   } catch (err) {
     logger.error({ err }, "Get email settings error");
@@ -5778,13 +5783,24 @@ router.get("/admin/email-settings", async (req, res) => {
 // PUT /admin/email-settings
 router.put("/admin/email-settings", async (req, res) => {
   try {
-    const { recipientEmail, smtpHost, smtpPort, smtpUser, smtpPass, smtpEncryption } = req.body as {
+    const {
+      recipientEmail,
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPass,
+      smtpEncryption,
+      resendApiKey,
+      resendFromEmail,
+    } = req.body as {
       recipientEmail?: string;
       smtpHost?: string;
       smtpPort?: string;
       smtpUser?: string;
       smtpPass?: string;
       smtpEncryption?: string;
+      resendApiKey?: string;
+      resendFromEmail?: string;
     };
 
     const updates: Array<{ key: string; value: string }> = [];
@@ -5795,6 +5811,12 @@ router.put("/admin/email-settings", async (req, res) => {
     if (smtpPass) updates.push({ key: "notif_smtp_pass", value: smtpPass });
     if (smtpEncryption && ["tls", "ssl", "none"].includes(smtpEncryption))
       updates.push({ key: "notif_smtp_encryption", value: smtpEncryption });
+    if (resendApiKey !== undefined && !resendApiKey.includes("...")) {
+      updates.push({ key: "resend_api_key", value: resendApiKey.trim() });
+    }
+    if (resendFromEmail !== undefined) {
+      updates.push({ key: "resend_from_email", value: resendFromEmail.trim() });
+    }
 
     for (const { key, value } of updates) {
       await db
