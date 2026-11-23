@@ -1230,7 +1230,7 @@ export default function AdminTickets() {
           }`}
           title={lang === "ar" ? "تصفية: عرض الكل" : "Filter: View all"}
         >
-          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4.5 pb-1 sm:pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className="p-1.5 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-inner">
                 <LifeBuoy className="w-4 h-4" />
@@ -1267,7 +1267,7 @@ export default function AdminTickets() {
           }`}
           title={lang === "ar" ? "تصفية: المشاكل قيد الانتظار" : "Filter: Open issues"}
         >
-          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4.5 pb-1 sm:pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className={`p-1.5 rounded-xl border relative ${
                 openCount > 0
@@ -1314,7 +1314,7 @@ export default function AdminTickets() {
           }`}
           title={lang === "ar" ? "تصفية: المشاكل المحلولة" : "Filter: Resolved"}
         >
-          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4.5 pb-1 sm:pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className="p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-inner">
                 <CheckCircle2 className="w-4 h-4" />
@@ -1349,7 +1349,7 @@ export default function AdminTickets() {
           }`}
           title={lang === "ar" ? "تصفية: حلول الذكاء الاصطناعي" : "Filter: AI solved"}
         >
-          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4.5 pb-1 sm:pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className="p-1.5 rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20 shadow-inner">
                 <Bot className="w-4 h-4" />
@@ -1384,7 +1384,7 @@ export default function AdminTickets() {
           }`}
           title={lang === "ar" ? "تصفية: حلول يدوية" : "Filter: Manual solved"}
         >
-          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4.5 pb-1 sm:pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className="p-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-inner">
                 <UserCheck className="w-4 h-4" />
@@ -1411,7 +1411,7 @@ export default function AdminTickets() {
 
         {/* AI Resolution Rate */}
         <Card className="rounded-2xl transition-all backdrop-blur-md relative overflow-hidden bg-white/75 dark:bg-white/[0.07] border border-white/60 dark:border-white/15 shadow-md shadow-indigo-500/15 hover:shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5 border-l-4 border-l-indigo-600 dark:border-l-indigo-400 flex flex-col justify-between">
-          <CardContent className="p-4 pt-3.5 pb-1 relative flex flex-col items-center justify-center text-center">
+          <CardContent className="p-4 pt-4 sm:p-4 sm:pt-4.5 pb-1 sm:pb-1 relative flex flex-col items-center justify-center text-center">
             <div className="flex items-center justify-between w-full mb-2">
               <div className="p-1.5 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-inner">
                 <TrendingUp className="w-4 h-4" />
