@@ -1,4 +1,4 @@
-import { checkIsCompanyProfileComplete } from "@/components/client/ClientOnboardingProgress";
+import { checkIsCompanyProfileComplete, checkIsResendConfigured } from "@/components/client/ClientOnboardingProgress";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { toast } from "@/hooks/use-toast";
@@ -1119,18 +1119,24 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const isClinic = role === "client" && (clientCompany as any)?.businessType === "clinic";
   const isNewClient = role === "client" && (!clientCompany || !(clientCompany as any)?.isActive);
   const isProfileCompleted = checkIsCompanyProfileComplete(clientCompany);
+  const isResendDone = checkIsResendConfigured(clientCompany, user);
 
-  // Initial navigation for new/inactive client: Company Profile, Packages, Support & Tickets, Settings
+  // Initial navigation for new/inactive client: Company Profile, Settings, Packages & Plans, Support & Tickets
   const initialClientLinks: NavLink[] = [
     { href: "/client/company",          label: t("nav_company") || (lang === "ar" ? "ملف الشركة" : "Company Profile"), icon: Building2 },
+    {
+      href: "/client/settings",
+      label: t("nav_settings") || (lang === "ar" ? "الإعدادات" : "Settings"),
+      icon: Settings,
+      isLocked: isNewClient && !isProfileCompleted,
+    },
     {
       href: "/client/packages",
       label: t("nav_packages") || (lang === "ar" ? "الباقات والاشتراكات" : "Packages & Plans"),
       icon: Package,
-      isLocked: isNewClient && !isProfileCompleted,
+      isLocked: isNewClient && (!isProfileCompleted || !isResendDone),
     },
     { href: "/client/support",          label: t("nav_support") || (lang === "ar" ? "الدعم والتذاكر" : "Support & Tickets"), icon: LifeBuoy },
-    { href: "/client/settings",         label: t("nav_settings") || (lang === "ar" ? "الإعدادات" : "Settings"), icon: Settings },
   ];
 
   const fullClientLinks: NavLink[] = [
@@ -1214,7 +1220,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     return "";
   };
 
-  const clientLinks = Array.isArray(enabledPages)
+  const clientLinks = isNewClient
+    ? initialClientLinks
+    : Array.isArray(enabledPages)
     ? fullClientLinks.filter((link) => {
         const pageKey = getClientPageKey(link.href);
         if (pageKey === "channels_guide") {
@@ -1222,13 +1230,59 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         }
         return enabledPages.includes(pageKey);
       })
-    : isNewClient
-    ? initialClientLinks
     : fullClientLinks;
 
   useEffect(() => {
     if (role === "client" && !isCompanyLoading) {
-      if (Array.isArray(enabledPages)) {
+      if (isNewClient) {
+        if (!isProfileCompleted && (
+          location === "/client/packages" ||
+          location.startsWith("/client/packages/") ||
+          location === "/client/settings" ||
+          location.startsWith("/client/settings/")
+        )) {
+          toast({
+            title: lang === "ar" ? "يرجى إكمال ملف الشركة أولاً" : "Complete Profile First",
+            description: lang === "ar"
+              ? "يجب إكمال وحفظ بيانات ملف الشركة أولاً للمتابعة."
+              : "Please complete and save your company profile first to proceed.",
+            variant: "destructive",
+          });
+          setLocation("/client/company");
+          return;
+        }
+
+        if (isProfileCompleted && !isResendDone && (location === "/client/packages" || location.startsWith("/client/packages/"))) {
+          toast({
+            title: lang === "ar" ? "التحقق من مفتاح Resend أولاً" : "Verify Resend Key First",
+            description: lang === "ar"
+              ? "يجب إدخال مفتاح Resend API السري والتحقق منه أولاً في صفحة الإعدادات لإلغاء قفل الباقات."
+              : "Please enter and verify your Secret Resend API Key in Settings first to unlock Packages & Plans.",
+            variant: "destructive",
+          });
+          setLocation("/client/settings");
+          return;
+        }
+
+        const allowedInitialPaths = [
+          "/client/company",
+          ...(isProfileCompleted ? ["/client/settings"] : []),
+          ...(isProfileCompleted && isResendDone ? ["/client/packages"] : []),
+          "/client/support",
+        ];
+        if (
+          location.startsWith("/client") &&
+          !allowedInitialPaths.some((p) => location === p || location.startsWith(p + "/"))
+        ) {
+          if (!isProfileCompleted) {
+            setLocation("/client/company");
+          } else if (!isResendDone) {
+            setLocation("/client/settings");
+          } else {
+            setLocation("/client/packages");
+          }
+        }
+      } else if (Array.isArray(enabledPages)) {
         if (location.startsWith("/client")) {
           const currentPageKey = getClientPageKey(location);
           if (
@@ -1240,35 +1294,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             setLocation(firstAvailable);
           }
         }
-      } else if (isNewClient) {
-        if (!isProfileCompleted && (location === "/client/packages" || location.startsWith("/client/packages/"))) {
-          toast({
-            title: lang === "ar" ? "يرجى إكمال ملف الشركة أولاً" : "Complete Profile First",
-            description: lang === "ar"
-              ? "يجب إكمال وحفظ بيانات ملف الشركة أولاً للانتقال إلى الباقات والاشتراكات."
-              : "Please complete and save your company profile first to unlock Packages & Plans.",
-            variant: "destructive",
-          });
-          setLocation("/client/company");
-          return;
-        }
-
-        const allowedInitialPaths = [
-          "/client/company",
-          ...(isProfileCompleted ? ["/client/packages"] : []),
-          "/client/support",
-          "/client/settings",
-          "/client/notifications",
-        ];
-        if (
-          location.startsWith("/client") &&
-          !allowedInitialPaths.some((p) => location === p || location.startsWith(p + "/"))
-        ) {
-          setLocation("/client/company");
-        }
       }
     }
-  }, [role, isCompanyLoading, isNewClient, enabledPages, clientLinks, location, setLocation]);
+  }, [role, isCompanyLoading, isNewClient, isProfileCompleted, isResendDone, enabledPages, clientLinks, location, setLocation]);
 
   const links = role === "admin" ? adminLinks : clientLinks;
   const allLinks = links.flatMap((l) => (l.children ? [l, ...l.children] : [l]));
@@ -1639,11 +1667,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     onClick={(e) => {
                       if (link.isLocked) {
                         e.preventDefault();
+                        const desc = !isProfileCompleted
+                          ? (lang === "ar" ? "يرجى إكمال ملف الشركة أولاً (الاسم ووصف النشاط) للمتابعة." : "Please complete your Company Profile first to proceed.")
+                          : (lang === "ar" ? "يرجى إدخال مفتاح Resend والتحقق منه وحفظه أولاً في صفحة الإعدادات لإلغاء قفل الباقات." : "Please enter and verify your Secret Resend API Key in Settings first to unlock Packages & Plans.");
                         toast({
                           title: lang === "ar" ? "الصفحة مقفلة" : "Page Locked",
-                          description: lang === "ar"
-                            ? "يرجى إكمال ملف الشركة أولاً (الاسم ووصف النشاط) لإلغاء قفل الباقات."
-                            : "Please complete your Company Profile first to unlock Packages & Plans.",
+                          description: desc,
                           variant: "destructive",
                         });
                         return;
@@ -1797,11 +1826,12 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               onClick={(e) => {
                 if (link.isLocked) {
                   e.preventDefault();
+                  const desc = !isProfileCompleted
+                    ? (lang === "ar" ? "يرجى إكمال ملف الشركة أولاً (الاسم ووصف النشاط) للمتابعة." : "Please complete your Company Profile first to proceed.")
+                    : (lang === "ar" ? "يرجى إدخال مفتاح Resend والتحقق منه وحفظه أولاً في صفحة الإعدادات لإلغاء قفل الباقات." : "Please enter and verify your Secret Resend API Key in Settings first to unlock Packages & Plans.");
                   toast({
                     title: lang === "ar" ? "الصفحة مقفلة" : "Page Locked",
-                    description: lang === "ar"
-                      ? "يرجى إكمال ملف الشركة أولاً (الاسم ووصف النشاط) لإلغاء قفل الباقات."
-                      : "Please complete your Company Profile first to unlock Packages & Plans.",
+                    description: desc,
                     variant: "destructive",
                   });
                   return;

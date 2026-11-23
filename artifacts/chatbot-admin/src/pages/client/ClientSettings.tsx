@@ -136,8 +136,12 @@ export default function ClientSettings() {
 
       const data = await res.json();
       if (res.ok && data.ok) {
-        queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+          queryClient.refetchQueries({ queryKey: getGetClientCompanyQueryKey() }),
+          queryClient.refetchQueries({ queryKey: ["/api/auth/me"] }),
+        ]);
         toast({
           title: lang === "ar" ? "✅ تم التحقق من مفتاح Resend بنجاح!" : "✅ Resend API Key Verified Successfully!",
           description: lang === "ar"
@@ -147,7 +151,7 @@ export default function ClientSettings() {
 
         setTimeout(() => {
           setLocation("/client/packages");
-        }, 1200);
+        }, 1000);
       } else {
         toast({
           title: lang === "ar" ? "❌ مفتاح Resend غير صالح" : "❌ Invalid Resend API Key",
@@ -193,8 +197,12 @@ export default function ClientSettings() {
 
       const data = await res.json();
       if (res.ok && data.ok) {
-        queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+          queryClient.refetchQueries({ queryKey: getGetClientCompanyQueryKey() }),
+          queryClient.refetchQueries({ queryKey: ["/api/auth/me"] }),
+        ]);
         toast({
           title: lang === "ar" ? "✅ تم إرسال البريد والتحقق بنجاح!" : "✅ Test Email Sent & Key Verified!",
           description: lang === "ar"
@@ -204,7 +212,7 @@ export default function ClientSettings() {
 
         setTimeout(() => {
           setLocation("/client/packages");
-        }, 1200);
+        }, 1000);
       } else {
         toast({
           title: lang === "ar" ? "❌ تعذر إرسال البريد التجريبي" : "❌ Test Email Failed",

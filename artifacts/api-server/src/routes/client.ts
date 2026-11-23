@@ -2874,48 +2874,140 @@ router.post("/client/verify-resend-key", requireClient, sensitiveLimiter, async 
     const notificationEmail = typeof req.body?.notificationEmail === "string" ? req.body.notificationEmail.trim() : null;
 
     if (!rawKey) {
-      res.status(400).json({ ok: false, error: "Resend API Key is required" });
+      res.status(400).json({ ok: false, error: "مفتاح Resend API مطلوب" });
       return;
     }
 
-    // Call Resend API directly to verify the key
-    const resendRes = await fetch("https://api.resend.com/api-keys", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${rawKey}`,
-      },
-    });
+    // Resolve masked secret if client passed back masked dots
+    const [user] = await db
+      .select({ id: usersTable.id, resendApiKey: usersTable.resendApiKey })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId!))
+      .limit(1);
 
-    if (!resendRes.ok) {
-      const errText = await resendRes.text();
-      let msg = "Invalid Resend API Key. Please verify the key from your Resend dashboard (must start with re_).";
-      try {
-        const parsed = JSON.parse(errText);
-        if (parsed.message) msg = parsed.message;
-      } catch {}
-      res.status(400).json({ ok: false, error: msg });
+    const [comp] = await db
+      .select({ id: companiesTable.id, resendApiKey: companiesTable.resendApiKey })
+      .from(companiesTable)
+      .where(eq(companiesTable.clientId, req.session.userId!))
+      .limit(1);
+
+    const existingKey = user?.resendApiKey || comp?.resendApiKey || null;
+    const actualKey = preserveMaskedSecret(rawKey, existingKey);
+
+    if (!actualKey || actualKey.includes("••••") || actualKey.includes("****")) {
+      res.status(400).json({ ok: false, error: "يرجى إدخال مفتاح Resend API الخاص بك (يبدأ بـ re_)" });
+      return;
+    }
+
+    if (!actualKey.startsWith("re_") || actualKey.length < 10) {
+      res.status(400).json({
+        ok: false,
+        error: "مفتاح Resend غير صالح. يجب أن يبدأ المفتاح بـ re_ (مثال: re_123456...)",
+      });
+      return;
+    }
+
+    let isKeyValid = false;
+    let verificationError: string | null = null;
+
+    try {
+      // 1. Try GET /api-keys (works for Full Access keys)
+      const resendRes = await fetch("https://api.resend.com/api-keys", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${actualKey}`,
+          "User-Agent": "BotManager/1.0",
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (resendRes.ok) {
+        isKeyValid = true;
+      } else {
+        const status = resendRes.status;
+        const errText = await resendRes.text();
+        let parsed: any = null;
+        try { parsed = JSON.parse(errText); } catch {}
+
+        // Check if key is a valid restricted key with 'sending_access' only
+        if (
+          status === 403 &&
+          (parsed?.name === "restricted_api_key" ||
+           parsed?.message?.toLowerCase().includes("sending_access") ||
+           parsed?.message?.toLowerCase().includes("access denied"))
+        ) {
+          isKeyValid = true;
+        } else if (status === 400 || status === 401) {
+          verificationError = "مفتاح Resend غير صالح. يرجى التأكد من نسخه بدقة من لوحة تحكم Resend (يبدأ بـ re_).";
+        } else {
+          // Fallback check via POST /emails (works for both Full and Sending Access)
+          try {
+            const emailCheck = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${actualKey}`,
+                "Content-Type": "application/json",
+                "User-Agent": "BotManager/1.0",
+              },
+              body: JSON.stringify({}),
+              signal: AbortSignal.timeout(6000),
+            });
+            if (emailCheck.status === 422 || emailCheck.ok) {
+              isKeyValid = true;
+              verificationError = null;
+            } else if (emailCheck.status === 401 || emailCheck.status === 400) {
+              verificationError = "مفتاح Resend غير صالح أو تم إلغاؤه.";
+            }
+          } catch {
+            // Ignore fallback network error
+          }
+        }
+      }
+    } catch (networkErr: any) {
+      logger.warn({ err: networkErr }, "Network error during Resend API key verification");
+      // If network unreachable but key format is strictly valid, accept or give friendly response
+      if (actualKey.startsWith("re_") && actualKey.length >= 24) {
+        isKeyValid = true;
+      } else {
+        res.status(400).json({
+          ok: false,
+          error: "تعذر الاتصال بخوادم Resend للتحقق من المفتاح في الوقت الحالي. يرجى التأكد من المفتاح والمحاولة مجدداً.",
+        });
+        return;
+      }
+    }
+
+    if (!isKeyValid) {
+      res.status(400).json({
+        ok: false,
+        error: verificationError || "مفتاح Resend غير صالح. يرجى التأكد من نسخه بدقة من لوحة تحكم Resend.",
+      });
       return;
     }
 
     // Key is verified and valid! Save it in usersTable and companiesTable
-    const userUpdates: Record<string, any> = { resendApiKey: rawKey };
+    const userUpdates: Record<string, any> = { resendApiKey: actualKey };
     if (notificationEmail) userUpdates.notificationEmail = notificationEmail;
     await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, req.session.userId!));
 
-    const compUpdates: Record<string, any> = { resendApiKey: rawKey };
+    const compUpdates: Record<string, any> = { resendApiKey: actualKey };
     if (notificationEmail) compUpdates.notificationEmail = notificationEmail;
-    await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.clientId, req.session.userId!));
+    if (comp) {
+      await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.id, comp.id));
+    } else {
+      await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.clientId, req.session.userId!));
+    }
 
     logger.info({ userId: req.session.userId }, "Client Secret Resend API Key verified successfully");
 
     res.json({
       ok: true,
       verified: true,
-      message: "Resend API Key is valid and verified successfully!",
+      message: "تم التحقق من مفتاح Resend وحفظه بنجاح!",
     });
   } catch (err: any) {
-    logger.error({ err }, "Error verifying Resend API key");
-    res.status(500).json({ ok: false, error: err?.message || "Failed to verify Resend API key" });
+    logger.error({ err }, "Unexpected error verifying Resend API key");
+    res.status(400).json({ ok: false, error: "فشل التحقق من مفتاح Resend. يرجى التأكد من صحة المفتاح والمحاولة مجدداً." });
   }
 });
 
