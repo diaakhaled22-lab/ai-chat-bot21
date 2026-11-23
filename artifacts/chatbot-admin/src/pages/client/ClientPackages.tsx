@@ -308,6 +308,17 @@ const DEFAULT_TOPUP_PACKS: TopupItemDef[] = [
   { id: "topup-250k", tokens: 250_000, formatted: "+250K", priceUsd: 40 },
 ];
 
+function formatConvertedPrice(usdPrice: number, exchangeRate: number = 1): string {
+  const converted = usdPrice * exchangeRate;
+  if (Math.abs(converted - Math.round(converted)) < 0.001) {
+    return Math.round(converted).toLocaleString();
+  }
+  return parseFloat(converted.toFixed(2)).toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 function formatPlanFeature(feat: string, plan: PlanDef, isAr: boolean): string {
   if (!plan.tokensMonthly) return feat;
   const formattedTokens = plan.tokensFormatted || Number(plan.tokensMonthly).toLocaleString();
@@ -566,7 +577,10 @@ export default function ClientPackages() {
       finalUsd = (priceUsd * 10) / 12;
     }
     const converted = finalUsd * currencyCfg.exchangeRate;
-    return Math.round(converted);
+    if (Math.abs(converted - Math.round(converted)) < 0.001) {
+      return Math.round(converted);
+    }
+    return parseFloat(converted.toFixed(2));
   };
 
   const submitTicketMutation = useMutation({
@@ -862,7 +876,7 @@ export default function ClientPackages() {
       topupPack.tokens === 1_000_000
         ? "1m"
         : topupPack.formatted;
-    const price = Math.round(topupPack.priceUsd * currencyCfg.exchangeRate);
+    const price = formatConvertedPrice(topupPack.priceUsd, currencyCfg.exchangeRate);
     const title = `[طلب شحن رصيد إضافي] ${badge} رموز`;
     const description = [
       `طلب شحن حزمة رموز إضافية: ${badge} (${topupPack.tokens.toLocaleString()} Tokens)`,
@@ -1546,7 +1560,7 @@ export default function ClientPackages() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {topupPacks.map((pack, idx) => {
-            const packPrice = Math.round(pack.priceUsd * currencyCfg.exchangeRate);
+            const packPriceFormatted = formatConvertedPrice(pack.priceUsd, currencyCfg.exchangeRate);
             return (
               <Card
                 key={idx}
@@ -1563,7 +1577,7 @@ export default function ClientPackages() {
                   </div>
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className="text-2xl font-black text-foreground tabular-nums">
-                      {packPrice.toLocaleString()}
+                      {packPriceFormatted}
                     </span>
                     <span className="text-xs font-bold text-primary">{currencyCfg.symbol}</span>
                   </div>
@@ -1917,7 +1931,7 @@ export default function ClientPackages() {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-black text-amber-600 dark:text-amber-400">
-                    {Math.round(topupPack.priceUsd * currencyCfg.exchangeRate).toLocaleString()} {currencyCfg.symbol}
+                    {formatConvertedPrice(topupPack.priceUsd, currencyCfg.exchangeRate)} {currencyCfg.symbol}
                   </div>
                 </div>
               </div>

@@ -996,7 +996,7 @@ export default function AdminPackages() {
                       ${pack.priceUsd}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      (~{Math.round(pack.priceUsd * EXCHANGE_RATES.SAR)} ر.س)
+                      (~{parseFloat((pack.priceUsd * EXCHANGE_RATES.SAR).toFixed(2))} ر.س)
                     </span>
                   </div>
 
@@ -1956,12 +1956,13 @@ export default function AdminPackages() {
                 <label className="text-xs font-semibold text-foreground flex items-center justify-between">
                   <span>{lang === "ar" ? "السعر (بالدولار USD)" : "Price ($ USD)"}</span>
                   <span className="text-[10px] text-muted-foreground">
-                    ≈ {Math.round(editingTopup.priceUsd * EXCHANGE_RATES.SAR)} ر.س
+                    ≈ {parseFloat((editingTopup.priceUsd * EXCHANGE_RATES.SAR).toFixed(2))} ر.س
                   </span>
                 </label>
                 <Input
                   type="number"
-                  min={1}
+                  min={0}
+                  step="any"
                   value={editingTopup.priceUsd}
                   onChange={(e) =>
                     setEditingTopup({ ...editingTopup, priceUsd: parseFloat(e.target.value) || 0 })
