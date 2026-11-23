@@ -2910,70 +2910,74 @@ router.post("/client/verify-resend-key", requireClient, sensitiveLimiter, async 
     let isKeyValid = false;
     let verificationError: string | null = null;
 
-    try {
-      // 1. Try GET /api-keys (works for Full Access keys)
-      const resendRes = await fetch("https://api.resend.com/api-keys", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${actualKey}`,
-          "User-Agent": "BotManager/1.0",
-        },
-        signal: AbortSignal.timeout(8000),
-      });
+    // Check if the key is already stored and verified for this user or company
+    if (existingKey && actualKey === existingKey) {
+      isKeyValid = true;
+    }
 
-      if (resendRes.ok) {
-        isKeyValid = true;
-      } else {
-        const status = resendRes.status;
-        const errText = await resendRes.text();
-        let parsed: any = null;
-        try { parsed = JSON.parse(errText); } catch {}
+    if (!isKeyValid) {
+      try {
+        // Primary check: POST /emails (supported by BOTH Full Access and Sending Access keys)
+        // If the key is authenticated, Resend returns 422 Unprocessable Entity (missing payload fields) or 200 OK.
+        // If the key is invalid, Resend returns 401 Unauthorized ("API key is invalid").
+        const emailCheck = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${actualKey}`,
+            "Content-Type": "application/json",
+            "User-Agent": "BotManager/1.0",
+          },
+          body: JSON.stringify({}),
+          signal: AbortSignal.timeout(8000),
+        });
 
-        // Check if key is a valid restricted key with 'sending_access' only
-        if (
-          status === 403 &&
-          (parsed?.name === "restricted_api_key" ||
-           parsed?.message?.toLowerCase().includes("sending_access") ||
-           parsed?.message?.toLowerCase().includes("access denied"))
-        ) {
+        if (emailCheck.status === 422 || emailCheck.ok) {
+          // Authentication succeeded! Key is valid!
           isKeyValid = true;
-        } else if (status === 400 || status === 401) {
-          verificationError = "مفتاح Resend غير صالح. يرجى التأكد من نسخه بدقة من لوحة تحكم Resend (يبدأ بـ re_).";
-        } else {
-          // Fallback check via POST /emails (works for both Full and Sending Access)
+        } else if (emailCheck.status === 401) {
+          // Explicit invalid key response from Resend
+          const errText = await emailCheck.text();
+          let msg = "مفتاح Resend غير صالح. يرجى التأكد من نسخه بدقة من لوحة تحكم Resend (يبدأ بـ re_).";
           try {
-            const emailCheck = await fetch("https://api.resend.com/emails", {
-              method: "POST",
+            const parsed = JSON.parse(errText);
+            if (parsed.message) msg = parsed.message;
+          } catch {}
+          verificationError = msg;
+        } else {
+          // Secondary check: GET /api-keys (for Full Access keys)
+          try {
+            const apiKeysCheck = await fetch("https://api.resend.com/api-keys", {
+              method: "GET",
               headers: {
                 Authorization: `Bearer ${actualKey}`,
-                "Content-Type": "application/json",
                 "User-Agent": "BotManager/1.0",
               },
-              body: JSON.stringify({}),
               signal: AbortSignal.timeout(6000),
             });
-            if (emailCheck.status === 422 || emailCheck.ok) {
+
+            if (apiKeysCheck.ok) {
               isKeyValid = true;
-              verificationError = null;
-            } else if (emailCheck.status === 401 || emailCheck.status === 400) {
-              verificationError = "مفتاح Resend غير صالح أو تم إلغاؤه.";
+            } else if (actualKey.startsWith("re_") && actualKey.length >= 24) {
+              isKeyValid = true;
             }
           } catch {
-            // Ignore fallback network error
+            if (actualKey.startsWith("re_") && actualKey.length >= 24) {
+              isKeyValid = true;
+            }
           }
         }
-      }
-    } catch (networkErr: any) {
-      logger.warn({ err: networkErr }, "Network error during Resend API key verification");
-      // If network unreachable but key format is strictly valid, accept or give friendly response
-      if (actualKey.startsWith("re_") && actualKey.length >= 24) {
-        isKeyValid = true;
-      } else {
-        res.status(400).json({
-          ok: false,
-          error: "تعذر الاتصال بخوادم Resend للتحقق من المفتاح في الوقت الحالي. يرجى التأكد من المفتاح والمحاولة مجدداً.",
-        });
-        return;
+      } catch (networkErr: any) {
+        logger.warn({ err: networkErr }, "Network error during Resend API key verification");
+        // If network times out but key format is strictly valid, accept it
+        if (actualKey.startsWith("re_") && actualKey.length >= 20) {
+          isKeyValid = true;
+        } else {
+          res.status(400).json({
+            ok: false,
+            error: "تعذر الاتصال بخوادم Resend للتحقق من المفتاح في الوقت الحالي. يرجى التأكد من المفتاح والمحاولة مجدداً.",
+          });
+          return;
+        }
       }
     }
 
