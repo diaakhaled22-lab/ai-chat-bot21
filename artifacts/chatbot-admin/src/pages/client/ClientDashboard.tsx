@@ -50,6 +50,8 @@ interface DashboardData {
   intents: Array<{ name: string; count: number }>;
   businessType?: string;
   hasCompany: boolean;
+  isProfileComplete?: boolean;
+  hasResendKey?: boolean;
 }
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -141,8 +143,14 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     if (!isLoading && data) {
-      if (!data.hasCompany || !data.isActive) {
-        setLocation("/client/company");
+      if (!data.isActive) {
+        if (!data.hasCompany || !data.isProfileComplete) {
+          setLocation("/client/company");
+        } else if (!data.hasResendKey) {
+          setLocation("/client/settings");
+        } else {
+          setLocation("/client/packages");
+        }
       }
     }
   }, [isLoading, data, setLocation]);

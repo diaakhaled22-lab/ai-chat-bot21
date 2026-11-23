@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useGetClientCompany,
+  useGetMe,
   getGetClientCompanyQueryKey,
   useGetClientChatLogRetention,
   customFetch,
@@ -22,11 +23,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ClientOnboardingProgress, checkIsCompanyProfileComplete } from "@/components/client/ClientOnboardingProgress";
+import { ClientOnboardingProgress, checkIsCompanyProfileComplete, checkIsResendConfigured } from "@/components/client/ClientOnboardingProgress";
 import {
   Check,
   Package,
   Lock,
+  Key,
   Sparkles,
   ShieldCheck,
   Zap,
@@ -367,8 +369,10 @@ export default function ClientPackages() {
     },
   });
 
+  const { data: me } = useGetMe();
   const isActive = Boolean(company && (company as any)?.isActive);
   const isProfileComplete = checkIsCompanyProfileComplete(company);
+  const isResendDone = checkIsResendConfigured(company, me);
   const currentTokens = (company as any)?.monthlyTokenQuota ?? null;
 
   const { getRate, lastUpdated } = useExchangeRates();
@@ -908,7 +912,7 @@ export default function ClientPackages() {
 
       {/* ── Onboarding Checkpoint Progress Bar for new/inactive clients ── */}
       {!isActive && (
-        <ClientOnboardingProgress currentStep="packages" company={company} />
+        <ClientOnboardingProgress currentStep="packages" company={company} user={me} />
       )}
 
       {!isCompanyLoading && !isActive && !isProfileComplete ? (
@@ -930,6 +934,28 @@ export default function ClientPackages() {
             <Button size="lg" className="bg-[#2D5BE3] hover:bg-[#254ec2] text-white font-bold rounded-2xl gap-2 shadow-lg px-8">
               <Building2 className="w-5 h-5" />
               <span>{lang === "ar" ? "الانتقال إلى ملف الشركة لإكماله (الخطوة 1) ←" : "Go to Company Profile (Step 1) →"}</span>
+            </Button>
+          </Link>
+        </div>
+      ) : !isCompanyLoading && !isActive && !isResendDone ? (
+        <div className="rounded-3xl border border-amber-500/20 bg-card p-8 sm:p-12 text-center space-y-5 shadow-lg">
+          <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center mx-auto shadow-inner">
+            <Key className="w-8 h-8" />
+          </div>
+          <div className="space-y-2 max-w-md mx-auto">
+            <h3 className="text-xl font-bold text-foreground">
+              {lang === "ar" ? "مطلوب إدخال والتحقق من مفتاح Resend السري (الخطوة 2)" : "Secret Resend API Key Required (Step 2)"}
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {lang === "ar"
+                ? "تم إكمال ملف الشركة بنجاح! يرجى إدخال مفتاح Resend API السري والتحقق منه في صفحة الإعدادات لضمان وصول تنبيهات وإشعارات البوت قبل التمكن من اختيار الباقة."
+                : "Your company profile is complete! Please enter and verify your Secret Resend API Key in Settings to ensure notification delivery before selecting a plan."}
+            </p>
+          </div>
+          <Link href="/client/settings">
+            <Button size="lg" className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl gap-2 shadow-lg px-8">
+              <Key className="w-5 h-5" />
+              <span>{lang === "ar" ? "الانتقال إلى الإعدادات لإدخال مفتاح Resend (الخطوة 2) ←" : "Go to Settings for Resend Key (Step 2) →"}</span>
             </Button>
           </Link>
         </div>

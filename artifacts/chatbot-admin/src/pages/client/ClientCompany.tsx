@@ -1,13 +1,13 @@
 import { ClientOnboardingProgress } from "@/components/client/ClientOnboardingProgress";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Cpu, Package } from "lucide-react";
 
 import {
-  useGetClientCompany, useCreateClientCompany, useUpdateClientCompany,
+  useGetClientCompany, useCreateClientCompany, useUpdateClientCompany, useGetMe,
   useListClientKnowledgeFiles, useCreateClientKnowledgeFile, useDeleteClientKnowledgeFile,
   getGetClientCompanyQueryKey, getListClientKnowledgeFilesQueryKey, customFetch,
 } from "@workspace/api-client-react";
@@ -382,6 +382,8 @@ export default function ClientCompany() {
   const createCompany = useCreateClientCompany();
   const updateCompany = useUpdateClientCompany();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const { data: me } = useGetMe();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
@@ -468,7 +470,20 @@ export default function ClientCompany() {
       updateCompany.mutate({ data }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
-          toast({ title: t("settings_saved_success") });
+          const isNotActive = !company?.isActive;
+          toast({
+            title: lang === "ar" ? "✅ تم حفظ ملف الشركة بنجاح" : "✅ Company Profile Saved",
+            description: isNotActive
+              ? (lang === "ar"
+                  ? "جاري توجيهك إلى صفحة الإعدادات لإدخال مفتاح Resend السري..."
+                  : "Redirecting to Settings to enter your Secret Resend API Key...")
+              : t("settings_saved_success"),
+          });
+          if (isNotActive) {
+            setTimeout(() => {
+              setLocation("/client/settings");
+            }, 1100);
+          }
         },
         onError: (error: any) => {
           toast({ title: lang === "ar" ? "فشل الحفظ" : "Failed to save", description: error.message, variant: "destructive" });
@@ -478,7 +493,15 @@ export default function ClientCompany() {
       createCompany.mutate({ data }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
-          toast({ title: t("settings_saved_success") });
+          toast({
+            title: lang === "ar" ? "✅ تم حفظ ملف الشركة بنجاح" : "✅ Company Profile Saved",
+            description: lang === "ar"
+              ? "جاري توجيهك إلى صفحة الإعدادات لإدخال مفتاح Resend السري..."
+              : "Redirecting to Settings to enter your Secret Resend API Key...",
+          });
+          setTimeout(() => {
+            setLocation("/client/settings");
+          }, 1100);
         },
         onError: (error: any) => {
           toast({ title: lang === "ar" ? "فشل الإنشاء" : "Failed to create", description: error.message, variant: "destructive" });
@@ -598,7 +621,7 @@ export default function ClientCompany() {
       </div>
 
       {(!company || !company.isActive) && (
-        <ClientOnboardingProgress currentStep="company" company={company} />
+        <ClientOnboardingProgress currentStep="company" company={company} user={me} />
       )}
 
 

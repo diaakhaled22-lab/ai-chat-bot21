@@ -1,17 +1,21 @@
-import { useUpdateClientSettings, useGetMe } from "@workspace/api-client-react";
+import { useUpdateClientSettings, useGetMe, useGetClientCompany, getGetClientCompanyQueryKey } from "@workspace/api-client-react";
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Sparkles } from "lucide-react";
+import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Sparkles, Check, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { ClientOnboardingProgress, checkIsResendConfigured } from "@/components/client/ClientOnboardingProgress";
 
 const formSchema = z.object({
   newUsername: z.string().min(3, "Username must be at least 3 characters").optional().or(z.literal("")),
@@ -32,9 +36,15 @@ const formSchema = z.object({
 export default function ClientSettings() {
   const updateSettings = useUpdateClientSettings();
   const { data: me } = useGetMe();
+  const { data: company } = useGetClientCompany();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { lang, setLang, t } = useLanguage();
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isVerifyingKey, setIsVerifyingKey] = useState(false);
+
+  const isResendDone = checkIsResendConfigured(company, me);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,6 +79,8 @@ export default function ClientSettings() {
     updateSettings.mutate({ data }, {
       onSuccess: () => {
         toast({ title: lang === "ar" ? "تم حفظ التغييرات بنجاح" : "Settings updated successfully" });
+        queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         form.reset({
           newUsername: "",
           currentPassword: "",
@@ -76,6 +88,13 @@ export default function ClientSettings() {
           notificationEmail: values.notificationEmail || "",
           resendApiKey: values.resendApiKey || "",
         });
+
+        // If client is in onboarding and provided Resend key, verify and redirect
+        if (values.resendApiKey && !company?.isActive) {
+          setTimeout(() => {
+            setLocation("/client/packages");
+          }, 1100);
+        }
       },
       onError: (error: any) => {
         toast({
@@ -85,6 +104,66 @@ export default function ClientSettings() {
         });
       }
     });
+  };
+
+  // Direct Resend API Key verification
+  const handleVerifyResendKey = async () => {
+    const resendApiKey = form.getValues("resendApiKey")?.trim();
+    const notificationEmail = form.getValues("notificationEmail")?.trim();
+
+    if (!resendApiKey) {
+      toast({
+        title: lang === "ar" ? "مفتاح Resend مطلوب" : "Resend API Key Required",
+        description: lang === "ar"
+          ? "يرجى كتابة مفتاح Resend API الخاص بك (يبدأ بـ re_)."
+          : "Please enter your Secret Resend API Key (starts with re_).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsVerifyingKey(true);
+    try {
+      const res = await fetch("/api/client/verify-resend-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          resendApiKey,
+          notificationEmail: notificationEmail || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+        toast({
+          title: lang === "ar" ? "✅ تم التحقق من مفتاح Resend بنجاح!" : "✅ Resend API Key Verified Successfully!",
+          description: lang === "ar"
+            ? "المفتاح السري صالح وموثق. جاري توجيهك إلى صفحة الباقات والاشتراكات..."
+            : "The Secret Key is verified! Redirecting you to Packages & Plans...",
+        });
+
+        setTimeout(() => {
+          setLocation("/client/packages");
+        }, 1200);
+      } else {
+        toast({
+          title: lang === "ar" ? "❌ مفتاح Resend غير صالح" : "❌ Invalid Resend API Key",
+          description: data.error || (lang === "ar" ? "تعذر التحقق من صحة المفتاح لدى خوادم Resend" : "Could not verify key with Resend"),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: lang === "ar" ? "خطأ في الاتصال" : "Connection Error",
+        description: err.message || (lang === "ar" ? "فشل الاتصال بالخادم للتحقق من المفتاح" : "Failed to connect to server"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingKey(false);
+    }
   };
 
   const handleSendTestEmail = async () => {
@@ -114,12 +193,18 @@ export default function ClientSettings() {
 
       const data = await res.json();
       if (res.ok && data.ok) {
+        queryClient.invalidateQueries({ queryKey: getGetClientCompanyQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
         toast({
-          title: lang === "ar" ? "✅ تم إرسال البريد التجريبي بنجاح" : "✅ Test Email Sent Successfully",
+          title: lang === "ar" ? "✅ تم إرسال البريد والتحقق بنجاح!" : "✅ Test Email Sent & Key Verified!",
           description: lang === "ar"
-            ? `تم إرسال إشعار تجريبي إلى ${email}. يرجى التحقق من صندوق الوارد أو مجلد الرسائل غير المرغوب فيها (Spam).`
-            : `Test email sent to ${email}. Please check your inbox or spam folder.`,
+            ? `تم إرسال بريد تجريبي إلى ${email} والتحقق من المفتاح. جاري نقلك إلى الباقات والاشتراكات...`
+            : `Test email sent to ${email} and key verified. Redirecting to Packages & Plans...`,
         });
+
+        setTimeout(() => {
+          setLocation("/client/packages");
+        }, 1200);
       } else {
         toast({
           title: lang === "ar" ? "❌ تعذر إرسال البريد التجريبي" : "❌ Test Email Failed",
@@ -160,6 +245,11 @@ export default function ClientSettings() {
           </div>
         </div>
       </div>
+
+      {/* Onboarding Checklist if account is not active */}
+      {(!company || !company.isActive) && (
+        <ClientOnboardingProgress currentStep="settings" company={company} user={me} />
+      )}
 
       {/* Language */}
       <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
@@ -226,7 +316,7 @@ export default function ClientSettings() {
         </CardContent>
       </Card>
 
-      {/* Account credentials */}
+      {/* Account credentials & Resend Secret Key */}
       <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 transition-all overflow-hidden border-l-4 border-l-[#2D5BE3]">
         <CardHeader className="p-5 sm:p-6 pb-3">
           <div className="flex items-center gap-3">
@@ -279,6 +369,49 @@ export default function ClientSettings() {
                 )}
               />
 
+              {/* Step 2 Onboarding Banner for Secret Resend API Key */}
+              {(!company || !company.isActive) && (
+                <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-indigo-500/5 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/20">
+                      <Key className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-extrabold text-foreground">
+                          {lang === "ar" ? "الخطوة 2: إدخال والتحقق من مفتاح Resend API السري" : "Step 2: Enter & Verify Secret Resend API Key"}
+                        </span>
+                        {isResendDone ? (
+                          <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
+                            {lang === "ar" ? "تم التحقق ✓" : "Verified ✓"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-indigo-500/15 text-indigo-600 border-indigo-500/30 text-[10px] font-bold animate-pulse">
+                            {lang === "ar" ? "مطلوب حالياً" : "Required"}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {lang === "ar"
+                          ? "أدخل مفتاح Resend API وبريدك أدناه، ثم اضغط على 'التحقق من المفتاح وحفظه'. بمجرد التحقق بنجاح، سيتم نقلك مباشرة لاختيار الباقة."
+                          : "Enter your Secret Resend API Key and email below, then click 'Verify & Save Resend Key'. Once verified, you will be automatically redirected to Packages & Plans."}
+                      </p>
+                    </div>
+                  </div>
+                  {isResendDone && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setLocation("/client/packages")}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shrink-0 shadow-md gap-1.5"
+                    >
+                      <Package className="w-4 h-4" />
+                      <span>{lang === "ar" ? "الانتقال للباقات (الخطوة 3) ←" : "Go to Packages (Step 3) →"}</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -308,14 +441,14 @@ export default function ClientSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
-                        <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        {lang === "ar" ? "المفتاح السري (RESEND_API_KEY)" : "Secret (RESEND_API_KEY)"}
+                        <Key className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        {lang === "ar" ? "المفتاح السري (Secret Resend API Key)" : "Secret Resend API Key (RESEND_API_KEY)"}
                       </FormLabel>
                       <FormControl>
                         <PasswordInput
                           placeholder="re_xxxxxxxxxxxxxxxxx"
                           {...field}
-                          className="bg-background font-mono text-xs rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-blue-500"
+                          className="bg-background font-mono text-xs rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-indigo-500"
                         />
                       </FormControl>
                       <FormMessage />
@@ -324,40 +457,66 @@ export default function ClientSettings() {
                 />
               </div>
 
-              {/* Test Email Action Card */}
-              <div className="rounded-xl border border-blue-200/80 dark:border-blue-900/50 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 space-y-3">
+              {/* Resend Verification Action Card */}
+              <div className="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/50 bg-gradient-to-r from-indigo-50/70 to-blue-50/50 dark:from-indigo-950/30 dark:to-blue-950/20 p-4 sm:p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-bold text-foreground text-sm flex items-center gap-2 text-blue-900 dark:text-blue-100">
-                      <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      {lang === "ar" ? "اختبار وصول رسائل البريد (Gmail)" : "Test Email Notification Delivery"}
+                    <p className="font-bold text-foreground text-sm flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
+                      <Key className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      {lang === "ar" ? "التحقق من مفتاح Resend وتأكيد استلام الإشعارات" : "Verify Resend API Key & Test Delivery"}
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-300">
                       {lang === "ar"
-                        ? "أرسل بريداً تجريبياً فورياً للتحقق من صحة مفتاح Resend والتأكد من استلام الإشعارات في صندوق الوارد."
-                        : "Send an instant test email via Resend to verify your API Key and ensure notifications arrive."}
+                        ? "تحقق من صحة مفتاح Resend السري واختبر وصول الرسائل. التحقق الناجح ينقلك تلقائياً إلى صفحة الباقات والاشتراكات."
+                        : "Verify your Secret Resend API Key to ensure live notification delivery. Verification redirects to Packages & Plans."}
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isSendingTest}
-                    onClick={handleSendTestEmail}
-                    className="shrink-0 flex items-center gap-2 bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 font-bold rounded-xl shadow-sm px-4 py-2 h-auto"
-                  >
-                    {isSendingTest ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        {lang === "ar" ? "جارٍ الإرسال..." : "Sending..."}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        {lang === "ar" ? "إرسال بريد تجريبي" : "Send Test Email"}
-                      </>
-                    )}
-                  </Button>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    {/* Button 1: Verify & Save Key */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isVerifyingKey || isSendingTest}
+                      onClick={handleVerifyResendKey}
+                      className="flex-1 sm:flex-initial flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 px-4 py-2 h-auto text-xs"
+                    >
+                      {isVerifyingKey ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {lang === "ar" ? "جارٍ التحقق..." : "Verifying..."}
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "التحقق من المفتاح وحفظه" : "Verify & Save Resend Key"}
+                        </>
+                      )}
+                    </Button>
+
+                    {/* Button 2: Send Test Email */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isSendingTest || isVerifyingKey}
+                      onClick={handleSendTestEmail}
+                      className="flex-1 sm:flex-initial flex items-center gap-2 bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold rounded-xl shadow-sm px-4 py-2 h-auto text-xs"
+                    >
+                      {isSendingTest ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          {lang === "ar" ? "جارٍ الإرسال..." : "Sending..."}
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "إرسال بريد تجريبي" : "Send Test Email"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
 

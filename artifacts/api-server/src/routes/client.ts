@@ -1889,6 +1889,8 @@ router.get("/client/dashboard", async (req, res) => {
         intents: [],
         periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
         hasCompany: false,
+        isProfileComplete: false,
+        hasResendKey: false,
       });
       return;
     }
@@ -1979,6 +1981,13 @@ router.get("/client/dashboard", async (req, res) => {
       periodLabel: `${now.toLocaleString("en", { month: "long" })} ${now.getFullYear()}`,
       businessType: (company as any).businessType || "general",
       hasCompany: true,
+      isProfileComplete: Boolean(
+        typeof company.name === "string" && company.name.trim().length >= 2 &&
+        typeof company.generalInfo === "string" && company.generalInfo.trim().length >= 3
+      ),
+      hasResendKey: Boolean(
+        typeof company.resendApiKey === "string" && company.resendApiKey.trim().length > 3
+      ),
     });
   } catch (err) {
     logger.error({ err }, "Get client dashboard error");
@@ -2858,6 +2867,58 @@ router.put("/client/settings", async (req, res) => {
   }
 });
 
+// POST /client/verify-resend-key
+router.post("/client/verify-resend-key", requireClient, sensitiveLimiter, async (req, res) => {
+  try {
+    const rawKey = typeof req.body?.resendApiKey === "string" ? req.body.resendApiKey.trim() : "";
+    const notificationEmail = typeof req.body?.notificationEmail === "string" ? req.body.notificationEmail.trim() : null;
+
+    if (!rawKey) {
+      res.status(400).json({ ok: false, error: "Resend API Key is required" });
+      return;
+    }
+
+    // Call Resend API directly to verify the key
+    const resendRes = await fetch("https://api.resend.com/api-keys", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${rawKey}`,
+      },
+    });
+
+    if (!resendRes.ok) {
+      const errText = await resendRes.text();
+      let msg = "Invalid Resend API Key. Please verify the key from your Resend dashboard (must start with re_).";
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.message) msg = parsed.message;
+      } catch {}
+      res.status(400).json({ ok: false, error: msg });
+      return;
+    }
+
+    // Key is verified and valid! Save it in usersTable and companiesTable
+    const userUpdates: Record<string, any> = { resendApiKey: rawKey };
+    if (notificationEmail) userUpdates.notificationEmail = notificationEmail;
+    await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, req.session.userId!));
+
+    const compUpdates: Record<string, any> = { resendApiKey: rawKey };
+    if (notificationEmail) compUpdates.notificationEmail = notificationEmail;
+    await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.clientId, req.session.userId!));
+
+    logger.info({ userId: req.session.userId }, "Client Secret Resend API Key verified successfully");
+
+    res.json({
+      ok: true,
+      verified: true,
+      message: "Resend API Key is valid and verified successfully!",
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Error verifying Resend API key");
+    res.status(500).json({ ok: false, error: err?.message || "Failed to verify Resend API key" });
+  }
+});
+
 // POST /client/send-test-notification
 router.post("/client/send-test-notification", requireClient, sensitiveLimiter, async (req, res) => {
   try {
@@ -3013,6 +3074,7 @@ router.post("/client/send-test-notification", requireClient, sensitiveLimiter, a
 
       res.json({
         ok: true,
+        verified: true,
         id: resendId || "smtp",
         recipient,
         from: fromEmail || smtpCfg.smtpUser,
