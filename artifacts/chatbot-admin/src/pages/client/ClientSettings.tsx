@@ -5,14 +5,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Sparkles, Check, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Sparkles, Check, CheckCircle2, ArrowRight, ArrowLeft, ExternalLink, Package } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { ClientOnboardingProgress, checkIsResendConfigured } from "@/components/client/ClientOnboardingProgress";
@@ -396,6 +396,17 @@ export default function ClientSettings() {
                           ? "أدخل مفتاح Resend API وبريدك أدناه، ثم اضغط على 'التحقق من المفتاح وحفظه'. بمجرد التحقق بنجاح، سيتم نقلك مباشرة لاختيار الباقة."
                           : "Enter your Secret Resend API Key and email below, then click 'Verify & Save Resend Key'. Once verified, you will be automatically redirected to Packages & Plans."}
                       </p>
+                      <div className="mt-2">
+                        <a
+                          href="https://resend.com/api-keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-lg transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>{lang === "ar" ? "اضغط هنا للحصول على مفتاح Resend مجاناً من resend.com/api-keys ↗" : "Click here to get your Secret Resend API Key from resend.com/api-keys ↗"}</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
                   {isResendDone && (
@@ -440,10 +451,21 @@ export default function ClientSettings() {
                   name="resendApiKey"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
-                        <Key className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        {lang === "ar" ? "المفتاح السري (Secret Resend API Key)" : "Secret Resend API Key (RESEND_API_KEY)"}
-                      </FormLabel>
+                      <div className="flex items-center justify-between gap-2">
+                        <FormLabel className="flex items-center gap-1.5 font-semibold text-sm">
+                          <Key className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          {lang === "ar" ? "المفتاح السري (Secret Resend API Key)" : "Secret Resend API Key (RESEND_API_KEY)"}
+                        </FormLabel>
+                        <a
+                          href="https://resend.com/api-keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline transition-colors shrink-0 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>{lang === "ar" ? "الحصول على المفتاح" : "Get API Key"}</span>
+                        </a>
+                      </div>
                       <FormControl>
                         <PasswordInput
                           placeholder="re_xxxxxxxxxxxxxxxxx"
@@ -451,6 +473,22 @@ export default function ClientSettings() {
                           className="bg-background font-mono text-xs rounded-xl h-10 border-[#DCE7FF] dark:border-slate-800 focus-visible:ring-indigo-500"
                         />
                       </FormControl>
+                      <FormDescription className="text-[11px] text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-1 mt-1">
+                        <span>
+                          {lang === "ar"
+                            ? "المفتاح يبدأ بـ re_ . يمكنك إنشاء حساب ونسخ المفتاح السري مجاناً من منصة Resend."
+                            : "Starts with re_ . Create a free account and copy your secret API key from Resend."}
+                        </span>
+                        <a
+                          href="https://resend.com/api-keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-[11px]"
+                        >
+                          <span>resend.com/api-keys</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -467,8 +505,17 @@ export default function ClientSettings() {
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-300">
                       {lang === "ar"
-                        ? "تحقق من صحة مفتاح Resend السري واختبر وصول الرسائل. التحقق الناجح ينقلك تلقائياً إلى صفحة الباقات والاشتراكات."
-                        : "Verify your Secret Resend API Key to ensure live notification delivery. Verification redirects to Packages & Plans."}
+                        ? "تحقق من صحة مفتاح Resend السري واختبر وصول الرسائل. يمكنك استخراج المفتاح مجاناً عبر "
+                        : "Verify your Secret Resend API Key to ensure live notification delivery. You can obtain your key for free via "}
+                      <a
+                        href="https://resend.com/api-keys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline inline-flex items-center gap-0.5 ml-1"
+                      >
+                        resend.com/api-keys
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
                     </p>
                   </div>
 
