@@ -1244,8 +1244,8 @@ export default function ClientPackages() {
                 </div>
               ) : isPendingPlan ? (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30">
-                  <span className="px-4 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/35 flex items-center gap-1.5 whitespace-nowrap border border-white/20 animate-pulse">
-                    <Clock className="w-3.5 h-3.5 text-white" />
+                  <span className="px-3 sm:px-4 py-1 rounded-full text-[11px] sm:text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/35 flex items-center gap-1.5 whitespace-nowrap border border-white/20 animate-pulse">
+                    <Clock className="w-3.5 h-3.5 text-white shrink-0" />
                     {lang === "ar" ? "طلب ترقية قيد المراجعة ⏳" : "Upgrade Request Pending ⏳"}
                   </span>
                 </div>
@@ -1267,7 +1267,7 @@ export default function ClientPackages() {
               ) : null}
 
               {/* Card Header */}
-              <div className="p-6 pb-4 border-b border-border/40">
+              <div className="p-5 sm:p-6 pb-4 border-b border-border/40">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
                     <span>{lang === "ar" ? plan.nameAr : plan.nameEn}</span>
@@ -1334,7 +1334,7 @@ export default function ClientPackages() {
                 </div>
 
               {/* Features List */}
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-6">
+              <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-6">
                 <ul className="space-y-3">
                   {(lang === "ar" ? (plan.featuresAr || []) : (plan.featuresEn || plan.featuresAr || [])).map((feat, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
@@ -1441,7 +1441,12 @@ export default function ClientPackages() {
                 <Button
                   onClick={() => handleOpenSubscribe(plan)}
                   disabled={(isTrial && isFreeTrialClaimed && !isActivePlan) || isActivePlan}
-                  className={`w-full py-5 rounded-2xl text-xs sm:text-sm font-bold shadow-md transition-all gap-2 ${getPlanButtonClass(
+                  title={
+                    isPendingPlan
+                      ? (lang === "ar" ? "طلب معلق - اضغط لتعديل الطلب" : "Pending Request - Click to edit")
+                      : undefined
+                  }
+                  className={`w-full min-h-[46px] py-2.5 px-2.5 sm:px-3 rounded-2xl text-xs sm:text-xs xl:text-[11.5px] 2xl:text-xs font-bold shadow-md transition-all gap-1.5 leading-snug text-center whitespace-normal break-words ${getPlanButtonClass(
                     plan,
                     isActivePlan,
                     isPendingPlan,
@@ -1451,37 +1456,37 @@ export default function ClientPackages() {
                 >
                   {isActivePlan ? (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-white" />
-                      <span>
-                        {lang === "ar" ? "باقتك المفعلة حالياً ✓" : "Currently Active Plan ✓"}
+                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
+                      <span className="truncate">
+                        {lang === "ar" ? "باقتك الحالية ✓" : "Active Plan ✓"}
                       </span>
                     </>
                   ) : isPendingPlan ? (
                     <>
-                      <Clock className="w-4 h-4 text-white" />
-                      <span>
-                        {lang === "ar" ? "طلب معلق (تعديل الطلب)" : "Pending Request (Edit)"}
+                      <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
+                      <span className="truncate">
+                        {lang === "ar" ? "طلب معلق (تعديل)" : "Pending (Edit)"}
                       </span>
                     </>
                   ) : isTrial ? (
                     <>
-                      <Sparkles className="w-4 h-4 text-white" />
-                      <span>
-                        {lang === "ar" ? "بدء التجربة المجانية (7 أيام)" : "Start Free 7-Day Trial"}
+                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
+                      <span className="truncate">
+                        {lang === "ar" ? "بدء التجربة المجانية" : "Start Free Trial"}
                       </span>
                     </>
                   ) : activeSelectedPlanId ? (
                     <>
-                      <ArrowRight className="w-4 h-4" />
-                      <span>
-                        {lang === "ar" ? "تغيير / ترقية إلى هذه الباقة" : "Switch / Upgrade to this Plan"}
+                      <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                      <span className="truncate">
+                        {lang === "ar" ? "ترقية / تغيير الباقة" : "Switch / Upgrade Plan"}
                       </span>
                     </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4" />
-                      <span>
-                        {lang === "ar" ? "طلب الاشتراك في الباقة" : "Subscribe to Plan"}
+                      <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                      <span className="truncate">
+                        {lang === "ar" ? "الاشتراك في الباقة" : "Subscribe to Plan"}
                       </span>
                     </>
                   )}
