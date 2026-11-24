@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
@@ -44,6 +44,36 @@ function timeAgo(iso: string, lang: string) {
   if (h < 24) return lang === "ar" ? `منذ ${h} ساعة` : `${h}h ago`;
   const d = Math.floor(h / 24);
   return lang === "ar" ? `منذ ${d} يوم` : `${d}d ago`;
+}
+
+function AnimatedCounter({ value, duration = 700 }: { value: number; duration?: number }) {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTime: number | null = null;
+    let animationFrameId: number;
+    const startValue = displayValue;
+    const diff = value - startValue;
+
+    if (diff === 0) return;
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      // easeOutExpo for a punchy smooth counting animation
+      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setDisplayValue(Math.round(startValue + diff * ease));
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [value, duration]);
+
+  return <span>{displayValue.toLocaleString()}</span>;
 }
 
 export default function ClientNotifications() {
@@ -329,68 +359,115 @@ export default function ClientNotifications() {
         </div>
       </div>
 
-      {/* ── Summary KPI Cards ── */}
+      {/* ── Summary KPI Cards with Interactive Animations ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-blue-600 flex flex-col justify-between">
+        {/* Card 1: Total Alerts */}
+        <div
+          onClick={() => setActiveTab("all")}
+          className={`bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-blue-600 flex flex-col justify-between transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-xl hover:shadow-blue-500/15 group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500 select-none ${
+            activeTab === "all"
+              ? "ring-2 ring-blue-500/50 bg-blue-50/30 dark:bg-blue-950/20 shadow-md shadow-blue-500/10"
+              : "hover:border-blue-400/50"
+          }`}
+          title={lang === "ar" ? "اضغط لعرض كافة الإشعارات" : "Click to view all alerts"}
+        >
           <div>
             <div className="flex items-center justify-between gap-2 pb-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
-                <Bell className="w-4 h-4 shrink-0" />
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20 transition-transform duration-300 group-hover:scale-110 shadow-xs">
+                <Bell className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:rotate-12" />
               </div>
               <KpiTrend trend="up" value="+4.8%" />
             </div>
             <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}>
               {lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}
             </span>
-            <p className="text-2xl font-bold mt-1.5 text-foreground tabular-nums">{totalCount}</p>
+            <p className="text-2xl font-bold mt-1.5 text-foreground tabular-nums tracking-tight">
+              <AnimatedCounter value={totalCount} />
+            </p>
           </div>
           <KpiSparkline trend="up" seed="client-notif-total" height={28} />
         </div>
 
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-amber-500 flex flex-col justify-between">
+        {/* Card 2: Unread */}
+        <div
+          onClick={() => setActiveTab("unread")}
+          className={`bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-amber-500 flex flex-col justify-between transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-xl hover:shadow-amber-500/15 group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500 delay-75 select-none ${
+            activeTab === "unread"
+              ? "ring-2 ring-amber-500/50 bg-amber-50/30 dark:bg-amber-950/20 shadow-md shadow-amber-500/10"
+              : "hover:border-amber-400/50"
+          }`}
+          title={lang === "ar" ? "اضغط لعرض الإشعارات غير المقروءة فقط" : "Click to view unread alerts only"}
+        >
           <div>
             <div className="flex items-center justify-between gap-2 pb-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 transition-transform duration-300 group-hover:scale-110 shadow-xs">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                </span>
               </div>
               <KpiTrend trend="down" value="-15.4%" />
             </div>
             <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "غير مقروءة" : "Unread"}>
               {lang === "ar" ? "غير مقروءة" : "Unread"}
             </span>
-            <p className="text-2xl font-bold mt-1.5 text-amber-600 dark:text-amber-400 tabular-nums">{unreadCount}</p>
+            <p className="text-2xl font-bold mt-1.5 text-amber-600 dark:text-amber-400 tabular-nums tracking-tight">
+              <AnimatedCounter value={unreadCount} />
+            </p>
           </div>
           <KpiSparkline trend="down" seed="client-notif-unread" height={28} />
         </div>
 
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-rose-500 flex flex-col justify-between">
+        {/* Card 3: Quota Alerts */}
+        <div
+          onClick={() => setActiveTab("quota")}
+          className={`bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-rose-500 flex flex-col justify-between transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-xl hover:shadow-rose-500/15 group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150 select-none ${
+            activeTab === "quota"
+              ? "ring-2 ring-rose-500/50 bg-rose-50/30 dark:bg-rose-950/20 shadow-md shadow-rose-500/10"
+              : "hover:border-rose-400/50"
+          }`}
+          title={lang === "ar" ? "اضغط لعرض تنبيهات الحصة والاستهلاك" : "Click to view quota alerts"}
+        >
           <div>
             <div className="flex items-center justify-between gap-2 pb-2">
-              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20">
-                <Coins className="w-4 h-4 shrink-0" />
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20 transition-transform duration-300 group-hover:scale-110 shadow-xs">
+                <Coins className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:rotate-12 group-hover:-translate-y-0.5" />
               </div>
               <KpiTrend trend="down" value="-20.0%" />
             </div>
             <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}>
               {lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}
             </span>
-            <p className="text-2xl font-bold mt-1.5 text-rose-600 dark:text-rose-400 tabular-nums">{quotaAlertsCount}</p>
+            <p className="text-2xl font-bold mt-1.5 text-rose-600 dark:text-rose-400 tabular-nums tracking-tight">
+              <AnimatedCounter value={quotaAlertsCount} />
+            </p>
           </div>
           <KpiSparkline trend="down" seed="client-notif-quota" height={28} />
         </div>
 
-        <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-sky-500 flex flex-col justify-between">
+        {/* Card 4: Support Alerts */}
+        <div
+          onClick={() => setActiveTab("support")}
+          className={`bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-sky-500 flex flex-col justify-between transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-xl hover:shadow-sky-500/15 group cursor-pointer animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200 select-none ${
+            activeTab === "support"
+              ? "ring-2 ring-sky-500/50 bg-sky-50/30 dark:bg-sky-950/20 shadow-md shadow-sky-500/10"
+              : "hover:border-sky-400/50"
+          }`}
+          title={lang === "ar" ? "اضغط لعرض إشعارات خدمة العملاء والدعم" : "Click to view support alerts"}
+        >
           <div>
             <div className="flex items-center justify-between gap-2 pb-2">
-              <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-500/20">
-                <LifeBuoy className="w-4 h-4 shrink-0" />
+              <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-500/20 transition-transform duration-500 group-hover:scale-110 shadow-xs">
+                <LifeBuoy className="w-4 h-4 shrink-0 transition-transform duration-500 group-hover:rotate-90" />
               </div>
               <KpiTrend trend="up" value="+3.1%" />
             </div>
             <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "خدمة العملاء" : "Support Alerts"}>
               {lang === "ar" ? "خدمة العملاء" : "Support Alerts"}
             </span>
-            <p className="text-2xl font-bold mt-1.5 text-sky-600 dark:text-sky-400 tabular-nums">{problemCount}</p>
+            <p className="text-2xl font-bold mt-1.5 text-sky-600 dark:text-sky-400 tabular-nums tracking-tight">
+              <AnimatedCounter value={problemCount} />
+            </p>
           </div>
           <KpiSparkline trend="up" seed="client-notif-support" height={28} />
         </div>
