@@ -675,115 +675,123 @@ export default function AdminDashboard() {
       </div>
 
       {/* 2. Platform Stat Cards (Glassy Sky Style) */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
         {/* Total Companies */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Companies</span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+8.4%" />
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
-                  <Building2 className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
+                <Building2 className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+8.4%" />
             </div>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "إجمالي الشركات" : "Total Companies"}
+            </span>
+            {isLoading ? <Skeleton className="h-8 w-20 mt-1.5" /> : (
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
                 {stats?.totalCompanies || 0}
               </div>
             )}
-            <p className="text-[11px] text-slate-400 mt-1.5">Registered organizations</p>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {lang === "ar" ? "المنظمات المسجلة" : "Registered organizations"}
+            </p>
           </div>
           <KpiSparkline trend="up" seed="total-companies" height={32} />
         </div>
 
         {/* Active Companies */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Companies</span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+12.1%" />
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+12.1%" />
             </div>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "الشركات النشطة" : "Active Companies"}
+            </span>
+            {isLoading ? <Skeleton className="h-8 w-20 mt-1.5" /> : (
+              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight mt-1">
                 {stats?.activeCompanies || 0}
               </div>
             )}
-            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1.5 flex items-center gap-1.5">
-               Live & responding
+            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1 flex items-center gap-1.5 truncate">
+              {lang === "ar" ? "تعمل وتستجيب" : "Live & responding"}
             </p>
           </div>
           <KpiSparkline trend="up" seed="active-companies" height={32} />
         </div>
 
         {/* Inactive Companies */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Inactive Companies</span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="down" value="-3.5%" />
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs shrink-0">
-                  <XCircle className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs shrink-0">
+                <XCircle className="w-4 h-4" />
               </div>
+              <KpiTrend trend="down" value="-3.5%" />
             </div>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-extrabold text-slate-600 dark:text-slate-300 tracking-tight">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "الشركات المعطلة" : "Inactive Companies"}
+            </span>
+            {isLoading ? <Skeleton className="h-8 w-20 mt-1.5" /> : (
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-600 dark:text-slate-300 tracking-tight mt-1">
                 {stats?.inactiveCompanies || 0}
               </div>
             )}
-            <p className="text-[11px] text-slate-400 mt-1.5">Paused / setup pending</p>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {lang === "ar" ? "متوقفة / قيد الإعداد" : "Paused / setup pending"}
+            </p>
           </div>
           <KpiSparkline trend="down" seed="inactive-companies" height={32} />
         </div>
 
         {/* Quota Assigned */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Quota Assigned</span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+15.0%" />
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
-                  <Coins className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                <Coins className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+15.0%" />
             </div>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "شركات لها رصيد" : "Quota Assigned"}
+            </span>
+            {isLoading ? <Skeleton className="h-8 w-20 mt-1.5" /> : (
+              <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight mt-1">
                 {(stats as any)?.quotaCompanies || 0}
               </div>
             )}
-            <p className="text-[11px] text-slate-400 mt-1.5">Monthly token limits active</p>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {lang === "ar" ? "حدود الرموز مفعلة" : "Monthly token limits active"}
+            </p>
           </div>
           <KpiSparkline trend="up" seed="quota-companies" height={32} />
         </div>
 
         {/* Total Clients */}
-        <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Clients</span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+9.2%" />
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
+                <Users className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+9.2%" />
             </div>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
-              <div className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "إجمالي العملاء" : "Total Clients"}
+            </span>
+            {isLoading ? <Skeleton className="h-8 w-20 mt-1.5" /> : (
+              <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight mt-1">
                 {stats?.totalClients || 0}
               </div>
             )}
-            <p className="text-[11px] text-slate-400 mt-1.5">Client portal accounts</p>
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {lang === "ar" ? "حسابات بوابة العملاء" : "Client portal accounts"}
+            </p>
           </div>
           <KpiSparkline trend="up" seed="total-clients" height={32} />
         </div>
@@ -804,22 +812,24 @@ export default function AdminDashboard() {
         </div>
 
         {/* Summary cards */}
-        <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="grid gap-3.5 sm:gap-4 md:grid-cols-3 mb-6">
+          <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
             <div>
-              <div className="flex items-center justify-between pb-3 gap-2">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Tokens Used</span>
-                <div className="flex items-center gap-2">
-                  <KpiTrend trend="up" value="+18.4%" />
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
-                    <Zap className="w-4 h-4" />
-                  </div>
+              <div className="flex items-center justify-between pb-2.5 gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                  <Zap className="w-4 h-4" />
                 </div>
+                <KpiTrend trend="up" value="+18.4%" />
               </div>
-              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                {lang === "ar" ? "إجمالي الرموز المستهلكة" : "Total Tokens Used"}
+              </span>
+              {usageLoading ? <Skeleton className="h-8 w-24 mt-1.5" /> : (
                 <>
-                  <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{formatTokens(usage?.totalTokens ?? 0)}</div>
-                  <p className="text-xs text-slate-400 mt-1.5 font-medium">
+                  <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
+                    {formatTokens(usage?.totalTokens ?? 0)}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                     {formatTokens(usage?.totalInputTokens ?? 0)} in · {formatTokens(usage?.totalOutputTokens ?? 0)} out
                   </p>
                 </>
@@ -828,43 +838,49 @@ export default function AdminDashboard() {
             <KpiSparkline trend="up" seed="total-tokens" height={32} />
           </div>
 
-          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
             <div>
-              <div className="flex items-center justify-between pb-3 gap-2">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated Total Cost</span>
-                <div className="flex items-center gap-2">
-                  <KpiTrend trend="up" value="+14.2%" />
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
-                    <Coins className="w-4 h-4" />
-                  </div>
+              <div className="flex items-center justify-between pb-2.5 gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
+                  <Coins className="w-4 h-4" />
                 </div>
+                <KpiTrend trend="up" value="+14.2%" />
               </div>
-              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                {lang === "ar" ? "التكلفة التقديرية الإجمالية" : "Estimated Total Cost"}
+              </span>
+              {usageLoading ? <Skeleton className="h-8 w-24 mt-1.5" /> : (
                 <>
-                  <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">{formatCost(usage?.totalCostUsd ?? 0)}</div>
-                  <p className="text-xs text-slate-400 mt-1.5">Based on official API pricing rates</p>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight mt-1">
+                    {formatCost(usage?.totalCostUsd ?? 0)}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 truncate">
+                    {lang === "ar" ? "حسب تسعير الـ APIs الرسمية" : "Based on official API pricing rates"}
+                  </p>
                 </>
               )}
             </div>
             <KpiSparkline trend="up" seed="total-cost" height={32} />
           </div>
 
-          <div className="admin-glass-card rounded-2xl p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+          <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
             <div>
-              <div className="flex items-center justify-between pb-3 gap-2">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Models in Use</span>
-                <div className="flex items-center gap-2">
-                  <KpiTrend trend="up" value="+5.0%" />
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
-                    <Activity className="w-4 h-4" />
-                  </div>
+              <div className="flex items-center justify-between pb-2.5 gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
+                  <Activity className="w-4 h-4" />
                 </div>
+                <KpiTrend trend="up" value="+5.0%" />
               </div>
-              {usageLoading ? <Skeleton className="h-8 w-24" /> : (
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+                {lang === "ar" ? "النماذج قيد الاستخدام" : "Models in Use"}
+              </span>
+              {usageLoading ? <Skeleton className="h-8 w-24 mt-1.5" /> : (
                 <>
-                  <div className="text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">{usage?.byModel?.length ?? 0}</div>
-                  <p className="text-xs text-slate-400 mt-1.5 truncate">
-                    {usage?.byModel?.map((m) => m.model).join(", ") || "No models used yet"}
+                  <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight mt-1">
+                    {usage?.byModel?.length ?? 0}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 truncate">
+                    {usage?.byModel?.map((m) => m.model).join(", ") || (lang === "ar" ? "لا توجد نماذج مستخدمة بعد" : "No models used yet")}
                   </p>
                 </>
               )}

@@ -2095,27 +2095,25 @@ export default function AdminAiQuota() {
       {/* Overview Stats (Matching Dashboard Style & KPIs) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Card 1: Total Allocated Quota */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "إجمالي الحصص المخصصة" : "Total Allocated Quota"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+9.1%" />
-                <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs shrink-0">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs shrink-0">
+                <TrendingUp className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+9.1%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "إجمالي الحصص المخصصة" : "Total Allocated Quota"}
+            </span>
             {companiesLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-24 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
                   {formatQuota(totalAllocatedQuota)} <span className="text-xs font-normal text-muted-foreground">tokens</span>
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {companiesWithQuota.length} {lang === "ar" ? "شركات بحصص محددة" : "companies with active quota"}
                 </p>
               </>
@@ -2125,27 +2123,25 @@ export default function AdminAiQuota() {
         </div>
 
         {/* Card 2: Total Tokens Used */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? `إجمالي الرموز (${rangeLabel})` : `Total Tokens Used (${rangeLabel})`}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+18.4%" />
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
-                  <Zap className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                <Zap className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+18.4%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? `إجمالي الرموز (${rangeLabel})` : `Total Tokens Used (${rangeLabel})`}
+            </span>
             {usageLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-24 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1">
                   {totalTokensConsumedMonth >= 1_000 ? formatQuota(totalTokensConsumedMonth) : totalTokensConsumedMonth.toLocaleString()}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {formatQuota(usageData?.totalInputTokens ?? 0)} in · {formatQuota(usageData?.totalOutputTokens ?? 0)} out
                 </p>
               </>
@@ -2155,27 +2151,25 @@ export default function AdminAiQuota() {
         </div>
 
         {/* Card 3: Estimated Total Cost */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "التكلفة التقديرية" : "Estimated Total Cost"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+14.2%" />
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
-                  <Coins className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
+                <Coins className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+14.2%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "التكلفة التقديرية" : "Estimated Total Cost"}
+            </span>
             {usageLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-24 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight mt-1">
                   {formatCost(totalCostConsumedMonth, selectedCurrency)}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {lang === "ar" ? "حسب تسعير واجهات API الرسمية" : "Based on official API pricing rates"}
                 </p>
               </>
@@ -2185,27 +2179,25 @@ export default function AdminAiQuota() {
         </div>
 
         {/* Card 4: Models in Use */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "النماذج المستخدمة" : "Models in Use"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+5.0%" />
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
-                  <Activity className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
+                <Activity className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+5.0%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "النماذج المستخدمة" : "Models in Use"}
+            </span>
             {usageLoading ? (
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-24 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight mt-1">
                   {usageData?.byModel?.length ?? 0}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {usageData?.byModel?.map((m) => m.model).join(", ") || (lang === "ar" ? "لا توجد نماذج مستخدمة بعد" : "No models used yet")}
                 </p>
               </>

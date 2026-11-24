@@ -295,27 +295,25 @@ export default function AdminClients() {
       {/* ── Summary Stats (Matching Dashboard Style & KPIs) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Card 1: Total Clients */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-indigo-600 dark:border-l-indigo-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-indigo-600 dark:border-l-indigo-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "إجمالي العملاء" : "Total Clients"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+9.2%" />
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
+                <Users className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+9.2%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "إجمالي العملاء" : "Total Clients"}
+            </span>
             {isLoading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight mt-1">
                   {totalClients}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {lang === "ar" ? "حسابات مسجلة بالبوابة" : "Client portal accounts"}
                 </p>
               </>
@@ -325,27 +323,25 @@ export default function AdminClients() {
         </div>
 
         {/* Card 2: Configured Companies */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-emerald-600 dark:border-l-emerald-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-emerald-600 dark:border-l-emerald-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "حسابات مربوطة بشركات" : "Configured Companies"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+12.5%" />
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
-                  <UserCheck className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+                <UserCheck className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+12.5%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "حسابات مربوطة بشركات" : "Configured Companies"}
+            </span>
             {isLoading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight mt-1">
                   {configuredClients}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {totalClients > 0 ? `${Math.round((configuredClients / totalClients) * 100)}% ` : ""}
                   {lang === "ar" ? "مربوطة بشركات نشطة" : "linked to active companies"}
                 </p>
@@ -356,27 +352,25 @@ export default function AdminClients() {
         </div>
 
         {/* Card 3: Pending Setup */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-amber-600 dark:border-l-amber-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-amber-600 dark:border-l-amber-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "قيد الإعداد (بدون شركة)" : "Pending Setup"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="down" value="-4.1%" />
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
+                <Clock className="w-4 h-4" />
               </div>
+              <KpiTrend trend="down" value="-4.1%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "قيد الإعداد (بدون شركة)" : "Pending Setup"}
+            </span>
             {isLoading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight mt-1">
                   {pendingClients}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {lang === "ar" ? "حسابات بانتظار ربط شركة" : "Awaiting company profile"}
                 </p>
               </>
@@ -386,27 +380,25 @@ export default function AdminClients() {
         </div>
 
         {/* Card 4: Active Logins */}
-        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-blue-600 dark:border-l-blue-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between">
+        <div className="admin-glass-card rounded-2xl p-4 sm:p-5 border-l-4 border-l-blue-600 dark:border-l-blue-400 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between pb-3 gap-2">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {lang === "ar" ? "الأجهزة والجلسات النشطة" : "Active Device Logins"}
-              </span>
-              <div className="flex items-center gap-2">
-                <KpiTrend trend="up" value="+15.0%" />
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
-                  <Laptop className="w-4 h-4" />
-                </div>
+            <div className="flex items-center justify-between pb-2.5 gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
+                <Laptop className="w-4 h-4" />
               </div>
+              <KpiTrend trend="up" value="+15.0%" />
             </div>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
+              {lang === "ar" ? "الأجهزة والجلسات النشطة" : "Active Device Logins"}
+            </span>
             {isLoading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 mt-1.5" />
             ) : (
               <>
-                <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight mt-1">
                   {activeLogins}
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5 font-medium truncate">
+                <p className="text-xs text-slate-400 mt-1 font-medium truncate">
                   {lang === "ar" ? "مسجلة بـ IP و MAC" : "Recorded with IP & MAC"}
                 </p>
               </>
