@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface ApiTokensData {
   hasOwnApiKey: boolean;
@@ -93,24 +94,36 @@ function StatCard({
   icon: Icon,
   label,
   value,
+  numericValue,
+  formatter,
   sub,
   color,
+  delayClass = "",
 }: {
   icon: React.ElementType;
   label: string;
-  value: string;
+  value?: string;
+  numericValue?: number;
+  formatter?: (n: number) => string;
   sub?: string;
   color: string;
+  delayClass?: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-xl p-5 flex items-start gap-4 shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-5 h-5" />
+    <div className={`bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex items-start gap-4 shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out border-l-4 border-l-[#2D5BE3] group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 ${delayClass}`}>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-xs ${color}`}>
+        <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5">{label}</p>
-        <p className="text-2xl font-bold tabular-nums truncate">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>}
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-0.5 truncate block" title={label}>{label}</p>
+        <p className="text-2xl font-bold tabular-nums truncate tracking-tight">
+          {numericValue !== undefined ? (
+            <AnimatedCounter value={numericValue} formatter={formatter} />
+          ) : (
+            value
+          )}
+        </p>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5 truncate" title={sub}>{sub}</p>}
       </div>
     </div>
   );
@@ -319,16 +332,19 @@ export default function ClientApiTokens() {
             <StatCard
               icon={MessageSquare}
               label={t("usage_stat_messages")}
-              value={(data?.totalMessages ?? 0).toLocaleString()}
+              numericValue={data?.totalMessages ?? 0}
               sub={lang === "ar" ? "إجمالي الرسائل" : "all channels"}
               color="bg-blue-500/10 text-blue-400"
+              delayClass="delay-0"
             />
             <StatCard
               icon={Coins}
               label={lang === "ar" ? "إجمالي الرموز" : "Total Tokens"}
-              value={fmt(totalTokens)}
+              numericValue={totalTokens}
+              formatter={fmt}
               sub={`${fmt(data?.estimatedInputTokens ?? 0)} in · ${fmt(data?.estimatedOutputTokens ?? 0)} out`}
               color="bg-violet-500/10 text-violet-400"
+              delayClass="delay-75"
             />
             <StatCard
               icon={KeyRound}
@@ -336,10 +352,13 @@ export default function ClientApiTokens() {
               value={data?.aiModel ?? (lang === "ar" ? "غير محدد" : "—")}
               sub={data?.aiProvider ?? (lang === "ar" ? "لم يتم تحديد مزود" : "provider not set")}
               color="bg-emerald-500/10 text-emerald-400"
+              delayClass="delay-150"
             />
             <StatCard
               icon={DollarSign}
               label={t("usage_stat_cost")}
+              numericValue={hasModel && data && data.estimatedCostUsd > 0 ? data.estimatedCostUsd : undefined}
+              formatter={(val) => val > 0 && val < 0.0001 ? `$${val.toFixed(6)}` : `$${val.toFixed(4)}`}
               value={
                 hasModel
                   ? (data!.estimatedCostUsd > 0 && data!.estimatedCostUsd < 0.0001
@@ -353,6 +372,7 @@ export default function ClientApiTokens() {
                   : (lang === "ar" ? "حسب تسعيرة المزود المباشرة" : "per provider rates")
               }
               color="bg-amber-500/10 text-amber-400"
+              delayClass="delay-200"
             />
           </div>
 

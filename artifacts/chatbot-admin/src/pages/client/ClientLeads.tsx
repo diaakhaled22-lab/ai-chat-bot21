@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { useGetClientChatLogRetention } from "@workspace/api-client-react";
 import { useLanguage } from "@/hooks/use-language";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useToast } from "@/hooks/use-toast";
 
 interface Lead {
@@ -618,65 +619,75 @@ export default function ClientLeads() {
         </div>
       </div>
 
-      {/* ── Clinic KPIs Bar (Shown in Clinic Mode) ── */}
+      {/* ── Clinic KPIs Bar (Shown in Clinic Mode) with animations ── */}
       {crmMode === "clinic" && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 shrink-0">
-          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm flex items-center justify-between">
+          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm hover:shadow-xl hover:shadow-teal-500/15 hover:-translate-y-1.5 transition-all duration-300 ease-out flex items-center justify-between group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 border-l-4 border-l-teal-500">
             <div>
               <p className="text-[11px] font-medium text-muted-foreground">
                 {lang === "ar" ? "إجمالي الحجوزات" : "Total Bookings"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5">{stats.total}</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 tracking-tight tabular-nums">
+                <AnimatedCounter value={stats.total} />
+              </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-xs">
               <Stethoscope className="w-5 h-5" />
             </div>
           </Card>
 
-          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm flex items-center justify-between">
+          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm hover:shadow-xl hover:shadow-amber-500/15 hover:-translate-y-1.5 transition-all duration-300 ease-out flex items-center justify-between group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-75 border-l-4 border-l-amber-500">
             <div>
               <p className="text-[11px] font-medium text-amber-600">
                 {lang === "ar" ? "قيد الانتظار" : "Pending"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-amber-600 mt-0.5">{stats.pending}</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-amber-600 mt-0.5 tracking-tight tabular-nums">
+                <AnimatedCounter value={stats.pending} />
+              </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-xs">
               <Clock3 className="w-5 h-5" />
             </div>
           </Card>
 
-          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm flex items-center justify-between">
+          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm hover:shadow-xl hover:shadow-emerald-500/15 hover:-translate-y-1.5 transition-all duration-300 ease-out flex items-center justify-between group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150 border-l-4 border-l-emerald-500">
             <div>
               <p className="text-[11px] font-medium text-emerald-600">
                 {lang === "ar" ? "حجوزات مؤكدة" : "Confirmed"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5">{stats.confirmed}</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5 tracking-tight tabular-nums">
+                <AnimatedCounter value={stats.confirmed} />
+              </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-xs">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </Card>
 
-          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm flex items-center justify-between">
+          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm hover:shadow-xl hover:shadow-blue-500/15 hover:-translate-y-1.5 transition-all duration-300 ease-out flex items-center justify-between group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200 border-l-4 border-l-blue-500">
             <div>
               <p className="text-[11px] font-medium text-blue-600">
                 {lang === "ar" ? "تم الكشف" : "Completed"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-blue-600 mt-0.5">{stats.completed}</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-blue-600 mt-0.5 tracking-tight tabular-nums">
+                <AnimatedCounter value={stats.completed} />
+              </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-xs">
               <UserCheck className="w-5 h-5" />
             </div>
           </Card>
 
-          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm flex items-center justify-between col-span-2 sm:col-span-1">
+          <Card className="p-3 sm:p-4 rounded-2xl border bg-card shadow-sm hover:shadow-xl hover:shadow-rose-500/15 hover:-translate-y-1.5 transition-all duration-300 ease-out flex items-center justify-between col-span-2 sm:col-span-1 group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300 border-l-4 border-l-rose-500">
             <div>
               <p className="text-[11px] font-medium text-rose-600">
                 {lang === "ar" ? "ملغية" : "Cancelled"}
               </p>
-              <h3 className="text-xl sm:text-2xl font-black text-rose-600 mt-0.5">{stats.cancelled}</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-rose-600 mt-0.5 tracking-tight tabular-nums">
+                <AnimatedCounter value={stats.cancelled} />
+              </h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-xs">
               <XCircle className="w-5 h-5" />
             </div>
           </Card>

@@ -5,6 +5,7 @@ import { customFetch } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import {
   Bell,
   CheckCheck,
@@ -44,36 +45,6 @@ function timeAgo(iso: string, lang: string) {
   if (h < 24) return lang === "ar" ? `منذ ${h} ساعة` : `${h}h ago`;
   const d = Math.floor(h / 24);
   return lang === "ar" ? `منذ ${d} يوم` : `${d}d ago`;
-}
-
-function AnimatedCounter({ value, duration = 700 }: { value: number; duration?: number }) {
-  const [displayValue, setDisplayValue] = useState(0);
-
-  useEffect(() => {
-    let startTime: number | null = null;
-    let animationFrameId: number;
-    const startValue = displayValue;
-    const diff = value - startValue;
-
-    if (diff === 0) return;
-
-    const step = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      // easeOutExpo for a punchy smooth counting animation
-      const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      setDisplayValue(Math.round(startValue + diff * ease));
-
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(step);
-      }
-    };
-
-    animationFrameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [value, duration]);
-
-  return <span>{displayValue.toLocaleString()}</span>;
 }
 
 export default function ClientNotifications() {

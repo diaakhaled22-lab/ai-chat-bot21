@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
@@ -72,28 +73,34 @@ function StatCard({
   icon: Icon,
   label,
   value,
+  numericValue,
+  formatter,
   sub,
   color,
   trend = "up",
   trendValue,
   seed,
+  delayClass = "",
 }: {
   icon: React.ElementType;
   label: string;
-  value: string;
+  value?: string;
+  numericValue?: number;
+  formatter?: (n: number) => string;
   sub?: string;
   color: string;
   trend?: "up" | "down";
   trendValue?: string | number;
   seed?: string;
+  delayClass?: string;
 }) {
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 transition-all overflow-hidden group border-l-4 border-l-[#2D5BE3] flex flex-col justify-between">
+    <Card className={`bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out overflow-hidden group border-l-4 border-l-[#2D5BE3] flex flex-col justify-between animate-in fade-in slide-in-from-bottom-2 duration-500 select-none ${delayClass}`}>
       <div>
         <CardHeader className="space-y-0 pb-2 px-5 pt-5">
           <div className="flex items-center justify-between pb-2.5 gap-2">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-inner border transition-transform group-hover:scale-105 ${color || "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"}`}>
-              <Icon className="w-4.5 h-4.5" />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-inner border transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 ${color || "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"}`}>
+              <Icon className="w-4.5 h-4.5 transition-transform duration-300 group-hover:scale-110" />
             </div>
             <KpiTrend trend={trend} value={trendValue} />
           </div>
@@ -103,7 +110,11 @@ function StatCard({
         </CardHeader>
         <CardContent className="px-5 pb-2">
           <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate min-h-[2.25rem]">
-            {value || "\u00A0"}
+            {numericValue !== undefined ? (
+              <AnimatedCounter value={numericValue} formatter={formatter} />
+            ) : (
+              value || "\u00A0"
+            )}
           </div>
           {sub ? (
             <p className="text-xs text-muted-foreground mt-1.5 truncate font-medium" title={sub}>{sub}</p>
@@ -530,22 +541,25 @@ export default function ClientDashboard() {
             <StatCard
               icon={MessageSquare}
               label={lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}
-              value={(data?.totalMessages ?? 0).toLocaleString()}
+              numericValue={data?.totalMessages ?? 0}
               sub={lang === "ar" ? "إجمالي السجلات" : "all time"}
               color="bg-blue-500/10 text-blue-400"
               trend="up"
               trendValue="+14.2%"
               seed="client-messages"
+              delayClass="delay-0"
             />
             <StatCard
               icon={Coins}
               label={lang === "ar" ? "إجمالي الرموز" : "Total Tokens"}
-              value={fmt(totalTokens)}
+              numericValue={totalTokens}
+              formatter={fmt}
               sub={`${fmt(data?.estimatedInputTokens ?? 0)} in · ${fmt(data?.estimatedOutputTokens ?? 0)} out`}
               color="bg-violet-500/10 text-violet-400"
               trend="up"
               trendValue="+21.5%"
               seed="client-tokens"
+              delayClass="delay-75"
             />
             <StatCard
               icon={filterMode === "quota" ? Cpu : KeyRound}
@@ -568,17 +582,25 @@ export default function ClientDashboard() {
               trend="up"
               trendValue="+4.0%"
               seed="client-provider"
+              delayClass="delay-150"
             />
             <StatCard
               icon={filterMode === "quota" ? Sparkles : DollarSign}
               trend={filterMode === "quota" ? "down" : "up"}
               trendValue={filterMode === "quota" ? "-8.4%" : "+12.0%"}
               seed="client-quota"
+              delayClass="delay-200"
               label={
                 filterMode === "quota"
                   ? (lang === "ar" ? "الرصيد المتبقي من الحصة" : "Remaining Quota")
                   : (lang === "ar" ? "التكلفة التقديرية" : "Est. Cost")
               }
+              numericValue={
+                filterMode === "quota" && quota && quota > 0
+                  ? Math.max(quota - totalTokens, 0)
+                  : undefined
+              }
+              formatter={fmt}
               value={
                 filterMode === "quota"
                   ? (quota && quota > 0 ? fmt(Math.max(quota - totalTokens, 0)) : (lang === "ar" ? "غير محدد" : "None"))

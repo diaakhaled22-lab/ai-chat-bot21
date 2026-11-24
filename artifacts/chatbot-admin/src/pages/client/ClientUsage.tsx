@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { KpiTrend, KpiSparkline } from "@/components/ui/kpi-sparkline";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 import {
   PieChart,
   Pie,
@@ -101,33 +102,45 @@ function StatCard({
   icon: Icon,
   label,
   value,
+  numericValue,
+  formatter,
   sub,
   color,
   trend = "up",
   trendValue,
   seed,
+  delayClass = "",
 }: {
   icon: React.ElementType;
   label: string;
-  value: string;
+  value?: string;
+  numericValue?: number;
+  formatter?: (n: number) => string;
   sub?: string;
   color: string;
   trend?: "up" | "down";
   trendValue?: string | number;
   seed?: string;
+  delayClass?: string;
 }) {
   return (
-    <div className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 transition-all border-l-4 border-l-[#2D5BE3]">
+    <div className={`bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out border-l-4 border-l-[#2D5BE3] group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 ${delayClass}`}>
       <div>
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border ${color}`}>
-            <Icon className="w-6 h-6" />
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner border transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 ${color}`}>
+            <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
           </div>
           <KpiTrend trend={trend} value={trendValue} />
         </div>
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1 truncate block" title={label}>{label}</p>
-          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">{value}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">
+            {numericValue !== undefined ? (
+              <AnimatedCounter value={numericValue} formatter={formatter} />
+            ) : (
+              value
+            )}
+          </p>
           {sub && <p className="text-xs text-muted-foreground mt-1 truncate font-medium" title={sub}>{sub}</p>}
         </div>
       </div>
@@ -422,22 +435,25 @@ export default function ClientUsage() {
             <StatCard
               icon={MessageSquare}
               label={t("usage_stat_messages")}
-              value={(data?.totalMessages ?? 0).toLocaleString()}
+              numericValue={data?.totalMessages ?? 0}
               sub={lang === "ar" ? "رسائل عبر الحصة المخصصة" : "messages under quota"}
               color="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
               trend="up"
               trendValue="+12.4%"
               seed="usage-messages"
+              delayClass="delay-0"
             />
             <StatCard
               icon={Coins}
               label={lang === "ar" ? "إجمالي الرموز" : "Total Tokens"}
-              value={fmt(totalTokens)}
+              numericValue={totalTokens}
+              formatter={fmt}
               sub={`${fmt(data?.estimatedInputTokens ?? 0)} ${lang === "ar" ? "مدخل" : "in"} · ${fmt(data?.estimatedOutputTokens ?? 0)} ${lang === "ar" ? "مخرج" : "out"}`}
               color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
               trend="up"
               trendValue="+18.9%"
               seed="usage-tokens"
+              delayClass="delay-75"
             />
             <StatCard
               icon={Cpu}
@@ -448,14 +464,18 @@ export default function ClientUsage() {
               trend="up"
               trendValue="+3.5%"
               seed="usage-provider"
+              delayClass="delay-150"
             />
             <StatCard
               icon={Sparkles}
               label={lang === "ar" ? "الرصيد المتبقي من الحصة" : "Remaining Quota"}
+              numericValue={remainingTokens !== null ? remainingTokens : undefined}
+              formatter={fmt}
               value={remainingTokens !== null ? fmt(remainingTokens) : (lang === "ar" ? "غير محدد" : "None")}
               trend={remainingTokens !== null && remainingTokens < (quota ?? 1) * 0.2 ? "down" : "up"}
               trendValue={remainingTokens !== null && remainingTokens < (quota ?? 1) * 0.2 ? "-15.2%" : "+5.0%"}
               seed="usage-remaining"
+              delayClass="delay-200"
               sub={
                 quota !== null && quota > 0
                   ? (lang === "ar"

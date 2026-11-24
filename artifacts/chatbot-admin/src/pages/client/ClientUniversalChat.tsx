@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 function cleanDisplayMessage(text: string | null | undefined): string {
   if (!text) return "";
@@ -567,42 +568,44 @@ export default function ClientUniversalChat() {
         </div>
       </Card>
 
-      {/* KPI Metrics Row */}
+      {/* KPI Metrics Row with animations */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 shrink-0">
         {/* Total Conversations */}
         <Card 
           onClick={() => setChannelFilter("all")}
-          className={`p-4 border transition-all cursor-pointer border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20" : "border-[#DCE7FF] bg-card/60"}`}
+          className={`p-4 border transition-all duration-300 ease-out cursor-pointer border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 ${channelFilter === "all" ? "border-primary/50 bg-primary/5 ring-2 ring-primary/30" : "border-[#DCE7FF] bg-card/60"}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "إجمالي المحادثات" : "Total Conversations"}
             </span>
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
               <MessageSquare className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight tabular-nums">{kpis.totalSessions}</span>
+            <span className="text-2xl font-bold tracking-tight tabular-nums">
+              <AnimatedCounter value={kpis.totalSessions} />
+            </span>
             <span className="text-[11px] text-muted-foreground">
-              {kpis.todaySessions} {lang === "ar" ? "اليوم" : "today"}
+              <AnimatedCounter value={kpis.todaySessions} /> {lang === "ar" ? "اليوم" : "today"}
             </span>
           </div>
         </Card>
 
         {/* Unread Messages */}
-        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all duration-300 ease-out border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-75">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "رسائل غير مقروءة" : "Unread Messages"}
             </span>
-            <div className={`p-2 rounded-lg ${kpis.unreadCount > 0 ? "bg-blue-500/20 text-blue-500" : "bg-muted text-muted-foreground"}`}>
+            <div className={`p-2 rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 ${kpis.unreadCount > 0 ? "bg-blue-500/20 text-blue-500" : "bg-muted text-muted-foreground"}`}>
               <Inbox className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className={`text-2xl font-bold tracking-tight tabular-nums ${kpis.unreadCount > 0 ? "text-blue-500" : ""}`}>
-              {kpis.unreadCount}
+              <AnimatedCounter value={kpis.unreadCount} />
             </span>
             <span className="text-[11px] text-muted-foreground">
               {lang === "ar" ? "رسالة جديدة" : "new messages"}
@@ -611,18 +614,18 @@ export default function ClientUniversalChat() {
         </Card>
 
         {/* AI Automation Rate */}
-        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+        <Card className="p-4 border border-[#DCE7FF] bg-card/60 transition-all duration-300 ease-out border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               {lang === "ar" ? "أتمتة الذكاء الاصطناعي" : "AI Resolution Rate"}
             </span>
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
               <Sparkles className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-bold tracking-tight tabular-nums text-emerald-500">
-              {kpis.aiAutomatedRate}%
+              <AnimatedCounter value={kpis.aiAutomatedRate} suffix="%" />
             </span>
             <span className="text-[11px] text-muted-foreground">
               {lang === "ar" ? "مكتملة آلياً" : "automated"}

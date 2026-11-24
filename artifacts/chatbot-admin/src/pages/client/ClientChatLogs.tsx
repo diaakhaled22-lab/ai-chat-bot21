@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 function cleanDisplayMessage(text: string | null | undefined): string {
   if (!text) return "";
@@ -385,48 +386,66 @@ export default function ClientChatLogs() {
         </div>
       </Card>
 
-      {/* Mini Analytics */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
-        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+      {/* Mini Analytics with rich animations */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out group select-none animate-in fade-in slide-in-from-bottom-2 duration-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "إجمالي الرسائل" : "Total Messages"}</CardTitle>
-            <MessageSquare className="h-4 w-4 text-primary" />
+            <div className="p-2 rounded-lg bg-blue-500/10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <MessageSquare className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{totalMessages}</div>
+            <div className="text-3xl font-bold tracking-tight tabular-nums">
+              <AnimatedCounter value={totalMessages} />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-75">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "الجلسات النشطة (Sessions)" : "Active Sessions"}</CardTitle>
-            <User className="h-4 w-4 text-primary" />
+            <div className="p-2 rounded-lg bg-blue-500/10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <User className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{uniqueSessions}</div>
+            <div className="text-3xl font-bold tracking-tight tabular-nums">
+              <AnimatedCounter value={uniqueSessions} />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "غير مقروءة" : "Unread"}</CardTitle>
-            <MessageCircle className="h-4 w-4 text-green-500" />
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <MessageCircle className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-500">{unreadSessionsCount}</div>
+            <div className="text-3xl font-bold text-emerald-500 tracking-tight tabular-nums">
+              <AnimatedCounter value={unreadSessionsCount} />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "مقروءة" : "Read"}</CardTitle>
-            <MessageSquare className="h-4 w-4 text-orange-500" />
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <MessageSquare className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-500">{readSessionsCount}</div>
+            <div className="text-3xl font-bold text-amber-500 tracking-tight tabular-nums">
+              <AnimatedCounter value={readSessionsCount} />
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] shadow-md shadow-[#2D5BE3]/15">
+        <Card className="bg-card border-[#DCE7FF] dark:border-slate-800 border-l-4 border-l-[#2D5BE3] rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-xl hover:shadow-[#2D5BE3]/25 hover:-translate-y-1.5 transition-all duration-300 ease-out group select-none animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium truncate pr-2">{lang === "ar" ? "القناة الأكثر نشاطاً" : "Top Channel"}</CardTitle>
-            <Globe className="h-4 w-4 text-primary" />
+            <div className="p-2 rounded-lg bg-blue-500/10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+              <Globe className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold capitalize">{topChannel}</div>
