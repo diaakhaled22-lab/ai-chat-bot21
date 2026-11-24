@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Request, Response, NextFunction } from "express";
-import { db, adminConfigTable } from "@workspace/db";
+import { db, adminConfigTable, decryptAdminConfigValue } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -37,8 +37,9 @@ export async function getMetaAppSecret(): Promise<string | null> {
       .where(eq(adminConfigTable.key, "meta_app_secret"))
       .limit(1);
 
+    const dbVal = row?.value ? decryptAdminConfigValue("meta_app_secret", row.value).trim() : "";
     const val =
-      row?.value?.trim() ||
+      dbVal ||
       process.env.META_APP_SECRET?.trim() ||
       process.env.WHATSAPP_APP_SECRET?.trim() ||
       process.env.MESSENGER_APP_SECRET?.trim() ||

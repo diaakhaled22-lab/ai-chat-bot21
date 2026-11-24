@@ -1,5 +1,4 @@
-import { db, adminConfigTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { getAdminConfigMap } from "./adminConfig";
 import type OpenAI from "openai";
 import { logger } from "./logger";
 
@@ -754,29 +753,17 @@ async function fetchJson(url: string, init?: RequestInit): Promise<any> {
 }
 
 async function getProviderKeys(): Promise<Record<AiProviderId, string>> {
-  const rows = await db
-    .select()
-    .from(adminConfigTable)
-    .catch(() => [] as any[]);
-  const config = new Map(
-    rows
-      .filter((row) => row.key.startsWith("ai_test_key_"))
-      .map((row) => [row.key, row.value ?? ""]),
-  );
+  const config = await getAdminConfigMap([
+    "ai_test_key_openai",
+    "ai_test_key_anthropic",
+    "ai_test_key_google",
+    "ai_test_key_openrouter",
+    "support_ai_api_key",
+    "support_ai_provider",
+  ]).catch(() => new Map<string, string>());
 
-  // Support AI keys and environment keys are fallbacks for model discovery only.
-  const supportRows = await db
-    .select()
-    .from(adminConfigTable)
-    .where(eq(adminConfigTable.key, "support_ai_api_key"))
-    .catch(() => [] as any[]);
-  const supportKey = supportRows[0]?.value ?? "";
-  const supportProviderRows = await db
-    .select()
-    .from(adminConfigTable)
-    .where(eq(adminConfigTable.key, "support_ai_provider"))
-    .catch(() => [] as any[]);
-  const supportProvider = supportProviderRows[0]?.value as AiProviderId | undefined;
+  const supportKey = config.get("support_ai_api_key") ?? "";
+  const supportProvider = (config.get("support_ai_provider") || undefined) as AiProviderId | undefined;
 
   return {
     openai: config.get("ai_test_key_openai") || (supportProvider === "openai" ? supportKey : "") || process.env.OPENAI_API_KEY || "",

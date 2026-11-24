@@ -510,7 +510,12 @@ router.post(["/telegram/webhook", "/webhook/telegram"], webhookLimiter, async (r
 
 function getAppBaseUrl(req: import("express").Request): string {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const canonicalHost =
+    process.env.PUBLIC_HOST?.trim() ||
+    process.env.RAILWAY_PUBLIC_DOMAIN?.trim() ||
+    process.env.RENDER_EXTERNAL_HOSTNAME?.trim() ||
+    process.env.REPLIT_DEV_DOMAIN?.trim();
+  if (canonicalHost) return `https://${canonicalHost.replace(/^https?:\/\//i, "").replace(/\/$/, "")}`;
   const proto = req.protocol || "https";
   const host = req.get("host") || "localhost";
   return `${proto}://${host}`;

@@ -1,4 +1,5 @@
 import { db, adminConfigTable, companiesTable, chatLogsTable } from "@workspace/db";
+import { getAdminConfigMap } from "./adminConfig";
 import { eq, sql, and, gte, lte, or } from "drizzle-orm";
 import { logger } from "./logger";
 import { notifyQuota75PercentConsumed, notifyQuotaAmberLowBalance, notifyQuotaRedDepleted } from "./companyNotification";
@@ -17,15 +18,12 @@ export async function getSupportAiSettings(): Promise<{
   model: string;
 } | null> {
   try {
-    const rows = await db.select().from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
-    
-    const cfg = Object.fromEntries(rows.map(r => [r.key, r.value ?? ""]));
-    const key = cfg["support_ai_api_key"]?.trim();
+    const cfgMap = await getAdminConfigMap(["support_ai_api_key", "support_ai_provider", "support_ai_model"]);
+    const key = (cfgMap.get("support_ai_api_key") ?? "").trim();
     if (!key) return null;
 
-    const provider = (cfg["support_ai_provider"] as any) || "openai";
-    const rawModel = cfg["support_ai_model"] || "gpt-4o-mini";
+    const provider = (cfgMap.get("support_ai_provider") as any) || "openai";
+    const rawModel = cfgMap.get("support_ai_model") || "gpt-4o-mini";
     const model = provider === "google"
       ? sanitizeGoogleModel(rawModel)
       : provider === "openrouter"
@@ -91,10 +89,8 @@ export async function getQuotaAiSettings(): Promise<{
   model: string;
 } | null> {
   try {
-    const rows = await db.select().from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
-    
-    const cfg = Object.fromEntries(rows.map(r => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["quota_ai_api_key", "quota_ai_provider", "quota_ai_model", "support_ai_api_key"]);
+    const cfg = Object.fromEntries(cfgMap.entries());
     
     // Model and Provider strictly from Quota AI settings:
     const provider = (cfg["quota_ai_provider"] as any) || "openai";

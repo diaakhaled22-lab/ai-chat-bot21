@@ -1,4 +1,4 @@
-import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, usersTable, pool } from "@workspace/db";
+import { db, companiesTable, emailLogsTable, adminConfigTable, notificationsTable, usersTable, pool, decryptAdminConfigValue } from "@workspace/db";
 import { eq, inArray, and, sql } from "drizzle-orm";
 import { logger } from "./logger";
 import { getEmailConfig, isSmtpConfigured, buildTransporter } from "./email";
@@ -59,7 +59,9 @@ export async function getResendConfig(companyResendKey?: string | null): Promise
         .from(adminConfigTable)
         .where(inArray(adminConfigTable.key, ["resend_api_key", "resend_from_email"]));
       for (const row of rows) {
-        if (!apiKey && row.key === "resend_api_key" && row.value) apiKey = row.value.trim();
+        if (!apiKey && row.key === "resend_api_key" && row.value) {
+          apiKey = decryptAdminConfigValue("resend_api_key", row.value).trim();
+        }
         if (!fromEmail && row.key === "resend_from_email" && row.value) fromEmail = row.value.trim();
       }
     } catch (err) {
@@ -96,6 +98,109 @@ export async function getResendConfig(companyResendKey?: string | null): Promise
   }
 
   return { apiKey, fromEmail };
+}
+
+export interface ResendKeyVerificationResult {
+  valid: boolean;
+  statusCode?: number;
+  error?: string;
+}
+
+/**
+ * Strictly verifies a Resend API key against Resend's API (J3 fix).
+ * Fails closed on network errors, timeouts, 401/403, or unexpected responses;
+ * never trusts key format (`re_...`) alone.
+ */
+export async function verifyResendApiKeyLive(
+  apiKey: string,
+  fetchFn: typeof fetch = fetch
+): Promise<ResendKeyVerificationResult> {
+  const cleanKey = typeof apiKey === "string" ? apiKey.trim() : "";
+  if (!cleanKey.startsWith("re_") || cleanKey.length < 10) {
+    return {
+      valid: false,
+      statusCode: 400,
+      error: "مفتاح Resend غير صالح. يجب أن يبدأ المفتاح بـ re_.",
+    };
+  }
+
+  try {
+    const emailCheck = await fetchFn("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${cleanKey}`,
+        "Content-Type": "application/json",
+        "User-Agent": "BotManager/1.0",
+      },
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (emailCheck.ok) {
+      return { valid: true };
+    }
+
+    if (emailCheck.status === 422) {
+      const text = await emailCheck.text();
+      try {
+        const parsed = JSON.parse(text) as { name?: string; message?: string };
+        if (parsed && parsed.name !== "invalid_api_key" && (parsed.name || parsed.message)) {
+          return { valid: true };
+        }
+      } catch {
+        // Non-JSON 422 response cannot be trusted as Resend Bearer auth pass
+      }
+      return {
+        valid: false,
+        statusCode: 502,
+        error: "استجابة غير متوقعة أثناء التحقق من مفتاح Resend.",
+      };
+    }
+
+    if (emailCheck.status === 401 || emailCheck.status === 403) {
+      let msg = "مفتاح Resend غير صالح. يرجى التأكد من نسخه بدقة من لوحة تحكم Resend.";
+      try {
+        const parsed = JSON.parse(await emailCheck.text()) as { message?: string };
+        if (parsed?.message) msg = parsed.message;
+      } catch {}
+      return { valid: false, statusCode: 400, error: msg };
+    }
+
+    // Fallback live probe for Full Access keys when POST /emails returns an unexpected status
+    const domainsCheck = await fetchFn("https://api.resend.com/domains", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${cleanKey}`,
+        "User-Agent": "BotManager/1.0",
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (domainsCheck.ok) {
+      return { valid: true };
+    }
+
+    if (domainsCheck.status === 401 || domainsCheck.status === 403) {
+      return {
+        valid: false,
+        statusCode: 400,
+        error: "مفتاح Resend غير صالح أو تم إلغاؤه.",
+      };
+    }
+
+    return {
+      valid: false,
+      statusCode: 502,
+      error: "تعذر التحقق من صحة مفتاح Resend لدى الخادم المزود.",
+    };
+  } catch (err) {
+    logger.warn({ err }, "Resend API key verification failed due to network/upstream error");
+    return {
+      valid: false,
+      statusCode: 502,
+      error: "تعذر الاتصال بخوادم Resend للتحقق من المفتاح حالياً. لم يتم اعتماد المفتاح.",
+    };
+  }
 }
 
 export interface NotificationDetails {

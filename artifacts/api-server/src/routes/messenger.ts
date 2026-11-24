@@ -7,7 +7,7 @@ import {
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
 import { Router } from "express";
-import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
+import { db, companiesTable, chatLogsTable, leadsTable, decryptAdminConfigValue, adminConfigTable } from "@workspace/db";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
@@ -189,7 +189,8 @@ router.get(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, async (
       .from(adminConfigTable)
       .where(eq(adminConfigTable.key, "messenger_verify_token"));
 
-    if (!row?.value || verifyToken !== row.value) {
+    const expectedToken = decryptAdminConfigValue("messenger_verify_token", row?.value);
+    if (!expectedToken || verifyToken !== expectedToken) {
       res.sendStatus(403);
       return;
     }
@@ -514,8 +515,9 @@ router.get(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], async (
       .from(adminConfigTable)
       .where(eq(adminConfigTable.key, "messenger_verify_token"));
 
+    const globalToken = decryptAdminConfigValue("messenger_verify_token", globalRow?.value);
     const isTokenValid = (company?.messengerApiKey && verifyToken === company.messengerApiKey) ||
-      (globalRow?.value && verifyToken === globalRow.value);
+      (globalToken && verifyToken === globalToken);
 
     if (!company || !isTokenValid) {
       res.sendStatus(403);

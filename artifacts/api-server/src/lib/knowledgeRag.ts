@@ -1,4 +1,4 @@
-import { db, pool, companyKnowledgeFilesTable, companyKnowledgeChunksTable, adminConfigTable, companiesTable } from "@workspace/db";
+import { db, pool, companyKnowledgeFilesTable, companyKnowledgeChunksTable, companiesTable, decryptAdminConfigValue, adminConfigTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import OpenAI from "openai";
@@ -145,7 +145,9 @@ export async function resolveEmbeddingCredentials(companyId: number): Promise<{
       .select()
       .from(adminConfigTable)
       .where(inArray(adminConfigTable.key, ["support_ai_api_key", "support_ai_provider", "malfunctions_ai_api_key", "malfunctions_ai_provider"]));
-    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+    const cfg = Object.fromEntries(
+      configRows.map((r) => [r.key, decryptAdminConfigValue(r.key, r.value)])
+    );
 
     if (cfg["support_ai_api_key"] && (cfg["support_ai_provider"] === "openai" || cfg["support_ai_provider"] === "google")) {
       return { provider: cfg["support_ai_provider"] as "openai" | "google", apiKey: cfg["support_ai_api_key"].trim() };

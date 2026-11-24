@@ -1,6 +1,7 @@
 import dns from "node:dns";
 import nodemailer from "nodemailer";
-import { db, adminConfigTable, notificationsTable, usersTable } from "@workspace/db";
+import { db, notificationsTable, usersTable } from "@workspace/db";
+import { getAdminConfigMap } from "./adminConfig";
 import { logger } from "./logger";
 import { escapeHtml } from "./security";
 import { eq } from "drizzle-orm";
@@ -25,15 +26,14 @@ const EMAIL_KEYS = [
 export type SmtpEncryption = "tls" | "ssl" | "none";
 
 export async function getEmailConfig() {
-  const rows = await db.select().from(adminConfigTable);
-  const map = new Map(rows.map((r) => [r.key, r.value ?? ""]));
+  const map = await getAdminConfigMap([...EMAIL_KEYS]);
   return {
     recipientEmail: map.get("notif_recipient_email") ?? "",
     smtpHost: map.get("notif_smtp_host") ?? "",
-    smtpPort: Number(map.get("notif_smtp_port") ?? "587"),
+    smtpPort: Number(map.get("notif_smtp_port") || "587"),
     smtpUser: map.get("notif_smtp_user") ?? "",
     smtpPass: map.get("notif_smtp_pass") ?? "",
-    smtpEncryption: (map.get("notif_smtp_encryption") ?? "tls") as SmtpEncryption,
+    smtpEncryption: (map.get("notif_smtp_encryption") || "tls") as SmtpEncryption,
   };
 }
 
@@ -95,40 +95,66 @@ export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>
   } as any);
 }
 
-export async function dispatchAdminNotificationEmail({
-  subject,
-  html,
-  replyTo,
-  headers,
-  to,
-}: {
+/**
+ * Resolves the target recipient safely (J4 fix):
+ * - When `to` is explicitly passed (e.g. `{ to: clientEmail }` for password reset or client alerts),
+ *   NEVER fall back to admin emails if `to` is empty/missing/invalid — reject instead.
+ * - Only fall back to configured admin recipient / SMTP user / first admin user when `to` is omitted.
+ */
+export async function resolveNotificationRecipient(
+  options: { to?: string },
+  cfg: { recipientEmail?: string; smtpUser?: string },
+  fetchFirstAdminEmail: () => Promise<string | null>
+): Promise<string | null> {
+  if (Object.prototype.hasOwnProperty.call(options, "to")) {
+    const explicitTo = typeof options.to === "string" ? options.to.trim() : "";
+    if (!explicitTo || !explicitTo.includes("@")) {
+      return null;
+    }
+    return explicitTo;
+  }
+
+  let recipient = (cfg.recipientEmail || cfg.smtpUser || "").trim();
+  if (!recipient) {
+    try {
+      const adminEmail = await fetchFirstAdminEmail();
+      if (adminEmail && adminEmail.trim()) {
+        recipient = adminEmail.trim();
+      }
+    } catch {}
+  }
+
+  return recipient || null;
+}
+
+export async function dispatchAdminNotificationEmail(options: {
   subject: string;
   html: string;
   replyTo?: string;
   headers?: Record<string, string>;
   to?: string;
 }): Promise<boolean> {
+  const { subject, html, replyTo, headers } = options;
   try {
     const { getResendConfig } = await import("./companyNotification");
     const { apiKey: resendApiKey, fromEmail } = await getResendConfig();
     const cfg = await getEmailConfig();
 
-    let recipient = (to || cfg.recipientEmail || cfg.smtpUser || "").trim();
-    if (!recipient) {
-      try {
-        const adminRows = await db
-          .select({ email: usersTable.email })
-          .from(usersTable)
-          .where(eq(usersTable.role, "admin"))
-          .limit(1);
-        if (adminRows.length > 0 && adminRows[0].email) {
-          recipient = adminRows[0].email.trim();
-        }
-      } catch {}
-    }
+    const recipient = await resolveNotificationRecipient(options, cfg, async () => {
+      const adminRows = await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.role, "admin"))
+        .limit(1);
+      return adminRows[0]?.email ?? null;
+    });
 
     if (!recipient) {
-      logger.warn({ subject }, "Cannot send admin email: no recipient email configured in admin settings");
+      if (Object.prototype.hasOwnProperty.call(options, "to")) {
+        logger.warn({ subject }, "Refusing to send targeted email: explicit 'to' recipient is empty or invalid");
+      } else {
+        logger.warn({ subject }, "Cannot send admin email: no recipient email configured in admin settings");
+      }
       return false;
     }
 
@@ -372,6 +398,10 @@ export async function sendPlanRequestAdminNotification(input: {
 }
 
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
+  const cleanTo = typeof to === "string" ? to.trim() : "";
+  if (!cleanTo || !cleanTo.includes("@")) {
+    throw new Error("Invalid password reset recipient email");
+  }
   try {
     const html = `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
@@ -382,14 +412,14 @@ export async function sendPasswordResetEmail(to: string, resetLink: string) {
       </div>
     `;
     const sent = await dispatchAdminNotificationEmail({
-      to,
+      to: cleanTo,
       subject: "Bot Manager — Password Reset",
       html,
     });
     if (!sent) {
       throw new Error("لم يتم تهيئة خدمة البريد (Resend أو SMTP)");
     }
-    logger.info({ to }, "Password reset email sent");
+    logger.info({ to: cleanTo }, "Password reset email sent");
   } catch (err) {
     logger.warn({ err }, "Failed to send password reset email");
     throw err;
@@ -495,6 +525,11 @@ export async function sendTestEmail() {
 
 
 export async function sendClientNotification(clientEmail: string, title: string, messageText: string) {
+  const cleanEmail = typeof clientEmail === "string" ? clientEmail.trim() : "";
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    logger.warn({ title }, "Cannot send client notification email: recipient email is empty or invalid");
+    return;
+  }
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
       <div style="background-color: #3b82f6; padding: 20px; color: white;">
@@ -513,15 +548,15 @@ export async function sendClientNotification(clientEmail: string, title: string,
   `;
 
   const sent = await dispatchAdminNotificationEmail({
-    to: clientEmail,
+    to: cleanEmail,
     subject: `[Notification] ${title}`,
     html,
   });
 
   if (sent) {
-    logger.info({ clientEmail, title }, "Client notification email sent successfully");
+    logger.info({ clientEmail: cleanEmail, title }, "Client notification email sent successfully");
   } else {
-    logger.warn({ clientEmail }, "Cannot send client notification email: no email delivery service configured.");
+    logger.warn({ clientEmail: cleanEmail }, "Cannot send client notification email: no email delivery service configured.");
   }
 }
 

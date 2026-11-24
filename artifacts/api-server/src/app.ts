@@ -101,10 +101,20 @@ app.use((req, res, next) => {
     process.env.FORCE_HTTPS === "true";
 
   if (shouldRedirect) {
-    // Prevent Host header injection during HTTPS redirection (N12 fix)
-    // Validate host format (valid domain or domain:port) and fallback to PUBLIC_HOST / canonical host if present
+    // Prevent Host header injection during HTTPS redirection (N12/E3 fix)
+    // Prefer canonical configured PUBLIC_HOST / platform domain, then strictly validated Host header
     const validHostPattern = /^[a-zA-Z0-9.\-]+(?::\d+)?$/;
-    const trustedHost = process.env.PUBLIC_HOST?.trim() || (validHostPattern.test(rawHost) ? rawHost : undefined);
+    const canonicalHost =
+      process.env.PUBLIC_HOST?.trim() ||
+      process.env.RAILWAY_PUBLIC_DOMAIN?.trim() ||
+      process.env.RENDER_EXTERNAL_HOSTNAME?.trim() ||
+      process.env.REPLIT_DEV_DOMAIN?.trim();
+    const cleanCanonicalHost = canonicalHost
+      ? canonicalHost.replace(/^https?:\/\//i, "").replace(/\/.*$/, "")
+      : undefined;
+    const trustedHost =
+      (cleanCanonicalHost && validHostPattern.test(cleanCanonicalHost) ? cleanCanonicalHost : undefined) ||
+      (validHostPattern.test(rawHost) ? rawHost : undefined);
     if (!trustedHost) {
       return res.status(400).json({ error: "Invalid Host header" });
     }
@@ -339,6 +349,19 @@ if (process.env.NODE_ENV === 'production') {
       );
       throw new Error(`FATAL SECURITY ERROR: ${name} contains a placeholder value in production. Refusing to start.`);
     }
+  }
+
+  // ENCRYPTION_KEY is mandatory in production — API keys and SMTP passwords are encrypted with it.
+  // Without it, getEncryptionKey() would throw at first encrypt/decrypt call anyway; fail fast here.
+  if (!process.env.ENCRYPTION_KEY || !process.env.ENCRYPTION_KEY.trim()) {
+    logger.error(
+      'FATAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production. ' +
+      'Generate one with: openssl rand -hex 32'
+    );
+    throw new Error(
+      'FATAL SECURITY ERROR: ENCRYPTION_KEY is required in production. ' +
+      'Generate one with: openssl rand -hex 32'
+    );
   }
 }
 

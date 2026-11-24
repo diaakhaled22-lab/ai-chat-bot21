@@ -34,6 +34,7 @@ import { getExchangeRates } from "./lib/currencyRates";
 import { assertPlanApprovalSecretConfigured } from "./lib/planApproval";
 import { ensureEmailVerificationSchema } from "./routes/auth";
 import { resolveTrustProxySetting, auditProxyExposure } from "./lib/proxySecurity";
+import { encryptPlaintextAdminConfigSecrets } from "./lib/adminConfig";
 
 // Early security sanity check: prevent server startup if PLAN_APPROVAL_SECRET is not configured
 assertPlanApprovalSecretConfigured();
@@ -384,6 +385,7 @@ async function startServer() {
     await ensureRestApiSchema();
     await ensureShopifySchema();
     await ensureDataSourcePermissionsSchema();
+    await encryptPlaintextAdminConfigSecrets();
     await loadBlockedIpsFromDb();
     await loadTotpSecretsFromDb();
     await loadAttackLogsFromDb();

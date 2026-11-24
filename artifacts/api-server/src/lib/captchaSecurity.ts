@@ -1,4 +1,4 @@
-import { db, adminConfigTable } from "@workspace/db";
+import { db, adminConfigTable, decryptAdminConfigValue } from "@workspace/db";
 import { logger } from "./logger";
 
 export interface CaptchaVerificationResult {
@@ -51,13 +51,16 @@ export async function getCaptchaSecrets(): Promise<{
 
     for (const r of rows) {
       if (r.key === "turnstile_secret_key" && r.value?.trim()) {
-        turnstileSecret = r.value.trim();
+        const val = decryptAdminConfigValue("turnstile_secret_key", r.value).trim();
+        if (val) turnstileSecret = val;
       }
       if (r.key === "hcaptcha_secret_key" && r.value?.trim()) {
-        hcaptchaSecret = r.value.trim();
+        const val = decryptAdminConfigValue("hcaptcha_secret_key", r.value).trim();
+        if (val) hcaptchaSecret = val;
       }
       if (r.key === "recaptcha_secret_key" && r.value?.trim()) {
-        recaptchaSecret = r.value.trim();
+        const val = decryptAdminConfigValue("recaptcha_secret_key", r.value).trim();
+        if (val) recaptchaSecret = val;
       }
     }
   } catch (err) {

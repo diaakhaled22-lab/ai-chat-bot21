@@ -126,8 +126,8 @@ importers:
         specifier: ^2.2.0
         version: 2.5.0
       nodemailer:
-        specifier: ^9.0.1
-        version: 9.1.1
+        specifier: ^10.6.1
+        version: 10.6.1
       openai:
         specifier: ^6.45.0
         version: 6.45.0(ws@8.22.0)(zod@4.6.7)
@@ -3771,9 +3771,9 @@ packages:
     resolution: {integrity: sha512-zAPCKqMcnqs2nGy6nlkm7JduFseiBJy3EXHGLh+8pFR+TxGCBxxiEN21+UROU5CKwX/f4TlUcYjiM+vs/tsyxw==}
     engines: {node: '>=18'}
 
-  nodemailer@9.1.1:
-    resolution: {integrity: sha512-izw9mVKFix6YSnC9eLgV6g1opl9DUlRio9ZNcq+Wu9Ujn2UwF+8Nl0B8nz22kEC+CTZCvinkxwJ0DeFbb6NwcQ==}
-    engines: {node: '>=6.0.0'}
+  nodemailer@10.6.1:
+    resolution: {integrity: sha512-d7kfFfS/tR4Aca+SBvRaQ+MXKNv7d2JiRe5TxaRcFT/kYMh4GGPnW9aKksTIEvyEbA7d/7HYWE4YPDEHxzJj/g==}
+    engines: {node: '>=20.0.0'}
 
   npm-run-path@6.0.0:
     resolution: {integrity: sha512-9qny7Z9DsQU8Ou39ERsPU4OZQlSTP47ShQzuKZ6PRXpYLtIFgl/DEBYEXKlvcEa+9tHVcK8CF81Y2V72qaZhWA==}
@@ -7591,7 +7591,7 @@ snapshots:
 
   node-releases@2.0.64: {}
 
-  nodemailer@9.1.1: {}
+  nodemailer@10.6.1: {}
 
   npm-run-path@6.0.0:
     dependencies:

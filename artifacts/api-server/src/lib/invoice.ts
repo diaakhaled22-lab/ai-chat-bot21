@@ -1,4 +1,4 @@
-import { db, adminConfigTable, emailLogsTable, chatLogsTable, usersTable, companiesTable, type Company, type User } from "@workspace/db";
+import { db, adminConfigTable, emailLogsTable, chatLogsTable, usersTable, companiesTable, decryptAdminConfigValue, type Company, type User } from "@workspace/db";
 import { inArray, sql, and, eq } from "drizzle-orm";
 import { getEmailConfig, isSmtpConfigured, buildTransporter } from "./email";
 import { getResendConfig } from "./companyNotification";
@@ -615,7 +615,7 @@ export async function sendInvoiceToClient(
       } else {
         // Also check adminConfigTable for platform-level WhatsApp credentials
         const adminRows = await db.select().from(adminConfigTable);
-        const adminMap = new Map(adminRows.map((r) => [r.key, r.value ?? ""]));
+        const adminMap = new Map(adminRows.map((r) => [r.key, decryptAdminConfigValue(r.key, r.value)]));
         const sysPhoneId = adminMap.get("whatsapp_phone_number_id");
         const sysApiToken = adminMap.get("whatsapp_api_token");
 

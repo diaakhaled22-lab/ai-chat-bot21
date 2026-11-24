@@ -6,25 +6,55 @@ const ALGORITHM = "aes-256-gcm";
 let lastDecryptionErrorTime = 0;
 const DECRYPTION_ERROR_THROTTLE_MS = 60_000; // Log at most once per minute
 
+const PLACEHOLDER_KEY_PATTERN = /^(replace_with|change_me|your_secret_here|your_key_here)/i;
+
+function isPlaceholderKey(raw: string): boolean {
+  return PLACEHOLDER_KEY_PATTERN.test(raw.trim());
+}
+
+function deriveKeyFromSecret(raw: string): Buffer {
+  if (/^[0-9a-fA-F]{64}$/.test(raw)) return Buffer.from(raw, "hex");
+  if (Buffer.byteLength(raw, "utf-8") === 32) return Buffer.from(raw, "utf-8");
+  return crypto.createHash("sha256").update(raw).digest();
+}
+
+function addSecretCandidates(raw: string, addKey: (buf: Buffer | null | undefined) => void): void {
+  if (/^[0-9a-fA-F]{64}$/.test(raw)) {
+    try { addKey(Buffer.from(raw, "hex")); } catch {}
+  }
+  if (Buffer.byteLength(raw, "utf-8") === 32) {
+    addKey(Buffer.from(raw, "utf-8"));
+  }
+  addKey(crypto.createHash("sha256").update(raw).digest());
+}
+
 // Generate or retrieve a consistent 32-byte encryption key
 export function getEncryptionKey(): Buffer {
-  const envKey = process.env.ENCRYPTION_KEY;
-  
+  const envKey = process.env.ENCRYPTION_KEY?.trim();
+
   if (envKey) {
-    // Check if it's a known placeholder value
-    const lowerKey = envKey.toLowerCase();
-    const isPlaceholder = lowerKey.startsWith("replace_with") || lowerKey === "change_me" || lowerKey === "your_key_here";
-    if (!isPlaceholder) {
-      if (envKey.length === 64) return Buffer.from(envKey, "hex"); // 32 bytes in hex
-      if (envKey.length === 32) return Buffer.from(envKey, "utf-8"); // 32 bytes plain
-      // Hash it to exactly 32 bytes if it doesn't match standard lengths
-      return crypto.createHash("sha256").update(envKey).digest();
+    // Reject placeholder values in production
+    if (process.env.NODE_ENV === "production" && isPlaceholderKey(envKey)) {
+      throw new Error(
+        "FATAL SECURITY ERROR: ENCRYPTION_KEY contains a placeholder value. " +
+        "Please generate a real key: openssl rand -hex 32"
+      );
+    }
+    if (process.env.NODE_ENV === "production" || !isPlaceholderKey(envKey)) {
+      return deriveKeyFromSecret(envKey);
     }
   }
 
-  // Consistent, reliable fallback for production and development if ENCRYPTION_KEY is not set:
-  // Derive deterministically from SESSION_SECRET or DATABASE_URL
-  const fallbackSource = process.env.SESSION_SECRET || process.env.DATABASE_URL || "dev-only-insecure-fallback";
+  // In production, ENCRYPTION_KEY is mandatory — no fallbacks
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "FATAL SECURITY ERROR: ENCRYPTION_KEY environment variable is required in production. " +
+      "Generate one with: openssl rand -hex 32"
+    );
+  }
+
+  // Non-production fallback for dev/test convenience only
+  const fallbackSource = process.env.DATABASE_URL || process.env.SESSION_SECRET || "dev-only-insecure-fallback";
   return crypto.createHash("sha256").update(fallbackSource).digest();
 }
 
@@ -36,6 +66,7 @@ export function getEncryptionKey(): Buffer {
 export function getDecryptionKeys(): Buffer[] {
   const keys: Buffer[] = [];
   const seen = new Set<string>();
+  const isProd = process.env.NODE_ENV === "production";
 
   const addKey = (buf: Buffer | null | undefined) => {
     if (!buf || buf.length !== 32) return;
@@ -51,16 +82,10 @@ export function getDecryptionKeys(): Buffer[] {
     addKey(getEncryptionKey());
   } catch {}
 
-  // 2. Candidate from ENCRYPTION_KEY in various formats
-  const envKey = process.env.ENCRYPTION_KEY;
-  if (envKey) {
-    if (envKey.length === 64) {
-      try { addKey(Buffer.from(envKey, "hex")); } catch {}
-    }
-    if (envKey.length === 32) {
-      addKey(Buffer.from(envKey, "utf-8"));
-    }
-    addKey(crypto.createHash("sha256").update(envKey).digest());
+  // 2. Candidate from ENCRYPTION_KEY in various formats (reject placeholders in production)
+  const envKey = process.env.ENCRYPTION_KEY?.trim();
+  if (envKey && !(isProd && isPlaceholderKey(envKey))) {
+    addSecretCandidates(envKey, addKey);
   }
 
   // 3. Explicit key rotation via PREVIOUS_ENCRYPTION_KEYS / OLD_ENCRYPTION_KEY (comma-separated list)
@@ -68,18 +93,12 @@ export function getDecryptionKeys(): Buffer[] {
   for (const raw of previousKeys) {
     const trimmed = raw.trim();
     if (!trimmed) continue;
-    if (trimmed.length === 64) {
-      try { addKey(Buffer.from(trimmed, "hex")); } catch {}
-    }
-    if (trimmed.length === 32) {
-      addKey(Buffer.from(trimmed, "utf-8"));
-    }
-    addKey(crypto.createHash("sha256").update(trimmed).digest());
+    addSecretCandidates(trimmed, addKey);
   }
 
-  // 4. Candidate keys from DATABASE_URL and SESSION_SECRET for fallback and legacy recovery
-  const isProd = process.env.NODE_ENV === "production";
-  const allowLegacy = !isProd || process.env.ALLOW_LEGACY_FALLBACK_KEYS === "true" || !process.env.ENCRYPTION_KEY;
+  // 4. In development, testing, or when ALLOW_LEGACY_FALLBACK_KEYS="true" is explicitly set:
+  // Allow candidates from DATABASE_URL, SESSION_SECRET, and REPL_ID (X1/D4 fix)
+  const allowLegacy = !isProd || process.env.ALLOW_LEGACY_FALLBACK_KEYS === "true";
 
   if (isProd && process.env.ALLOW_LEGACY_FALLBACK_KEYS === "true") {
     console.warn(
@@ -110,13 +129,7 @@ export function getDecryptionKeys(): Buffer[] {
     // Candidate from SESSION_SECRET
     const sessionSecret = process.env.SESSION_SECRET;
     if (sessionSecret) {
-      if (sessionSecret.length === 64) {
-        try { addKey(Buffer.from(sessionSecret, "hex")); } catch {}
-      }
-      if (sessionSecret.length === 32) {
-        addKey(Buffer.from(sessionSecret, "utf-8"));
-      }
-      addKey(crypto.createHash("sha256").update(sessionSecret).digest());
+      addSecretCandidates(sessionSecret, addKey);
     }
 
     // Candidate from REPL_ID (Replit environment identifier)
@@ -136,20 +149,15 @@ export function getDecryptionKeys(): Buffer[] {
 
 export function encrypt(text: string | null | undefined): string | null {
   if (!text) return text as any;
-  try {
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(ALGORITHM, getEncryptionKey(), iv);
-    
-    let encrypted = cipher.update(text, "utf8", "hex");
-    encrypted += cipher.final("hex");
-    const authTag = cipher.getAuthTag().toString("hex");
-    
-    // Prefix with 'enc:' to identify encrypted strings
-    return `enc:${iv.toString("hex")}:${authTag}:${encrypted}`;
-  } catch (err) {
-    console.warn("[ENCRYPTION] Failed to encrypt field, preserving value safely:", err);
-    return text;
-  }
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(ALGORITHM, getEncryptionKey(), iv);
+  
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag().toString("hex");
+  
+  // Prefix with 'enc:' to identify encrypted strings
+  return `enc:${iv.toString("hex")}:${authTag}:${encrypted}`;
 }
 
 export function decrypt(text: string | null | undefined): string | null {
@@ -236,3 +244,47 @@ export const searchableText = customType<{ data: string; driverData: string }>({
     return decrypt(value) ?? "";
   },
 });
+
+export const SENSITIVE_ADMIN_CONFIG_KEYS = new Set<string>([
+  "resend_api_key",
+  "notif_smtp_pass",
+  "support_ai_api_key",
+  "quota_ai_api_key",
+  "malfunctions_ai_api_key",
+  "jwt_secret",
+  "meta_app_secret",
+  "whatsapp_api_token",
+  "whatsapp_verify_token",
+  "messenger_verify_token",
+  "turnstile_secret_key",
+  "hcaptcha_secret_key",
+  "recaptcha_secret_key",
+]);
+
+/**
+ * Returns true if the given admin_config key holds a sensitive credential or secret
+ * that must be encrypted at rest (H6 fix).
+ */
+export function isSensitiveAdminConfigKey(key: string): boolean {
+  return SENSITIVE_ADMIN_CONFIG_KEYS.has(key) || key.startsWith("ai_test_key_");
+}
+
+/**
+ * Encrypts sensitive admin_config values before storage while leaving non-sensitive settings untouched.
+ */
+export function encryptAdminConfigValue(key: string, value: string | null | undefined): string | null | undefined {
+  if (!value || !isSensitiveAdminConfigKey(key)) return value;
+  if (value.startsWith("enc:") && decrypt(value) !== null) {
+    return value;
+  }
+  return encrypt(value);
+}
+
+/**
+ * Decrypts sensitive admin_config values on read, transparently supporting legacy plaintext rows until migrated.
+ */
+export function decryptAdminConfigValue(key: string, value: string | null | undefined): string {
+  if (!value) return "";
+  if (!isSensitiveAdminConfigKey(key)) return value;
+  return decrypt(value) ?? "";
+}

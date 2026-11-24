@@ -46,6 +46,7 @@ import { logAdminActivity } from "../lib/audit";
 import { DEFAULT_PACKAGES_CATALOG, type PackageItem, type TopupPackItem, type PackagesCatalog } from "../lib/packagesCatalog";
 import { getExchangeRates, saveExchangeRates, type CurrencyRatesData } from "../lib/currencyRates";
 import { clearMetaAppSecretCache } from "../lib/webhookSecurity";
+import { getAdminConfigMap, getAdminConfigEntry, upsertAdminConfig } from "../lib/adminConfig";
 import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import { processApprovedPlanRequest, parseTicketPlanDetails, getActivePackagesCatalog, applyPlanTierToCompany } from "../lib/planApproval";
@@ -4901,8 +4902,7 @@ router.post("/admin/invoices/send-copy", async (req, res) => {
 
       if (sendViaWhatsApp) {
         try {
-          const adminRows = await db.select().from(adminConfigTable);
-          const adminMap = new Map(adminRows.map((r) => [r.key, r.value ?? ""]));
+          const adminMap = await getAdminConfigMap(["whatsapp_phone_number_id", "whatsapp_api_token"]);
           const sysPhoneId = adminMap.get("whatsapp_phone_number_id");
           const sysApiToken = adminMap.get("whatsapp_api_token");
 
@@ -5313,11 +5313,8 @@ router.post("/admin/tickets/:id/ai-solve", async (req, res) => {
   try {
     const id = Number(req.params.id);
 
-    const configRows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
-    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["support_ai_api_key", "support_ai_provider", "support_ai_model"]);
+    const cfg = Object.fromEntries(cfgMap.entries());
 
     const apiKey   = cfg["support_ai_api_key"]  ?? "";
     const provider = cfg["support_ai_provider"] ?? "openai";
@@ -5356,11 +5353,8 @@ router.post("/admin/tickets/ai-solve-batch", async (req, res) => {
   try {
     const { ids } = (req.body || {}) as { ids?: number[] };
 
-    const configRows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
-    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["support_ai_api_key", "support_ai_provider", "support_ai_model"]);
+    const cfg = Object.fromEntries(cfgMap.entries());
 
     const apiKey   = cfg["support_ai_api_key"]  ?? "";
     const provider = cfg["support_ai_provider"] ?? "openai";
@@ -5482,11 +5476,8 @@ router.delete("/admin/tickets/:id", async (req, res) => {
 // GET /admin/support-settings
 router.get("/admin/support-settings", async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
-    const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["support_ai_api_key", "support_ai_provider", "support_ai_model"]);
+    const cfg = Object.fromEntries(cfgMap.entries());
     const key = cfg["support_ai_api_key"] ?? "";
     const masked = maskApiKey(key);
     res.json({
@@ -5517,10 +5508,7 @@ router.put("/admin/support-settings", async (req, res) => {
     }
 
     for (const item of upserts) {
-      await db
-        .insert(adminConfigTable)
-        .values(item)
-        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: item.value } });
+      await upsertAdminConfig(item.key, item.value);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -5532,11 +5520,8 @@ router.put("/admin/support-settings", async (req, res) => {
 // GET /admin/support-ai-status  â€” live ping of the configured Support AI
 router.get("/admin/support-ai-status", async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
-    const cfg      = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["support_ai_api_key", "support_ai_provider", "support_ai_model"]);
+    const cfg      = Object.fromEntries(cfgMap.entries());
     const apiKey   = cfg["support_ai_api_key"]  ?? "";
     const provider = cfg["support_ai_provider"] ?? "openai";
     const model    = cfg["support_ai_model"]    ?? "gpt-4o-mini";
@@ -5631,11 +5616,8 @@ router.get("/admin/support-ai-status", async (req, res) => {
 // GET /admin/quota-ai-settings
 router.get("/admin/quota-ai-settings", async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
-    const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["quota_ai_api_key", "quota_ai_provider", "quota_ai_model", "support_ai_api_key"]);
+    const cfg = Object.fromEntries(cfgMap.entries());
     const key = cfg["quota_ai_api_key"] || cfg["support_ai_api_key"] || "";
     const masked = maskApiKey(key);
     const provider = cfg["quota_ai_provider"] || "openai";
@@ -5677,10 +5659,7 @@ router.put("/admin/quota-ai-settings", async (req, res) => {
     }
 
     for (const item of upserts) {
-      await db
-        .insert(adminConfigTable)
-        .values(item)
-        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: item.value } });
+      await upsertAdminConfig(item.key, item.value);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -5692,11 +5671,8 @@ router.put("/admin/quota-ai-settings", async (req, res) => {
 // GET /admin/quota-ai-status — live ping of the configured Quota AI
 router.get("/admin/quota-ai-status", async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('quota_ai_api_key', 'quota_ai_provider', 'quota_ai_model', 'support_ai_api_key')`);
-    const cfg      = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap(["quota_ai_api_key", "quota_ai_provider", "quota_ai_model", "support_ai_api_key"]);
+    const cfg      = Object.fromEntries(cfgMap.entries());
     const provider = cfg["quota_ai_provider"] || "openai";
     const defaultModel =
       provider === "anthropic" ? "claude-3-5-haiku-20241022" :
@@ -5815,7 +5791,7 @@ router.get("/admin/email-settings", async (req, res) => {
       smtpUser: cfg.smtpUser,
       smtpEncryption: cfg.smtpEncryption,
       hasPass: !!cfg.smtpPass,
-      resendApiKey: resendCfg.apiKey ? `${resendCfg.apiKey.slice(0, 7)}...` : "",
+      resendApiKey: resendCfg.apiKey ? (resendCfg.apiKey.startsWith("re_") ? "re_..." : "مضبوط") : "",
       hasResendApiKey: Boolean(resendCfg.apiKey),
       resendFromEmail: resendCfg.fromEmail || "",
       configured: Boolean(resendCfg.apiKey) || isEmailConfigured(cfg),
@@ -5857,18 +5833,22 @@ router.put("/admin/email-settings", async (req, res) => {
     if (smtpPass) updates.push({ key: "notif_smtp_pass", value: smtpPass });
     if (smtpEncryption && ["tls", "ssl", "none"].includes(smtpEncryption))
       updates.push({ key: "notif_smtp_encryption", value: smtpEncryption });
-    if (resendApiKey !== undefined && !resendApiKey.includes("...")) {
-      updates.push({ key: "resend_api_key", value: resendApiKey.trim() });
+    const trimmedResend = typeof resendApiKey === "string" ? resendApiKey.trim() : "";
+    if (
+      trimmedResend &&
+      !trimmedResend.includes("...") &&
+      trimmedResend !== "مضبوط" &&
+      !trimmedResend.includes("••••") &&
+      !trimmedResend.includes("****")
+    ) {
+      updates.push({ key: "resend_api_key", value: trimmedResend });
     }
     if (resendFromEmail !== undefined) {
       updates.push({ key: "resend_from_email", value: resendFromEmail.trim() });
     }
 
     for (const { key, value } of updates) {
-      await db
-        .insert(adminConfigTable)
-        .values({ key, value })
-        .onConflictDoUpdate({ target: adminConfigTable.key, set: { value } });
+      await upsertAdminConfig(key, value);
     }
 
     res.json({ ok: true });
@@ -6293,9 +6273,8 @@ router.post("/admin/ai-test", async (req, res) => {
     // Resolve key: custom input > saved test key for this provider
     let apiKey = customKey?.trim() ?? "";
     if (!apiKey) {
-      const rows = await db.select().from(adminConfigTable)
-        .where(eq(adminConfigTable.key, `ai_test_key_${provider}`));
-      apiKey = rows[0]?.value ?? "";
+      const entry = await getAdminConfigEntry(`ai_test_key_${provider}`);
+      apiKey = entry.value ?? "";
     }
     if (!apiKey) {
       res.status(400).json({ error: "No API key. Enter one above or save it for this provider." });
@@ -6414,12 +6393,15 @@ router.post("/admin/ai-test", async (req, res) => {
 router.get("/admin/ai-keys", async (req, res) => {
   try {
     const providers = ["openai", "anthropic", "google", "openrouter"];
-    const rows = await db.select().from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('ai_test_key_openai','ai_test_key_anthropic','ai_test_key_google','ai_test_key_openrouter')`);
-    const cfg = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap([
+      "ai_test_key_openai",
+      "ai_test_key_anthropic",
+      "ai_test_key_google",
+      "ai_test_key_openrouter",
+    ]);
     const result: Record<string, { hasKey: boolean; maskedKey: string }> = {};
     for (const p of providers) {
-      const key = cfg[`ai_test_key_${p}`] ?? "";
+      const key = cfgMap.get(`ai_test_key_${p}`) ?? "";
       const masked = maskApiKey(key);
       result[p] = { hasKey: !!key, maskedKey: masked };
     }
@@ -6438,9 +6420,7 @@ router.put("/admin/ai-keys", async (req, res) => {
       res.status(400).json({ error: "provider and apiKey are required" });
       return;
     }
-    await db.insert(adminConfigTable)
-      .values({ key: `ai_test_key_${provider}`, value: apiKey.trim() })
-      .onConflictDoUpdate({ target: adminConfigTable.key, set: { value: apiKey.trim() } });
+    await upsertAdminConfig(`ai_test_key_${provider}`, apiKey.trim());
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Save AI key error");
@@ -6528,10 +6508,7 @@ router.get("/admin/telegram-webhook", async (req, res) => {
 // GET /admin/whatsapp-webhook â€” return stored platform verify token + webhook URL
 router.get("/admin/whatsapp-webhook", async (req, res) => {
   try {
-    const [row] = await db
-      .select()
-      .from(adminConfigTable)
-      .where(eq(adminConfigTable.key, "whatsapp_verify_token"));
+    const entry = await getAdminConfigEntry("whatsapp_verify_token");
 
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
     const host = req.headers["x-forwarded-host"] ?? req.get("host") ?? "";
@@ -6539,8 +6516,8 @@ router.get("/admin/whatsapp-webhook", async (req, res) => {
 
     res.json({
       webhookUrl,
-      verifyToken: row?.value ?? null,
-      updatedAt: row?.updatedAt ?? null,
+      verifyToken: entry.value ?? null,
+      updatedAt: entry.updatedAt ?? null,
     });
   } catch (err) {
     logger.error({ err }, "Get whatsapp webhook config error");
@@ -6649,19 +6626,16 @@ router.post("/admin/security/2fa/disable", sensitiveLimiter, async (req, res) =>
 // GET /admin/security/jwt-secret â€” return masked JWT secret + last rotated timestamp
 router.get("/admin/security/jwt-secret", async (req, res) => {
   try {
-    const [row] = await db
-      .select()
-      .from(adminConfigTable)
-      .where(eq(adminConfigTable.key, "jwt_secret"));
+    const entry = await getAdminConfigEntry("jwt_secret");
 
-    if (!row?.value) {
+    if (!entry.value) {
       res.json({ exists: false, maskedSecret: null, lastRotated: null });
       return;
     }
 
-    const v = row.value;
+    const v = entry.value;
     const maskedSecret = v.slice(0, 6) + "•".repeat(Math.min(Math.max(0, v.length - 10), 16)) + v.slice(-4);
-    res.json({ exists: true, maskedSecret, lastRotated: row.updatedAt?.toISOString() ?? null });
+    res.json({ exists: true, maskedSecret, lastRotated: entry.updatedAt?.toISOString() ?? null });
   } catch (err) {
     logger.error({ err }, "Get JWT secret error");
     res.status(500).json({ error: "Internal server error" });
@@ -6674,13 +6648,7 @@ router.post("/admin/security/jwt-secret/rotate", async (req, res) => {
     const { randomBytes } = await import("crypto");
     const secret = randomBytes(48).toString("hex"); // 96-char hex
 
-    await db
-      .insert(adminConfigTable)
-      .values({ key: "jwt_secret", value: secret })
-      .onConflictDoUpdate({
-        target: adminConfigTable.key,
-        set: { value: secret },
-      });
+    await upsertAdminConfig("jwt_secret", secret);
 
     const maskedSecret = secret.slice(0, 6) + "•".repeat(Math.min(Math.max(0, secret.length - 10), 16)) + secret.slice(-4);
     res.json({ success: true, maskedSecret, lastRotated: new Date().toISOString() });
@@ -6696,13 +6664,7 @@ router.post("/admin/whatsapp-webhook/generate", async (req, res) => {
     const { randomBytes } = await import("crypto");
     const token = randomBytes(32).toString("hex");
 
-    await db
-      .insert(adminConfigTable)
-      .values({ key: "whatsapp_verify_token", value: token })
-      .onConflictDoUpdate({
-        target: adminConfigTable.key,
-        set: { value: token },
-      });
+    await upsertAdminConfig("whatsapp_verify_token", token);
 
     res.json({ verifyToken: token });
   } catch (err) {
@@ -6714,10 +6676,7 @@ router.post("/admin/whatsapp-webhook/generate", async (req, res) => {
 // GET /admin/messenger-webhook â€” return stored platform verify token + webhook URL
 router.get("/admin/messenger-webhook", async (req, res) => {
   try {
-    const [row] = await db
-      .select()
-      .from(adminConfigTable)
-      .where(eq(adminConfigTable.key, "messenger_verify_token"));
+    const entry = await getAdminConfigEntry("messenger_verify_token");
 
     const proto = req.headers["x-forwarded-proto"] ?? req.protocol ?? "https";
     const host = req.headers["x-forwarded-host"] ?? req.get("host") ?? "";
@@ -6725,8 +6684,8 @@ router.get("/admin/messenger-webhook", async (req, res) => {
 
     res.json({
       webhookUrl,
-      verifyToken: row?.value ?? null,
-      updatedAt: row?.updatedAt ?? null,
+      verifyToken: entry.value ?? null,
+      updatedAt: entry.updatedAt ?? null,
     });
   } catch (err) {
     logger.error({ err }, "Get messenger webhook config error");
@@ -6740,13 +6699,7 @@ router.post("/admin/messenger-webhook/generate", async (req, res) => {
     const { randomBytes } = await import("crypto");
     const token = randomBytes(32).toString("hex");
 
-    await db
-      .insert(adminConfigTable)
-      .values({ key: "messenger_verify_token", value: token })
-      .onConflictDoUpdate({
-        target: adminConfigTable.key,
-        set: { value: token },
-      });
+    await upsertAdminConfig("messenger_verify_token", token);
 
     res.json({ verifyToken: token });
   } catch (err) {
@@ -6758,15 +6711,11 @@ router.post("/admin/messenger-webhook/generate", async (req, res) => {
 // GET /admin/meta-app-secret — return whether Meta App Secret is configured and masked preview
 router.get("/admin/meta-app-secret", async (req, res) => {
   try {
-    const [row] = await db
-      .select()
-      .from(adminConfigTable)
-      .where(eq(adminConfigTable.key, "meta_app_secret"))
-      .limit(1);
+    const entry = await getAdminConfigEntry("meta_app_secret");
 
     const envSecret = process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || process.env.MESSENGER_APP_SECRET;
-    const isConfigured = !!(row?.value || envSecret);
-    const secret = row?.value || envSecret || "";
+    const isConfigured = !!(entry.value || envSecret);
+    const secret = entry.value || envSecret || "";
 
     const maskedSecret = secret
       ? (secret.length > 6 ? "•".repeat(Math.min(secret.length - 4, 16)) + secret.slice(-4) : "••••••")
@@ -6774,9 +6723,9 @@ router.get("/admin/meta-app-secret", async (req, res) => {
 
     res.json({
       configured: isConfigured,
-      source: row?.value ? "database" : (envSecret ? "environment" : "none"),
+      source: entry.value ? "database" : (envSecret ? "environment" : "none"),
       maskedSecret,
-      updatedAt: row?.updatedAt ?? null,
+      updatedAt: entry.updatedAt ?? null,
     });
   } catch (err) {
     logger.error({ err }, "Get meta app secret config error");
@@ -6794,13 +6743,7 @@ router.post("/admin/meta-app-secret", async (req, res) => {
     }
 
     const trimmed = appSecret.trim();
-    await db
-      .insert(adminConfigTable)
-      .values({ key: "meta_app_secret", value: trimmed })
-      .onConflictDoUpdate({
-        target: adminConfigTable.key,
-        set: { value: trimmed },
-      });
+    await upsertAdminConfig("meta_app_secret", trimmed);
 
     clearMetaAppSecretCache();
     await logAdminActivity(
@@ -6986,11 +6929,15 @@ router.delete("/admin/malfunctions/:id", async (req, res) => {
 // GET /admin/malfunctions/ai-config
 router.get("/admin/malfunctions/ai-config", async (_req, res) => {
   try {
-    const configRows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_provider', 'malfunctions_ai_api_key', 'malfunctions_ai_model', 'support_ai_api_key', 'support_ai_provider', 'support_ai_model')`);
-    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap([
+      "malfunctions_ai_provider",
+      "malfunctions_ai_api_key",
+      "malfunctions_ai_model",
+      "support_ai_api_key",
+      "support_ai_provider",
+      "support_ai_model",
+    ]);
+    const cfg = Object.fromEntries(cfgMap.entries());
 
     const provider = (cfg["malfunctions_ai_provider"] as "google" | "openai") || (cfg["support_ai_provider"] === "openai" ? "openai" : "google");
     const directKey = cfg["malfunctions_ai_api_key"] || "";
@@ -7036,12 +6983,7 @@ router.post("/admin/malfunctions/ai-config", async (req, res) => {
     }
 
     for (const u of updates) {
-      const [existing] = await db.select().from(adminConfigTable).where(eq(adminConfigTable.key, u.key));
-      if (existing) {
-        await db.update(adminConfigTable).set({ value: u.value }).where(eq(adminConfigTable.key, u.key));
-      } else {
-        await db.insert(adminConfigTable).values(u);
-      }
+      await upsertAdminConfig(u.key, u.value);
     }
 
     await logAdminActivity(req.session.userId!, "Updated Malfunctions AI Config", `Provider: ${provider || "default"}, Model: ${model || "default"}`, req.ip || null);
@@ -7063,11 +7005,13 @@ router.post("/admin/malfunctions/ai-test", async (req, res) => {
 
     let key = customKey?.trim();
     if (!key) {
-      const configRows = await db
-        .select()
-        .from(adminConfigTable)
-        .where(sql`${adminConfigTable.key} IN ('malfunctions_ai_provider', 'malfunctions_ai_api_key', 'support_ai_api_key', 'support_ai_provider')`);
-      const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+      const cfgMap = await getAdminConfigMap([
+        "malfunctions_ai_provider",
+        "malfunctions_ai_api_key",
+        "support_ai_api_key",
+        "support_ai_provider",
+      ]);
+      const cfg = Object.fromEntries(cfgMap.entries());
 
       if (provider === "openai") {
         key = cfg["malfunctions_ai_api_key"] || (cfg["support_ai_provider"] === "openai" ? cfg["support_ai_api_key"] : "") || process.env.OPENAI_API_KEY || "";
@@ -7138,11 +7082,15 @@ router.post("/admin/malfunctions/:id/ai-analyze", async (req, res) => {
     }
 
     // Resolve Support AI credentials and provider (unified with Customer Problems Support AI)
-    const configRows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(sql`${adminConfigTable.key} IN ('support_ai_api_key', 'support_ai_provider', 'support_ai_model', 'malfunctions_ai_api_key', 'malfunctions_ai_provider', 'malfunctions_ai_model')`);
-    const cfg = Object.fromEntries(configRows.map((r) => [r.key, r.value ?? ""]));
+    const cfgMap = await getAdminConfigMap([
+      "support_ai_api_key",
+      "support_ai_provider",
+      "support_ai_model",
+      "malfunctions_ai_api_key",
+      "malfunctions_ai_provider",
+      "malfunctions_ai_model",
+    ]);
+    const cfg = Object.fromEntries(cfgMap.entries());
 
     const provider = cfg["support_ai_provider"] || cfg["malfunctions_ai_provider"] || "openai";
 

@@ -7,7 +7,7 @@
         "dev": "pnpm run build && pnpm run start",
         "build": "node ./build.mjs",
         "start": "node ./dist/index.mjs",
-        "test": "node --env-file=../../.env.example --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts ./src/lib/widgetSecurity.test.ts ./src/lib/planApprovalSecurity.test.ts ./src/lib/knowledgeFileSecurity.test.ts ./src/lib/errorSecurity.test.ts ./src/lib/sensitiveFilesSecurity.test.ts ./src/lib/security.test.ts ./src/lib/comprehensiveProtection.test.ts ./src/lib/captchaSecurity.test.ts",
+        "test": "node --env-file=../../.env.example --import tsx --test --test-force-exit ./src/adminBootstrap.test.ts ./src/lib/widgetSecurity.test.ts ./src/lib/planApprovalSecurity.test.ts ./src/lib/knowledgeFileSecurity.test.ts ./src/lib/errorSecurity.test.ts ./src/lib/sensitiveFilesSecurity.test.ts ./src/lib/security.test.ts ./src/lib/comprehensiveProtection.test.ts ./src/lib/captchaSecurity.test.ts ./src/lib/emailAndResendSecurity.test.ts",
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {
@@ -26,7 +26,7 @@
         "express-session": "^1.19.0",
         "googleapis": "^173.0.0",
         "multer": "^2.2.0",
-        "nodemailer": "^9.0.1",
+        "nodemailer": "^10.6.1",
         "openai": "^6.45.0",
         "otplib": "^12.0.1",
         "pdf-parse": "^1.1.4",

@@ -10,7 +10,7 @@ import { webhookLimiter } from "../lib/security";
 import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
 import { Router } from "express";
 import { downloadWhatsAppAudio, transcribeAudio, generateVoiceResponse, sendWhatsAppVoiceNote } from '../lib/audio';
-import { db, companiesTable, chatLogsTable, leadsTable, adminConfigTable } from "@workspace/db";
+import { db, companiesTable, chatLogsTable, leadsTable, decryptAdminConfigValue, adminConfigTable } from "@workspace/db";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import OpenAI from "openai";
@@ -196,7 +196,8 @@ router.get(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, async (re
       .from(adminConfigTable)
       .where(eq(adminConfigTable.key, "whatsapp_verify_token"));
 
-    if (!row?.value || verifyToken !== row.value) {
+    const expectedToken = decryptAdminConfigValue("whatsapp_verify_token", row?.value);
+    if (!expectedToken || verifyToken !== expectedToken) {
       res.sendStatus(403);
       return;
     }
@@ -580,8 +581,9 @@ router.get(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumberI
       .from(adminConfigTable)
       .where(eq(adminConfigTable.key, "whatsapp_verify_token"));
 
+    const globalToken = decryptAdminConfigValue("whatsapp_verify_token", globalRow?.value);
     const isTokenValid = (company?.whatsappApiToken && verifyToken === company.whatsappApiToken) ||
-      (globalRow?.value && verifyToken === globalRow.value);
+      (globalToken && verifyToken === globalToken);
 
     if (!company || !isTokenValid) {
       res.sendStatus(403);

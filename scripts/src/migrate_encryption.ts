@@ -21,7 +21,7 @@
 import fs from "fs";
 import path from "path";
 import { Client } from "pg";
-import { encrypt, decrypt, getEncryptionKey } from "@workspace/db/encryption";
+import { encrypt, decrypt, getEncryptionKey, isSensitiveAdminConfigKey, SENSITIVE_ADMIN_CONFIG_KEYS } from "@workspace/db/encryption";
 
 const ENCRYPTED_COLUMNS: Array<{ table: string; column: string }> = [
   { table: "companies", column: "resend_api_key" },
@@ -65,6 +65,7 @@ async function runRollback(client: Client, backupTimestamp?: string) {
   try {
     const backupCompaniesTable = `_backup_companies_enc_${targetTimestamp}`;
     const backupUsersTable = `_backup_users_enc_${targetTimestamp}`;
+    const backupAdminConfigTable = `_backup_admin_config_enc_${targetTimestamp}`;
 
     // Restore companies encrypted columns only
     for (const { table, column } of ENCRYPTED_COLUMNS.filter((c) => c.table === "companies")) {
@@ -98,12 +99,27 @@ async function runRollback(client: Client, backupTimestamp?: string) {
       }
     }
 
+    // Restore admin_config sensitive entries if snapshot exists
+    const adminBackupCheck = await client.query(
+      `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1);`,
+      [backupAdminConfigTable]
+    );
+    if (adminBackupCheck.rows[0]?.exists) {
+      await client.query(`
+        UPDATE "admin_config" a
+        SET "value" = b."value"
+        FROM "${backupAdminConfigTable}" b
+        WHERE a.key = b.key;
+      `);
+    }
+
     await client.query("COMMIT;");
     console.log(`[ROLLBACK] Successfully restored all encrypted columns from snapshot ${targetTimestamp}`);
 
     // Drop the snapshot tables after successful rollback
     await client.query(`DROP TABLE IF EXISTS "${backupCompaniesTable}";`);
     await client.query(`DROP TABLE IF EXISTS "${backupUsersTable}";`);
+    await client.query(`DROP TABLE IF EXISTS "${backupAdminConfigTable}";`);
     console.log(`[ROLLBACK] Dropped temporary snapshot tables after restore.`);
   } catch (err) {
     await client.query("ROLLBACK;");
@@ -183,6 +199,21 @@ async function runMigration() {
           console.log(`  Created scoped backup: ${backupTableName} (id, ${colsToSelect.join(", ")}) with RLS enabled.`);
         }
       }
+    }
+
+    const adminCfgExists = await client.query(
+      `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'admin_config');`
+    );
+    if (adminCfgExists.rows[0]?.exists) {
+      const backupAdminTable = `_backup_admin_config_enc_${timestamp}`;
+      const sensitiveList = Array.from(SENSITIVE_ADMIN_CONFIG_KEYS);
+      await client.query(
+        `CREATE TABLE "${backupAdminTable}" AS SELECT id, key, value FROM "admin_config" WHERE key = ANY($1) OR key LIKE 'ai_test_key_%';`,
+        [sensitiveList]
+      );
+      await client.query(`ALTER TABLE "${backupAdminTable}" ENABLE ROW LEVEL SECURITY;`);
+      createdBackupTables.push(backupAdminTable);
+      console.log(`  Created scoped backup: ${backupAdminTable} (admin_config sensitive keys) with RLS enabled.`);
     }
   } catch (backupErr: any) {
     console.error("FATAL: Failed to create pre-migration scoped backup tables:", backupErr.message);
@@ -269,6 +300,52 @@ async function runMigration() {
         // Apply updated value within active transaction
         await client.query(
           `UPDATE "${table}" SET "${column}" = $1 WHERE id = $2`,
+          [reEncrypted, row.id]
+        );
+        totalMigrated++;
+      }
+    }
+
+    // Re-encrypt sensitive keys in admin_config (H6 fix)
+    const adminTableCheck = await client.query(
+      `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'admin_config');`
+    );
+    if (adminTableCheck.rows[0]?.exists) {
+      const adminRows = await client.query(
+        `SELECT id, key, value FROM "admin_config" WHERE value IS NOT NULL AND value != ''`
+      );
+      const sensitiveAdminRows = adminRows.rows.filter((r: { key: string }) => isSensitiveAdminConfigKey(r.key));
+      console.log(`[MIGRATE-ENCRYPTION] Scanning admin_config sensitive entries (${sensitiveAdminRows.length} rows found)...`);
+
+      for (const row of sensitiveAdminRows) {
+        totalInspected++;
+        const rawValue = row.value as string;
+
+        if (shouldSaveFileBackup) {
+          fileBackupRecords.push({
+            table: "admin_config",
+            column: row.key,
+            id: row.id,
+            previousValue: rawValue,
+          });
+        }
+
+        const decrypted = decrypt(rawValue);
+        if (decrypted === null) {
+          console.error(`[ERROR] Decryption FAILED for admin_config key=${row.key} (id=${row.id}). Aborting migration.`);
+          totalFailed++;
+          continue;
+        }
+
+        const reEncrypted = encrypt(decrypted);
+        if (!reEncrypted) {
+          console.error(`[ERROR] Re-encryption FAILED for admin_config key=${row.key} (id=${row.id}).`);
+          totalFailed++;
+          continue;
+        }
+
+        await client.query(
+          `UPDATE "admin_config" SET "value" = $1 WHERE id = $2`,
           [reEncrypted, row.id]
         );
         totalMigrated++;

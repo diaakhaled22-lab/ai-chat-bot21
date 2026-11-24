@@ -29,8 +29,9 @@ import { resolveCompanyAi, assertCompanyQuotaNotExceeded, getQuotaAiSettings, ge
 import { DEFAULT_SECURITY_PROMPT, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION } from "../lib/promptInstructions";
 import { DEFAULT_PACKAGES_CATALOG } from "../lib/packagesCatalog";
 import { getActivePackagesCatalog } from "../lib/planApproval";
-import { getResendConfig, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
+import { getResendConfig, verifyResendApiKeyLive, buildNotificationHtml, sendCompanyNotification } from "../lib/companyNotification";
 import { createTelegramWebhookSecret, hashTelegramWebhookSecret } from "../lib/telegramWebhookSecurity";
+import { getAdminConfigEntry, getAdminConfigMap } from "../lib/adminConfig";
 
 const router = Router();
 function parseEnabledPages(val: any): string[] | null {
@@ -416,7 +417,12 @@ router.get("/client/company/quota", async (req, res) => {
 
 function getAppBaseUrl(req: import("express").Request): string {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const canonicalHost =
+    process.env.PUBLIC_HOST?.trim() ||
+    process.env.RAILWAY_PUBLIC_DOMAIN?.trim() ||
+    process.env.RENDER_EXTERNAL_HOSTNAME?.trim() ||
+    process.env.REPLIT_DEV_DOMAIN?.trim();
+  if (canonicalHost) return `https://${canonicalHost.replace(/^https?:\/\//i, "").replace(/\/$/, "")}`;
   const proto = req.protocol || "https";
   const host = req.get("host") || "localhost";
   return `${proto}://${host}`;
@@ -2893,14 +2899,14 @@ router.put("/client/settings", requireClient, async (req, res) => {
   }
 });
 
-// POST /client/verify-resend-key (Direct save without blocking on external verify)
+// POST /client/verify-resend-key (Strictly verify against Resend API; reject on error/unverified)
 router.post("/client/verify-resend-key", requireClient, sensitiveLimiter, async (req, res) => {
   try {
     const rawKey = typeof req.body?.resendApiKey === "string" ? req.body.resendApiKey.trim() : "";
     const notificationEmail = typeof req.body?.notificationEmail === "string" ? req.body.notificationEmail.trim() : null;
 
     if (!rawKey) {
-      res.status(400).json({ ok: false, error: "مفتاح Resend API مطلوب" });
+      res.status(400).json({ ok: false, verified: false, error: "مفتاح Resend API مطلوب" });
       return;
     }
 
@@ -2921,11 +2927,22 @@ router.post("/client/verify-resend-key", requireClient, sensitiveLimiter, async 
     const actualKey = preserveMaskedSecret(rawKey, existingKey);
 
     if (!actualKey || actualKey.includes("••••") || actualKey.includes("****")) {
-      res.status(400).json({ ok: false, error: "يرجى إدخال مفتاح Resend API الخاص بك" });
+      res.status(400).json({ ok: false, verified: false, error: "يرجى إدخال مفتاح Resend API الخاص بك" });
       return;
     }
 
-    // Key is valid to save! Save directly in usersTable and companiesTable
+    // J3 fix: Live-verify with Resend and fail closed if invalid or unreachable (never accept by format alone)
+    const verification = await verifyResendApiKeyLive(actualKey);
+    if (!verification.valid) {
+      res.status(verification.statusCode || 400).json({
+        ok: false,
+        verified: false,
+        error: verification.error || "تعذر التحقق من مفتاح Resend. لم يتم اعتماد المفتاح.",
+      });
+      return;
+    }
+
+    // Key is live-verified! Save directly in usersTable and companiesTable
     const userUpdates: Record<string, any> = { resendApiKey: actualKey };
     if (notificationEmail) userUpdates.notificationEmail = notificationEmail;
     await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, req.session.userId!));
@@ -2938,16 +2955,16 @@ router.post("/client/verify-resend-key", requireClient, sensitiveLimiter, async 
       await db.update(companiesTable).set(compUpdates).where(eq(companiesTable.clientId, req.session.userId!));
     }
 
-    logger.info({ userId: req.session.userId }, "Client Secret Resend API Key saved successfully");
+    logger.info({ userId: req.session.userId }, "Client Secret Resend API Key live-verified and saved successfully");
 
     res.json({
       ok: true,
       verified: true,
-      message: "تم حفظ مفتاح Resend بنجاح!",
+      message: "تم التحقق من مفتاح Resend وحفظه بنجاح!",
     });
   } catch (err: any) {
-    logger.error({ err }, "Error saving Resend API key");
-    res.status(400).json({ ok: false, error: "فشل حفظ مفتاح Resend. يرجى المحاولة مجدداً." });
+    logger.error({ err }, "Error verifying Resend API key");
+    res.status(400).json({ ok: false, verified: false, error: "فشل التحقق من مفتاح Resend. يرجى المحاولة مجدداً." });
   }
 });
 
@@ -3734,9 +3751,8 @@ router.post("/client/multi-ai/chat", async (req, res) => {
     }
 
     // Look up admin-saved test key for this provider
-    const rows = await db.select().from(adminConfigTable)
-      .where(eq(adminConfigTable.key, `ai_test_key_${provider}`));
-    const apiKey = rows[0]?.value ?? "";
+    const entry = await getAdminConfigEntry(`ai_test_key_${provider}`);
+    const apiKey = entry.value ?? "";
 
     if (!apiKey) {
       res.status(400).json({
@@ -3914,24 +3930,17 @@ router.post("/client/test-whatsapp", async (req, res) => {
 // GET /client/platform-webhooks ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â return platform-level webhook URLs + verify tokens
 router.get("/client/platform-webhooks", async (req, res) => {
   try {
-    const rows = await db
-      .select()
-      .from(adminConfigTable)
-      .where(
-        inArray(adminConfigTable.key, ["whatsapp_verify_token", "messenger_verify_token"])
-      );
-
-    const get = (key: string) => rows.find((r) => r.key === key)?.value ?? null;
+    const cfgMap = await getAdminConfigMap(["whatsapp_verify_token", "messenger_verify_token"]);
     const baseUrl = getAppBaseUrl(req);
 
     res.json({
       messenger: {
         webhookUrl: `${baseUrl}/api/messenger/webhook`,
-        verifyToken: get("messenger_verify_token"),
+        verifyToken: cfgMap.get("messenger_verify_token") || null,
       },
       whatsapp: {
         webhookUrl: `${baseUrl}/api/whatsapp/webhook`,
-        verifyToken: get("whatsapp_verify_token"),
+        verifyToken: cfgMap.get("whatsapp_verify_token") || null,
       },
     });
   } catch (err) {
