@@ -613,6 +613,30 @@ export default function ClientPackages() {
     hasActiveQuotaOrPlan
   );
 
+  const visiblePlans = useMemo(() => {
+    return plans.filter((plan) => {
+      // Free trial plan is strictly for new clients. If client is an existing customer or has already claimed a trial, hide it.
+      if (plan.id === "free_trial" && isFreeTrialClaimed && activeSelectedPlanId !== "free_trial") {
+        return false;
+      }
+      return true;
+    });
+  }, [plans, isFreeTrialClaimed, activeSelectedPlanId]);
+
+  // Responsive, balanced grid layout based on number of visible plans
+  const plansGridClass = useMemo(() => {
+    if (visiblePlans.length === 1) {
+      return "grid grid-cols-1 max-w-md mx-auto gap-6 items-stretch";
+    }
+    if (visiblePlans.length === 2) {
+      return "grid grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto gap-6 items-stretch";
+    }
+    if (visiblePlans.length === 3) {
+      return "grid grid-cols-1 md:grid-cols-3 max-w-5xl xl:max-w-6xl mx-auto gap-6 items-stretch";
+    }
+    return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch";
+  }, [visiblePlans.length]);
+
   const handleOpenSubscribe = (plan: PlanDef) => {
     if (plan.id === "free_trial" && isFreeTrialClaimed) {
       toast({
@@ -1194,16 +1218,8 @@ export default function ClientPackages() {
       )}
 
       {/* ── Main Plans Cards Grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
-        {plans
-          .filter((plan) => {
-            // Free trial plan is strictly for new clients. If client is an existing customer or has already claimed a trial, hide it.
-            if (plan.id === "free_trial" && isFreeTrialClaimed && activeSelectedPlanId !== "free_trial") {
-              return false;
-            }
-            return true;
-          })
-          .map((plan) => {
+      <div className={plansGridClass}>
+        {visiblePlans.map((plan) => {
           const price = calcPrice(plan.monthlyPriceUsd);
           const isActivePlan = Boolean(company && (company as any).isActive) && activeSelectedPlanId === plan.id;
           const isPendingPlan = !isActivePlan && pendingPlanId === plan.id;
@@ -1255,7 +1271,7 @@ export default function ClientPackages() {
               ) : null}
 
               {/* Card Header */}
-              <div className="p-5 sm:p-6 pb-4 border-b border-border/40">
+              <div className="p-5 pb-4 border-b border-border/40">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
                     <span>{lang === "ar" ? plan.nameAr : plan.nameEn}</span>
@@ -1272,7 +1288,7 @@ export default function ClientPackages() {
                 </p>
 
                 {/* Price Display */}
-                <div className="mt-5 flex items-baseline gap-1.5">
+                <div className="mt-4 flex items-baseline gap-1.5">
                   <span className="text-3xl sm:text-4xl font-black text-foreground tabular-nums">
                     {price.toLocaleString()}
                   </span>
@@ -1292,7 +1308,7 @@ export default function ClientPackages() {
                 )}
 
                 {/* Quota Highlights */}
-                <div className={`mt-4 p-2.5 rounded-xl border flex items-center justify-between ${
+                <div className={`mt-3.5 p-2.5 rounded-xl border flex items-center justify-between ${
                   isActivePlan ? "bg-blue-500/15 border-blue-500/30" : isPendingPlan ? "bg-amber-500/15 border-amber-500/30" : "bg-primary/5 border-primary/15"
                 }`}>
                   <div className="flex items-center gap-2">
@@ -1322,8 +1338,8 @@ export default function ClientPackages() {
                 </div>
 
               {/* Features List */}
-              <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-6">
-                <ul className="space-y-3">
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <ul className="space-y-2.5">
                   {(lang === "ar" ? (plan.featuresAr || []) : (plan.featuresEn || plan.featuresAr || [])).map((feat, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
                       <div className="w-4 h-4 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
@@ -1335,7 +1351,7 @@ export default function ClientPackages() {
                 </ul>
 
                 {/* Additional Feature Categories matching Admin View */}
-                <div className="space-y-2.5 pt-3 border-t border-border/40">
+                <div className="space-y-2 pt-2.5 border-t border-border/40">
                   {/* Allowed Pages Badge */}
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
@@ -1434,7 +1450,7 @@ export default function ClientPackages() {
                       ? (lang === "ar" ? "طلب معلق - اضغط لتعديل الطلب" : "Pending Request - Click to edit")
                       : undefined
                   }
-                  className={`w-full min-h-[46px] py-2.5 px-2.5 sm:px-3 rounded-2xl text-xs sm:text-xs xl:text-[11.5px] 2xl:text-xs font-bold shadow-md transition-all gap-1.5 leading-snug text-center whitespace-normal break-words ${getPlanButtonClass(
+                  className={`w-full h-11 py-2.5 px-3 rounded-2xl text-xs font-bold shadow-md transition-all gap-1.5 leading-snug text-center whitespace-normal break-words ${getPlanButtonClass(
                     plan,
                     isActivePlan,
                     isPendingPlan,
