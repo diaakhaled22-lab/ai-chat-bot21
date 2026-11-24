@@ -352,10 +352,25 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
 
   // Extract Plan ID
   let planId = "";
+
+  // 0. High-priority detection for Free Trial
+  if (
+    titleLower.includes("تجريب") ||
+    titleLower.includes("مجاني") ||
+    titleLower.includes("trial") ||
+    descLower.includes("free_trial") ||
+    descLower.includes("تجريب") ||
+    descLower.includes("مجاني")
+  ) {
+    planId = "free_trial";
+  }
+
   // 1. Explicit bracketed tag like [معرف الباقة: pro] or معرف الباقة: pro
-  const planIdMatch = desc.match(/(?:\[معرف الباقة|معرف الباقة|معرف الخطة|plan_id|planId)[:\s]+([a-zA-Z0-9_-]+)/i);
-  if (planIdMatch && planIdMatch[1]) {
-    planId = planIdMatch[1].trim().toLowerCase();
+  if (!planId) {
+    const planIdMatch = desc.match(/(?:\[معرف الباقة|معرف الباقة|معرف الخطة|plan_id|planId)[:\s]+([a-zA-Z0-9_-]+)/i);
+    if (planIdMatch && planIdMatch[1]) {
+      planId = planIdMatch[1].trim().toLowerCase();
+    }
   }
 
   // 2. Target plan in change/upgrade requests: "من ... إلى [الباقة الجديدة]" or "إلى ..."
@@ -848,10 +863,10 @@ export async function processApprovedPlanRequest(
   } else {
     // ── SUBSCRIPTION PLAN APPROVAL ──
     const plan = (options.overridePlanId ? catalog.packages.find((p) => p.id === options.overridePlanId) : null) || parsed.plan!;
-    const isFreeTrial = plan.id === "free_trial";
+    const isFreeTrial = plan.id === "free_trial" || plan.monthlyPriceUsd === 0;
     const isYearly = !isFreeTrial && parsed.billingCycle === "yearly";
     const durationDays = isFreeTrial ? 7 : (isYearly ? 365 : 30);
-    const rawPrice = isYearly ? plan.monthlyPriceUsd * 12 * 0.8 : plan.monthlyPriceUsd;
+    const rawPrice = isFreeTrial ? 0 : (isYearly ? plan.monthlyPriceUsd * 12 * 0.8 : plan.monthlyPriceUsd);
     const priceUsd = Math.round(rawPrice);
     const priceLocal = Math.round(priceUsd * exchangeRate);
 
@@ -899,8 +914,8 @@ export async function processApprovedPlanRequest(
       itemType: "plan",
       itemNameAr: plan.nameAr,
       itemNameEn: plan.nameEn,
-      billingCycleAr: isYearly ? "سنوي (خصم 20%)" : "شهري",
-      billingCycleEn: isYearly ? "Yearly (20% off)" : "Monthly",
+      billingCycleAr: isFreeTrial ? "تجربة مجانية (7 أيام)" : (isYearly ? "سنوي (خصم 20%)" : "شهري"),
+      billingCycleEn: isFreeTrial ? "Free Trial (7 Days)" : (isYearly ? "Yearly (20% off)" : "Monthly"),
       tokenQuota: plan.tokensMonthly,
       priceUsd,
       priceLocal,
@@ -910,9 +925,9 @@ export async function processApprovedPlanRequest(
       tools: parsed.tools,
       dataSources: parsed.dataSources,
       status: "activated",
-      isPaid: options.isPaid !== undefined ? Boolean(options.isPaid) : true,
-      paymentPhone: paymentConfig.paymentPhone,
-      paymentInstaPay: paymentConfig.paymentInstaPay,
+      isPaid: isFreeTrial ? true : (options.isPaid !== undefined ? Boolean(options.isPaid) : true),
+      paymentPhone: isFreeTrial ? undefined : paymentConfig.paymentPhone,
+      paymentInstaPay: isFreeTrial ? undefined : paymentConfig.paymentInstaPay,
     };
   }
 
@@ -979,6 +994,12 @@ export async function processApprovedPlanRequest(
     botChatText = `📋 [طلب شحن معتمد - بانتظار السداد] تمت مراجعة طلبكم #${ticket.id} وإصدار الفاتورة رقم #${invoiceNumber} (${paymentBadge}). الرصيد الإضافي (+${(parsed.topupPack?.tokens || 0).toLocaleString()} رمز) معلق وسيُشحن تلقائياً بمجرد تأكيد السداد.`;
     clientNotifTitle = `📋 [فاتورة شحن رصيد إضافي] ${invoice.itemNameAr}`;
     clientNotifMsg = `تم إصدار فاتورة شحن الرصيد #${invoiceNumber} (غير مسددة). رصيد الرموز الإضافي معلق وسيتم إضافته إلى حسابك فور تأكيد السداد.`;
+  } else if (!parsed.isTopup && (parsed.plan?.id === "free_trial" || parsed.plan?.monthlyPriceUsd === 0)) {
+    resolutionNote = `تم تفعيل الباقة التجريبية المجانية (7 أيام) بنجاح برصيد 25,000 رمز مجاني وصلاحية 7 أيام كاملة دون أي تكلفة بناءً على ${approvalSourceText}.${endDateText}`;
+    aiResponseText = `تم تفعيل الباقة التجريبية المجانية (7 أيام) بنجاح! حسابكم مشحون الآن بـ 25,000 رمز مجاني وصلاحية 7 أيام كاملة لاستكشاف كافة مميزات المنصة وتدريب الشات بوت دون أي تكلفة.`;
+    botChatText = `🎉 [تم تفعيل الباقة التجريبية بنجاح] تمت مراجعة طلبكم #${ticket.id} وتفعيل باقتكم التجريبية المجانية (7 أيام) برصيد 25,000 رمز مجاني.${invoice.endDate ? ` تاريخ الانتهاء: ${invoice.endDate}` : ""}`;
+    clientNotifTitle = `🎉 [تم تفعيل التجربة المجانية] ${invoice.itemNameAr}`;
+    clientNotifMsg = `تم تفعيل الباقة التجريبية المجانية (7 أيام) لحسابك بنجاح برصيد 25,000 رمز وصلاحية 7 أيام دون أي تكلفة. استمتع بتجربة كافة مميزات الذكاء الاصطناعي!`;
   } else {
     resolutionNote = `تم التفعيل التلقائي بنجاح بناءً على ${approvalSourceText}.\nتم إصدار فاتورة الاشتراك رقم #${invoiceNumber} (الحالة: ${paymentBadge}) وإرسالها للعميل عبر البريد الإلكتروني والواتساب.${endDateText}`;
     aiResponseText = `تم اعتماد وتفعيل طلبكم بنجاح! تم إصدار فاتورة الاشتراك #${invoiceNumber} (${isPaid ? "مسددة" : "غير مسددة"})${invoice.endDate ? ` بصلاحية تنتهي في ${invoice.endDate} (مطابقة لنهاية اشتراككم)` : ""} وإرسالها إليكم عبر البريد والواتساب.`;

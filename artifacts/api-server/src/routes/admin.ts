@@ -213,7 +213,7 @@ router.get("/admin/stats", async (req, res) => {
     const [quotaRow] = await db
       .select({ count: count() })
       .from(companiesTable)
-      .where(sql`${companiesTable.monthlyTokenQuota} IS NOT NULL AND ${companiesTable.monthlyTokenQuota} > 0`);
+      .where(sql`${companiesTable.monthlyTokenQuota} IS NOT NULL AND ${companiesTable.monthlyTokenQuota} > 25000 AND (${companiesTable.freeTrialClaimed} IS FALSE OR ${companiesTable.freeTrialClaimed} IS NULL)`);
     const quotaCompanies = quotaRow?.count ?? 0;
 
     const totalClients = clientsRow?.count ?? 0;
@@ -3283,6 +3283,15 @@ router.get("/admin/invoices", async (req, res) => {
 
       const parsed = parseTicketPlanDetails(t, packagesCatalog);
       const isTopup = parsed.isTopup;
+      const isFreeTrial = !isTopup && (
+        parsed.plan?.id === "free_trial" ||
+        (parsed.plan && parsed.plan.monthlyPriceUsd === 0) ||
+        titleLower.includes("تجريب") ||
+        titleLower.includes("مجاني") ||
+        titleLower.includes("trial") ||
+        descLower.includes("free_trial")
+      );
+
       let matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
       if (!matchedCompanyItem && parsed.parsedCompanyName) {
         matchedCompanyItem = Array.from(companyMap.values()).find((c) =>
@@ -3299,10 +3308,13 @@ router.get("/admin/invoices", async (req, res) => {
         "";
 
       const invoiceNumber = `INV-${new Date(t.createdAt).getFullYear()}${String(new Date(t.createdAt).getMonth() + 1).padStart(2, "0")}-${t.id}`;
+      const planMonthlyUsd = parsed.plan?.monthlyPriceUsd ?? 20;
       const priceUsd = isTopup
-        ? (parsed.topupPack?.priceUsd || 10)
-        : Math.round(parsed.billingCycle === "yearly" ? (parsed.plan?.monthlyPriceUsd || 79) * 12 * 0.8 : (parsed.plan?.monthlyPriceUsd || 79));
-      const priceLocal = Math.round(priceUsd * exchangeRate);
+        ? (parsed.topupPack?.priceUsd ?? 10)
+        : isFreeTrial
+        ? 0
+        : Math.round(parsed.billingCycle === "yearly" ? planMonthlyUsd * 12 * 0.8 : planMonthlyUsd);
+      const priceLocal = isFreeTrial ? 0 : Math.round(priceUsd * exchangeRate);
 
       invoiceList.push({
         id: `ticket-${t.id}`,
@@ -3314,30 +3326,48 @@ router.get("/admin/invoices", async (req, res) => {
         clientName: client?.name || "العميل",
         clientEmail,
         clientPhone: parsed.phone || company?.whatsappNumber || "",
-        itemType: isTopup ? "topup" : "plan",
-        titleAr: isTopup ? (parsed.topupPack ? `شحن ${parsed.topupPack.formatted} رموز` : t.title) : (parsed.plan?.nameAr || t.title),
-        titleEn: isTopup ? (parsed.topupPack ? `Top-up ${parsed.topupPack.formatted}` : "Top-up Pack") : (parsed.plan?.nameEn || "Subscription Plan"),
-        billingCycleAr: isTopup ? "دفعة واحدة" : (parsed.billingCycle === "yearly" ? "سنوي" : "شهري"),
-        billingCycleEn: isTopup ? "One-Time" : (parsed.billingCycle === "yearly" ? "Yearly" : "Monthly"),
+        itemType: isTopup ? "topup" : isFreeTrial ? "free_trial" : "plan",
+        titleAr: isTopup
+          ? (parsed.topupPack ? `شحن ${parsed.topupPack.formatted} رموز` : t.title)
+          : isFreeTrial
+          ? "الباقة التجريبية المجانية (7 أيام)"
+          : (parsed.plan?.nameAr || t.title),
+        titleEn: isTopup
+          ? (parsed.topupPack ? `Top-up ${parsed.topupPack.formatted}` : "Top-up Pack")
+          : isFreeTrial
+          ? "Free 7-Day Trial"
+          : (parsed.plan?.nameEn || "Subscription Plan"),
+        billingCycleAr: isTopup
+          ? "دفعة واحدة"
+          : isFreeTrial
+          ? "تجربة مجانية (7 أيام)"
+          : (parsed.billingCycle === "yearly" ? "سنوي" : "شهري"),
+        billingCycleEn: isTopup
+          ? "One-Time"
+          : isFreeTrial
+          ? "Free Trial (7 Days)"
+          : (parsed.billingCycle === "yearly" ? "Yearly" : "Monthly"),
         tokenQuota: parsed.tokens,
         priceUsd,
         priceLocal,
         currencySymbol,
         retentionDays: (parsed.retentionDays !== undefined && parsed.retentionDays !== null && parsed.retentionDays !== 30)
           ? parsed.retentionDays
-          : (company?.chatLogRetentionDays ?? parsed.retentionDays ?? null),
+          : (company?.chatLogRetentionDays ?? parsed.retentionDays ?? (isFreeTrial ? 7 : null)),
         channels: parsed.channels || [],
         tools: parsed.tools || [],
         periodStart: company?.quotaStartDate ? company.quotaStartDate.toISOString() : undefined,
         periodEnd: (company?.quotaEndDate ? company.quotaEndDate.toISOString() : (company?.activationEnd ? company.activationEnd.toISOString() : undefined)),
         endDate: (company?.quotaEndDate ? company.quotaEndDate.toISOString() : (company?.activationEnd ? company.activationEnd.toISOString() : undefined)),
         state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
-        isPaid: t.status === "resolved",
-        status: t.status === "resolved" ? "paid" : "pending",
+        isPaid: isFreeTrial ? true : (t.status === "resolved"),
+        status: isFreeTrial ? "activated" : (t.status === "resolved" ? "paid" : "pending"),
         issueDate: t.createdAt.toISOString(),
-        notes: t.adminNote || t.aiResponse || undefined,
-        paymentPhone: paymentConfig.paymentPhone || "01000000000",
-        paymentInstaPay: paymentConfig.paymentInstaPay || "username@instapay",
+        notes: isFreeTrial
+          ? "باقة تجريبية مجانية (7 أيام) - 25,000 رمز مجاني دون أي تكلفة"
+          : (t.adminNote || t.aiResponse || undefined),
+        paymentPhone: isFreeTrial ? "" : (paymentConfig.paymentPhone || "01000000000"),
+        paymentInstaPay: isFreeTrial ? "" : (paymentConfig.paymentInstaPay || "username@instapay"),
       });
     }
 
@@ -3419,17 +3449,37 @@ router.get("/admin/invoices", async (req, res) => {
       logger.warn({ err: e }, "Failed to fetch topup activity logs for invoices");
     }
 
-    // 3. Add monthly Quota Usage Bills for all companies with token quota
+    // 3. Add monthly Quota Usage Bills ONLY for companies with active PAID token quota (exclude Free Trial companies)
     for (const c of companies) {
       const comp = c.company;
       const client = c.client;
-      if (!comp.monthlyTokenQuota && !comp.isActive) continue;
+
+      // Skip inactive companies
+      if (!comp.isActive) continue;
+
+      // Exclude companies on the Free Trial (freeTrialClaimed or quota <= 25,000)
+      if (comp.freeTrialClaimed || (comp.monthlyTokenQuota !== null && comp.monthlyTokenQuota <= 25_000)) {
+        continue;
+      }
+
+      // Skip companies with no token quota assigned
+      if (!comp.monthlyTokenQuota || comp.monthlyTokenQuota <= 0) continue;
+
+      // Skip companies that already have an invoice for a subscription plan or trial in invoiceList
+      const alreadyHasPlanInvoice = invoiceList.some(
+        (inv) => inv.companyId === comp.id && (inv.itemType === "plan" || inv.itemType === "free_trial")
+      );
+      if (alreadyHasPlanInvoice) {
+        continue;
+      }
 
       const invoiceNumber = `INV-Q-${comp.id}-${new Date().toISOString().slice(0, 7).replace("-", "")}`;
       const quota = comp.monthlyTokenQuota || 50000;
-      let estPriceUsd = 29;
-      if (quota >= 1000000) estPriceUsd = 199;
-      else if (quota >= 250000) estPriceUsd = 79;
+      let estPriceUsd = 20;
+      if (quota >= 1500000) estPriceUsd = 30;
+      else if (quota >= 1000000) estPriceUsd = 25;
+      else if (quota >= 500000) estPriceUsd = 20;
+      else estPriceUsd = 20;
       const estPriceLocal = Math.round(estPriceUsd * exchangeRate);
 
       invoiceList.push({

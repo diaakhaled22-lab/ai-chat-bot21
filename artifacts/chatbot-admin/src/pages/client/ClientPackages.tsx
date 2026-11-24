@@ -428,6 +428,12 @@ export default function ClientPackages() {
   const companyActivePlanId = useMemo(() => {
     if (!company || !(company as any).isActive) return null;
     const quota = (company as any).monthlyTokenQuota;
+
+    // Free Trial check
+    if ((company as any).freeTrialClaimed && (!quota || quota <= 25_000)) {
+      return "free_trial";
+    }
+
     if (quota && quota > 0) {
       const exact = plans.find((p) => p.tokensMonthly === quota);
       if (exact) return exact.id;
@@ -435,36 +441,22 @@ export default function ClientPackages() {
     if ((company as any).activePlanId) {
       return (company as any).activePlanId;
     }
-    if (!quota) return null;
-    let best = plans[0];
-    let minDiff = Infinity;
-    for (const p of plans) {
-      if (p.tokensMonthly) {
-        const diff = Math.abs(p.tokensMonthly - quota);
-        if (diff < minDiff) {
-          minDiff = diff;
-          best = p;
-        }
-      }
-    }
-    return best ? best.id : null;
+    return null;
   }, [company, plans]);
 
-  // Keep activeSelectedPlanId strictly in sync with companyActivePlanId (overrides stale localStorage)
+  // Keep activeSelectedPlanId strictly in sync with companyActivePlanId (NEVER fabricate from localStorage)
   useEffect(() => {
-    if (!company || !(company as any).isActive) {
+    if (!company || !(company as any).isActive || !companyActivePlanId) {
       setActiveSelectedPlanId(null);
       try {
         localStorage.removeItem(activePlanStorageKey);
       } catch {}
       return;
     }
-    if (companyActivePlanId) {
-      setActiveSelectedPlanId(companyActivePlanId);
-      try {
-        localStorage.setItem(activePlanStorageKey, companyActivePlanId);
-      } catch {}
-    }
+    setActiveSelectedPlanId(companyActivePlanId);
+    try {
+      localStorage.setItem(activePlanStorageKey, companyActivePlanId);
+    } catch {}
   }, [company, companyActivePlanId, activePlanStorageKey]);
 
   // Sync pendingPlanId from server response
@@ -477,23 +469,15 @@ export default function ClientPackages() {
     }
   }, [company, companyActivePlanId]);
 
-  // Restore local storage state on mount
+  // Restore local storage state on mount (submitted phone numbers only, never active plan)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         setSubmittedPlans((prev) => ({ ...JSON.parse(saved), ...prev }));
       }
-      if (company && (company as any).isActive && !companyActivePlanId) {
-        const savedActive = localStorage.getItem(activePlanStorageKey);
-        if (savedActive) {
-          setActiveSelectedPlanId(savedActive);
-        }
-      } else if (company && !(company as any).isActive) {
-        setActiveSelectedPlanId(null);
-      }
     } catch {}
-  }, [storageKey, activePlanStorageKey, company, companyActivePlanId]);
+  }, [storageKey]);
 
   // Sync with remote tickets so requests on file persist across devices/sessions
   const { data: clientTickets } = useQuery<any[]>({
@@ -517,14 +501,14 @@ export default function ClientPackages() {
       const matchId = t.description?.match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/);
       if (matchId) {
         planId = matchId[1];
+      } else if (t.title.includes("تجريبية") || t.title.toLowerCase().includes("trial") || t.title.includes("مجانية")) {
+        planId = "free_trial";
       } else if (t.title.includes("الأساسية") || t.title.toLowerCase().includes("starter")) {
         planId = "starter";
       } else if (t.title.includes("الاحترافية") || t.title.toLowerCase().includes("pro")) {
         planId = "pro";
       } else if (t.title.includes("المؤسسات") || t.title.toLowerCase().includes("enterprise")) {
         planId = "enterprise";
-      } else if (t.title.includes("تجريبية") || t.title.toLowerCase().includes("trial")) {
-        planId = "free_trial";
       }
 
       const matchPhone = t.description?.match(/رقم هاتف \/ واتساب للتواصل:\s*([^\n\r]+)/) || t.description?.match(/رقم الهاتف \/ واتساب للتواصل:\s*([^\n\r]+)/);
@@ -547,11 +531,8 @@ export default function ClientPackages() {
       }
     }
 
-    if (resolvedPlanId && !companyActivePlanId) {
+    if (resolvedPlanId && !companyActivePlanId && company && (company as any).isActive) {
       setActiveSelectedPlanId(resolvedPlanId);
-      try {
-        localStorage.setItem(activePlanStorageKey, resolvedPlanId);
-      } catch {}
     }
 
     // Set pending request if there is an active/open ticket differing from current active plan

@@ -2624,10 +2624,15 @@ export default function AdminAiQuota() {
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {hasQuota ? (
-                            <div className="flex flex-col items-end gap-0.5">
+                            <div className="flex flex-col items-end gap-1">
                               <span className="inline-flex items-center gap-1 font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full text-[11px]">
                                 {formatQuota(c.monthlyTokenQuota)}
                               </span>
+                              {(c.monthlyTokenQuota === 25_000 || (c as any).freeTrialClaimed) && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                  {lang === "ar" ? "تجربة مجانية" : "Free Trial"}
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground/60 text-[10px] font-medium bg-muted/40 border border-muted/50 px-2 py-0.5 rounded-full">

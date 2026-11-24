@@ -84,7 +84,7 @@ export interface InvoiceItem {
   clientName: string;
   clientEmail: string;
   clientPhone: string;
-  itemType: "plan" | "topup" | "quota_usage";
+  itemType: "plan" | "topup" | "quota_usage" | "free_trial";
   titleAr: string;
   titleEn: string;
   billingCycleAr: string;
@@ -465,7 +465,7 @@ export default function AdminBills() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "plan" | "topup" | "quota_usage">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "plan" | "topup" | "quota_usage" | "free_trial">("all");
   const [stateFilter, setStateFilter] = useState<"all" | "active" | "pending">("all");
   const [paidFilter, setPaidFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
@@ -2209,6 +2209,7 @@ export default function AdminBills() {
             <SelectContent>
               <SelectItem value="all">{lang === "ar" ? "جميع الأنواع" : "All Types"}</SelectItem>
               <SelectItem value="plan">{lang === "ar" ? "باقات الاشتراك" : "Plans"}</SelectItem>
+              <SelectItem value="free_trial">{lang === "ar" ? "الباقات التجريبية المجانية" : "Free Trials"}</SelectItem>
               <SelectItem value="topup">{lang === "ar" ? "شحن رصيد إضافي" : "Top-up Packs"}</SelectItem>
               <SelectItem value="quota_usage">{lang === "ar" ? "استهلاك الحصص" : "Quota Usage"}</SelectItem>
             </SelectContent>
@@ -2605,6 +2606,11 @@ export default function AdminBills() {
                                         {lang === "ar" ? "باقة" : "Plan"}
                                       </Badge>
                                     )}
+                                    {inv.itemType === "free_trial" && (
+                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10 font-bold">
+                                        {lang === "ar" ? "تجربة مجانية" : "Free Trial"}
+                                      </Badge>
+                                    )}
                                     {inv.itemType === "topup" && (
                                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
                                         {lang === "ar" ? "شحن" : "Topup"}
@@ -2692,11 +2698,13 @@ export default function AdminBills() {
                                   ) : (
                                     <div className="flex flex-col">
                                       <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
-                                        ${inv.priceUsd} USD
+                                        {inv.priceUsd === 0 ? `$0 USD (${lang === "ar" ? "مجاناً" : "Free"})` : `$${inv.priceUsd} USD`}
                                       </span>
-                                      <span className="text-[11px] text-muted-foreground font-mono">
-                                        ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
-                                      </span>
+                                      {inv.priceUsd > 0 && (
+                                        <span className="text-[11px] text-muted-foreground font-mono">
+                                          ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                 </td>
@@ -2997,6 +3005,11 @@ export default function AdminBills() {
                                 {inv.itemType === "plan" && (
                                   <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
                                     {lang === "ar" ? "باقة" : "Plan"}
+                                  </Badge>
+                                )}
+                                {inv.itemType === "free_trial" && (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10 font-bold">
+                                    {lang === "ar" ? "تجربة مجانية" : "Free Trial"}
                                   </Badge>
                                 )}
                                 {inv.itemType === "topup" && (
@@ -3366,6 +3379,11 @@ export default function AdminBills() {
                                 {lang === "ar" ? "باقة" : "Plan"}
                               </Badge>
                             )}
+                            {inv.itemType === "free_trial" && (
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10 font-bold">
+                                {lang === "ar" ? "تجربة مجانية" : "Free Trial"}
+                              </Badge>
+                            )}
                             {inv.itemType === "topup" && (
                               <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
                                 {lang === "ar" ? "شحن" : "Topup"}
@@ -3463,11 +3481,13 @@ export default function AdminBills() {
                           ) : (
                             <div className="flex flex-col">
                               <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono">
-                                ${inv.priceUsd} USD
+                                {inv.priceUsd === 0 ? `$0 USD (${lang === "ar" ? "مجاناً" : "Free"})` : `$${inv.priceUsd} USD`}
                               </span>
-                              <span className="text-[11px] text-muted-foreground font-mono">
-                                ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
-                              </span>
+                              {inv.priceUsd > 0 && (
+                                <span className="text-[11px] text-muted-foreground font-mono">
+                                  ≈ {localPrice.toLocaleString()} {currencyInfo.symbol}
+                                </span>
+                              )}
                             </div>
                           )}
                         </td>
@@ -3731,6 +3751,11 @@ export default function AdminBills() {
                           {inv.itemType === "plan" && (
                             <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-blue-500/30 text-blue-500 bg-blue-500/10">
                               {lang === "ar" ? "باقة" : "Plan"}
+                            </Badge>
+                          )}
+                          {inv.itemType === "free_trial" && (
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-500/30 text-emerald-500 bg-emerald-500/10 font-bold">
+                              {lang === "ar" ? "تجربة مجانية" : "Free Trial"}
                             </Badge>
                           )}
                           {inv.itemType === "topup" && (
@@ -4633,8 +4658,10 @@ export default function AdminBills() {
                         </strong>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 self-start sm:self-auto">
-                      {viewingInvoice.itemType === "topup"
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 self-start sm:self-auto font-bold">
+                      {viewingInvoice.itemType === "free_trial" || viewingInvoice.priceUsd === 0
+                        ? (lang === "ar" ? "تجربة مجانية (7 أيام) ✨" : "Free Trial (7 Days) ✨")
+                        : viewingInvoice.itemType === "topup"
                         ? (lang === "ar" ? "شحن رصيد إضافي ⚡" : "Top-up Allowance ⚡")
                         : (lang === "ar" ? "اشتراك باقة معتمدة ✓" : "Active Subscription ✓")}
                     </Badge>
@@ -4684,10 +4711,18 @@ export default function AdminBills() {
                           {viewingInvoice.tokenQuota?.toLocaleString()}
                         </td>
                         <td className="p-3.5 text-right rtl:text-right ltr:text-left font-mono font-bold text-sm text-foreground">
-                          ${viewingInvoice.priceUsd} USD
-                          <span className="block text-[11px] font-normal text-muted-foreground">
-                            ≈ {localAmount.toLocaleString()} {currencyInfo.symbol}
-                          </span>
+                          {viewingInvoice.priceUsd === 0 ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              $0 USD ({lang === "ar" ? "مجاناً" : "Free"})
+                            </span>
+                          ) : (
+                            <>
+                              ${viewingInvoice.priceUsd} USD
+                              <span className="block text-[11px] font-normal text-muted-foreground">
+                                ≈ {localAmount.toLocaleString()} {currencyInfo.symbol}
+                              </span>
+                            </>
+                          )}
                         </td>
                       </tr>
                     </tbody>
