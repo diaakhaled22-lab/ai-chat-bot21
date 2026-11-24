@@ -2241,10 +2241,6 @@ router.post("/client/tickets", async (req, res) => {
       res.status(400).json({ error: "Title and description are required" });
       return;
     }
-    const [ticket] = await db
-      .insert(ticketsTable)
-      .values({ clientId: req.session.userId!, title: title.trim(), description: description.trim() })
-      .returning();
 
     const [user] = await db
       .select({
@@ -2282,11 +2278,19 @@ router.post("/client/tickets", async (req, res) => {
 
     const titleLower = (title || "").toLowerCase();
     const descLower = (description || "").toLowerCase();
+
+    // Check if the TARGET requested plan is specifically the Free Trial (not upgrading/switching away from free trial)
+    const targetPlanMatch = (description || "").match(/\[معرف الباقة:\s*([a-zA-Z0-9_-]+)\]/i);
+    const targetPlanId = targetPlanMatch ? targetPlanMatch[1].trim().toLowerCase() : null;
+
     const isRequestingFreeTrial =
-      (description || "").includes("[معرف الباقة: free_trial]") ||
-      (description || "").includes("free_trial") ||
-      (title || "").includes("الباقة التجريبية المجانية") ||
-      (title || "").includes("Free 7-Day Trial");
+      targetPlanId === "free_trial" ||
+      (!targetPlanId && (
+        ((title || "").includes("الباقة التجريبية المجانية") || (title || "").includes("Free 7-Day Trial")) &&
+        !(title || "").includes("تغيير") &&
+        !(title || "").includes("ترقية") &&
+        !(title || "").includes("إلى")
+      ));
 
     if (isRequestingFreeTrial && company && (company as any).freeTrialClaimed && ((company as any).isActive || (company as any).activationEnd)) {
       res.status(400).json({
@@ -2294,6 +2298,11 @@ router.post("/client/tickets", async (req, res) => {
       });
       return;
     }
+
+    const [ticket] = await db
+      .insert(ticketsTable)
+      .values({ clientId: req.session.userId!, title: title.trim(), description: description.trim() })
+      .returning();
 
     const isPlanSwitch =
       title.includes("طلب تغيير باقة") ||

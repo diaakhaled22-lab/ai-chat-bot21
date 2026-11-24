@@ -3285,11 +3285,7 @@ router.get("/admin/invoices", async (req, res) => {
       const isTopup = parsed.isTopup;
       const isFreeTrial = !isTopup && (
         parsed.plan?.id === "free_trial" ||
-        (parsed.plan && parsed.plan.monthlyPriceUsd === 0) ||
-        titleLower.includes("تجريب") ||
-        titleLower.includes("مجاني") ||
-        titleLower.includes("trial") ||
-        descLower.includes("free_trial")
+        (parsed.plan && parsed.plan.monthlyPriceUsd === 0)
       );
 
       let matchedCompanyItem = Array.from(companyMap.values()).find((c) => c.company.clientId === t.clientId);
@@ -3359,7 +3355,7 @@ router.get("/admin/invoices", async (req, res) => {
         periodStart: company?.quotaStartDate ? company.quotaStartDate.toISOString() : undefined,
         periodEnd: (company?.quotaEndDate ? company.quotaEndDate.toISOString() : (company?.activationEnd ? company.activationEnd.toISOString() : undefined)),
         endDate: (company?.quotaEndDate ? company.quotaEndDate.toISOString() : (company?.activationEnd ? company.activationEnd.toISOString() : undefined)),
-        state: t.status === "resolved" || Boolean(company?.isActive) ? "active" : "pending",
+        state: isFreeTrial ? "active" : (t.status === "resolved" ? "active" : "pending"),
         isPaid: isFreeTrial ? true : (t.status === "resolved"),
         status: isFreeTrial ? "activated" : (t.status === "resolved" ? "paid" : "pending"),
         issueDate: t.createdAt.toISOString(),

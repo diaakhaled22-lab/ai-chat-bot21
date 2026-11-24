@@ -576,6 +576,8 @@ export default function ClientPackages() {
       queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
       queryClient.invalidateQueries({ queryKey: ["admin-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["client-chat-logs"] });
       toast({
         title: lang === "ar" ? "تم إرسال الطلب بنجاح!" : "Request Submitted Successfully!",

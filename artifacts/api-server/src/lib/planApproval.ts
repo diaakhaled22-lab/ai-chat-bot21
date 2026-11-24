@@ -353,27 +353,13 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
   // Extract Plan ID
   let planId = "";
 
-  // 0. High-priority detection for Free Trial
-  if (
-    titleLower.includes("تجريب") ||
-    titleLower.includes("مجاني") ||
-    titleLower.includes("trial") ||
-    descLower.includes("free_trial") ||
-    descLower.includes("تجريب") ||
-    descLower.includes("مجاني")
-  ) {
-    planId = "free_trial";
+  // 1. First Priority: Explicit bracketed tag like [معرف الباقة: pro] or معرف الباقة: pro
+  const planIdMatch = desc.match(/(?:\[معرف الباقة|معرف الباقة|معرف الخطة|plan_id|planId)[:\s]+([a-zA-Z0-9_-]+)/i);
+  if (planIdMatch && planIdMatch[1]) {
+    planId = planIdMatch[1].trim().toLowerCase();
   }
 
-  // 1. Explicit bracketed tag like [معرف الباقة: pro] or معرف الباقة: pro
-  if (!planId) {
-    const planIdMatch = desc.match(/(?:\[معرف الباقة|معرف الباقة|معرف الخطة|plan_id|planId)[:\s]+([a-zA-Z0-9_-]+)/i);
-    if (planIdMatch && planIdMatch[1]) {
-      planId = planIdMatch[1].trim().toLowerCase();
-    }
-  }
-
-  // 2. Target plan in change/upgrade requests: "من ... إلى [الباقة الجديدة]" or "إلى ..."
+  // 2. Second Priority: Target plan in change/upgrade requests: "من ... إلى [الباقة الجديدة]" or "إلى ..."
   if (!planId) {
     const toMatch = desc.match(/(?:إلى|to)\s*\[?([^\]\n\r]+)\]?/i) || title.match(/(?:إلى|to)\s*\[?([^\]\n\r]+)\]?/i);
     if (toMatch && toMatch[1]) {
@@ -391,7 +377,7 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
     }
   }
 
-  // 3. Match tokens if explicitly mentioned in ticket description (e.g. 1,000,000 tokens => pro, 500,000 => starter)
+  // 3. Third Priority: Match tokens if explicitly mentioned in ticket description (e.g. 1,000,000 tokens => pro, 500,000 => starter)
   if (!planId) {
     const tokenMatch =
       desc.match(/(?:رصيد الرموز المرفق|رموز|tokens?)[:\s]+(\d+[\d,]*)/i) ||
@@ -405,7 +391,22 @@ export function parseTicketPlanDetails(ticket: Ticket, catalog: PackagesCatalog 
     }
   }
 
-  // 4. Fallback search in title & description, excluding any "الباقة السابقة" line
+  // 4. Fourth Priority: Free Trial detection ONLY IF not switching/upgrading from Free Trial to another plan
+  if (!planId) {
+    const isPlanChange = title.includes("تغيير") || title.includes("ترقية") || title.includes("إلى") || desc.includes("إلى");
+    if (!isPlanChange && (
+      titleLower.includes("تجريب") ||
+      titleLower.includes("مجاني") ||
+      titleLower.includes("trial") ||
+      descLower.includes("free_trial") ||
+      descLower.includes("تجريب") ||
+      descLower.includes("مجاني")
+    )) {
+      planId = "free_trial";
+    }
+  }
+
+  // 5. Fallback search in title & description, excluding any "الباقة السابقة" line
   if (!planId) {
     const cleanedDesc = desc.replace(/\[الباقة السابقة:[^\]]+\]/gi, "").replace(/من\s+\[?[^\]\n\r]+\]?\s+إلى/gi, "");
     const cleanedTitle = title.replace(/من\s+\[?[^\]\n\r]+\]?\s+إلى/gi, "");
