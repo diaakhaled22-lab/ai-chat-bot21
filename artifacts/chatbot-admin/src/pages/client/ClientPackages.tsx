@@ -626,11 +626,11 @@ export default function ClientPackages() {
     setPhoneError(null);
     setDuplicateWarning(null);
 
-    // Set default retention from plan or current company retention
+    // Set fixed retention from plan definition
     setSelectedRetention(
-      plan.retentionDays !== undefined
+      plan.retentionDays !== undefined && plan.retentionDays !== null
         ? plan.retentionDays
-        : (retentionData?.retentionDays ?? 30)
+        : 7
     );
 
     // Pre-fill channels based on plan definition or existing company setup
@@ -774,15 +774,6 @@ export default function ClientPackages() {
       { title, description },
       {
         onSuccess: () => {
-          // Immediately apply chosen auto-delete retention policy to company
-          customFetch("/api/client/chat-log-retention", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ retentionDays: selectedRetention }),
-          }).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/client/chat-log-retention"] });
-          }).catch(() => {});
-
           // Immediately update company channels and tools
           customFetch("/api/client/company", {
             method: "PUT",
@@ -1754,50 +1745,25 @@ export default function ClientPackages() {
                 )}
               </div>
 
-              {/* Auto-Delete Retention Policy Selection */}
+              {/* Auto-Delete Retention Policy - Fixed Plan Feature Display */}
               <div className="space-y-2 p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
                     <span>{lang === "ar" ? "سياسة الحذف التلقائي للاحتفاظ بالسجلات" : "Auto-Delete Retention Policy"}</span>
                   </div>
-                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/25">
-                    {selectedRetention && selectedRetention > 0
-                      ? `${selectedRetention} ${lang === "ar" ? "أيام" : "Days"}`
+                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/25 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-amber-500" />
+                    {selectedPlan.retentionDays && selectedPlan.retentionDays > 0
+                      ? `${selectedPlan.retentionDays} ${lang === "ar" ? "أيام (محددة مع الباقة)" : "Days (Plan Feature)"}`
                       : (lang === "ar" ? "دائم (بدون حذف)" : "Permanent")}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   {lang === "ar"
-                    ? "حدد مدة بقاء سجلات المحادثات وحجوزات العملاء في لوحة تحكمك قبل أرشفة وحذف السجلات القديمة تلقائياً."
-                    : "Choose how long chat logs and CRM bookings are kept in your dashboard before being automatically purged."}
+                    ? `ميزة مضمنة وثابتة في هذه الباقة: يتم الاحتفاظ بسجلات المحادثات وحجوزات العملاء في لوحة تحكمك لمدة ${selectedPlan.retentionDays ?? 7} أيام تلقائياً.`
+                    : `Included plan specification: Chat logs and customer bookings are preserved in your dashboard for ${selectedPlan.retentionDays ?? 7} days automatically.`}
                 </p>
-
-                {/* Preset Chips */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
-                  {[
-                    { labelAr: "3 أيام",   labelEn: "3d",   days: 3 },
-                    { labelAr: "7 أيام",   labelEn: "7d",   days: 7 },
-                    { labelAr: "14 يوماً", labelEn: "14d",  days: 14 },
-                    { labelAr: "30 يوماً", labelEn: "30d",  days: 30 },
-                  ].map((preset) => {
-                    const isSelected = (selectedRetention ?? 0) === preset.days;
-                    return (
-                      <button
-                        key={preset.days}
-                        type="button"
-                        onClick={() => setSelectedRetention(preset.days)}
-                        className={`px-1.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all text-center cursor-pointer ${
-                          isSelected
-                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                            : "bg-background border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {lang === "ar" ? preset.labelAr : preset.labelEn}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Allowed Pages Preview Section */}

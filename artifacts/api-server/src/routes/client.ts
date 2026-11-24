@@ -2692,6 +2692,10 @@ router.get("/client/chat-log-retention", async (req, res) => {
 // PUT /client/chat-log-retention — allow client to configure their auto-delete retention policy
 router.put("/client/chat-log-retention", async (req, res) => {
   try {
+    if (req.session?.role !== "admin") {
+      res.status(403).json({ error: "Access denied. Chat log retention policy is configured by administrators only." });
+      return;
+    }
     const { retentionDays } = req.body as { retentionDays?: number | null };
     const [company] = await db
       .select({ id: companiesTable.id })
