@@ -126,9 +126,9 @@ function StatCard({
           <KpiTrend trend={trend} value={trendValue} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">{label}</p>
+          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1 truncate block" title={label}>{label}</p>
           <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate">{value}</p>
-          {sub && <p className="text-xs text-muted-foreground mt-1 truncate font-medium">{sub}</p>}
+          {sub && <p className="text-xs text-muted-foreground mt-1 truncate font-medium" title={sub}>{sub}</p>}
         </div>
       </div>
       <KpiSparkline trend={trend} seed={seed ?? label} height={30} />

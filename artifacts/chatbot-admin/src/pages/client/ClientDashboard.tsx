@@ -90,23 +90,23 @@ function StatCard({
   return (
     <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 hover:shadow-lg hover:shadow-[#2D5BE3]/25 hover:-translate-y-0.5 transition-all overflow-hidden group border-l-4 border-l-[#2D5BE3] flex flex-col justify-between">
       <div>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5 gap-2">
-          <CardTitle className="text-xs sm:text-sm font-semibold text-muted-foreground truncate pr-2">
+        <CardHeader className="space-y-0 pb-2 px-5 pt-5">
+          <div className="flex items-center justify-between pb-2.5 gap-2">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-inner border transition-transform group-hover:scale-105 ${color || "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"}`}>
+              <Icon className="w-4.5 h-4.5" />
+            </div>
+            <KpiTrend trend={trend} value={trendValue} />
+          </div>
+          <CardTitle className="text-xs sm:text-sm font-semibold text-muted-foreground block truncate" title={label}>
             {label}
           </CardTitle>
-          <div className="flex items-center gap-2 shrink-0">
-            <KpiTrend trend={trend} value={trendValue} />
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner border transition-transform group-hover:scale-105 ${color || "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"}`}>
-              <Icon className="w-5 h-5" />
-            </div>
-          </div>
         </CardHeader>
         <CardContent className="px-5 pb-2">
           <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground tabular-nums truncate min-h-[2.25rem]">
             {value || "\u00A0"}
           </div>
           {sub ? (
-            <p className="text-xs text-muted-foreground mt-1.5 truncate font-medium">{sub}</p>
+            <p className="text-xs text-muted-foreground mt-1.5 truncate font-medium" title={sub}>{sub}</p>
           ) : (
             <div className="h-4 mt-1.5" />
           )}

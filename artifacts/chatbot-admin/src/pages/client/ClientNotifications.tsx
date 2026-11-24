@@ -333,56 +333,64 @@ export default function ClientNotifications() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-blue-600 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}</span>
-              <div className="flex items-center gap-1.5">
-                <KpiTrend trend="up" value="+4.8%" />
-                <Bell className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="flex items-center justify-between gap-2 pb-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                <Bell className="w-4 h-4 shrink-0" />
               </div>
+              <KpiTrend trend="up" value="+4.8%" />
             </div>
-            <p className="text-2xl font-bold mt-2 text-foreground">{totalCount}</p>
+            <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}>
+              {lang === "ar" ? "إجمالي الإشعارات" : "Total Alerts"}
+            </span>
+            <p className="text-2xl font-bold mt-1.5 text-foreground tabular-nums">{totalCount}</p>
           </div>
           <KpiSparkline trend="up" seed="client-notif-total" height={28} />
         </div>
 
         <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-amber-500 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "غير مقروءة" : "Unread"}</span>
-              <div className="flex items-center gap-1.5">
-                <KpiTrend trend="down" value="-15.4%" />
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            <div className="flex items-center justify-between gap-2 pb-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
               </div>
+              <KpiTrend trend="down" value="-15.4%" />
             </div>
-            <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">{unreadCount}</p>
+            <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "غير مقروءة" : "Unread"}>
+              {lang === "ar" ? "غير مقروءة" : "Unread"}
+            </span>
+            <p className="text-2xl font-bold mt-1.5 text-amber-600 dark:text-amber-400 tabular-nums">{unreadCount}</p>
           </div>
           <KpiSparkline trend="down" seed="client-notif-unread" height={28} />
         </div>
 
         <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-rose-500 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}</span>
-              <div className="flex items-center gap-1.5">
-                <KpiTrend trend="down" value="-20.0%" />
-                <Coins className="w-4 h-4 text-rose-500 shrink-0" />
+            <div className="flex items-center justify-between gap-2 pb-2">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/20">
+                <Coins className="w-4 h-4 shrink-0" />
               </div>
+              <KpiTrend trend="down" value="-20.0%" />
             </div>
-            <p className="text-2xl font-bold mt-2 text-rose-600 dark:text-rose-400">{quotaAlertsCount}</p>
+            <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}>
+              {lang === "ar" ? "تنبيهات الحصة" : "Quota Alerts"}
+            </span>
+            <p className="text-2xl font-bold mt-1.5 text-rose-600 dark:text-rose-400 tabular-nums">{quotaAlertsCount}</p>
           </div>
           <KpiSparkline trend="down" seed="client-notif-quota" height={28} />
         </div>
 
         <div className="bg-card rounded-2xl p-4 border border-[#DCE7FF] dark:border-slate-800 shadow-sm border-l-4 border-l-sky-500 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">{lang === "ar" ? "خدمة العملاء" : "Support Alerts"}</span>
-              <div className="flex items-center gap-1.5">
-                <KpiTrend trend="up" value="+3.1%" />
-                <LifeBuoy className="w-4 h-4 text-sky-500 shrink-0" />
+            <div className="flex items-center justify-between gap-2 pb-2">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-500/20">
+                <LifeBuoy className="w-4 h-4 shrink-0" />
               </div>
+              <KpiTrend trend="up" value="+3.1%" />
             </div>
-            <p className="text-2xl font-bold mt-2 text-sky-600 dark:text-sky-400">{problemCount}</p>
+            <span className="text-xs font-semibold text-muted-foreground block truncate" title={lang === "ar" ? "خدمة العملاء" : "Support Alerts"}>
+              {lang === "ar" ? "خدمة العملاء" : "Support Alerts"}
+            </span>
+            <p className="text-2xl font-bold mt-1.5 text-sky-600 dark:text-sky-400 tabular-nums">{problemCount}</p>
           </div>
           <KpiSparkline trend="up" seed="client-notif-support" height={28} />
         </div>
