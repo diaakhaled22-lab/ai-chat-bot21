@@ -20,6 +20,7 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { Client } from "pg";
 import { encrypt, decrypt, getEncryptionKey, isSensitiveAdminConfigKey, SENSITIVE_ADMIN_CONFIG_KEYS } from "@workspace/db/encryption";
 
@@ -416,7 +417,12 @@ async function runMigration() {
   console.log("You can now safely set ALLOW_LEGACY_FALLBACK_KEYS=false in production.");
 }
 
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}`) {
+const isMain = process.argv[1] && (
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url)) ||
+  process.argv[1].replace(/\\/g, "/").endsWith("migrate_encryption.ts")
+);
+
+if (isMain) {
   runMigration().catch((err) => {
     console.error("Migration fatal error:", err);
     process.exit(1);
