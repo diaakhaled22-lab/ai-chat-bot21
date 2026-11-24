@@ -95,6 +95,93 @@ export function buildTransporter(cfg: Awaited<ReturnType<typeof getEmailConfig>>
   } as any);
 }
 
+export async function dispatchAdminNotificationEmail({
+  subject,
+  html,
+  replyTo,
+  headers,
+  to,
+}: {
+  subject: string;
+  html: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+  to?: string;
+}): Promise<boolean> {
+  try {
+    const { getResendConfig } = await import("./companyNotification");
+    const { apiKey: resendApiKey, fromEmail } = await getResendConfig();
+    const cfg = await getEmailConfig();
+
+    const recipient = (to || cfg.recipientEmail || cfg.smtpUser || "").trim();
+    if (!recipient) {
+      logger.warn({ subject }, "Cannot send admin email: no recipient email configured in admin settings");
+      return false;
+    }
+
+    // 1. Prioritize Resend HTTP API (works 100% on Railway over HTTPS port 443 with NO SMTP port block)
+    if (resendApiKey) {
+      try {
+        const sender = fromEmail || "Bot Manager <onboarding@resend.dev>";
+        const payload: Record<string, any> = {
+          from: sender,
+          to: [recipient],
+          subject,
+          html,
+        };
+        if (replyTo) payload.reply_to = replyTo;
+        if (headers) payload.headers = headers;
+
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          logger.info({ recipient, subject }, "Admin notification email sent successfully via Resend API (HTTPS)");
+          return true;
+        }
+        const errText = await res.text();
+        logger.warn({ errText, recipient }, "Resend API returned error, attempting SMTP fallback");
+      } catch (resendErr) {
+        logger.warn({ err: resendErr }, "Failed sending via Resend API, attempting SMTP fallback");
+      }
+    }
+
+    // 2. Fallback to direct SMTP (Nodemailer)
+    if (isSmtpConfigured(cfg)) {
+      try {
+        const transporter = buildTransporter(cfg);
+        const mailOptions: Record<string, any> = {
+          from: `"Bot Manager" <${cfg.smtpUser}>`,
+          to: recipient,
+          subject,
+          html,
+        };
+        if (replyTo) mailOptions.replyTo = replyTo;
+        if (headers) mailOptions.headers = headers;
+
+        await transporter.sendMail(mailOptions);
+        logger.info({ recipient, subject }, "Admin notification email sent successfully via SMTP");
+        return true;
+      } catch (smtpErr) {
+        logger.error({ err: smtpErr, recipient }, "Failed sending admin notification email via SMTP");
+      }
+    } else {
+      logger.warn({ recipient }, "SMTP not configured and Resend API key not available; admin notification email could not be sent");
+    }
+
+    return false;
+  } catch (globalErr) {
+    logger.error({ err: globalErr, subject }, "Unexpected error in dispatchAdminNotificationEmail");
+    return false;
+  }
+}
+
 export async function sendNewTicketNotification(ticket: {
   id: number;
   title: string;
@@ -102,15 +189,7 @@ export async function sendNewTicketNotification(ticket: {
   clientName: string;
 }) {
   try {
-    const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) return;
-
-    const transporter = buildTransporter(cfg);
-    await transporter.sendMail({
-      from: `"Bot Manager" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
-      subject: `[New Problem #${ticket.id}] ${ticket.title}`,
-      html: `
+    const html = `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
           <h2 style="margin:0 0 4px;color:#18181b;font-size:20px;">New Customer Problem</h2>
           <p style="margin:0 0 20px;color:#71717a;font-size:14px;">Submitted via Bot Manager</p>
@@ -140,10 +219,16 @@ export async function sendNewTicketNotification(ticket: {
             Log in to Bot Manager to review and resolve this problem.
           </p>
         </div>
-      `,
+      `;
+
+    const sent = await dispatchAdminNotificationEmail({
+      subject: `[New Problem #${ticket.id}] ${ticket.title}`,
+      html,
     });
 
-    logger.info({ ticketId: ticket.id }, "Ticket notification email sent");
+    if (sent) {
+      logger.info({ ticketId: ticket.id }, "Ticket notification email sent");
+    }
   } catch (err) {
     logger.warn({ err }, "Failed to send ticket email (non-fatal)");
   }
@@ -164,18 +249,12 @@ export async function sendPlanRequestAdminNotification(input: {
 }) {
   try {
     const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) {
-      logger.warn({ ticketId: input.id }, "Admin email not configured, skipping plan request email notification");
-      return;
-    }
 
     const token = createApprovalToken(input.id);
     const appUrl =
       process.env.APP_URL ||
       (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "http://localhost:5000");
     const approveUrl = `${appUrl}/api/admin/plan-requests/approve?ticketId=${input.id}&token=${token}`;
-
-    const transporter = buildTransporter(cfg);
 
     const subject = `[طلب باقة جديد #${input.id}] ${input.title} (رد بـ OK للموافقة والتفعيل الفوري)`;
 
@@ -260,20 +339,20 @@ export async function sendPlanRequestAdminNotification(input: {
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"Bot Manager Notifications" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
-      replyTo: cfg.recipientEmail,
+    const sent = await dispatchAdminNotificationEmail({
       subject,
+      html,
+      replyTo: cfg.recipientEmail,
       headers: {
         "X-Ticket-ID": String(input.id),
         "In-Reply-To": `<ticket-${input.id}@botmanager>`,
         "References": `<ticket-${input.id}@botmanager>`,
       },
-      html,
     });
 
-    logger.info({ ticketId: input.id, recipient: cfg.recipientEmail }, "Plan request admin notification email sent");
+    if (sent) {
+      logger.info({ ticketId: input.id, recipient: cfg.recipientEmail }, "Plan request admin notification email sent");
+    }
   } catch (err) {
     logger.warn({ err, ticketId: input.id }, "Failed to send plan request notification email (non-fatal)");
   }
@@ -281,24 +360,22 @@ export async function sendPlanRequestAdminNotification(input: {
 
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
   try {
-    const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) {
-      throw new Error("Email not configured");
-    }
-    const transporter = buildTransporter(cfg);
-    await transporter.sendMail({
-      from: `"Bot Manager" <${cfg.smtpUser}>`,
+    const html = `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
+        <h2 style="margin:0 0 8px;color:#18181b;">Reset Your Password</h2>
+        <p style="color:#71717a;margin:0 0 20px;">You requested a password reset. Click the button below to set a new password. This link expires in 1 hour.</p>
+        <a href="${encodeURI(resetLink)}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reset Password</a>
+        <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa;">If you did not request this, you can safely ignore this email.</p>
+      </div>
+    `;
+    const sent = await dispatchAdminNotificationEmail({
       to,
       subject: "Bot Manager — Password Reset",
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f4f4f5;border-radius:10px;">
-          <h2 style="margin:0 0 8px;color:#18181b;">Reset Your Password</h2>
-          <p style="color:#71717a;margin:0 0 20px;">You requested a password reset. Click the button below to set a new password. This link expires in 1 hour.</p>
-          <a href="${encodeURI(resetLink)}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Reset Password</a>
-          <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa;">If you did not request this, you can safely ignore this email.</p>
-        </div>
-      `,
+      html,
     });
+    if (!sent) {
+      throw new Error("لم يتم تهيئة خدمة البريد (Resend أو SMTP)");
+    }
     logger.info({ to }, "Password reset email sent");
   } catch (err) {
     logger.warn({ err }, "Failed to send password reset email");
@@ -422,19 +499,17 @@ export async function sendClientNotification(clientEmail: string, title: string,
     </div>
   `;
 
-  const cfg = await getEmailConfig();
-  if (!isSmtpConfigured(cfg)) {
-    logger.warn({ clientEmail }, "Cannot send client notification email: SMTP host, user, or pass are not configured in admin settings.");
-    return;
-  }
-  const transporter = buildTransporter(cfg);
-  await transporter.sendMail({
-    from: `"Bot Manager" <${cfg.smtpUser}>`,
+  const sent = await dispatchAdminNotificationEmail({
     to: clientEmail,
     subject: `[Notification] ${title}`,
-    html
+    html,
   });
-  logger.info({ clientEmail, title }, "Client notification email sent successfully");
+
+  if (sent) {
+    logger.info({ clientEmail, title }, "Client notification email sent successfully");
+  } else {
+    logger.warn({ clientEmail }, "Cannot send client notification email: no email delivery service configured.");
+  }
 }
 
 export async function sendAttackSpikeNotification(input: {
@@ -468,27 +543,22 @@ export async function sendAttackSpikeNotification(input: {
   }
 
   try {
-    const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) {
-      logger.warn("Security alert recorded in notifications, but email is not configured");
-      return;
-    }
+    const html = `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
+        <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
+        <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
+        <p style="margin:0;color:#450a0a;font-size:13px;">Open Bot Manager → Attack Monitoring to review IP addresses, targeted accounts, and automatic blocks.</p>
+      </div>
+    `;
 
-    const transporter = buildTransporter(cfg);
-    await transporter.sendMail({
-      from: `"Bot Manager" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
+    const sent = await dispatchAdminNotificationEmail({
       subject: `[Security Alert] ${input.recentFailedAttempts} failed login attempts`,
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
-          <h2 style="margin:0 0 8px;color:#991b1b;">Security Alert</h2>
-          <p style="margin:0 0 18px;color:#7f1d1d;font-size:15px;">${escapeHtml(message)}</p>
-          <p style="margin:0;color:#450a0a;font-size:13px;">Open Bot Manager → Attack Monitoring to review IP addresses, targeted accounts, and automatic blocks.</p>
-        </div>
-      `,
+      html,
     });
 
-    logger.info({ recentFailedAttempts: input.recentFailedAttempts }, "Security alert email sent");
+    if (sent) {
+      logger.info({ recentFailedAttempts: input.recentFailedAttempts }, "Security alert email sent");
+    }
   } catch (err) {
     logger.error({ err }, "Failed to send security alert email");
   }
@@ -559,22 +629,11 @@ export async function sendSecurityEventEmail(
     logger.error({ err }, "Failed to add security alert to admin notifications table");
   }
 
-  // 2. Dispatch email to configured recipient email (diaakhaled22@gmail.com) via SMTP
+  // 2. Dispatch email to configured recipient email via Resend API or SMTP
   try {
-    const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) {
-      logger.warn({ recipient: cfg.recipientEmail }, "Security event email skipped: SMTP not fully configured");
-      return;
-    }
-
-    const transporter = buildTransporter(cfg);
     const dateStr = new Date().toLocaleString("ar-EG", { timeZone: "Africa/Cairo" });
 
-    await transporter.sendMail({
-      from: `"Bot Manager Security" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
-      subject: `[${subjectBadge}] ${title}`,
-      html: `
+    const html = `
         <div dir="rtl" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
           <div style="background-color: ${alertHeaderBg}; padding: 24px 20px; border-bottom: 2px solid ${alertHeaderColor}; text-align: center;">
             <div style="font-size: 36px; line-height: 1; margin-bottom: 8px;">🛡️</div>
@@ -619,9 +678,15 @@ export async function sendSecurityEventEmail(
             <p style="margin: 0; font-size: 12px; color: #9ca3af;">نظام الحماية والأمان — Bot Manager</p>
           </div>
         </div>
-      `,
+      `;
+
+    const sent = await dispatchAdminNotificationEmail({
+      subject: `[${subjectBadge}] ${title}`,
+      html,
     });
-    logger.info({ event, ip, recipient: cfg.recipientEmail }, "Security event email sent successfully to admin");
+    if (sent) {
+      logger.info({ event, ip }, "Security event email sent successfully to admin");
+    }
   } catch (err) {
     logger.error({ err }, "Failed to send security event email");
   }
@@ -664,20 +729,9 @@ export async function sendMalfunctionNotification(input: {
     logger.error({ err }, "Failed to add malfunction alert to admin notifications");
   }
 
-  // 2. Send email via configured SMTP to Recipient Email (diaakhaled22@gmail.com)
+  // 2. Send email via Resend API or configured SMTP to Recipient Email
   try {
-    const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) {
-      logger.warn("Malfunction recorded, but admin email notifications SMTP is not fully configured");
-      return;
-    }
-
-    const transporter = buildTransporter(cfg);
-    await transporter.sendMail({
-      from: `"Bot Manager" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
-      subject: `🚨 [New Malfunction Reported] ${input.title}`,
-      html: `
+    const html = `
         <div style="font-family:sans-serif;max-width:580px;margin:0 auto;padding:24px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
           <div style="background:#dc2626;color:#ffffff;padding:16px 20px;border-radius:8px 8px 0 0;">
             <h2 style="margin:0;font-size:18px;">⚠️ New Malfunction Reported | عطل جديد تم الإبلاغ عنه</h2>
@@ -719,10 +773,16 @@ export async function sendMalfunctionNotification(input: {
             </div>
           </div>
         </div>
-      `,
+      `;
+
+    const sent = await dispatchAdminNotificationEmail({
+      subject: `🚨 [New Malfunction Reported] ${input.title}`,
+      html,
     });
 
-    logger.info({ title: input.title, recipient: cfg.recipientEmail }, "Malfunction alert email sent to admin recipient successfully");
+    if (sent) {
+      logger.info({ title: input.title }, "Malfunction alert email sent to admin recipient successfully");
+    }
   } catch (err) {
     logger.error({ err }, "Failed to send malfunction alert email to admin recipient");
   }
@@ -767,20 +827,9 @@ export async function sendNewClientNotification(client: {
     logger.error({ err, clientId: client.id }, "Failed to add new client notification to admin panel");
   }
 
-  // 2. Email notification via "Email Notifications" settings
+  // 2. Email notification via Resend API or SMTP
   try {
-    const cfg = await getEmailConfig();
-    if (!isEmailConfigured(cfg)) {
-      logger.info({ clientId: client.id }, "Email Notifications are not fully configured — skipped sending new client email.");
-      return;
-    }
-
-    const transporter = buildTransporter(cfg);
-    await transporter.sendMail({
-      from: `"Bot Manager" <${cfg.smtpUser}>`,
-      to: cfg.recipientEmail,
-      subject: `[New Client] ${client.name} (@${client.username})`,
-      html: `
+    const html = `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:580px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
           <!-- Header -->
           <div style="background:linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #1d4ed8 100%);padding:28px 24px;text-align:center;color:#ffffff;">
@@ -837,10 +886,16 @@ export async function sendNewClientNotification(client: {
             This email was sent automatically based on your <strong>Email Notifications</strong> configuration in Bot Manager.
           </div>
         </div>
-      `,
+      `;
+
+    const sent = await dispatchAdminNotificationEmail({
+      subject: `[New Client] ${client.name} (@${client.username})`,
+      html,
     });
 
-    logger.info({ clientId: client.id, recipient: cfg.recipientEmail }, "New client notification email sent successfully");
+    if (sent) {
+      logger.info({ clientId: client.id }, "New client notification email sent successfully");
+    }
   } catch (emailErr) {
     logger.warn({ emailErr, clientId: client.id }, "Failed to send new client email notification (non-fatal)");
   }
