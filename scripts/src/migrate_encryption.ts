@@ -22,6 +22,27 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { Client } from "pg";
+
+// Load .env if present (root or scripts dir)
+for (const envPath of [path.resolve(process.cwd(), ".env"), path.resolve(process.cwd(), "..", ".env"), path.resolve(process.cwd(), "scripts", ".env")]) {
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, "utf-8");
+    for (const line of envContent.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIdx = trimmed.indexOf("=");
+      if (eqIdx !== -1) {
+        const k = trimmed.slice(0, eqIdx).trim();
+        const v = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
+        if (!process.env[k]) {
+          process.env[k] = v;
+        }
+      }
+    }
+    break;
+  }
+}
+
 import { encrypt, decrypt, getEncryptionKey, isSensitiveAdminConfigKey, SENSITIVE_ADMIN_CONFIG_KEYS } from "@workspace/db/encryption";
 
 const ENCRYPTED_COLUMNS: Array<{ table: string; column: string }> = [
