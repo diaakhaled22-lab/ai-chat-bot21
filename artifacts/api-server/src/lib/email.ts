@@ -113,7 +113,20 @@ export async function dispatchAdminNotificationEmail({
     const { apiKey: resendApiKey, fromEmail } = await getResendConfig();
     const cfg = await getEmailConfig();
 
-    const recipient = (to || cfg.recipientEmail || cfg.smtpUser || "").trim();
+    let recipient = (to || cfg.recipientEmail || cfg.smtpUser || "").trim();
+    if (!recipient) {
+      try {
+        const adminRows = await db
+          .select({ email: usersTable.email })
+          .from(usersTable)
+          .where(eq(usersTable.role, "admin"))
+          .limit(1);
+        if (adminRows.length > 0 && adminRows[0].email) {
+          recipient = adminRows[0].email.trim();
+        }
+      } catch {}
+    }
+
     if (!recipient) {
       logger.warn({ subject }, "Cannot send admin email: no recipient email configured in admin settings");
       return false;
