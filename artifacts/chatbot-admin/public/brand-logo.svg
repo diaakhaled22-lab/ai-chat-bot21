@@ -1,42 +1,79 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="bmBubbleGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38BDF8" />
-      <stop offset="50%" stop-color="#2563EB" />
-      <stop offset="100%" stop-color="#4F46E5" />
+    <!-- Outer Cyan -> Blue -> Violet Rim Gradient -->
+    <linearGradient id="rimGrad" x1="8" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22D3EE" />
+      <stop offset="50%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#C084FC" />
     </linearGradient>
-    <linearGradient id="bmInnerGrad" x1="14" y1="14" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0B1536" />
-      <stop offset="100%" stop-color="#1E3A8A" />
+
+    <!-- Deep Navy Inner Core -->
+    <linearGradient id="coreGrad" x1="14" y1="14" x2="48" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B1B4D" />
+      <stop offset="100%" stop-color="#071033" />
     </linearGradient>
-    <linearGradient id="bmSparkGrad" x1="42" y1="6" x2="58" y2="22" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#67E8F9" />
+
+    <!-- Glass Sheen Highlight -->
+    <linearGradient id="glassSheen" x1="20" y1="10" x2="42" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.38" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Stylized 'B' White-to-Ice Gradient -->
+    <linearGradient id="bGrad" x1="26" y1="22" x2="40" y2="42" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#BAE6FD" />
+    </linearGradient>
+
+    <!-- 4-Point Star Gradient -->
+    <linearGradient id="starGrad" x1="42" y1="6" x2="58" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F0F9FF" />
+      <stop offset="50%" stop-color="#67E8F9" />
       <stop offset="100%" stop-color="#38BDF8" />
     </linearGradient>
   </defs>
 
-  <!-- Modern Chat Bubble with bottom-left tail -->
+  <!-- Outer Glowing Speech Bubble Rim (no background box) -->
   <path
-    d="M16 12H46C51.5228 12 56 16.4772 56 22V40C56 45.5228 51.5228 50 46 50H23.5L12.8 56.8C11.4 57.7 9.6 56.7 9.6 55V48.5C7.4 46.7 6 43.9 6 40.8V22C6 16.4772 10.4772 12 16 12Z"
-    fill="url(#bmBubbleGrad)"
+    d="M21 11H42C50.2843 11 57 17.7157 57 26V36C57 44.2843 50.2843 51 42 51H26.5L17.2 57.6C15.9 58.5 14 57.6 14 56V48.5C10.3 45.8 8 41.2 8 36V24C8 16.8203 13.8203 11 21 11Z"
+    fill="url(#rimGrad)"
   />
 
-  <!-- Inner dark glass inset for contrast in both Light and Dark mode -->
-  <rect x="10.5" y="16" width="41" height="30" rx="10" fill="url(#bmInnerGrad)" fill-opacity="0.88" stroke="white" stroke-opacity="0.22" stroke-width="1.2" />
+  <!-- Inner Deep Navy Core -->
+  <rect x="12.5" y="15.5" width="40" height="31" rx="11.5" fill="url(#coreGrad)" stroke="#7DD3FC" stroke-opacity="0.4" stroke-width="1" />
 
-  <!-- Stylized Geometric 'B' Monogram -->
+  <!-- Subtle Diagonal Glass Reflection -->
   <path
-    d="M22.5 22.5H32.5C36.4 22.5 39 24.4 39 27.3C39 29.2 37.8 30.6 35.9 31.2C38.3 31.8 39.8 33.4 39.8 35.8C39.8 38.9 37 41 32.8 41H22.5V22.5ZM27.2 29.6H32C33.6 29.6 34.6 28.8 34.6 27.6C34.6 26.4 33.6 25.7 32 25.7H27.2V29.6ZM27.2 37.7H32.4C34.2 37.7 35.3 36.8 35.3 35.4C35.3 34 34.2 33.1 32.4 33.1H27.2V37.7Z"
-    fill="white"
+    d="M24 11H42C49.5 11 55.6 16.5 56.8 23.7C47 26 36 22 31 11H24Z"
+    fill="url(#glassSheen)"
   />
 
-  <!-- 4-Point AI Spark in top-right corner -->
+  <!-- Left Circuit Traces -->
+  <line x1="20.5" y1="22.5" x2="20.5" y2="28" stroke="#38BDF8" stroke-width="1.5" stroke-linecap="round" />
+  <circle cx="20.5" cy="22" r="1.4" fill="#38BDF8" />
+  <line x1="20.5" y1="34.5" x2="20.5" y2="40" stroke="#60A5FA" stroke-width="1.5" stroke-linecap="round" />
+  <circle cx="20.5" cy="40.5" r="1.4" fill="#60A5FA" />
+  <circle cx="18" cy="31" r="1" fill="#67E8F9" />
+
+  <!-- Right Circuit Arcs -->
+  <path d="M33 20.5C38.5 20.5 43.5 23.8 44.8 28.5" stroke="#38BDF8" stroke-width="1.3" stroke-linecap="round" />
+  <circle cx="44.8" cy="28.5" r="1.4" fill="#38BDF8" />
+  <path d="M44.5 34C43.2 38.8 38.5 42 33 42" stroke="#60A5FA" stroke-width="1.3" stroke-linecap="round" />
+  <circle cx="44.5" cy="34" r="1.4" fill="#60A5FA" />
+
+  <!-- Stylized Split-Ribbon 'B' -->
   <path
-    d="M50 4L52.1 10.9L59 13L52.1 15.1L50 22L47.9 15.1L41 13L47.9 10.9L50 4Z"
-    fill="url(#bmSparkGrad)"
-    stroke="#0B1536"
+    d="M25 22.5H34.5C38.2 22.5 40.6 24.4 40.6 27.3C40.6 29.4 39.1 30.8 36.8 31.2C39.6 31.7 41.2 33.4 41.2 36C41.2 39.2 38.5 41.2 34.4 41.2H25V33.6C25 32.1 26.2 31 27.8 31H33.8C35.2 31 36.1 30.3 36.1 29.2C36.1 28.1 35.2 27.4 33.8 27.4H29.4V29.5H25V22.5ZM29.4 34.1V37.6H34.1C35.7 37.6 36.7 36.9 36.7 35.8C36.7 34.7 35.7 34.1 34.1 34.1H29.4Z"
+    fill="url(#bGrad)"
+  />
+
+  <!-- Top-Right 4-Point Sparkle Star -->
+  <path
+    d="M49.5 4.5L51.9 12.1L59.5 14.5L51.9 16.9L49.5 24.5L47.1 16.9L39.5 14.5L47.1 12.1L49.5 4.5Z"
+    fill="url(#starGrad)"
+    stroke="#0B1B4D"
     stroke-opacity="0.35"
-    stroke-width="1"
+    stroke-width="0.9"
     stroke-linejoin="round"
   />
 </svg>
