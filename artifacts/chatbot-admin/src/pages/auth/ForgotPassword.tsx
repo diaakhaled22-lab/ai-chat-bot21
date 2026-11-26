@@ -110,7 +110,7 @@ export default function ForgotPassword() {
           <img
             src="/brand-logo.svg?v=8"
             alt="Bot Manager"
-            className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow-md"
+            className="w-24 h-24 object-contain mx-auto mb-3 drop-shadow-md"
           />
         )}
 

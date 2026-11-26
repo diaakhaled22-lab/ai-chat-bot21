@@ -1408,7 +1408,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="w-11 h-11 p-0.5 rounded-xl flex items-center justify-center transition-all cursor-pointer group hover:scale-105 active:scale-95"
+                className="w-12 h-12 p-0 rounded-xl flex items-center justify-center transition-all cursor-pointer group hover:scale-105 active:scale-95"
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
                 <img src="/brand-logo.svg?v=8" alt="Bot Manager" className="w-full h-full object-contain drop-shadow-sm group-hover:hidden" />
@@ -1423,7 +1423,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       ) : (
         <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 flex items-center justify-center shrink-0">
+            <div className="w-14 h-14 flex items-center justify-center shrink-0">
               <img src="/brand-logo.svg?v=8" alt="Bot Manager" className="w-full h-full object-contain drop-shadow-sm" />
             </div>
             <div className="flex flex-col min-w-0">
