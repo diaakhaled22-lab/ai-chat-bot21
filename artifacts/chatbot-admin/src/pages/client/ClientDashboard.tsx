@@ -215,7 +215,7 @@ export default function ClientDashboard() {
         <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6">
           <div className="flex items-start gap-3.5 sm:gap-5">
             <img
-              src="/brand-logo.svg?v=8"
+              src="/brand-logo.svg?v=9"
               alt="Bot Manager"
               className="w-14 h-14 sm:w-[72px] sm:h-[72px] object-contain shrink-0 drop-shadow-md mt-0.5"
             />

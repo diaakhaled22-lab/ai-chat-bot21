@@ -184,7 +184,7 @@ export default function ResetPassword() {
         ) : (
           <>
             <img
-              src="/brand-logo.svg?v=8"
+              src="/brand-logo.svg?v=9"
               alt="Bot Manager"
               className="w-24 h-24 object-contain mx-auto mb-3 drop-shadow-md"
             />

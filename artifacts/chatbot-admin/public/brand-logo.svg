@@ -24,13 +24,6 @@
       <stop offset="0%" stop-color="#FFFFFF" />
       <stop offset="100%" stop-color="#BAE6FD" />
     </linearGradient>
-
-    <!-- 4-Point Star Gradient -->
-    <linearGradient id="starGrad" x1="42" y1="6" x2="58" y2="24" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#F0F9FF" />
-      <stop offset="50%" stop-color="#67E8F9" />
-      <stop offset="100%" stop-color="#38BDF8" />
-    </linearGradient>
   </defs>
 
   <!-- Outer Glowing Speech Bubble Rim (no background box) -->
@@ -65,15 +58,5 @@
   <path
     d="M25 22.5H34.5C38.2 22.5 40.6 24.4 40.6 27.3C40.6 29.4 39.1 30.8 36.8 31.2C39.6 31.7 41.2 33.4 41.2 36C41.2 39.2 38.5 41.2 34.4 41.2H25V33.6C25 32.1 26.2 31 27.8 31H33.8C35.2 31 36.1 30.3 36.1 29.2C36.1 28.1 35.2 27.4 33.8 27.4H29.4V29.5H25V22.5ZM29.4 34.1V37.6H34.1C35.7 37.6 36.7 36.9 36.7 35.8C36.7 34.7 35.7 34.1 34.1 34.1H29.4Z"
     fill="url(#bGrad)"
-  />
-
-  <!-- Top-Right 4-Point Sparkle Star -->
-  <path
-    d="M49.5 4.5L51.9 12.1L59.5 14.5L51.9 16.9L49.5 24.5L47.1 16.9L39.5 14.5L47.1 12.1L49.5 4.5Z"
-    fill="url(#starGrad)"
-    stroke="#0B1B4D"
-    stroke-opacity="0.35"
-    stroke-width="0.9"
-    stroke-linejoin="round"
   />
 </svg>

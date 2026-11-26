@@ -445,7 +445,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       {/* Top Bar with Brand & Controls (Outside the card, perfectly aligned above) */}
       <div className="w-full max-w-[400px] md:max-w-2xl lg:max-w-3xl h-9 flex items-center justify-between px-2 mb-2 sm:mb-3 shrink-0 z-20">
         <div className="flex items-center gap-2 lg:hidden">
-          <img src="/brand-logo.svg?v=8" alt="Bot Manager" className="w-10 h-10 object-contain drop-shadow-sm" />
+          <img src="/brand-logo.svg?v=9" alt="Bot Manager" className="w-10 h-10 object-contain drop-shadow-sm" />
           <span className="font-bold text-sm text-slate-800 dark:text-slate-100 tracking-tight">Bot Manager</span>
         </div>
 
@@ -796,7 +796,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           >
             {/* Brand Logo */}
             <img
-              src="/brand-logo.svg?v=8"
+              src="/brand-logo.svg?v=9"
               alt="Bot Manager"
               className="w-24 h-24 object-contain drop-shadow-lg mb-3"
             />
@@ -830,7 +830,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           >
             {/* Brand Logo */}
             <img
-              src="/brand-logo.svg?v=8"
+              src="/brand-logo.svg?v=9"
               alt="Bot Manager"
               className="w-24 h-24 object-contain drop-shadow-lg mb-3"
             />
