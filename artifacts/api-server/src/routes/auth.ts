@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable, emailVerificationCodesTable } from "@workspace/db";
+import { db, usersTable, passwordResetTokensTable, companiesTable, notificationsTable, emailVerificationCodesTable, adminConfigTable } from "@workspace/db";
 import { eq, and, gt, sql, or } from "drizzle-orm";
 import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
