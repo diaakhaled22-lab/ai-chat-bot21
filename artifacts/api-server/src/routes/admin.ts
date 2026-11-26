@@ -2877,6 +2877,22 @@ router.delete("/admin/chat-logs/:id", async (req, res) => {
       res.status(400).json({ error: "Invalid id" });
       return;
     }
+
+    // Synthetic ticket entries in /admin/chat-logs use id = 9000000 + ticket.id
+    if (params.data.id > 9000000) {
+      const ticketId = params.data.id - 9000000;
+      const deletedTicket = await db
+        .delete(ticketsTable)
+        .where(eq(ticketsTable.id, ticketId))
+        .returning({ id: ticketsTable.id });
+      if (deletedTicket.length === 0) {
+        res.status(404).json({ error: "Ticket not found" });
+        return;
+      }
+      res.json({ ok: true });
+      return;
+    }
+
     const deleted = await db.delete(chatLogsTable).where(eq(chatLogsTable.id, params.data.id)).returning({ id: chatLogsTable.id });
     if (deleted.length === 0) {
       res.status(404).json({ error: "Chat log not found" });
