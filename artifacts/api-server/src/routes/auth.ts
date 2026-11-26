@@ -568,9 +568,36 @@ export function normalizeEmail(email: string): string {
   return `${localPart}@${domain}`;
 }
 
+async function isRegistrationOtpEnabled(): Promise<boolean> {
+  const [row] = await db
+    .select({ value: adminConfigTable.value })
+    .from(adminConfigTable)
+    .where(eq(adminConfigTable.key, "registration_otp_enabled"))
+    .limit(1);
+  return row?.value !== "false";
+}
+
+router.get("/auth/registration-config", async (_req, res) => {
+  try {
+    const otpEnabled = await isRegistrationOtpEnabled();
+    res.json({ otpEnabled });
+  } catch (err) {
+    logger.error({ err }, "Error reading registration config");
+    res.json({ otpEnabled: true });
+  }
+});
+
 router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) => {
   const isAr = (req.body as { lang?: string } | undefined)?.lang !== "en";
   try {
+    if (!(await isRegistrationOtpEnabled())) {
+      res.status(400).json({
+        error: isAr
+          ? "التحقق عبر البريد الإلكتروني (OTP) معطّل حالياً من قبل الإدارة."
+          : "Email OTP verification is currently disabled by administrator.",
+      });
+      return;
+    }
     const { email, username } = req.body as {
       email?: string;
       username?: string;
@@ -1039,8 +1066,10 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
     }
     const cleanEmail = normalizeEmail(email);
 
-    // Verify OTP code
-    if (!otpCode || typeof otpCode !== "string" || otpCode.trim().length !== 6) {
+    const otpRequired = await isRegistrationOtpEnabled();
+    if (otpRequired) {
+      // Verify OTP code
+      if (!otpCode || typeof otpCode !== "string" || otpCode.trim().length !== 6) {
       res.status(400).json({
         error: isAr
           ? "يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك الإلكتروني."
@@ -1132,6 +1161,7 @@ router.post("/auth/client/register", authLimiter, async (req, res) => {
 
     // Clean up any remaining verification records for this email
     await db.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, cleanEmail));
+    }
 
     const [existing] = await db
       .select({ id: usersTable.id })

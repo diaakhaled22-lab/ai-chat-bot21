@@ -1,19 +1,20 @@
-import { useGetAdminSettings, useUpdateAdminSettings, getGetAdminSettingsQueryKey } from "@workspace/api-client-react";
+import { useGetAdminSettings, useUpdateAdminSettings, getGetAdminSettingsQueryKey, customFetch } from "@workspace/api-client-react";
 import AdminEmailSettings from "./AdminEmailSettings";
 import AdminPaymentSettings from "./AdminPaymentSettings";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/use-language";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useEffect, useRef, useState } from "react";
-import { Globe, Zap, Sparkles, CheckCircle2, ChevronDown } from "lucide-react";
+import { Globe, Zap, Sparkles, CheckCircle2, ChevronDown, ShieldCheck } from "lucide-react";
 
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -213,6 +214,39 @@ export default function AdminSettings() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { lang, setLang, t } = useLanguage();
+
+  const { data: regOtpData, isLoading: regOtpLoading } = useQuery<{ enabled: boolean }>({
+    queryKey: ["admin-registration-otp"],
+    queryFn: () => customFetch("/api/admin/registration-otp"),
+  });
+
+  const toggleRegOtp = useMutation({
+    mutationFn: (enabled: boolean) =>
+      customFetch<{ ok: boolean; enabled: boolean }>("/api/admin/registration-otp", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      }),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["admin-registration-otp"], { enabled: res.enabled });
+      queryClient.invalidateQueries({ queryKey: ["auth-registration-config"] });
+      toast({
+        title: res.enabled
+          ? lang === "ar"
+            ? "تم تفعيل التحقق برمز OTP عند التسجيل"
+            : "Registration OTP verification enabled"
+          : lang === "ar"
+            ? "تم إيقاف التحقق برمز OTP عند التسجيل"
+            : "Registration OTP verification disabled",
+      });
+    },
+    onError: () => {
+      toast({
+        title: lang === "ar" ? "تعذر تحديث إعداد OTP" : "Failed to update OTP setting",
+        variant: "destructive",
+      });
+    },
+  });
   const initialized = useRef(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -285,6 +319,30 @@ export default function AdminSettings() {
           </div>
         </div>
       </div>
+
+      <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                {lang === "ar" ? "التحقق برمز البريد (OTP) عند إنشاء حساب" : "Registration Email OTP Verification"}
+              </CardTitle>
+              <CardDescription>
+                {lang === "ar"
+                  ? "تفعيل أو إيقاف طلب رمز التحقق المرسل للبريد الإلكتروني عند تسجيل حساب عميل جديد."
+                  : "Enable or disable requiring an email OTP verification code when new clients sign up."}
+              </CardDescription>
+            </div>
+            <Switch
+              checked={regOtpData?.enabled ?? true}
+              disabled={regOtpLoading || toggleRegOtp.isPending}
+              onCheckedChange={(checked) => toggleRegOtp.mutate(checked)}
+              aria-label={lang === "ar" ? "تفعيل OTP عند التسجيل" : "Toggle registration OTP"}
+            />
+          </div>
+        </CardHeader>
+      </Card>
 
       <AdminEmailSettings />
 

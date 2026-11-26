@@ -5993,6 +5993,38 @@ router.put("/admin/payment-settings", async (req, res) => {
   }
 });
 
+// GET /admin/registration-otp
+router.get("/admin/registration-otp", async (_req, res) => {
+  try {
+    const [row] = await db
+      .select({ value: adminConfigTable.value })
+      .from(adminConfigTable)
+      .where(eq(adminConfigTable.key, "registration_otp_enabled"))
+      .limit(1);
+    const enabled = row?.value !== "false";
+    res.json({ enabled });
+  } catch (err) {
+    logger.error({ err }, "Get registration OTP setting error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /admin/registration-otp
+router.put("/admin/registration-otp", async (req, res) => {
+  try {
+    const { enabled } = req.body as { enabled?: unknown };
+    if (typeof enabled !== "boolean") {
+      res.status(400).json({ error: "Invalid input: enabled must be a boolean" });
+      return;
+    }
+    await upsertAdminConfig("registration_otp_enabled", enabled ? "true" : "false");
+    res.json({ ok: true, enabled });
+  } catch (err) {
+    logger.error({ err }, "Update registration OTP setting error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /admin/settings
 router.get("/admin/settings", async (req, res) => {
   try {

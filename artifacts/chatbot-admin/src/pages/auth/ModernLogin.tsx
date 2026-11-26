@@ -105,6 +105,22 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+  const [otpEnabled, setOtpEnabled] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/registration-config", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && data && typeof data.otpEnabled === "boolean") {
+          setOtpEnabled(data.otpEnabled);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isRegisterOpen]);
 
   // Compute registration password strength
   const regPasswordStrength = useMemo(() => {
@@ -364,10 +380,10 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
     }
   };
 
-  // Step 2: Submit New Client Registration with OTP code
+  // Step 2: Submit New Client Registration with OTP code (or directly when OTP is disabled)
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regOtp.trim() || regOtp.trim().length !== 6) {
+    if (otpEnabled && (!regOtp.trim() || regOtp.trim().length !== 6)) {
       toast({
         title: lang === "ar" ? "رمز التحقق مطلوب" : "OTP Code Required",
         description: lang === "ar" ? "يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك" : "Please enter the 6-digit verification code",
@@ -387,7 +403,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           username: regUsername.trim(),
           email: regEmail.trim(),
           password: regPassword,
-          otpCode: regOtp.trim(),
+          ...(otpEnabled ? { otpCode: regOtp.trim() } : {}),
           lang,
         }),
         credentials: "include",
@@ -891,9 +907,13 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                     ? lang === "ar"
                       ? `تم إرسال رمز التحقق إلى: ${regEmail}`
                       : `A 6-digit verification code was sent to ${regEmail}`
-                    : lang === "ar"
-                      ? "أدخل بياناتك وسيتم إرسال كود تحقق إلى بريدك الإلكتروني لتفعيل الحساب."
-                      : "Enter your details. A verification code will be sent to your email."}
+                    : otpEnabled
+                      ? lang === "ar"
+                        ? "أدخل بياناتك وسيتم إرسال كود تحقق إلى بريدك الإلكتروني لتفعيل الحساب."
+                        : "Enter your details. A verification code will be sent to your email."
+                      : lang === "ar"
+                        ? "أدخل بياناتك لإنشاء حساب العميل الجديد مباشرة."
+                        : "Enter your details to create your new client account."}
                 </DialogDescription>
               </div>
             </div>
@@ -907,7 +927,7 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           )}
 
           {regStep === "details" ? (
-            <form onSubmit={handleRequestOtp} className="space-y-3.5 mt-2">
+            <form onSubmit={otpEnabled ? handleRequestOtp : handleRegisterSubmit} className="space-y-3.5 mt-2">
               <div className="text-start">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {lang === "ar" ? "الاسم الكامل *" : "Full Name *"}
@@ -1065,17 +1085,25 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSendingOtp}
+                  disabled={isSendingOtp || isRegistering}
                   className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {isSendingOtp ? (
+                  {isSendingOtp || isRegistering ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{lang === "ar" ? "جاري إرسال الرمز..." : "Sending Code..."}</span>
+                      <span>
+                        {otpEnabled
+                          ? lang === "ar" ? "جاري إرسال الرمز..." : "Sending Code..."
+                          : lang === "ar" ? "جاري إنشاء الحساب..." : "Creating Account..."}
+                      </span>
                     </>
                   ) : (
                     <>
-                      <span>{lang === "ar" ? "متابعة وإرسال رمز التحقق" : "Send Verification Code"}</span>
+                      <span>
+                        {otpEnabled
+                          ? lang === "ar" ? "متابعة وإرسال رمز التحقق" : "Send Verification Code"
+                          : lang === "ar" ? "إنشاء الحساب" : "Create Account"}
+                      </span>
                       {lang === "ar" ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </>
                   )}
