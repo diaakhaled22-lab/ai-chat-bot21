@@ -1408,10 +1408,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="w-11 h-11 p-0 rounded-xl flex items-center justify-center transition-all cursor-pointer group hover:scale-105 active:scale-95 overflow-hidden"
+                className={`w-11 h-11 p-1 rounded-xl flex items-center justify-center transition-all cursor-pointer group hover:scale-105 active:scale-95 overflow-hidden ${
+                  isLightAdmin
+                    ? "bg-white/85 border border-white/70 shadow-sm"
+                    : "bg-white/95 border border-white/20 shadow-md"
+                }`}
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
-                <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-contain drop-shadow-sm group-hover:hidden" />
+                <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-contain group-hover:hidden" />
                 <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
@@ -1423,8 +1427,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       ) : (
         <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden p-0">
-              <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-contain drop-shadow-sm" />
+            <div
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden p-1 ${
+                isLightAdmin
+                  ? "bg-white/85 border border-white/70 shadow-sm"
+                  : "bg-white/95 border border-white/20 shadow-md"
+              }`}
+            >
+              <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-contain" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950 drop-shadow-sm" : "text-white drop-shadow-sm"}`}>
