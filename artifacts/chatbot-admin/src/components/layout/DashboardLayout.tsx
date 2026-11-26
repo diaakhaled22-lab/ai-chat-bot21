@@ -1493,30 +1493,28 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
           <div className={`rounded-2xl backdrop-blur-xl p-2.5 space-y-2 ${
             isLightAdmin
-              ? "bg-white/85 border border-white/70 shadow-[0_4px_20px_rgba(2,132,199,0.18)] text-slate-800"
+              ? "bg-[radial-gradient(circle_at_85%_20%,#00C8FF_0%,#0066FF_45%,#002299_100%)] border border-white/30 shadow-[0_6px_22px_rgba(0,68,204,0.28)] text-white"
               : "bg-white/[0.08] border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] text-white"
           }`}>
             {/* User profile row */}
             <div className="flex items-center gap-2.5">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-inner shrink-0 ${
                 isLightAdmin
-                  ? "bg-gradient-to-br from-blue-700 to-sky-500 text-white border border-white/40"
+                  ? "bg-white/20 text-white border border-white/35 backdrop-blur-sm"
                   : "bg-white/15 border border-white/20 text-white"
               }`}>
                 {user?.name?.charAt(0).toUpperCase() ?? "S"}
               </div>
               <div className="min-w-0 flex-1">
-                <p className={`font-black text-lg tracking-tight drop-shadow-sm truncate leading-tight ${
-                  isLightAdmin ? "text-blue-950" : "text-white"
-                }`}>
+                <p className="font-black text-lg tracking-tight drop-shadow-sm truncate leading-tight text-white">
                   {user?.name ?? "softysta.com"}
                 </p>
               </div>
             </div>
 
             {/* Live status row */}
-            <div className={`pt-2 border-t ${isLightAdmin ? "border-sky-200/80" : "border-white/10"}`}>
-              {role === "admin" ? <LiveStatusBar isLightAdmin={isLightAdmin} /> : <ClientLiveStatusBar isLightAdmin={isLightAdmin} />}
+            <div className={`pt-2 border-t ${isLightAdmin ? "border-white/20" : "border-white/10"}`}>
+              {role === "admin" ? <LiveStatusBar isLightAdmin={false} /> : <ClientLiveStatusBar isLightAdmin={false} />}
             </div>
           </div>
         </div>
