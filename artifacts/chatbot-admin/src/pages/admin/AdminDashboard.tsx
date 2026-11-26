@@ -376,17 +376,11 @@ export default function AdminDashboard() {
             />
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "مركز العمليات وإدارة المنصة" : "Bot Manager · Operations Center"}
               </div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "لوحة تحكم المسؤول" : "Admin Operations Dashboard"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "متابعة استهلاك رموز الذكاء الاصطناعي، أداء الشركات، وتذاكر الدعم الفني المباشرة."
-                  : "Platform telemetry, AI token consumption, company deployments, and customer support analytics."}
-              </p>
             </div>
           </div>
 
