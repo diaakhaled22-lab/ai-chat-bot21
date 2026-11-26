@@ -1,42 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="bmBubbleGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+    <linearGradient id="sparkBubbleGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38BDF8" />
       <stop offset="50%" stop-color="#2563EB" />
       <stop offset="100%" stop-color="#4F46E5" />
     </linearGradient>
-    <linearGradient id="bmInnerGrad" x1="14" y1="14" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+    <linearGradient id="sparkInnerGrad" x1="14" y1="14" x2="50" y2="48" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#0B1536" />
       <stop offset="100%" stop-color="#1E3A8A" />
     </linearGradient>
-    <linearGradient id="bmSparkGrad" x1="42" y1="6" x2="58" y2="22" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#67E8F9" />
-      <stop offset="100%" stop-color="#38BDF8" />
+    <linearGradient id="sparkStarGrad" x1="22" y1="19" x2="42" y2="43" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#67E8F9" />
     </linearGradient>
   </defs>
 
-  <!-- Modern Chat Bubble with bottom-left tail -->
+  <!-- Modern Speech Bubble with smooth tail -->
   <path
-    d="M16 12H46C51.5228 12 56 16.4772 56 22V40C56 45.5228 51.5228 50 46 50H23.5L12.8 56.8C11.4 57.7 9.6 56.7 9.6 55V48.5C7.4 46.7 6 43.9 6 40.8V22C6 16.4772 10.4772 12 16 12Z"
-    fill="url(#bmBubbleGrad)"
+    d="M18 11H46C52.0751 11 57 15.9249 57 22V39C57 45.0751 52.0751 50 46 50H24.2L13.5 56.7C12.1 57.6 10.3 56.6 10.3 54.9V48.2C8.2 46.2 7 43.3 7 40V22C7 15.9249 11.9249 11 18 11Z"
+    fill="url(#sparkBubbleGrad)"
   />
 
-  <!-- Inner dark glass inset for contrast in both Light and Dark mode -->
-  <rect x="10.5" y="16" width="41" height="30" rx="10" fill="url(#bmInnerGrad)" fill-opacity="0.88" stroke="white" stroke-opacity="0.22" stroke-width="1.2" />
+  <!-- Inner dark glass core -->
+  <rect x="11.5" y="15.5" width="41" height="30" rx="10" fill="url(#sparkInnerGrad)" fill-opacity="0.88" stroke="white" stroke-opacity="0.25" stroke-width="1.2" />
 
-  <!-- Stylized Geometric 'B' Monogram -->
+  <!-- Main 4-Point AI Spark -->
   <path
-    d="M22.5 22.5H32.5C36.4 22.5 39 24.4 39 27.3C39 29.2 37.8 30.6 35.9 31.2C38.3 31.8 39.8 33.4 39.8 35.8C39.8 38.9 37 41 32.8 41H22.5V22.5ZM27.2 29.6H32C33.6 29.6 34.6 28.8 34.6 27.6C34.6 26.4 33.6 25.7 32 25.7H27.2V29.6ZM27.2 37.7H32.4C34.2 37.7 35.3 36.8 35.3 35.4C35.3 34 34.2 33.1 32.4 33.1H27.2V37.7Z"
-    fill="white"
+    d="M32 19.5L34.7 27.8L43 30.5L34.7 33.2L32 41.5L29.3 33.2L21 30.5L29.3 27.8L32 19.5Z"
+    fill="url(#sparkStarGrad)"
   />
 
-  <!-- 4-Point AI Spark in top-right corner -->
+  <!-- Secondary Mini Spark -->
   <path
-    d="M50 4L52.1 10.9L59 13L52.1 15.1L50 22L47.9 15.1L41 13L47.9 10.9L50 4Z"
-    fill="url(#bmSparkGrad)"
-    stroke="#0B1536"
-    stroke-opacity="0.35"
-    stroke-width="1"
-    stroke-linejoin="round"
+    d="M42.5 19.5L43.5 22.3L46.3 23.3L43.5 24.3L42.5 27.1L41.5 24.3L38.7 23.3L41.5 22.3L42.5 19.5Z"
+    fill="#67E8F9"
   />
+
+  <!-- Multi-channel connection nodes on left & right -->
+  <circle cx="4.5" cy="30.5" r="2.2" fill="#38BDF8" />
+  <circle cx="59.5" cy="30.5" r="2.2" fill="#38BDF8" />
 </svg>
