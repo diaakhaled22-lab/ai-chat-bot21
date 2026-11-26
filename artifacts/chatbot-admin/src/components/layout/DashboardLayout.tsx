@@ -1408,11 +1408,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className={`w-11 h-11 p-0 rounded-xl flex items-center justify-center backdrop-blur-md transition-all cursor-pointer group shadow-sm hover:scale-105 active:scale-95 overflow-hidden ${
-                  isLightAdmin
-                    ? "bg-white/90 text-slate-800 hover:text-blue-950 hover:bg-white border border-white/70 shadow-sm"
-                    : "text-white border border-white/20 bg-white/10 hover:bg-white/20"
-                }`}
+                className="w-11 h-11 p-0 rounded-xl flex items-center justify-center transition-all cursor-pointer group hover:scale-105 active:scale-95 overflow-hidden"
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
                 <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-cover group-hover:hidden" />
@@ -1427,13 +1423,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       ) : (
         <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md overflow-hidden p-0 ${
-                isLightAdmin
-                  ? "bg-white/90 border border-white/60 shadow-blue-900/15"
-                  : "border border-white/20 bg-white/10"
-              }`}
-            >
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden p-0">
               <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col min-w-0">
