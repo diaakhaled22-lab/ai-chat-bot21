@@ -1,42 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="bmBubbleGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38BDF8" />
-      <stop offset="50%" stop-color="#2563EB" />
-      <stop offset="100%" stop-color="#4F46E5" />
+    <!-- Primary Brand Gradient -->
+    <linearGradient id="proBg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0EA5E9" />
+      <stop offset="48%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#4338CA" />
     </linearGradient>
-    <linearGradient id="bmInnerGrad" x1="14" y1="14" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0B1536" />
-      <stop offset="100%" stop-color="#1E3A8A" />
+
+    <!-- Subtle Top Specular Sheen -->
+    <linearGradient id="proSheen" x1="32" y1="6" x2="32" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
     </linearGradient>
-    <linearGradient id="bmSparkGrad" x1="42" y1="6" x2="58" y2="22" gradientUnits="userSpaceOnUse">
+
+    <!-- Crisp Luminous Mark Gradient -->
+    <linearGradient id="proMark" x1="18" y1="16" x2="46" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E0F2FE" />
+    </linearGradient>
+
+    <!-- Cyan AI Accent -->
+    <linearGradient id="proAccent" x1="36" y1="15" x2="50" y2="29" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#67E8F9" />
       <stop offset="100%" stop-color="#38BDF8" />
     </linearGradient>
   </defs>
 
-  <!-- Modern Chat Bubble with bottom-left tail -->
+  <!-- Sculpted Squircle Chat Badge -->
   <path
-    d="M16 12H46C51.5228 12 56 16.4772 56 22V40C56 45.5228 51.5228 50 46 50H23.5L12.8 56.8C11.4 57.7 9.6 56.7 9.6 55V48.5C7.4 46.7 6 43.9 6 40.8V22C6 16.4772 10.4772 12 16 12Z"
-    fill="url(#bmBubbleGrad)"
+    d="M20 7H44C51.1797 7 57 12.8203 57 20V38C57 45.1797 51.1797 51 44 51H23.2L12.6 57.6C11.1 58.5 9.2 57.4 9.2 55.7V47.6C7.8 45.3 7 42.6 7 39.7V20C7 12.8203 12.8203 7 20 7Z"
+    fill="url(#proBg)"
   />
 
-  <!-- Inner dark glass inset for contrast in both Light and Dark mode -->
-  <rect x="10.5" y="16" width="41" height="30" rx="10" fill="url(#bmInnerGrad)" fill-opacity="0.88" stroke="white" stroke-opacity="0.22" stroke-width="1.2" />
-
-  <!-- Stylized Geometric 'B' Monogram -->
+  <!-- Inner Specular Rim -->
   <path
-    d="M22.5 22.5H32.5C36.4 22.5 39 24.4 39 27.3C39 29.2 37.8 30.6 35.9 31.2C38.3 31.8 39.8 33.4 39.8 35.8C39.8 38.9 37 41 32.8 41H22.5V22.5ZM27.2 29.6H32C33.6 29.6 34.6 28.8 34.6 27.6C34.6 26.4 33.6 25.7 32 25.7H27.2V29.6ZM27.2 37.7H32.4C34.2 37.7 35.3 36.8 35.3 35.4C35.3 34 34.2 33.1 32.4 33.1H27.2V37.7Z"
-    fill="white"
+    d="M20 8.5H44C50.3513 8.5 55.5 13.6487 55.5 20V38C55.5 44.3513 50.3513 49.5 44 49.5H22.8L10.7 57V47.1C9.3 45 8.5 42.4 8.5 39.7V20C8.5 13.6487 13.6487 8.5 20 8.5Z"
+    stroke="url(#proSheen)"
+    stroke-width="1.5"
   />
 
-  <!-- 4-Point AI Spark in top-right corner -->
+  <!-- Geometric Abstract 'B' + Neural Flow Mark -->
+  <!-- Vertical Spine with Rounded Caps -->
+  <rect x="20" y="17" width="6.5" height="24" rx="3.25" fill="url(#proMark)" />
+
+  <!-- Upper Bowl (Open Dynamic Arc) -->
   <path
-    d="M50 4L52.1 10.9L59 13L52.1 15.1L50 22L47.9 15.1L41 13L47.9 10.9L50 4Z"
-    fill="url(#bmSparkGrad)"
-    stroke="#0B1536"
-    stroke-opacity="0.35"
-    stroke-width="1"
-    stroke-linejoin="round"
+    d="M26.5 17H34.2C38.8 17 42 19.6 42 23.2C42 26.8 38.8 29.2 34.2 29.2H26.5V24.4H33.6C35.6 24.4 36.8 23.8 36.8 23.1C36.8 22.4 35.6 21.8 33.6 21.8H26.5V17Z"
+    fill="url(#proMark)"
+  />
+
+  <!-- Lower Bowl (Larger Balanced Arc) -->
+  <path
+    d="M26.5 28.8H35.5C40.5 28.8 44 31.6 44 35.1C44 38.6 40.5 41 35.5 41H26.5V36.2H34.9C37.2 36.2 38.6 35.7 38.6 34.9C38.6 34.1 37.2 33.6 34.9 33.6H26.5V28.8Z"
+    fill="url(#proMark)"
+  />
+
+  <!-- Precision AI Spark Node -->
+  <path
+    d="M45.5 13.5L47 17.5L51 19L47 20.5L45.5 24.5L44 20.5L40 19L44 17.5L45.5 13.5Z"
+    fill="url(#proAccent)"
   />
 </svg>
