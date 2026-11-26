@@ -1427,7 +1427,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <img src="/brand-logo.svg?v=8" alt="Bot Manager" className="w-full h-full object-contain drop-shadow-sm" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950 drop-shadow-sm" : "text-white drop-shadow-sm"}`}>
+              <span
+                className={`font-black text-lg tracking-tight truncate ${
+                  isLightAdmin
+                    ? "text-blue-950 drop-shadow-sm"
+                    : "bg-gradient-to-b from-white via-slate-100 to-slate-400 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
+                }`}
+              >
                 Bot Manager
               </span>
             </div>
