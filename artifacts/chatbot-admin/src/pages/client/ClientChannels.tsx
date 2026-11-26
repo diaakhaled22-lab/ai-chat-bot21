@@ -495,7 +495,19 @@ export default function ClientChannels() {
                         <FormItem>
                           <FormLabel>{t("channels_whatsapp_token")}</FormLabel>
                           <FormControl>
-                            <PasswordInput {...field} className="bg-background" placeholder="••••••••" />
+                            <Input
+                              type="text"
+                              readOnly
+                              value={
+                                field.value
+                                  ? field.value.length > 8
+                                    ? `${field.value.slice(0, 4)}${"•".repeat(Math.max(8, field.value.length - 8))}${field.value.slice(-4)}`
+                                    : "••••••••"
+                                  : ""
+                              }
+                              className="bg-background font-mono tracking-wider select-none"
+                              placeholder="••••••••"
+                            />
                           </FormControl>
                           <FormDescription className="text-[11px]">
                             {lang === "ar" ? "رمز الوصول الدائم من Meta Business ← WhatsApp ← إعداد API." : "Permanent access token from Meta Business → WhatsApp → API Setup."}
@@ -590,7 +602,19 @@ export default function ClientChannels() {
                         <FormItem>
                           <FormLabel>{t("channels_messenger_token")}</FormLabel>
                           <FormControl>
-                            <PasswordInput {...field} className="bg-background" placeholder="••••••••" />
+                            <Input
+                              type="text"
+                              readOnly
+                              value={
+                                field.value
+                                  ? field.value.length > 8
+                                    ? `${field.value.slice(0, 4)}${"•".repeat(Math.max(8, field.value.length - 8))}${field.value.slice(-4)}`
+                                    : "••••••••"
+                                  : ""
+                              }
+                              className="bg-background font-mono tracking-wider select-none"
+                              placeholder="••••••••"
+                            />
                           </FormControl>
                           <FormDescription className="text-[11px]">
                             {lang === "ar" ? "يتم إنشاؤه من Meta for Developers ← تطبيقك ← Messenger ← الإعدادات ← رموز الوصول." : "Generated in Meta for Developers → your App → Messenger → Settings → Access Tokens."}
@@ -666,7 +690,19 @@ export default function ClientChannels() {
                         <FormItem>
                           <FormLabel>{t("channels_website_key")}</FormLabel>
                           <FormControl>
-                            <PasswordInput {...field} className="bg-background" placeholder="••••••••" />
+                            <Input
+                              type="text"
+                              readOnly
+                              value={
+                                field.value
+                                  ? field.value.length > 8
+                                    ? `${field.value.slice(0, 4)}${"•".repeat(Math.max(8, field.value.length - 8))}${field.value.slice(-4)}`
+                                    : "••••••••"
+                                  : ""
+                              }
+                              className="bg-background font-mono tracking-wider select-none"
+                              placeholder="••••••••"
+                            />
                           </FormControl>
                           <FormDescription className="text-[11px]">
                             {t("channels_website_desc")}
