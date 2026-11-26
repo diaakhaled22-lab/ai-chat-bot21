@@ -1,56 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="botCoreOuter" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bmBubbleGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38BDF8" />
       <stop offset="50%" stop-color="#2563EB" />
       <stop offset="100%" stop-color="#4F46E5" />
     </linearGradient>
-    <linearGradient id="botCoreVisor" x1="16" y1="22" x2="48" y2="46" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bmInnerGrad" x1="14" y1="14" x2="48" y2="48" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#0B1536" />
-      <stop offset="100%" stop-color="#172554" />
+      <stop offset="100%" stop-color="#1E3A8A" />
     </linearGradient>
-    <linearGradient id="botPulseGrad" x1="20" y1="36" x2="44" y2="36" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#38BDF8" />
-      <stop offset="50%" stop-color="#67E8F9" />
+    <linearGradient id="bmSparkGrad" x1="42" y1="6" x2="58" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#67E8F9" />
       <stop offset="100%" stop-color="#38BDF8" />
     </linearGradient>
   </defs>
 
-  <!-- Top signal node -->
-  <line x1="32" y1="8" x2="32" y2="14" stroke="url(#botCoreOuter)" stroke-width="3" stroke-linecap="round" />
-  <circle cx="32" cy="6.5" r="3" fill="#38BDF8" />
-
-  <!-- Rounded hexagon / shield core -->
+  <!-- Modern Chat Bubble with bottom-left tail -->
   <path
-    d="M32 12.5L50.5 21.5C52.6 22.5 54 24.7 54 27V39.5C54 42.3 52.4 44.9 49.9 46.2L34.7 54.3C33 55.2 31 55.2 29.3 54.3L14.1 46.2C11.6 44.9 10 42.3 10 39.5V27C10 24.7 11.4 22.5 13.5 21.5L32 12.5Z"
-    fill="url(#botCoreOuter)"
+    d="M16 12H46C51.5228 12 56 16.4772 56 22V40C56 45.5228 51.5228 50 46 50H23.5L12.8 56.8C11.4 57.7 9.6 56.7 9.6 55V48.5C7.4 46.7 6 43.9 6 40.8V22C6 16.4772 10.4772 12 16 12Z"
+    fill="url(#bmBubbleGrad)"
   />
 
-  <!-- Subtle inner rim highlight -->
+  <!-- Inner dark glass inset for contrast in both Light and Dark mode -->
+  <rect x="10.5" y="16" width="41" height="30" rx="10" fill="url(#bmInnerGrad)" fill-opacity="0.88" stroke="white" stroke-opacity="0.22" stroke-width="1.2" />
+
+  <!-- Stylized Geometric 'B' Monogram -->
   <path
-    d="M32 15.2L48.6 23.3C50.1 24 51 25.5 51 27.1V39.2C51 41.1 49.9 42.8 48.3 43.7L34.1 51.2C32.8 51.9 31.2 51.9 29.9 51.2L15.7 43.7C14.1 42.8 13 41.1 13 39.2V27.1C13 25.5 13.9 24 15.4 23.3L32 15.2Z"
-    stroke="white"
-    stroke-opacity="0.28"
-    stroke-width="1.2"
+    d="M22.5 22.5H32.5C36.4 22.5 39 24.4 39 27.3C39 29.2 37.8 30.6 35.9 31.2C38.3 31.8 39.8 33.4 39.8 35.8C39.8 38.9 37 41 32.8 41H22.5V22.5ZM27.2 29.6H32C33.6 29.6 34.6 28.8 34.6 27.6C34.6 26.4 33.6 25.7 32 25.7H27.2V29.6ZM27.2 37.7H32.4C34.2 37.7 35.3 36.8 35.3 35.4C35.3 34 34.2 33.1 32.4 33.1H27.2V37.7Z"
+    fill="white"
   />
 
-  <!-- Dark Visor -->
-  <rect x="16.5" y="23.5" width="31" height="19.5" rx="7.5" fill="url(#botCoreVisor)" stroke="#7DD3FC" stroke-opacity="0.45" stroke-width="1.2" />
-
-  <!-- Minimalist Glowing Eyes -->
-  <rect x="22" y="27.5" width="4.5" height="4.5" rx="2.25" fill="#67E8F9" />
-  <rect x="37.5" y="27.5" width="4.5" height="4.5" rx="2.25" fill="#67E8F9" />
-
-  <!-- AI Core Pulse Wave -->
+  <!-- 4-Point AI Spark in top-right corner -->
   <path
-    d="M21 37.2H26.2L28.5 33.4L31.4 40L34.3 32.5L36.8 37.2H43"
-    stroke="url(#botPulseGrad)"
-    stroke-width="2.2"
-    stroke-linecap="round"
+    d="M50 4L52.1 10.9L59 13L52.1 15.1L50 22L47.9 15.1L41 13L47.9 10.9L50 4Z"
+    fill="url(#bmSparkGrad)"
+    stroke="#0B1536"
+    stroke-opacity="0.35"
+    stroke-width="1"
     stroke-linejoin="round"
   />
-
-  <!-- Side connection nodes -->
-  <circle cx="8" cy="33" r="2.2" fill="#38BDF8" />
-  <circle cx="56" cy="33" r="2.2" fill="#38BDF8" />
 </svg>
