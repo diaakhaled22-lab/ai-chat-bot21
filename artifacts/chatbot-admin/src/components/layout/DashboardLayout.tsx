@@ -1512,7 +1512,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 }`}>
                   {user?.name?.charAt(0).toUpperCase() ?? "S"}
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0E3AA8]" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-[15px] tracking-tight text-white truncate leading-snug">
