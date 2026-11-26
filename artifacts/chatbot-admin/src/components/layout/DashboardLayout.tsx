@@ -1537,7 +1537,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         isCollapsed
           ? "px-2 py-2 space-y-2 scrollbar-none"
           : isLightAdmin
-          ? "px-3 py-1 space-y-1 scrollbar-thin scrollbar-thumb-sky-400/40 hover:scrollbar-thumb-sky-500/60"
+          ? "px-3 py-1 space-y-1 sidebar-light-scroll"
           : "px-3 py-1 space-y-1 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30"
       }`}>
         {links.map((link) => {
