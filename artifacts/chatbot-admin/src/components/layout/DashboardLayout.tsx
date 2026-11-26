@@ -1415,7 +1415,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 }`}
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
-                <i className={`fa-solid fa-robot text-lg group-hover:hidden ${isLightAdmin ? "text-blue-700" : "text-white"}`}></i>
+                <img src="/logo.png" alt="Bot Manager" className="w-7 h-7 object-contain group-hover:hidden" />
                 <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
@@ -1428,13 +1428,13 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md ${
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md overflow-hidden p-1 ${
                 isLightAdmin
-                  ? "bg-gradient-to-br from-blue-700 to-sky-500 text-white border border-white/40 shadow-blue-900/20"
-                  : "text-white border border-white/20 bg-white/10"
+                  ? "bg-white/90 border border-white/60 shadow-blue-900/15"
+                  : "border border-white/20 bg-white/10"
               }`}
             >
-              <i className="fa-solid fa-robot text-lg text-white"></i>
+              <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-contain" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950 drop-shadow-sm" : "text-white drop-shadow-sm"}`}>
