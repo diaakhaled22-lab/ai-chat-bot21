@@ -1882,11 +1882,6 @@ export default function AdminAiQuota() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "الذكاء الاصطناعي وإدارة الحصص (AI / Quota)" : "AI / Quota Management"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "تكوين نموذج الدعم الفني بالذكاء الاصطناعي، ومراقبة وتحديد حصص الرموز (Token Quotas) لشركات العملاء."
-                  : "Configure the Support AI Agent model, and monitor & assign monthly token quotas to companies."}
-              </p>
             </div>
           </div>
 
