@@ -368,10 +368,12 @@ export default function AdminDashboard() {
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 sm:gap-6">
           <div className="flex items-start gap-3.5 sm:gap-5">
-            {/* Robot Badge (exact style as Login page) */}
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
-              <i className="fa-solid fa-robot text-xl sm:text-3xl text-white"></i>
-            </div>
+            {/* Brand Logo */}
+            <img
+              src="/brand-logo.svg?v=8"
+              alt="Bot Manager"
+              className="w-14 h-14 sm:w-[72px] sm:h-[72px] object-contain shrink-0 drop-shadow-md mt-0.5"
+            />
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
                 <Sparkles className="w-3 h-3 text-sky-300" />

@@ -214,9 +214,11 @@ export default function ClientDashboard() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6">
           <div className="flex items-start gap-3.5 sm:gap-5">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)] flex items-center justify-center shrink-0 mt-0.5">
-              <i className="fa-solid fa-robot text-xl sm:text-3xl text-white"></i>
-            </div>
+            <img
+              src="/brand-logo.svg?v=8"
+              alt="Bot Manager"
+              className="w-14 h-14 sm:w-[72px] sm:h-[72px] object-contain shrink-0 drop-shadow-md mt-0.5"
+            />
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-2 border border-white/20">
                 <span className={`w-1.5 h-1.5 rounded-full ${data?.isActive ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />

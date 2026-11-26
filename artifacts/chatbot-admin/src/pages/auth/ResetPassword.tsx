@@ -183,9 +183,11 @@ export default function ResetPassword() {
           </div>
         ) : (
           <>
-            <div className="modern-auth-badge">
-              <i className="fa-solid fa-robot"></i>
-            </div>
+            <img
+              src="/brand-logo.svg?v=8"
+              alt="Bot Manager"
+              className="w-24 h-24 object-contain mx-auto mb-3 drop-shadow-md"
+            />
 
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">
               Bot Manager
