@@ -1506,11 +1506,6 @@ export default function AdminCompanies() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "إدارة الشركات والمشتركين" : "Companies Directory"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "متابعة اشتراكات الشركات، القنوات المفعلة (واتساب وماسنجر)، وصحة روبوتات الدردشة."
-                  : "Monitor subscriptions, active channels (WhatsApp & Messenger), and AI chatbot health across all client companies."}
-              </p>
             </div>
           </div>
         </div>

@@ -243,9 +243,6 @@ export default function AdminMalfunctions() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {title}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {desc}
-              </p>
             </div>
           </div>
 

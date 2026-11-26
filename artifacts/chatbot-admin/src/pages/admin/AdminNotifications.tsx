@@ -297,11 +297,6 @@ export default function AdminNotifications() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "مركز الإشعارات والتنبيهات" : "Notifications Center"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "متابعة شاملة لجميع تسجيلات العملاء الجدد، وتنبيهات الأمان، والأعطال، وتجديدات الحصص في مكان واحد."
-                  : "Comprehensive activity feed for new client registrations, security events, malfunctions, and quota renewals."}
-              </p>
             </div>
           </div>
 

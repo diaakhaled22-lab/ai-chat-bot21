@@ -277,11 +277,6 @@ export default function AdminAITester() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "فحص واختبار نماذج الذكاء الاصطناعي" : "AI Model Tester"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "اختبار استجابة وسرعة نماذج الذكاء الاصطناعي (OpenAI, Anthropic, Gemini, OpenRouter) مباشرة."
-                  : "Test every AI provider and model in real-time — evaluate latency and output quality."}
-              </p>
             </div>
           </div>
         </div>

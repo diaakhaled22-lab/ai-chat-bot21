@@ -210,11 +210,6 @@ export default function AdminAttackMonitoring() {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
               {lang === "ar" ? "مراقبة الهجمات والأمان" : "Attack & Threat Monitoring"}
             </h1>
-            <p className="text-blue-100/90 text-xs sm:text-sm leading-relaxed">
-              {lang === "ar"
-                ? "رصد محاولات تسجيل الدخول الفاشلة، وحظر العناوين المشبوهة، وحماية الحسابات تلقائياً."
-                : "Monitor failed login attempts, account lockouts, and suspicious IP activity in real time."}
-            </p>
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0">

@@ -370,11 +370,6 @@ export default function AdminSecurity() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "إعدادات الأمان والتشفير" : "Security & Credentials"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "إدارة مفاتيح JWT، المصادقة الثنائية 2FA، ومفاتيح التحقق لقنوات Webhook."
-                  : "Manage signing secrets, two-factor authentication (2FA), and webhook verify tokens."}
-              </p>
             </div>
           </div>
         </div>

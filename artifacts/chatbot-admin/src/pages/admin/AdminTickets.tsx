@@ -1154,11 +1154,6 @@ export default function AdminTickets() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "مشاكل العملاء والدعم الفني" : "Customer Problems & Tickets"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "متابعة وإدارة تذاكر الدعم وحلها تلقائياً بالذكاء الاصطناعي أو التدخل اليدوي الفوري."
-                  : "Review and resolve customer issues automatically with AI or manually."}
-              </p>
             </div>
           </div>
 

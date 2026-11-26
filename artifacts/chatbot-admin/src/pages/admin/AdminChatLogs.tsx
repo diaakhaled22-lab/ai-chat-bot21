@@ -391,11 +391,6 @@ export default function AdminChatLogs() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "سجلات المحادثات العامة" : "Global Chat Logs"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "مراقبة وتحليل جميع المحادثات وتفاعلات البوت عبر جميع الشركات والقنوات."
-                  : "View and analyze live customer interactions across all deployed bots and channels."}
-              </p>
             </div>
           </div>
 

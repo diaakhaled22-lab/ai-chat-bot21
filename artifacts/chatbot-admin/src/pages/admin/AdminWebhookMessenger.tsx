@@ -498,11 +498,6 @@ export default function AdminWebhookMessenger() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "قنوات Webhook والماسنجر" : "Webhook Channels & Integrations"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "إدارة نقاط النهاية (Endpoints) لـ WhatsApp و Messenger والتحقق التشفيري HMAC-SHA256."
-                  : "Manage WhatsApp, Messenger, and Telegram webhook endpoints with cryptographic signature verification."}
-              </p>
             </div>
           </div>
         </div>

@@ -1998,11 +1998,6 @@ export default function AdminBills() {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">
               {lang === "ar" ? "الفواتير وسندات القبض" : "Billing & Invoices"}
             </h1>
-            <p className="text-emerald-100/80 dark:text-blue-100/90 text-xs sm:text-sm leading-relaxed">
-              {lang === "ar"
-                ? "كشف شامل لكافة فواتير الاشتراكات، شحن الرصيد، واستهلاك الحصص. يمكنك إرسال نسخة رسمية من أي فاتورة للعميل عبر البريد الإلكتروني أو الواتساب بنقرة واحدة."
-                : "Manage and inspect all subscription plan, top-up, and quota usage invoices. Send a copy of any invoice via Email or WhatsApp instantly."}
-            </p>
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto shrink-0">

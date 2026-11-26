@@ -71,11 +71,6 @@ export default function AdminAuditLogs() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {lang === "ar" ? "سجل تدقيق المشرفين" : "Admin Audit Logs"}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {lang === "ar"
-                  ? "تتبع كافة الإجراءات والعمليات الحساسة التي قام بها المسؤولون عبر المنصة."
-                  : "Track all critical actions and sensitive changes performed by administrators across the platform."}
-              </p>
             </div>
           </div>
         </div>
