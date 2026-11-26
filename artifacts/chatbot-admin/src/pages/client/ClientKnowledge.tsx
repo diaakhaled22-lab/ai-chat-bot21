@@ -1816,7 +1816,6 @@ export default function ClientKnowledge() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-xs font-semibold tracking-wide uppercase text-blue-100 mb-1.5 backdrop-blur-sm">
-                <Sparkles className="w-3 h-3 text-sky-300" />
                 {lang === "ar" ? "قاعدة المعرفة والتدريب الذكي" : "Knowledge Base & Vector Store"}
               </div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight drop-shadow-sm">{t("get_data_title")}</h1>

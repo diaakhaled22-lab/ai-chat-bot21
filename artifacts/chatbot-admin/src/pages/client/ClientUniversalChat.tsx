@@ -516,7 +516,6 @@ export default function ClientUniversalChat() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-semibold text-blue-100 mb-1.5 border border-white/20">
-                <Sparkles className="w-3 h-3 text-sky-300" />
                 Live Agent Desk & Human Handoff
               </div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
