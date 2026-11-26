@@ -1408,14 +1408,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md transition-all cursor-pointer group shadow-sm hover:scale-105 active:scale-95 ${
+                className={`w-11 h-11 p-1 rounded-xl flex items-center justify-center backdrop-blur-md transition-all cursor-pointer group shadow-sm hover:scale-105 active:scale-95 overflow-hidden ${
                   isLightAdmin
-                    ? "bg-white/80 text-slate-800 hover:text-blue-950 hover:bg-white border border-white/70 shadow-sm"
+                    ? "bg-white/90 text-slate-800 hover:text-blue-950 hover:bg-white border border-white/70 shadow-sm"
                     : "text-white border border-white/20 bg-white/10 hover:bg-white/20"
                 }`}
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
-                <img src="/logo.png" alt="Bot Manager" className="w-7 h-7 object-contain group-hover:hidden" />
+                <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-contain group-hover:hidden" />
                 <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
@@ -1428,7 +1428,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md overflow-hidden p-1 ${
+              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md overflow-hidden p-0.5 ${
                 isLightAdmin
                   ? "bg-white/90 border border-white/60 shadow-blue-900/15"
                   : "border border-white/20 bg-white/10"
