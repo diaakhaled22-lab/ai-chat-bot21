@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
+import { AiProviderAllowanceBar } from "@/components/AiProviderAllowanceBar";
 
 // ── Model catalog ─────────────────────────────────────────────────────────────
 type Tier = "free" | "paid";
@@ -367,6 +368,7 @@ export default function QuotaAICard() {
       queryClient.invalidateQueries({ queryKey: ["admin-quota-ai-settings"] });
       queryClient.invalidateQueries({ queryKey: ["admin-usage-cost"] });
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-ai-provider-allowance", "quota"] });
       toast({
         title: lang === "ar" ? "تم حفظ إعدادات وكيل ذكاء الحصص بنجاح" : "Quota AI settings saved successfully",
       });
@@ -450,6 +452,8 @@ export default function QuotaAICard() {
           </CardDescription>
         )}
       </CardHeader>
+
+      <AiProviderAllowanceBar scope="quota" />
 
       {/* ── Expandable body ── */}
       {!collapsed && (

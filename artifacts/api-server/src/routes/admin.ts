@@ -21,6 +21,12 @@ import { logger } from "../lib/logger";
 import { getAiModelCatalog, sanitizeOpenRouterModel, sanitizeGoogleModel, sanitizeOpenAiModel, sanitizeAnthropicModel, isAnthropicFreeModel, extractAnthropicText, buildOpenAiChatParams, buildOpenRouterChatParams, AI_MODEL_PRICING, getModelPricing, isOpenRouterFreeModel, stripThinkingTags, getOpenRouterHeaders } from "../lib/aiModels";
 import { getQuotaAiSettings, getQuotaAiModelInfo } from "../lib/supportAi";
 import {
+  getAiProviderAllowance,
+  saveAiProviderAllowanceLimits,
+  clearAiProviderAllowanceCache,
+  type AllowanceScope,
+} from "../lib/aiProviderAllowance";
+import {
   getAttackMonitoringSnapshot,
   maskApiKey,
   preserveMaskedSecret,
@@ -5510,6 +5516,7 @@ router.put("/admin/support-settings", async (req, res) => {
     for (const item of upserts) {
       await upsertAdminConfig(item.key, item.value);
     }
+    clearAiProviderAllowanceCache("support");
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Update support settings error");
@@ -5661,6 +5668,7 @@ router.put("/admin/quota-ai-settings", async (req, res) => {
     for (const item of upserts) {
       await upsertAdminConfig(item.key, item.value);
     }
+    clearAiProviderAllowanceCache("quota");
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, "Update quota AI settings error");
@@ -5774,6 +5782,62 @@ router.get("/admin/quota-ai-status", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Quota AI status check error");
     res.status(500).json({ status: "error", detail: "Internal server error" });
+  }
+});
+
+// GET /admin/ai-provider-allowance?scope=quota|support&refresh=1
+router.get("/admin/ai-provider-allowance", async (req, res) => {
+  try {
+    const rawScope = String(req.query.scope ?? "quota");
+    if (rawScope !== "quota" && rawScope !== "support") {
+      res.status(400).json({ error: "Invalid scope; expected 'quota' or 'support'" });
+      return;
+    }
+    const forceRefresh = req.query.refresh === "1" || req.query.refresh === "true";
+    const data = await getAiProviderAllowance(rawScope as AllowanceScope, forceRefresh);
+    res.json(data);
+  } catch (err) {
+    logger.error({ err }, "Get AI provider allowance error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PUT /admin/ai-provider-allowance
+router.put("/admin/ai-provider-allowance", async (req, res) => {
+  try {
+    const body = req.body as {
+      scope?: string;
+      dailyTokenLimit?: number | null;
+      weeklyTokenLimit?: number | null;
+    };
+    const scope = body.scope;
+    if (scope !== "quota" && scope !== "support") {
+      res.status(400).json({ error: "Invalid scope; expected 'quota' or 'support'" });
+      return;
+    }
+
+    const validateLimit = (val: unknown): number | null | undefined => {
+      if (val === undefined) return undefined;
+      if (val === null) return null;
+      if (typeof val !== "number" || !Number.isFinite(val) || val < 0) {
+        return NaN;
+      }
+      return Math.floor(val);
+    };
+
+    const dailyLimit = validateLimit(body.dailyTokenLimit);
+    const weeklyLimit = validateLimit(body.weeklyTokenLimit);
+    if (Number.isNaN(dailyLimit) || Number.isNaN(weeklyLimit)) {
+      res.status(400).json({ error: "Token limits must be non-negative numbers or null" });
+      return;
+    }
+
+    await saveAiProviderAllowanceLimits(scope as AllowanceScope, dailyLimit, weeklyLimit);
+    const updated = await getAiProviderAllowance(scope as AllowanceScope, false);
+    res.json(updated);
+  } catch (err) {
+    logger.error({ err }, "Update AI provider allowance error");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

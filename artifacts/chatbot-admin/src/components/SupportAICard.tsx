@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/use-language";
 import { mergeDynamicModels, type AiModelCatalogResponse } from "@/lib/ai-models";
+import { AiProviderAllowanceBar } from "@/components/AiProviderAllowanceBar";
 
 // ── Model catalog ─────────────────────────────────────────────────────────────
 type Tier = "free" | "paid";
@@ -293,6 +294,7 @@ export default function SupportAICard() {
       customFetch("/api/admin/support-settings", { method: "PUT", body: JSON.stringify(payload) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-support-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-ai-provider-allowance", "support"] });
       toast({
         title: lang === "ar" ? "تم حفظ إعدادات وكيل الدعم بنجاح" : "Support AI settings saved successfully",
       });
@@ -367,6 +369,8 @@ export default function SupportAICard() {
           </CardDescription>
         )}
       </CardHeader>
+
+      <AiProviderAllowanceBar scope="support" />
 
       {/* ── Expandable body ── */}
       {!collapsed && (
