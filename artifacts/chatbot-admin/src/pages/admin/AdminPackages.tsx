@@ -582,11 +582,6 @@ export default function AdminPackages() {
                   {lang === "ar" ? "صلاحيات المسؤول الكاملة" : "Admin Master Controls"}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm md:text-base text-blue-100/90 max-w-2xl leading-relaxed">
-                {lang === "ar"
-                  ? "تعديل وإضافة باقات الاشتراك، تحديد حصص الرموز (Tokens)، ضبط الأسعار، ميزات كل باقة، وحزم شحن الرصيد الإضافية المعروضة للعملاء."
-                  : "Add, modify, and price subscription packages, token allocations, feature lists, and top-up packs shown to clients."}
-              </p>
             </div>
           </div>
 
