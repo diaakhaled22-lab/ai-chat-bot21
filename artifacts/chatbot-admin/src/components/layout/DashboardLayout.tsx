@@ -1408,10 +1408,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
               <button
                 type="button"
                 onClick={toggleSidebar}
-                className="w-11 h-11 p-0 rounded-xl flex items-center justify-center transition-all cursor-pointer group hover:scale-105 active:scale-95 overflow-hidden"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md transition-all cursor-pointer group shadow-sm hover:scale-105 active:scale-95 ${
+                  isLightAdmin
+                    ? "bg-white/80 text-slate-800 hover:text-blue-950 hover:bg-white border border-white/70 shadow-sm"
+                    : "text-white border border-white/20 bg-white/10 hover:bg-white/20"
+                }`}
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
-                <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-cover group-hover:hidden" />
+                <i className={`fa-solid fa-robot text-lg group-hover:hidden ${isLightAdmin ? "text-blue-700" : "text-white"}`}></i>
                 <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
@@ -1423,8 +1427,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       ) : (
         <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${sidebarHeaderBg} relative z-10 ${isLightAdmin ? "border-sky-400/40" : "border-white/10"}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden p-0">
-              <img src="/logo.png" alt="Bot Manager" className="w-full h-full object-cover" />
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm backdrop-blur-md ${
+                isLightAdmin
+                  ? "bg-gradient-to-br from-blue-700 to-sky-500 text-white border border-white/40 shadow-blue-900/20"
+                  : "text-white border border-white/20 bg-white/10"
+              }`}
+            >
+              <i className="fa-solid fa-robot text-lg text-white"></i>
             </div>
             <div className="flex flex-col min-w-0">
               <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950 drop-shadow-sm" : "text-white drop-shadow-sm"}`}>
