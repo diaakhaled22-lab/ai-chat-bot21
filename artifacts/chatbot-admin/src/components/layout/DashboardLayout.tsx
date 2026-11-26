@@ -1415,7 +1415,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 }`}
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
-                <img src="/brand-app-icon.jpg?v=2" alt="Bot Manager" className="w-full h-full object-cover group-hover:hidden" />
+                <img src="/brand-app-icon.jpg?v=3" alt="Bot Manager" className="w-full h-full object-cover group-hover:hidden" />
                 <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
@@ -1434,7 +1434,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   : "border border-white/20 shadow-black/30"
               }`}
             >
-              <img src="/brand-app-icon.jpg?v=2" alt="Bot Manager" className="w-full h-full object-cover" />
+              <img src="/brand-app-icon.jpg?v=3" alt="Bot Manager" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className={`font-black text-lg tracking-tight truncate ${isLightAdmin ? "text-blue-950 drop-shadow-sm" : "text-white drop-shadow-sm"}`}>
