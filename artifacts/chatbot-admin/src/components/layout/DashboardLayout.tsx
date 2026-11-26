@@ -1491,29 +1491,46 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         </div>
       ) : (
         <div className="px-3 pt-2 pb-2 shrink-0 relative z-10">
-          <div className={`rounded-2xl backdrop-blur-xl p-2.5 space-y-2 ${
+          <div className={`relative overflow-hidden rounded-2xl p-3 space-y-2.5 ${
             isLightAdmin
-              ? "bg-[radial-gradient(circle_at_85%_20%,#00C8FF_0%,#0066FF_45%,#002299_100%)] border border-white/30 shadow-[0_6px_22px_rgba(0,68,204,0.28)] text-white"
+              ? "bg-gradient-to-br from-[#0A1E5E] via-[#1245B8] to-[#0284C7] ring-1 ring-inset ring-white/25 shadow-[0_10px_28px_-6px_rgba(10,30,94,0.45)] text-white"
               : "bg-white/[0.08] border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.3)] text-white"
           }`}>
+            {isLightAdmin && (
+              <>
+                <div className="pointer-events-none absolute -top-8 -right-8 w-28 h-28 rounded-full bg-cyan-300/25 blur-2xl" />
+                <div className="pointer-events-none absolute -bottom-10 -left-6 w-24 h-24 rounded-full bg-indigo-400/20 blur-2xl" />
+              </>
+            )}
             {/* User profile row */}
-            <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-inner shrink-0 ${
-                isLightAdmin
-                  ? "bg-white/20 text-white border border-white/35 backdrop-blur-sm"
-                  : "bg-white/15 border border-white/20 text-white"
-              }`}>
-                {user?.name?.charAt(0).toUpperCase() ?? "S"}
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm ${
+                  isLightAdmin
+                    ? "bg-gradient-to-br from-white/25 to-white/10 text-white ring-1 ring-inset ring-white/35 backdrop-blur-md"
+                    : "bg-white/15 border border-white/20 text-white"
+                }`}>
+                  {user?.name?.charAt(0).toUpperCase() ?? "S"}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0E3AA8]" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-black text-lg tracking-tight drop-shadow-sm truncate leading-tight text-white">
+                <p className="font-bold text-[15px] tracking-tight text-white truncate leading-snug">
                   {user?.name ?? "softysta.com"}
+                </p>
+                <p className="text-[11px] font-medium text-sky-200/85 truncate leading-tight">
+                  {role === "admin"
+                    ? (lang === "ar" ? "مدير النظام" : "Administrator")
+                    : (lang === "ar" ? "حساب العميل" : "Client Workspace")}
                 </p>
               </div>
             </div>
 
+            {/* Subtle hairline divider */}
+            <div className="relative z-10 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
             {/* Live status row */}
-            <div className={`pt-2 border-t ${isLightAdmin ? "border-white/20" : "border-white/10"}`}>
+            <div className="relative z-10 pt-0.5">
               {role === "admin" ? <LiveStatusBar isLightAdmin={false} /> : <ClientLiveStatusBar isLightAdmin={false} />}
             </div>
           </div>
