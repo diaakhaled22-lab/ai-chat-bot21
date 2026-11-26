@@ -418,12 +418,12 @@ export default function ClientDashboard() {
                     {quotaPercent!.toFixed(1)}%
                   </span>
                 </div>
-                <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-[#DCE7FF] dark:border-slate-700/60">
+                <div className="w-full h-4 bg-slate-200/90 dark:bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-300/80 dark:border-slate-700 shadow-inner">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
+                    className={`h-full min-w-[10px] rounded-full transition-all duration-500 ${
                       quotaPercent! > 90 ? "bg-rose-500" : quotaPercent! > 75 ? "bg-amber-500" : "bg-emerald-500"
                     }`}
-                    style={{ width: `${quotaPercent}%` }}
+                    style={{ width: `${Math.max(quotaPercent ?? 0, 2)}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
