@@ -101,14 +101,18 @@ export default function ForgotPassword() {
 
       {/* Main Modern Auth Card */}
       <div className="modern-auth-card text-center" dir={lang === "ar" ? "rtl" : "ltr"}>
-        {/* Bot Icon Badge */}
-        <div className="modern-auth-badge">
-          {sent ? (
+        {/* Brand Logo / Mail Badge */}
+        {sent ? (
+          <div className="modern-auth-badge">
             <Mail className="w-10 h-10 text-white" />
-          ) : (
-            <i className="fa-solid fa-robot"></i>
-          )}
-        </div>
+          </div>
+        ) : (
+          <img
+            src="/brand-logo.svg?v=8"
+            alt="Bot Manager"
+            className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow-md"
+          />
+        )}
 
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">
           Bot Manager
