@@ -1,6 +1,7 @@
-import { db, chatLogsTable, companiesTable } from "@workspace/db";
-import { gte } from "drizzle-orm";
+import { db, chatLogsTable, companiesTable, notificationsTable, usersTable } from "@workspace/db";
+import { eq, gte } from "drizzle-orm";
 import { getAdminConfigMap, upsertAdminConfig } from "./adminConfig";
+import { dispatchAdminNotificationEmail } from "./email";
 import {
   getModelPricing,
   isAnthropicFreeModel,
@@ -498,7 +499,7 @@ export async function getAiProviderAllowance(
   const weeklySource: AllowanceWindowStats["limitSource"] =
     Number.isFinite(customWeeklyRaw) && customWeeklyRaw > 0 ? "custom" : "tier_default";
 
-  return {
+  const result: AiProviderAllowanceResponse = {
     scope,
     provider,
     model,
@@ -510,6 +511,103 @@ export async function getAiProviderAllowance(
     liveProvider,
     checkedAt: new Date().toISOString(),
   };
+
+  void checkAndNotifyLowAllowance(result).catch((err) => {
+    logger.warn({ err, scope }, "Low AI allowance notification check failed");
+  });
+
+  return result;
+}
+
+const LOW_ALLOWANCE_THRESHOLD_PCT = 15;
+const LOW_ALLOWANCE_ALERT_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+
+async function checkAndNotifyLowAllowance(result: AiProviderAllowanceResponse): Promise<void> {
+  if (!result.hasApiKey) return;
+
+  const windows: Array<{ key: "daily" | "weekly"; labelAr: string; labelEn: string; stats: AllowanceWindowStats }> = [
+    { key: "daily", labelAr: "اليومي", labelEn: "Daily", stats: result.daily },
+    { key: "weekly", labelAr: "الأسبوعي", labelEn: "Weekly", stats: result.weekly },
+  ];
+
+  const triggered = windows.filter((w) => w.stats.remainingPercent < LOW_ALLOWANCE_THRESHOLD_PCT);
+  if (triggered.length === 0) return;
+
+  const cooldownKeys = triggered.map((w) => `ai_allowance_alert_last_${result.scope}_${w.key}`);
+  const cfgMap = await getAdminConfigMap(cooldownKeys);
+  const now = Date.now();
+
+  const dueWindows = triggered.filter((w) => {
+    const lastIso = cfgMap.get(`ai_allowance_alert_last_${result.scope}_${w.key}`);
+    if (!lastIso) return true;
+    const lastMs = Date.parse(lastIso);
+    return !Number.isFinite(lastMs) || now - lastMs >= LOW_ALLOWANCE_ALERT_COOLDOWN_MS;
+  });
+
+  if (dueWindows.length === 0) return;
+
+  const scopeLabelEn = result.scope === "quota" ? "Quota AI" : "Support AI";
+  const scopeLabelAr = result.scope === "quota" ? "وكيل ذكاء الحصص" : "وكيل الدعم";
+
+  const summaryEn = dueWindows
+    .map((w) => `${w.labelEn}: ${w.stats.remainingPercent}% remaining (${w.stats.remainingTokens.toLocaleString()} / ${w.stats.limitTokens.toLocaleString()} tokens)`)
+    .join(" | ");
+  const summaryAr = dueWindows
+    .map((w) => `${w.labelAr}: متبقي ${w.stats.remainingPercent}% (${w.stats.remainingTokens.toLocaleString()} / ${w.stats.limitTokens.toLocaleString()} توكن)`)
+    .join(" | ");
+
+  const title = `⚠️ Low AI Token Allowance (${scopeLabelEn})`;
+  const message = `${scopeLabelEn} (${result.provider} / ${result.model}) dropped below ${LOW_ALLOWANCE_THRESHOLD_PCT}%: ${summaryEn}. (${scopeLabelAr}: ${summaryAr})`;
+
+  try {
+    const admins = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.role, "admin"));
+
+    if (admins.length > 0) {
+      await db.insert(notificationsTable).values(
+        admins.map((admin) => ({
+          userId: admin.id,
+          type: "ai_allowance_low",
+          title,
+          message,
+          companyId: null,
+          isRead: false,
+        }))
+      );
+    }
+  } catch (dbErr) {
+    logger.warn({ err: dbErr }, "Failed to insert low AI allowance admin notification");
+  }
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
+      <h2 style="margin:0 0 8px;color:#92400e;">⚠️ Low AI Token Allowance (${scopeLabelEn})</h2>
+      <p style="margin:0 0 12px;color:#78350f;font-size:14px;">
+        Provider: <strong>${result.provider}</strong> · Model: <strong>${result.model}</strong> (${result.planTier.toUpperCase()} Plan)
+      </p>
+      <p style="margin:0 0 14px;color:#451a03;font-size:14px;">${summaryEn}</p>
+      <p style="margin:0;color:#78350f;font-size:13px;" dir="rtl">${summaryAr}</p>
+    </div>
+  `;
+
+  await dispatchAdminNotificationEmail({
+    subject: `[Alert] Low ${scopeLabelEn} Token Allowance (<${LOW_ALLOWANCE_THRESHOLD_PCT}%)`,
+    html,
+  });
+
+  const nowIso = new Date(now).toISOString();
+  for (const w of dueWindows) {
+    await upsertAdminConfig(`ai_allowance_alert_last_${result.scope}_${w.key}`, nowIso);
+  }
+}
+
+export async function checkAllAiProviderAllowances(): Promise<void> {
+  await Promise.all([
+    getAiProviderAllowance("quota").catch(() => {}),
+    getAiProviderAllowance("support").catch(() => {}),
+  ]);
 }
 
 export async function saveAiProviderAllowanceLimits(

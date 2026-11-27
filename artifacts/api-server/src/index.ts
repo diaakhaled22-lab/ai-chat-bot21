@@ -35,6 +35,7 @@ import { assertPlanApprovalSecretConfigured } from "./lib/planApproval";
 import { ensureEmailVerificationSchema } from "./routes/auth";
 import { resolveTrustProxySetting, auditProxyExposure } from "./lib/proxySecurity";
 import { encryptPlaintextAdminConfigSecrets } from "./lib/adminConfig";
+import { checkAllAiProviderAllowances } from "./lib/aiProviderAllowance";
 
 // Early security sanity check: prevent server startup if PLAN_APPROVAL_SECRET is not configured
 assertPlanApprovalSecretConfigured();
@@ -270,6 +271,11 @@ async function purgeOldLeads() {
 
 setInterval(purgeOldLeads, 60 * 60 * 1000); // Run every hour
 purgeOldLeads();
+
+// Check AI provider daily/weekly token allowances every hour and alert admins if <15% remaining
+setInterval(() => {
+  void checkAllAiProviderAllowances().catch(() => {});
+}, 60 * 60 * 1000).unref();
 
 // AutoSync: re-scrape website URLs every 6 hours for companies with websiteAutoSync enabled
 setInterval(syncAllAutoSyncCompanies, 6 * 60 * 60 * 1000);
