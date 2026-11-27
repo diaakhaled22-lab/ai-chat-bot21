@@ -6,7 +6,7 @@ import {
 } from "../lib/companyNotification";
 import { reportSystemMalfunction } from "../lib/malfunctions";
 import { resolveCompanyAi, assertCompanyQuotaNotExceeded, type ResolvedAiConfig } from "../lib/supportAi";
-import { webhookLimiter } from "../lib/security";
+import { webhookLimiter, timingSafeEqualStrings } from "../lib/security";
 import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
 import { Router } from "express";
 import { downloadWhatsAppAudio, transcribeAudio, generateVoiceResponse, sendWhatsAppVoiceNote } from '../lib/audio';
@@ -197,12 +197,12 @@ router.get(["/whatsapp/webhook", "/webhook/whatsapp"], webhookLimiter, async (re
       .where(eq(adminConfigTable.key, "whatsapp_verify_token"));
 
     const expectedToken = decryptAdminConfigValue("whatsapp_verify_token", row?.value);
-    if (!expectedToken || verifyToken !== expectedToken) {
+    if (!timingSafeEqualStrings(verifyToken, expectedToken)) {
       res.sendStatus(403);
       return;
     }
 
-    res.status(200).send(challenge);
+    res.status(200).send(typeof challenge === "string" ? challenge : "");
   } catch (err) {
     logger.error({ err }, "WhatsApp platform webhook verification error");
     res.sendStatus(500);
@@ -582,15 +582,16 @@ router.get(["/whatsapp/webhook/:phoneNumberId", "/webhook/whatsapp/:phoneNumberI
       .where(eq(adminConfigTable.key, "whatsapp_verify_token"));
 
     const globalToken = decryptAdminConfigValue("whatsapp_verify_token", globalRow?.value);
-    const isTokenValid = (company?.whatsappApiToken && verifyToken === company.whatsappApiToken) ||
-      (globalToken && verifyToken === globalToken);
+    const matchesCompanyToken = timingSafeEqualStrings(verifyToken, company?.whatsappApiToken);
+    const matchesGlobalToken = timingSafeEqualStrings(verifyToken, globalToken);
+    const isTokenValid = matchesCompanyToken || matchesGlobalToken;
 
     if (!company || !isTokenValid) {
       res.sendStatus(403);
       return;
     }
 
-    res.status(200).send(challenge);
+    res.status(200).send(typeof challenge === "string" ? challenge : "");
   } catch (err) {
     logger.error({ err }, "WhatsApp webhook verification error");
     res.sendStatus(500);

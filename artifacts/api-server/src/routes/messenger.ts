@@ -23,7 +23,7 @@ import { getRestApiKnowledgeSection } from "../lib/restApiSync";
 import { getShopifyKnowledgeSection } from "../lib/shopifySync";
 import { LANGUAGE_MATCH_INSTRUCTION, OUTPUT_FORMAT_INSTRUCTION, ANTI_HALLUCINATION_INSTRUCTION, CONVERSATIONAL_MEMORY_INSTRUCTION, DEFAULT_PERSONALITY_PROMPT, buildWelcomeInstruction, buildKnownCustomerContext } from "../lib/promptInstructions";
 import { enforceResponseLanguage, getLanguageInstruction, localizedChannelMessage } from "../lib/language";
-import { webhookLimiter } from "../lib/security";
+import { webhookLimiter, timingSafeEqualStrings } from "../lib/security";
 import { verifyMetaWebhookSignature } from "../lib/webhookSecurity";
 
 import crypto from 'crypto';
@@ -190,12 +190,12 @@ router.get(["/messenger/webhook", "/webhook/messenger"], webhookLimiter, async (
       .where(eq(adminConfigTable.key, "messenger_verify_token"));
 
     const expectedToken = decryptAdminConfigValue("messenger_verify_token", row?.value);
-    if (!expectedToken || verifyToken !== expectedToken) {
+    if (!timingSafeEqualStrings(verifyToken, expectedToken)) {
       res.sendStatus(403);
       return;
     }
 
-    res.status(200).send(challenge);
+    res.status(200).send(typeof challenge === "string" ? challenge : "");
   } catch (err) {
     logger.error({ err }, "Messenger platform webhook verification error");
     res.sendStatus(500);
@@ -516,15 +516,16 @@ router.get(["/messenger/webhook/:pageId", "/webhook/messenger/:pageId"], async (
       .where(eq(adminConfigTable.key, "messenger_verify_token"));
 
     const globalToken = decryptAdminConfigValue("messenger_verify_token", globalRow?.value);
-    const isTokenValid = (company?.messengerApiKey && verifyToken === company.messengerApiKey) ||
-      (globalToken && verifyToken === globalToken);
+    const matchesCompanyToken = timingSafeEqualStrings(verifyToken, company?.messengerApiKey);
+    const matchesGlobalToken = timingSafeEqualStrings(verifyToken, globalToken);
+    const isTokenValid = matchesCompanyToken || matchesGlobalToken;
 
     if (!company || !isTokenValid) {
       res.sendStatus(403);
       return;
     }
 
-    res.status(200).send(challenge);
+    res.status(200).send(typeof challenge === "string" ? challenge : "");
   } catch (err) {
     logger.error({ err }, "Messenger webhook verification error");
     res.sendStatus(500);

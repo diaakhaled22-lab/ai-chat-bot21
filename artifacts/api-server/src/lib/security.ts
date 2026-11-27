@@ -1361,3 +1361,16 @@ export function sanitizeInputs(req: Request, _res: Response, next: NextFunction)
 
   next();
 }
+
+/**
+ * Constant-time string comparison using SHA-256 digests + crypto.timingSafeEqual.
+ * Prevents timing side-channel leaks of both token contents and token length.
+ */
+export function timingSafeEqualStrings(a: unknown, b: unknown): boolean {
+  if (typeof a !== "string" || typeof b !== "string" || a.length === 0 || b.length === 0) {
+    return false;
+  }
+  const digestA = crypto.createHash("sha256").update(a, "utf8").digest();
+  const digestB = crypto.createHash("sha256").update(b, "utf8").digest();
+  return crypto.timingSafeEqual(digestA, digestB);
+}
