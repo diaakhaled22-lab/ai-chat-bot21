@@ -611,9 +611,6 @@ export default function ClientCompany() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white leading-tight">
                 {t("company_title")}
               </h1>
-              <p className="text-xs sm:text-sm text-blue-100/90 mt-1.5 max-w-xl leading-relaxed">
-                {t("company_desc")}
-              </p>
             </div>
           </div>
         </div>
