@@ -16,7 +16,6 @@ import {
   ShieldAlert,
   AlertTriangle,
   Clock,
-  Sparkles,
   LifeBuoy,
   ChevronRight,
   ChevronLeft,

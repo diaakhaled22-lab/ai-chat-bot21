@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   LifeBuoy,
   Clock,
-  Sparkles,
   ExternalLink,
   Coins,
   Check,

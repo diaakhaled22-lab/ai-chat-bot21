@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
-import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send, ShieldCheck, ShieldAlert, Key, Eye, EyeOff, Lock, Sparkles } from "lucide-react";
+import { Copy, MessageCircle, Webhook, CheckCircle2, XCircle, Send, ShieldCheck, ShieldAlert, Key, Eye, EyeOff, Lock } from "lucide-react";
 import { ChannelIcon } from "@/components/ChannelIcon";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, ExternalLink, Globe, Plug, Sparkles, FolderDown, Mail, Cpu, Package } from "lucide-react";
+import { Copy, Check, Info, Bot, MessageCircle, Zap, Database, KeyRound, Lock, Eye, EyeOff, UserRound, ChevronDown, AlertTriangle, Gauge, Send, RotateCcw, Upload, Trash2, FileText, FileJson, Link2, Loader2, ExternalLink, Globe, Plug, FolderDown, Mail, Cpu, Package } from "lucide-react";
 
 import {
   useGetClientCompany, useCreateClientCompany, useUpdateClientCompany, useGetMe,

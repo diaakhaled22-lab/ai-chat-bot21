@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import {
   CheckCircle2, XCircle, Loader2, Zap, Leaf, Eye, EyeOff,
-  Play, RotateCcw, ChevronDown, ChevronUp, Clock, Key, Bot, Square, Sparkles,
+  Play, RotateCcw, ChevronDown, ChevronUp, Clock, Key, Bot, Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

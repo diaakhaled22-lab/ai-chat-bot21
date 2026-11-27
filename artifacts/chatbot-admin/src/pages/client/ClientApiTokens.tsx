@@ -20,7 +20,6 @@ import {
   ExternalLink,
   Coins,
   CheckCircle2,
-  Sparkles,
 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { AnimatedCounter } from "@/components/ui/animated-counter";

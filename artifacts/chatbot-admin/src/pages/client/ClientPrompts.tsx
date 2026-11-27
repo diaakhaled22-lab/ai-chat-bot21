@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ShieldCheck, PenTool, Sparkles } from "lucide-react";
+import { Loader2, ShieldCheck, PenTool } from "lucide-react";
 import { useEffect } from "react";
 
 type PromptsForm = {

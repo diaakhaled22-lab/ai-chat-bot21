@@ -26,7 +26,6 @@ import {
   Download, ArrowLeft,
   LifeBuoy,
   AlertTriangle,
-  Sparkles,
 } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";

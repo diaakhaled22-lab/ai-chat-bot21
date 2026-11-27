@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Megaphone, Users, CheckCircle2, Building2, Send, RotateCcw, AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import { Megaphone, Users, CheckCircle2, Building2, Send, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

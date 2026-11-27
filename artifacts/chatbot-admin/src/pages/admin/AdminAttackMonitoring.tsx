@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Ban, Bell, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff, Trash2, Sparkles } from "lucide-react";
+import { Activity, AlertTriangle, Ban, Bell, Clock3, Loader2, ShieldAlert, TrendingUp, UserRound, ShieldOff, Trash2 } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

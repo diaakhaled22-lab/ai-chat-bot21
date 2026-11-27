@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Bot, Send, RotateCcw, AlertTriangle, Sparkles } from "lucide-react";
+import { Bot, Send, RotateCcw, AlertTriangle } from "lucide-react";
 import { useGetClientCompany } from "@workspace/api-client-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

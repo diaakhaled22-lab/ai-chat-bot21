@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Zap, Sparkles } from "lucide-react";
+import { Copy, Check, Zap } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useListClients, useCreateClient, useDeleteClient, useUpdateClient, getListClientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, MoreVertical, Search, Edit, Mail, Laptop, Sparkles } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Search, Edit, Mail, Laptop } from "lucide-react";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

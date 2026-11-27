@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   MessageCircle, Send, Loader2, Check,
-  Copy, Layers, Code, Mic, Sparkles, BookOpen,
+  Copy, Layers, Code, Mic, BookOpen,
 } from "lucide-react";
 import {
   useGetClientCompany,

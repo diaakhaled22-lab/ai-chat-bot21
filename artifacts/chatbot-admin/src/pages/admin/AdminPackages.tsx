@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Package,
-  Sparkles,
   Plus,
   Pencil,
   Trash2,

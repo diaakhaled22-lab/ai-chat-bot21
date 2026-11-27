@@ -53,7 +53,6 @@ import {
   DollarSign,
   CheckCircle2,
   Clock,
-  Sparkles,
   Loader2,
   FileText,
   Send,

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Sparkles, Check, CheckCircle2, ArrowRight, ArrowLeft, ExternalLink, Package } from "lucide-react";
+import { Globe, User, Lock, ShieldCheck, Mail, Key, Send, Loader2, Check, CheckCircle2, ArrowRight, ArrowLeft, ExternalLink, Package } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
