@@ -385,13 +385,22 @@ async function startServer() {
     await ensureRestApiSchema();
     await ensureShopifySchema();
     await ensureDataSourcePermissionsSchema();
-    await encryptPlaintextAdminConfigSecrets();
     await loadBlockedIpsFromDb();
     await loadTotpSecretsFromDb();
     await loadAttackLogsFromDb();
     logger.info("Database schemas, bootstrap admin, and security rules initialized successfully");
   } catch (err) {
     logger.error({ err }, "Non-fatal warning during startup schema initialization");
+  }
+
+  // Enforce at-rest encryption of any legacy plaintext secrets in admin_config (fail-closed in production)
+  try {
+    await encryptPlaintextAdminConfigSecrets();
+  } catch (encErr) {
+    logger.error({ err: encErr }, "Failed to encrypt legacy plaintext secrets in admin_config");
+    if (process.env.NODE_ENV === "production") {
+      process.exit(1);
+    }
   }
 }
 

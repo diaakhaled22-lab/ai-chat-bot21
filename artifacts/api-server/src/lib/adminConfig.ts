@@ -10,18 +10,51 @@ import { and, eq, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 
 /**
+ * Encrypts a single legacy plaintext sensitive secret in admin_config in-place.
+ * Uses conditional update (matching both key and original plaintext value) to avoid overwriting concurrent updates.
+ */
+async function healPlaintextAdminConfigRow(key: string, value: string, source: "startup" | "read"): Promise<boolean> {
+  if (!value || !isSensitiveAdminConfigKey(key) || value.startsWith("enc:")) {
+    return false;
+  }
+
+  const encryptedValue = encrypt(value);
+  if (!encryptedValue || !encryptedValue.startsWith("enc:")) {
+    throw new Error(`Failed to encrypt legacy plaintext secret for admin_config key '${key}'`);
+  }
+
+  await db
+    .update(adminConfigTable)
+    .set({ value: encryptedValue, updatedAt: new Date() })
+    .where(and(eq(adminConfigTable.key, key), eq(adminConfigTable.value, value)));
+
+  if (source === "read") {
+    logger.warn({ key }, "Encrypted legacy plaintext secret found on read in admin_config");
+  }
+  return true;
+}
+
+/**
  * Fetches config rows from admin_config and transparently decrypts sensitive values (H6 fix).
+ * Also heals any legacy plaintext sensitive secrets in-place on read.
  */
 export async function getAdminConfigMap(keys?: string[]): Promise<Map<string, string>> {
   const rows = keys && keys.length > 0
     ? await db.select().from(adminConfigTable).where(inArray(adminConfigTable.key, keys))
     : await db.select().from(adminConfigTable);
 
+  for (const row of rows) {
+    if (row.value && isSensitiveAdminConfigKey(row.key) && !row.value.startsWith("enc:")) {
+      await healPlaintextAdminConfigRow(row.key, row.value, "read");
+    }
+  }
+
   return new Map(rows.map((r) => [r.key, decryptAdminConfigValue(r.key, r.value)]));
 }
 
 /**
- * Fetches a single entry from admin_config, decrypting sensitive values automatically.
+ * Fetches a single entry from admin_config, decrypting sensitive values automatically
+ * and healing any legacy plaintext sensitive value in-place on read.
  */
 export async function getAdminConfigEntry(key: string): Promise<{ value: string | null; updatedAt: Date | null }> {
   const [row] = await db
@@ -32,6 +65,10 @@ export async function getAdminConfigEntry(key: string): Promise<{ value: string 
 
   if (!row) {
     return { value: null, updatedAt: null };
+  }
+
+  if (row.value && isSensitiveAdminConfigKey(key) && !row.value.startsWith("enc:")) {
+    await healPlaintextAdminConfigRow(key, row.value, "read");
   }
 
   return {
@@ -63,17 +100,9 @@ export async function encryptPlaintextAdminConfigSecrets(): Promise<number> {
   let migrated = 0;
 
   for (const row of rows) {
-    if (!row.value || !isSensitiveAdminConfigKey(row.key)) continue;
-    if (row.value.startsWith("enc:")) continue;
-
-    const encryptedValue = encrypt(row.value);
-    if (!encryptedValue) continue;
-
-    await db
-      .update(adminConfigTable)
-      .set({ value: encryptedValue, updatedAt: new Date() })
-      .where(and(eq(adminConfigTable.key, row.key), eq(adminConfigTable.value, row.value)));
-    migrated++;
+    if (await healPlaintextAdminConfigRow(row.key, row.value ?? "", "startup")) {
+      migrated++;
+    }
   }
 
   if (migrated > 0) {
