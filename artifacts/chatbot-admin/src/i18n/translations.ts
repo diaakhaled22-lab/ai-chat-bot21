@@ -141,7 +141,7 @@ const translations = {
     channels_website_fab_hint: "Drag the chat button below to adjust its position on your website.",
 
     // ── Client Company Profile Page ─────────────────────────────────────────
-    company_title: "Company Profile & AI",
+    company_title: "Company Profile",
     company_desc: "Configure your company information, AI provider, and knowledge base.",
     company_info_card: "Basic Information",
     company_name_label: "Company Name",
@@ -555,7 +555,7 @@ const translations = {
     channels_website_fab_hint: "اسحب زر المحادثة في المعاينة أدناه لتحديد موضعه على موقعك.",
 
     // ── Client Company Profile Page ─────────────────────────────────────────
-    company_title: "ملف الشركة والذكاء الاصطناعي",
+    company_title: "ملف الشركة",
     company_desc: "تهيئة معلومات شركتك، مزود الذكاء الاصطناعي، وقواعد المعرفة الخاصة بك.",
     company_info_card: "المعلومات الأساسية",
     company_name_label: "اسم الشركة / النشاط التجاري",
