@@ -106,14 +106,41 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
   const [isRegistering, setIsRegistering] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
   const [otpEnabled, setOtpEnabled] = useState(true);
+  const [captchaMode, setCaptchaMode] = useState<"builtin" | "external">("builtin");
+  const [captchaChallengeToken, setCaptchaChallengeToken] = useState("");
+  const [captchaQuestion, setCaptchaQuestion] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false);
+
+  const fetchCaptchaChallenge = async () => {
+    setLoadingCaptcha(true);
+    try {
+      const r = await fetch("/api/auth/captcha-challenge", { credentials: "include" });
+      if (r.ok) {
+        const d = await r.json();
+        setCaptchaChallengeToken(d.challengeToken || "");
+        setCaptchaQuestion(d.question || "");
+        setCaptchaAnswer("");
+      }
+    } catch {
+      // ignore network error
+    } finally {
+      setLoadingCaptcha(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
     fetch("/api/auth/registration-config", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (active && data && typeof data.otpEnabled === "boolean") {
-          setOtpEnabled(data.otpEnabled);
+        if (!active || !data) return;
+        const nextOtp = typeof data.otpEnabled === "boolean" ? data.otpEnabled : true;
+        const nextMode = data.captchaMode === "external" ? "external" : "builtin";
+        setOtpEnabled(nextOtp);
+        setCaptchaMode(nextMode);
+        if (isRegisterOpen && nextOtp && nextMode === "builtin") {
+          fetchCaptchaChallenge();
         }
       })
       .catch(() => {});
@@ -330,6 +357,15 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
       return;
     }
 
+    if (captchaMode === "builtin" && !captchaAnswer.trim()) {
+      toast({
+        title: lang === "ar" ? "التحقق الأمني مطلوب" : "Security Check Required",
+        description: lang === "ar" ? "يرجى إدخال ناتج العملية الحسابية أولاً" : "Please enter the answer to the security challenge",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setRegError(null);
     setIsSendingOtp(true);
     try {
@@ -340,22 +376,33 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
           name: regName.trim(),
           username: regUsername.trim(),
           email: regEmail.trim(),
+          ...(captchaMode === "builtin"
+            ? { captchaChallengeToken, captchaAnswer: captchaAnswer.trim() }
+            : {}),
           lang,
         }),
       });
 
       let errorMsg = "";
+      let captchaRequired = false;
       try {
         const text = await res.text();
         try {
           const parsed = JSON.parse(text);
           errorMsg = parsed.error || parsed.message || "";
+          captchaRequired = Boolean(parsed.captchaRequired);
         } catch {
           errorMsg = text.slice(0, 150);
         }
       } catch {}
 
       if (!res.ok) {
+        if (captchaMode === "builtin") {
+          fetchCaptchaChallenge();
+        }
+        if (captchaRequired && regStep === "otp") {
+          setRegStep("details");
+        }
         throw new Error(errorMsg || (lang === "ar" ? "فشل إرسال رمز التحقق" : "Failed to send verification code"));
       }
 
@@ -1072,6 +1119,43 @@ export default function ModernLogin({ initialMode = "admin" }: ModernLoginProps)
                   {lang === "ar" ? "يجب أن تحتوي على 8 أحرف على الأقل (حرف كبير، حرف صغير، ورقم)" : "Password must be at least 8 characters long (uppercase, lowercase & number)"}
                 </p>
               </div>
+
+              {otpEnabled && captchaMode === "builtin" && (
+                <div className="text-start rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>{lang === "ar" ? "التحقق الأمني *" : "Security Check *"}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={fetchCaptchaChallenge}
+                      disabled={loadingCaptcha}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingCaptcha ? "animate-spin" : ""}`} />
+                      <span>{lang === "ar" ? "تحديث" : "Refresh"}</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      dir="ltr"
+                      className="px-3 py-2 rounded-lg bg-blue-600/10 dark:bg-blue-500/15 border border-blue-500/25 font-mono font-bold text-sm text-blue-700 dark:text-blue-300 select-none shrink-0"
+                    >
+                      {captchaQuestion || "..."}
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      required
+                      value={captchaAnswer}
+                      onChange={(e) => setCaptchaAnswer(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder={lang === "ar" ? "اكتب الناتج" : "Answer"}
+                      className="modern-input flex-1 !py-2 !ps-3 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              )}
 
               <DialogFooter className="pt-3 gap-2 sm:gap-2">
                 <Button

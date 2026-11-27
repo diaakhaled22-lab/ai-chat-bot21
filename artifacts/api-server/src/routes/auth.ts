@@ -8,7 +8,13 @@ import { AdminLoginBody, ClientLoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { getResendConfig } from "../lib/companyNotification";
 import { sendAttackSpikeNotification, sendPasswordResetEmail, sendNewClientNotification, getEmailConfig, isEmailConfigured, isSmtpConfigured, buildTransporter } from "../lib/email";
-import { extractCaptchaToken, verifyCaptchaToken, getCaptchaSecrets } from "../lib/captchaSecurity";
+import {
+  extractCaptchaToken,
+  verifyCaptchaToken,
+  getCaptchaSecrets,
+  createBuiltinCaptchaChallenge,
+  verifyBuiltinCaptchaChallenge,
+} from "../lib/captchaSecurity";
 import {
   maskApiKey,
   authLimiter,
@@ -579,12 +585,24 @@ async function isRegistrationOtpEnabled(): Promise<boolean> {
 
 router.get("/auth/registration-config", async (_req, res) => {
   try {
-    const otpEnabled = await isRegistrationOtpEnabled();
-    res.json({ otpEnabled });
+    const [otpEnabled, secrets] = await Promise.all([
+      isRegistrationOtpEnabled(),
+      getCaptchaSecrets(),
+    ]);
+    const hasExternalCaptcha = Boolean(secrets.turnstileSecret || secrets.hcaptchaSecret || secrets.recaptchaSecret);
+    res.json({
+      otpEnabled,
+      captchaMode: hasExternalCaptcha ? "external" : "builtin",
+    });
   } catch (err) {
     logger.error({ err }, "Error reading registration config");
-    res.json({ otpEnabled: true });
+    res.json({ otpEnabled: true, captchaMode: "builtin" });
   }
+});
+
+router.get("/auth/captcha-challenge", sensitiveLimiter, (_req, res) => {
+  const challenge = createBuiltinCaptchaChallenge();
+  res.json(challenge);
 });
 
 router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) => {
@@ -649,13 +667,31 @@ router.post("/auth/send-registration-otp", sensitiveLimiter, async (req, res) =>
         return;
       }
       isCaptchaVerified = true;
-    } else if (captchaToken) {
+    } else if (captchaToken && process.env.NODE_ENV !== "production") {
       const captchaResult = await verifyCaptchaToken(captchaToken, clientIp);
       if (!captchaResult.valid) {
         res.status(429).json({
           error: isAr
             ? "فشل التحقق الأمني (CAPTCHA)."
             : "CAPTCHA verification failed.",
+          captchaRequired: true,
+        });
+        return;
+      }
+      isCaptchaVerified = true;
+    } else {
+      // Built-in HMAC-signed CAPTCHA challenge fallback: enforced even when no external provider key is set
+      const { captchaChallengeToken, captchaAnswer } = req.body as {
+        captchaChallengeToken?: unknown;
+        captchaAnswer?: unknown;
+      };
+      const builtinResult = verifyBuiltinCaptchaChallenge(captchaChallengeToken, captchaAnswer);
+      if (!builtinResult.valid) {
+        logger.warn({ clientIp, reason: builtinResult.reason }, "Registration OTP blocked: failed built-in CAPTCHA challenge");
+        res.status(429).json({
+          error: isAr
+            ? "يرجى حل التحقق الأمني (ناتج الجمع) بشكل صحيح قبل طلب رمز التحقق."
+            : "Please solve the security verification challenge correctly before requesting an OTP.",
           captchaRequired: true,
         });
         return;
