@@ -738,6 +738,9 @@ export default function ClientDashboard() {
             </div>
           )}
 
+          {/* CSAT & Knowledge Gaps Panel (Full width, responsive across all screen sizes) */}
+          <KnowledgeGapsPanel />
+
           {/* Sentiment Analysis Card */}
           {sentiments && (
             <div className="grid gap-4 md:grid-cols-2 mt-4">
@@ -806,9 +809,6 @@ export default function ClientDashboard() {
           )}
         </>
       )}
-
-      {/* CSAT & Knowledge Gaps Panel (Full width, responsive across all screen sizes) */}
-      <KnowledgeGapsPanel />
     </div>
   );
 }
