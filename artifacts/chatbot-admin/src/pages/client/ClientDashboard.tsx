@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useLanguage } from "@/hooks/use-language";
+import { KnowledgeGapsPanel } from "@/components/KnowledgeGapsPanel";
 
 interface DashboardData {
   companyName: string;
@@ -805,6 +806,9 @@ export default function ClientDashboard() {
           )}
         </>
       )}
+
+      {/* CSAT & Knowledge Gaps Panel (Full width, responsive across all screen sizes) */}
+      <KnowledgeGapsPanel />
     </div>
   );
 }

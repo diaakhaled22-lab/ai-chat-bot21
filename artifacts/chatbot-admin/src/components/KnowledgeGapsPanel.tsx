@@ -122,15 +122,15 @@ export function KnowledgeGapsPanel() {
   const gaps = data?.gaps ?? [];
 
   return (
-    <Card className="bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+    <Card className="w-full min-w-0 bg-card border border-[#DCE7FF] dark:border-slate-800 rounded-2xl shadow-md shadow-[#2D5BE3]/15 border-l-4 border-l-[#2D5BE3]">
+      <CardHeader className="pb-3 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-              <MessageSquareWarning className="w-5 h-5 text-primary" />
-              {isAr ? "تقييم الردود وتحليل فجوات المعرفة (CSAT)" : "Response Ratings & Knowledge Gaps (CSAT)"}
+              <MessageSquareWarning className="w-5 h-5 text-primary shrink-0" />
+              <span className="truncate">{isAr ? "تقييم الردود وتحليل فجوات المعرفة (CSAT)" : "Response Ratings & Knowledge Gaps (CSAT)"}</span>
             </CardTitle>
-            <CardDescription className="mt-1">
+            <CardDescription className="mt-1 text-xs sm:text-sm">
               {isAr
                 ? "تابع تقييمات الزوار (👍 / 👎) وأكثر الأسئلة التي احتاجت تدخلاً بشريًا لتضيف إجاباتها لملفات المعرفة."
                 : "Monitor visitor ratings (👍 / 👎) and questions that triggered human handoff so you can add answers to your Knowledge Base."}
@@ -142,7 +142,7 @@ export function KnowledgeGapsPanel() {
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="gap-1.5"
+            className="gap-1.5 self-start sm:self-auto shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             {isAr ? "تحديث" : "Refresh"}
@@ -150,46 +150,46 @@ export function KnowledgeGapsPanel() {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 p-4 pt-0 sm:p-6 sm:pt-0">
         {/* CSAT Summary Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-            <span className="text-[11px] text-muted-foreground block">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="min-w-0 rounded-xl border border-border/60 bg-secondary/20 p-3.5">
+            <span className="text-xs text-muted-foreground block truncate">
               {isAr ? "نسبة الرضا" : "Satisfaction"}
             </span>
-            <span className="text-xl font-extrabold text-foreground tabular-nums">
+            <span className="text-xl font-extrabold text-foreground tabular-nums mt-0.5 block">
               {stats?.satisfactionRate !== null && stats?.satisfactionRate !== undefined
                 ? `${stats.satisfactionRate}%`
                 : "—"}
             </span>
           </div>
 
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <ThumbsUp className="w-3 h-3" />
-              {isAr ? "تقييمات إيجابية" : "Positive (👍)"}
+          <div className="min-w-0 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 truncate">
+              <ThumbsUp className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{isAr ? "تقييمات إيجابية" : "Positive (👍)"}</span>
             </span>
-            <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5 block">
               {stats?.positiveCount ?? 0}
             </span>
           </div>
 
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
-            <span className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1">
-              <ThumbsDown className="w-3 h-3" />
-              {isAr ? "تقييمات سلبية" : "Negative (👎)"}
+          <div className="min-w-0 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5">
+            <span className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1.5 truncate">
+              <ThumbsDown className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{isAr ? "تقييمات سلبية" : "Negative (👎)"}</span>
             </span>
-            <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
+            <span className="text-xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums mt-0.5 block">
               {stats?.negativeCount ?? 0}
             </span>
           </div>
 
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-            <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              <UserCheck className="w-3 h-3" />
-              {isAr ? "تدخل بشري" : "Handoffs"}
+          <div className="min-w-0 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5">
+            <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 truncate">
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{isAr ? "تدخل بشري" : "Handoffs"}</span>
             </span>
-            <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400 tabular-nums">
+            <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400 tabular-nums mt-0.5 block">
               {stats?.handoffCount ?? 0}
             </span>
           </div>
@@ -264,7 +264,7 @@ export function KnowledgeGapsPanel() {
 
       {/* Add Q&A to Knowledge Dialog */}
       <Dialog open={!!selectedGap} onOpenChange={(open) => !open && setSelectedGap(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[90dvh] overflow-y-auto modal-custom-scroll p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
