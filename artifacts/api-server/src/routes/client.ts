@@ -4372,9 +4372,9 @@ router.patch("/client/leads/:id", async (req, res) => {
   });
 
 // GET /client/knowledge-gaps — CSAT summary + top unanswered/handoff/negative-feedback questions
-router.get("/client/knowledge-gaps", requireClientAuth, async (req, res) => {
+router.get("/client/knowledge-gaps", requireClient, async (req, res) => {
   try {
-    const company = await getClientCompany(req.session.userId!);
+    const [company] = await db.select().from(companiesTable).where(eq(companiesTable.clientId, req.session.userId!)).limit(1);
     if (!company) {
       res.status(404).json({ error: "Company not found" });
       return;

@@ -784,10 +784,25 @@ router.post("/widget/:key/feedback", chatLimiter, async (req, res) => {
       return;
     }
 
-    const company = await findCompanyByWebsiteKey(key);
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.websiteChatbotKey, key))
+      .limit(1);
     if (!company || !company.isActive) {
       res.status(404).json({ error: "Not found" });
       return;
+    }
+
+    const serverHost = (req.headers["x-forwarded-host"] as string) || req.headers.host;
+    const check = validateWidgetRequest(req, company, serverHost);
+    if (!check.valid) {
+      res.status(check.status).json({ error: check.error });
+      return;
+    }
+    if (check.allowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", check.allowedOrigin);
+      res.setHeader("Vary", "Origin");
     }
 
     const updated = await db

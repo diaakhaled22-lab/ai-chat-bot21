@@ -19,7 +19,7 @@ process.on("uncaughtException", (err) => {
 });
 import { db } from "@workspace/db";
 import { adminConfigTable, chatLogsTable, companiesTable, companyActivityLogsTable, notificationsTable, usersTable, leadsTable } from "@workspace/db";
-import { and, eq, lt, isNotNull, gte, lte } from "drizzle-orm";
+import { and, eq, lt, isNotNull, gte, lte, sql } from "drizzle-orm";
 import { syncAllAutoSyncCompanies } from "./lib/websiteSync";
 import { syncAllWordPressIntegrations } from "./lib/wordpressSync";
 import { syncAllRestApiIntegrations, ensureRestApiSchema } from "./lib/restApiSync";
