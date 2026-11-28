@@ -1412,7 +1412,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 aria-label={lang === "ar" ? "توسيع القائمة الجانبية" : "Expand sidebar"}
               >
                 <img src="/brand-logo.svg?v=9" alt="Bot Manager" className="w-full h-full object-contain drop-shadow-sm group-hover:hidden" />
-                <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
+                <PanelLeftOpen className={`w-5 h-5 hidden group-hover:block ${lang === "ar" ? "scale-x-[-1]" : ""} ${isLightAdmin ? "text-blue-800" : "text-sky-300"}`} />
               </button>
             </TooltipTrigger>
             <TooltipContent side={lang === "ar" ? "left" : "right"} className={isLightAdmin ? "bg-white/95 border border-sky-300/60 text-slate-800 font-medium shadow-xl" : "bg-[#0e1838] border border-white/20 text-white font-medium shadow-xl"}>
@@ -1445,7 +1445,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
             title={lang === "ar" ? "طي القائمة الجانبية" : "Collapse sidebar"}
             aria-label="Collapse sidebar"
           >
-            <PanelLeftClose className="w-4 h-4" />
+            <PanelLeftClose className={`w-4 h-4 ${lang === "ar" ? "scale-x-[-1]" : ""}`} />
           </Button>
 
           {/* Mobile & Tablet drawer close button */}
