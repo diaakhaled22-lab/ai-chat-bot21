@@ -391,6 +391,7 @@ async function startServer() {
     await ensureRestApiSchema();
     await ensureShopifySchema();
     await ensureDataSourcePermissionsSchema();
+    await db.execute(sql`ALTER TABLE chat_logs ADD COLUMN IF NOT EXISTS feedback TEXT`);
     await loadBlockedIpsFromDb();
     await loadTotpSecretsFromDb();
     await loadAttackLogsFromDb();

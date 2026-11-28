@@ -12,6 +12,7 @@ import {
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/use-language";
 import { useToast } from "@/hooks/use-toast";
+import { KnowledgeGapsPanel } from "@/components/KnowledgeGapsPanel";
 
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
@@ -2189,6 +2190,9 @@ export default function ClientKnowledge() {
             )
           )}
         </div>
+
+        {/* CSAT & Knowledge Gaps Analysis Panel */}
+        <KnowledgeGapsPanel />
       </div>
     </div>
   );

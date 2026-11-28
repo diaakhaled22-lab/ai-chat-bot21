@@ -4371,4 +4371,100 @@ router.patch("/client/leads/:id", async (req, res) => {
     }
   });
 
+// GET /client/knowledge-gaps — CSAT summary + top unanswered/handoff/negative-feedback questions
+router.get("/client/knowledge-gaps", requireClientAuth, async (req, res) => {
+  try {
+    const company = await getClientCompany(req.session.userId!);
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+
+    const logs = await db
+      .select({
+        id: chatLogsTable.id,
+        channel: chatLogsTable.channel,
+        customerMessage: chatLogsTable.customerMessage,
+        botResponse: chatLogsTable.botResponse,
+        isHandoff: chatLogsTable.isHandoff,
+        feedback: chatLogsTable.feedback,
+        createdAt: chatLogsTable.createdAt,
+      })
+      .from(chatLogsTable)
+      .where(eq(chatLogsTable.companyId, company.id))
+      .orderBy(desc(chatLogsTable.createdAt))
+      .limit(500);
+
+    let positiveCount = 0;
+    let negativeCount = 0;
+    let handoffCount = 0;
+
+    const gapGroups = new Map<
+      string,
+      {
+        id: number;
+        question: string;
+        botResponse: string;
+        reason: "negative_feedback" | "handoff" | "both";
+        channel: string;
+        createdAt: string;
+        occurrences: number;
+      }
+    >();
+
+    for (const log of logs) {
+      if (log.feedback === "up") positiveCount++;
+      if (log.feedback === "down") negativeCount++;
+      if (log.isHandoff) handoffCount++;
+
+      const isNeg = log.feedback === "down";
+      const isHo = Boolean(log.isHandoff);
+      if (!isNeg && !isHo) continue;
+
+      const question = (log.customerMessage || "").trim();
+      if (!question || question.length < 3) continue;
+      const normKey = question.toLowerCase().replace(/\s+/g, " ").slice(0, 140);
+
+      const existing = gapGroups.get(normKey);
+      const reason: "negative_feedback" | "handoff" | "both" =
+        isNeg && isHo ? "both" : isNeg ? "negative_feedback" : "handoff";
+
+      if (existing) {
+        existing.occurrences += 1;
+        if (existing.reason !== reason) existing.reason = "both";
+      } else {
+        gapGroups.set(normKey, {
+          id: log.id,
+          question,
+          botResponse: (log.botResponse || "").trim(),
+          reason,
+          channel: log.channel,
+          createdAt: log.createdAt.toISOString(),
+          occurrences: 1,
+        });
+      }
+    }
+
+    const totalRated = positiveCount + negativeCount;
+    const satisfactionRate = totalRated > 0 ? Math.round((positiveCount / totalRated) * 100) : null;
+    const gaps = Array.from(gapGroups.values())
+      .sort((a, b) => b.occurrences - a.occurrences || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 25);
+
+    res.json({
+      stats: {
+        totalRated,
+        positiveCount,
+        negativeCount,
+        handoffCount,
+        satisfactionRate,
+      },
+      gaps,
+    });
+  } catch (err) {
+    logger.error({ err }, "Get client knowledge gaps error");
+    res.status(500).json({ error: "Failed to load knowledge gaps" });
+  }
+});
+
 export default router;

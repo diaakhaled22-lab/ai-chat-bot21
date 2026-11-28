@@ -688,8 +688,9 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       ).catch((e) => logger.warn({ err: e, companyId: company.id }, "New order email notification failed"));
     }
 
+    let insertedChatLogId: number | null = null;
     if (sessionId && typeof sessionId === "string") {
-      await db.insert(chatLogsTable).values({
+      const [insertedLog] = await db.insert(chatLogsTable).values({
         companyId: company.id,
         channel: "website",
         sessionId,
@@ -698,7 +699,8 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
         isHandoff,
         sentiment: metrics?.sentiment || null,
         intent: metrics?.intent || null,
-      });
+      }).returning({ id: chatLogsTable.id });
+      insertedChatLogId = insertedLog?.id ?? null;
       triggerNewMessageNotification(company, sessionId, "website", message.trim());
     }
 
@@ -725,7 +727,7 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
           if (w) res.write(`data: ${JSON.stringify({ delta: w })}\n\n`);
         }
       }
-      res.write(`data: ${JSON.stringify({ done: true, response: aiReply, sessionToken: effectiveSessionToken })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, response: aiReply, sessionToken: effectiveSessionToken, chatLogId: insertedChatLogId })}\n\n`);
       res.end();
       return;
     }
@@ -733,6 +735,7 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
     res.json({
       response: aiReply,
       sessionToken: effectiveSessionToken,
+      chatLogId: insertedChatLogId,
     });
   } catch (err: any) {
     logger.error({ err }, "Widget chat error");
@@ -755,6 +758,59 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
       return;
     }
     res.status(500).json({ error: errMsg });
+  }
+});
+
+// CSAT Feedback endpoint for widget bot responses
+router.post("/widget/:key/feedback", chatLimiter, async (req, res) => {
+  try {
+    const key = String(req.params.key || "");
+    const { chatLogId, sessionId, feedback } = req.body as {
+      chatLogId?: number;
+      sessionId?: string;
+      feedback?: string;
+    };
+
+    if (!key || typeof chatLogId !== "number" || !Number.isInteger(chatLogId) || chatLogId <= 0) {
+      res.status(400).json({ error: "Invalid chatLogId" });
+      return;
+    }
+    if (feedback !== "up" && feedback !== "down") {
+      res.status(400).json({ error: "feedback must be 'up' or 'down'" });
+      return;
+    }
+    if (!sessionId || typeof sessionId !== "string") {
+      res.status(400).json({ error: "sessionId is required" });
+      return;
+    }
+
+    const company = await findCompanyByWebsiteKey(key);
+    if (!company || !company.isActive) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const updated = await db
+      .update(chatLogsTable)
+      .set({ feedback })
+      .where(
+        and(
+          eq(chatLogsTable.id, chatLogId),
+          eq(chatLogsTable.companyId, company.id),
+          eq(chatLogsTable.sessionId, sessionId)
+        )
+      )
+      .returning({ id: chatLogsTable.id, feedback: chatLogsTable.feedback });
+
+    if (updated.length === 0) {
+      res.status(404).json({ error: "Message not found" });
+      return;
+    }
+
+    res.json({ ok: true, feedback: updated[0].feedback });
+  } catch (err) {
+    logger.error({ err }, "Widget feedback error");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

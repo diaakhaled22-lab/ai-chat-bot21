@@ -15,6 +15,7 @@ export const chatLogsTable = pgTable("chat_logs", {
   isHandoff: boolean("is_handoff").notNull().default(false),
   sentiment: text("sentiment"),
   intent: text("intent"),
+  feedback: text("feedback"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

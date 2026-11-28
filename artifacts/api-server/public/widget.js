@@ -325,13 +325,44 @@
       if (isArabicText(m.text)) bubble.setAttribute("dir", "rtl");
       row.appendChild(bubble);
 
-      if (m.role === "bot" && speechSynth) {
-        var speakBtn = document.createElement("button");
-        speakBtn.className = "cw-speak-btn";
-        speakBtn.setAttribute("aria-label", "Play voice reply");
-        speakBtn.textContent = "🔊";
-        speakBtn.addEventListener("click", function () { speak(m.text); });
-        row.appendChild(speakBtn);
+      if (m.role === "bot") {
+        var actionsRow = document.createElement("div");
+        actionsRow.style.cssText = "display:flex;align-items:center;gap:6px;margin-top:4px;";
+        if (speechSynth) {
+          var speakBtn = document.createElement("button");
+          speakBtn.className = "cw-speak-btn";
+          speakBtn.setAttribute("aria-label", "Play voice reply");
+          speakBtn.textContent = "🔊";
+          speakBtn.addEventListener("click", function () { speak(m.text); });
+          actionsRow.appendChild(speakBtn);
+        }
+        if (m.chatLogId) {
+          ["up", "down"].forEach(function (val) {
+            var fbBtn = document.createElement("button");
+            fbBtn.type = "button";
+            fbBtn.setAttribute("aria-label", val === "up" ? "Helpful" : "Not helpful");
+            fbBtn.textContent = val === "up" ? "👍" : "👎";
+            var isSelected = m.feedback === val;
+            fbBtn.style.cssText =
+              "border:1px solid " + (isSelected ? "#2563eb" : "rgba(148,163,184,0.35)") +
+              ";background:" + (isSelected ? "rgba(37,99,235,0.14)" : "transparent") +
+              ";border-radius:999px;padding:2px 7px;font-size:11px;cursor:pointer;line-height:1.4;opacity:" +
+              (m.feedback && !isSelected ? "0.45" : "0.9") + ";transition:all .15s;";
+            fbBtn.addEventListener("click", function () {
+              m.feedback = val;
+              renderMessages();
+              fetch(apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chatLogId: m.chatLogId, sessionId: sessionId, feedback: val }),
+              }).catch(function () {});
+            });
+            actionsRow.appendChild(fbBtn);
+          });
+        }
+        if (actionsRow.children.length > 0) {
+          row.appendChild(actionsRow);
+        }
       }
 
       el.appendChild(row);
@@ -437,9 +468,11 @@
                       finalText = evt.response;
                       if (streamIdx === -1) {
                         hideTyping();
-                        addMessage("bot", evt.response);
+                        messages.push({ role: "bot", text: evt.response, chatLogId: evt.chatLogId || null });
+                        renderMessages();
                       } else {
                         messages[streamIdx].text = evt.response;
+                        if (evt.chatLogId) messages[streamIdx].chatLogId = evt.chatLogId;
                         renderMessages();
                       }
                     }
@@ -464,7 +497,8 @@
             localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
           }
           if (data.response) {
-            addMessage("bot", data.response);
+            messages.push({ role: "bot", text: data.response, chatLogId: data.chatLogId || null });
+            renderMessages();
             if (autoSpeak) speak(data.response);
           } else if (data.error) {
             addMessage("bot", "⚠️ " + data.error);
