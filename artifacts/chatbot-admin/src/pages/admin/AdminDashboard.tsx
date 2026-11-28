@@ -225,6 +225,55 @@ export default function AdminDashboard() {
 
   const hasUsage = (usage?.totalTokens ?? 0) > 0;
 
+  const kpiIndicators = useMemo(() => {
+    const totalComp = stats?.totalCompanies ?? 0;
+    const activeComp = stats?.activeCompanies ?? 0;
+    const inactiveComp = stats?.inactiveCompanies ?? 0;
+    const quotaComp = (stats as any)?.quotaCompanies ?? 0;
+    const totalCli = stats?.totalClients ?? 0;
+    const totalTok = usage?.totalTokens ?? 0;
+    const totalCost = usage?.totalCostUsd ?? 0;
+    const modelsCnt = usage?.byModel?.length ?? 0;
+
+    const pct = (part: number, whole: number) =>
+      whole > 0 ? `${Math.round((part / whole) * 100)}%` : "0%";
+
+    return {
+      totalCompanies: {
+        trend: (totalComp > 0 && activeComp >= inactiveComp ? "up" : "down") as "up" | "down",
+        value: pct(activeComp, totalComp),
+      },
+      activeCompanies: {
+        trend: (activeComp > 0 && activeComp >= inactiveComp ? "up" : "down") as "up" | "down",
+        value: pct(activeComp, totalComp),
+      },
+      inactiveCompanies: {
+        trend: (inactiveComp === 0 ? "up" : "down") as "up" | "down",
+        value: inactiveComp === 0 ? "0%" : `-${pct(inactiveComp, totalComp)}`,
+      },
+      quotaCompanies: {
+        trend: (quotaComp > 0 ? "up" : "down") as "up" | "down",
+        value: pct(quotaComp, totalComp),
+      },
+      totalClients: {
+        trend: (totalCli > 0 ? "up" : "down") as "up" | "down",
+        value: String(totalCli),
+      },
+      totalTokens: {
+        trend: (totalTok > 0 ? "up" : "down") as "up" | "down",
+        value: totalTok > 0 ? formatTokens(totalTok) : "0",
+      },
+      totalCost: {
+        trend: (totalCost > 0 ? "up" : "down") as "up" | "down",
+        value: formatCost(totalCost),
+      },
+      modelsInUse: {
+        trend: (modelsCnt > 0 ? "up" : "down") as "up" | "down",
+        value: String(modelsCnt),
+      },
+    };
+  }, [stats, usage]);
+
   const quotaCompanies = useMemo(() => {
     const defaultModel = quotaSettings?.aiModel || "gpt-4o-mini";
     const defaultProvider = quotaSettings?.aiProvider || "openai";
@@ -679,7 +728,7 @@ export default function AdminDashboard() {
               <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs shrink-0">
                 <Building2 className="w-4 h-4" />
               </div>
-              <KpiTrend trend="up" value="+8.4%" />
+              <KpiTrend trend={kpiIndicators.totalCompanies.trend} value={kpiIndicators.totalCompanies.value} />
             </div>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
               {lang === "ar" ? "إجمالي الشركات" : "Total Companies"}
@@ -693,7 +742,7 @@ export default function AdminDashboard() {
               {lang === "ar" ? "المنظمات المسجلة" : "Registered organizations"}
             </p>
           </div>
-          <KpiSparkline trend="up" seed="total-companies" height={32} />
+          <KpiSparkline trend={kpiIndicators.totalCompanies.trend} seed="total-companies" height={32} />
         </div>
 
         {/* Active Companies */}
@@ -703,7 +752,7 @@ export default function AdminDashboard() {
               <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <KpiTrend trend="up" value="+12.1%" />
+              <KpiTrend trend={kpiIndicators.activeCompanies.trend} value={kpiIndicators.activeCompanies.value} />
             </div>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
               {lang === "ar" ? "الشركات النشطة" : "Active Companies"}
@@ -717,7 +766,7 @@ export default function AdminDashboard() {
               {lang === "ar" ? "تعمل وتستجيب" : "Live & responding"}
             </p>
           </div>
-          <KpiSparkline trend="up" seed="active-companies" height={32} />
+          <KpiSparkline trend={kpiIndicators.activeCompanies.trend} seed="active-companies" height={32} />
         </div>
 
         {/* Inactive Companies */}
@@ -727,7 +776,7 @@ export default function AdminDashboard() {
               <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-xs shrink-0">
                 <XCircle className="w-4 h-4" />
               </div>
-              <KpiTrend trend="down" value="-3.5%" />
+              <KpiTrend trend={kpiIndicators.inactiveCompanies.trend} value={kpiIndicators.inactiveCompanies.value} />
             </div>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
               {lang === "ar" ? "الشركات المعطلة" : "Inactive Companies"}
@@ -741,7 +790,7 @@ export default function AdminDashboard() {
               {lang === "ar" ? "متوقفة / قيد الإعداد" : "Paused / setup pending"}
             </p>
           </div>
-          <KpiSparkline trend="down" seed="inactive-companies" height={32} />
+          <KpiSparkline trend={kpiIndicators.inactiveCompanies.trend} seed="inactive-companies" height={32} />
         </div>
 
         {/* Quota Assigned */}
@@ -751,7 +800,7 @@ export default function AdminDashboard() {
               <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
                 <Coins className="w-4 h-4" />
               </div>
-              <KpiTrend trend="up" value="+15.0%" />
+              <KpiTrend trend={kpiIndicators.quotaCompanies.trend} value={kpiIndicators.quotaCompanies.value} />
             </div>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
               {lang === "ar" ? "شركات لها رصيد" : "Quota Assigned"}
@@ -765,7 +814,7 @@ export default function AdminDashboard() {
               {lang === "ar" ? "حدود الرموز مفعلة" : "Monthly token limits active"}
             </p>
           </div>
-          <KpiSparkline trend="up" seed="quota-companies" height={32} />
+          <KpiSparkline trend={kpiIndicators.quotaCompanies.trend} seed="quota-companies" height={32} />
         </div>
 
         {/* Total Clients */}
@@ -775,7 +824,7 @@ export default function AdminDashboard() {
               <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
                 <Users className="w-4 h-4" />
               </div>
-              <KpiTrend trend="up" value="+9.2%" />
+              <KpiTrend trend={kpiIndicators.totalClients.trend} value={kpiIndicators.totalClients.value} />
             </div>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
               {lang === "ar" ? "إجمالي العملاء" : "Total Clients"}
@@ -789,7 +838,7 @@ export default function AdminDashboard() {
               {lang === "ar" ? "حسابات بوابة العملاء" : "Client portal accounts"}
             </p>
           </div>
-          <KpiSparkline trend="up" seed="total-clients" height={32} />
+          <KpiSparkline trend={kpiIndicators.totalClients.trend} seed="total-clients" height={32} />
         </div>
       </div>
 
@@ -815,7 +864,7 @@ export default function AdminDashboard() {
                 <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 flex items-center justify-center shadow-xs shrink-0">
                   <Zap className="w-4 h-4" />
                 </div>
-                <KpiTrend trend="up" value="+18.4%" />
+                <KpiTrend trend={kpiIndicators.totalTokens.trend} value={kpiIndicators.totalTokens.value} />
               </div>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
                 {lang === "ar" ? "إجمالي الرموز المستهلكة" : "Total Tokens Used"}
@@ -831,7 +880,7 @@ export default function AdminDashboard() {
                 </>
               )}
             </div>
-            <KpiSparkline trend="up" seed="total-tokens" height={32} />
+            <KpiSparkline trend={kpiIndicators.totalTokens.trend} seed="total-tokens" height={32} />
           </div>
 
           <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
@@ -840,7 +889,7 @@ export default function AdminDashboard() {
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 flex items-center justify-center shadow-xs shrink-0">
                   <Coins className="w-4 h-4" />
                 </div>
-                <KpiTrend trend="up" value="+14.2%" />
+                <KpiTrend trend={kpiIndicators.totalCost.trend} value={kpiIndicators.totalCost.value} />
               </div>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
                 {lang === "ar" ? "التكلفة التقديرية الإجمالية" : "Estimated Total Cost"}
@@ -856,7 +905,7 @@ export default function AdminDashboard() {
                 </>
               )}
             </div>
-            <KpiSparkline trend="up" seed="total-cost" height={32} />
+            <KpiSparkline trend={kpiIndicators.totalCost.trend} seed="total-cost" height={32} />
           </div>
 
           <div className="admin-glass-card rounded-2xl p-4 sm:p-4.5 border-l-4 transition-all hover:-translate-y-0.5 hover:shadow-xl flex flex-col justify-between overflow-hidden">
@@ -865,7 +914,7 @@ export default function AdminDashboard() {
                 <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center shadow-xs shrink-0">
                   <Activity className="w-4 h-4" />
                 </div>
-                <KpiTrend trend="up" value="+5.0%" />
+                <KpiTrend trend={kpiIndicators.modelsInUse.trend} value={kpiIndicators.modelsInUse.value} />
               </div>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block truncate">
                 {lang === "ar" ? "النماذج قيد الاستخدام" : "Models in Use"}
@@ -881,7 +930,7 @@ export default function AdminDashboard() {
                 </>
               )}
             </div>
-            <KpiSparkline trend="up" seed="models-in-use" height={32} />
+            <KpiSparkline trend={kpiIndicators.modelsInUse.trend} seed="models-in-use" height={32} />
           </div>
         </div>
 
