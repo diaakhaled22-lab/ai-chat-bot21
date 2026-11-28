@@ -447,20 +447,71 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
         msgs.push({ role: turn.role, content: turn.content });
       }
       msgs.push({ role: "user", content: message.trim() });
-      let completion;
-      try {
-        const chatParams = buildOpenRouterChatParams(effectiveModel, msgs, { maxTokens: 1024 });
-        completion = await openrouter.chat.completions.create(chatParams);
-      } catch (err: any) {
-        if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
-          logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in widget; falling back to openrouter/free");
-          const fallbackParams = buildOpenRouterChatParams("openrouter/free", msgs, { maxTokens: 1024 });
-          completion = await openrouter.chat.completions.create(fallbackParams);
-        } else {
-          throw err;
-        }
+      const wantsStream = req.query.stream === "1" || req.body?.stream === true;
+      if (wantsStream && !res.headersSent) {
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders?.();
       }
-      aiReply = stripThinkingTags(completion.choices?.[0]?.message?.content ?? "");
+
+      if (wantsStream) {
+        const chatParams = buildOpenRouterChatParams(effectiveModel, msgs, { maxTokens: 1024 });
+        let stream: any;
+        try {
+          stream = await openrouter.chat.completions.create({ ...chatParams, stream: true } as any);
+        } catch (err: any) {
+          if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+            logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model stream error; falling back to openrouter/free");
+            const fallbackParams = buildOpenRouterChatParams("openrouter/free", msgs, { maxTokens: 1024 });
+            stream = await openrouter.chat.completions.create({ ...fallbackParams, stream: true } as any);
+          } else {
+            throw err;
+          }
+        }
+        let fullText = "";
+        let tagBuffer = "";
+        let inTag = false;
+        for await (const chunk of stream) {
+          const piece = chunk?.choices?.[0]?.delta?.content ?? "";
+          if (!piece) continue;
+          fullText += piece;
+          for (const ch of piece) {
+            if (ch === "[" || ch === "<") {
+              inTag = true;
+              tagBuffer += ch;
+            } else if (inTag) {
+              tagBuffer += ch;
+              if (ch === "]" || ch === ">") {
+                if (!/\[(LEAD_DATA|METRICS|HANDOFF)|<\/?think>/i.test(tagBuffer)) {
+                  res.write(`data: ${JSON.stringify({ delta: tagBuffer })}\n\n`);
+                }
+                tagBuffer = "";
+                inTag = false;
+              }
+            } else {
+              res.write(`data: ${JSON.stringify({ delta: ch })}\n\n`);
+            }
+          }
+        }
+        aiReply = stripThinkingTags(fullText);
+      } else {
+        let completion;
+        try {
+          const chatParams = buildOpenRouterChatParams(effectiveModel, msgs, { maxTokens: 1024 });
+          completion = await openrouter.chat.completions.create(chatParams);
+        } catch (err: any) {
+          if (isOpenRouterFreeModel(effectiveModel) && effectiveModel !== "openrouter/free") {
+            logger.warn({ effectiveModel, err: err?.message }, "OpenRouter free model error in widget; falling back to openrouter/free");
+            const fallbackParams = buildOpenRouterChatParams("openrouter/free", msgs, { maxTokens: 1024 });
+            completion = await openrouter.chat.completions.create(fallbackParams);
+          } else {
+            throw err;
+          }
+        }
+        aiReply = stripThinkingTags(completion.choices?.[0]?.message?.content ?? "");
+      }
 
     } else {
       const openai = new OpenAI({ apiKey: aiConfig.apiKey });
@@ -470,10 +521,51 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
         msgs.push({ role: turn.role, content: turn.content });
       }
       msgs.push({ role: "user", content: message.trim() });
-      const completion = await openai.chat.completions.create(
-        buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
-      );
-      aiReply = completion.choices?.[0]?.message?.content ?? "";
+      const wantsStream = req.query.stream === "1" || req.body?.stream === true;
+      if (wantsStream) {
+        if (!res.headersSent) {
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.setHeader("Cache-Control", "no-cache, no-transform");
+          res.setHeader("Connection", "keep-alive");
+          res.setHeader("X-Accel-Buffering", "no");
+          res.flushHeaders?.();
+        }
+        const stream = await openai.chat.completions.create({
+          ...buildOpenAiChatParams(model, msgs, { maxTokens: 1024 }),
+          stream: true,
+        } as any) as any;
+        let fullText = "";
+        let tagBuffer = "";
+        let inTag = false;
+        for await (const chunk of stream) {
+          const piece = chunk?.choices?.[0]?.delta?.content ?? "";
+          if (!piece) continue;
+          fullText += piece;
+          for (const ch of piece) {
+            if (ch === "[") {
+              inTag = true;
+              tagBuffer += ch;
+            } else if (inTag) {
+              tagBuffer += ch;
+              if (ch === "]") {
+                if (!/\[(LEAD_DATA|METRICS|HANDOFF)/i.test(tagBuffer)) {
+                  res.write(`data: ${JSON.stringify({ delta: tagBuffer })}\n\n`);
+                }
+                tagBuffer = "";
+                inTag = false;
+              }
+            } else {
+              res.write(`data: ${JSON.stringify({ delta: ch })}\n\n`);
+            }
+          }
+        }
+        aiReply = fullText;
+      } else {
+        const completion = await openai.chat.completions.create(
+          buildOpenAiChatParams(model, msgs, { maxTokens: 1024 })
+        );
+        aiReply = completion.choices?.[0]?.message?.content ?? "";
+      }
     }
     const rawReply = aiReply;
 
@@ -619,6 +711,25 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
     // Count ONLY requests that produced an actual message
     recordDailyWidgetMessage(key as string, effectiveSessionId, clientIp, company.widgetDailyLimit);
 
+    const wantsStreamFinal = req.query.stream === "1" || req.body?.stream === true;
+    if (wantsStreamFinal) {
+      if (!res.headersSent) {
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders?.();
+        // Provider (e.g. Google/Anthropic) didn't stream natively; stream in smooth chunks
+        const words = aiReply.split(/(\s+)/);
+        for (const w of words) {
+          if (w) res.write(`data: ${JSON.stringify({ delta: w })}\n\n`);
+        }
+      }
+      res.write(`data: ${JSON.stringify({ done: true, response: aiReply, sessionToken: effectiveSessionToken })}\n\n`);
+      res.end();
+      return;
+    }
+
     res.json({
       response: aiReply,
       sessionToken: effectiveSessionToken,
@@ -633,13 +744,17 @@ router.post("/widget/:key/chat", chatLimiter, async (req, res) => {
     ).catch((e) => logger.warn({ err: e }, "Failed to report malfunction"));
 
     const message = typeof req.body?.message === "string" ? req.body.message : "";
-    res.status(500).json({
-      error: localizedChannelMessage(
-        message,
-        "تعذر إعداد الرد. يرجى المحاولة مرة أخرى.",
-        "Failed to generate response. Please try again.",
-      ),
-    });
+    const errMsg = localizedChannelMessage(
+      message,
+      "تعذر إعداد الرد. يرجى المحاولة مرة أخرى.",
+      "Failed to generate response. Please try again.",
+    );
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`);
+      res.end();
+      return;
+    }
+    res.status(500).json({ error: errMsg });
   }
 });
 

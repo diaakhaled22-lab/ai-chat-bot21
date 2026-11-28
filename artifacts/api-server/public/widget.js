@@ -388,26 +388,88 @@
     var reqHeaders = { "Content-Type": "application/json" };
     if (sessionToken) reqHeaders["x-widget-session-token"] = sessionToken;
 
-    fetch(apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/chat", {
+    fetch(apiBase + "/widget/" + encodeURIComponent(widgetKey) + "/chat?stream=1", {
       method: "POST",
       headers: reqHeaders,
-      body: JSON.stringify({ message: text, sessionId: sessionId, sessionToken: sessionToken, lang: voiceLang }),
+      body: JSON.stringify({ message: text, sessionId: sessionId, sessionToken: sessionToken, lang: voiceLang, stream: true }),
     })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        hideTyping();
-        isLoading = false;
-        if (sendBtn) sendBtn.disabled = false;
-        if (data.sessionToken) {
-          sessionToken = data.sessionToken;
-          localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+      .then(function (r) {
+        var ct = (r.headers && r.headers.get("content-type")) || "";
+        if (ct.indexOf("text/event-stream") !== -1 && r.body && r.body.getReader) {
+          var reader = r.body.getReader();
+          var decoder = new TextDecoder("utf-8");
+          var buf = "";
+          var streamIdx = -1;
+          var finalText = "";
+
+          function pump() {
+            return reader.read().then(function (res) {
+              if (res.done) {
+                hideTyping();
+                isLoading = false;
+                if (sendBtn) sendBtn.disabled = false;
+                if (finalText && autoSpeak) speak(finalText);
+                return;
+              }
+              buf += decoder.decode(res.value, { stream: true });
+              var parts = buf.split("\n\n");
+              buf = parts.pop() || "";
+              for (var i = 0; i < parts.length; i++) {
+                var line = parts[i].trim();
+                if (line.indexOf("data:") !== 0) continue;
+                try {
+                  var evt = JSON.parse(line.slice(5).trim());
+                  if (evt.delta) {
+                    if (streamIdx === -1) {
+                      hideTyping();
+                      messages.push({ role: "bot", text: "" });
+                      streamIdx = messages.length - 1;
+                    }
+                    messages[streamIdx].text += evt.delta;
+                    renderMessages();
+                  }
+                  if (evt.done) {
+                    if (evt.sessionToken) {
+                      sessionToken = evt.sessionToken;
+                      localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+                    }
+                    if (evt.response) {
+                      finalText = evt.response;
+                      if (streamIdx === -1) {
+                        hideTyping();
+                        addMessage("bot", evt.response);
+                      } else {
+                        messages[streamIdx].text = evt.response;
+                        renderMessages();
+                      }
+                    }
+                  }
+                  if (evt.error) {
+                    hideTyping();
+                    addMessage("bot", "⚠️ " + evt.error);
+                  }
+                } catch (e) {}
+              }
+              return pump();
+            });
+          }
+          return pump();
         }
-        if (data.response) {
-          addMessage("bot", data.response);
-          if (autoSpeak) speak(data.response);
-        } else if (data.error) {
-          addMessage("bot", "⚠️ " + data.error);
-        }
+        return r.json().then(function (data) {
+          hideTyping();
+          isLoading = false;
+          if (sendBtn) sendBtn.disabled = false;
+          if (data.sessionToken) {
+            sessionToken = data.sessionToken;
+            localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+          }
+          if (data.response) {
+            addMessage("bot", data.response);
+            if (autoSpeak) speak(data.response);
+          } else if (data.error) {
+            addMessage("bot", "⚠️ " + data.error);
+          }
+        });
       })
       .catch(function () {
         hideTyping();
