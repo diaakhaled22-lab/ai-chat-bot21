@@ -1109,18 +1109,28 @@ export default function ClientLeads() {
         </div>
       </div>
 
-      {/* ── Dialog: Add New Booking / Patient ── */}
+      {/* ── Dialog: Add New Booking / Lead ── */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[550px] max-h-[90dvh] overflow-y-auto modal-custom-scroll p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Stethoscope className="w-5 h-5 text-teal-600" />
-              {lang === "ar" ? "تسجيل مريض / حجز كشف جديد" : "New Patient / Booking Entry"}
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              {crmMode === "clinic" ? (
+                <Stethoscope className="w-5 h-5 text-teal-600 shrink-0" />
+              ) : (
+                <Users className="w-5 h-5 text-blue-600 shrink-0" />
+              )}
+              {crmMode === "clinic"
+                ? (lang === "ar" ? "تسجيل مريض / حجز كشف جديد" : "New Patient / Booking Entry")
+                : (lang === "ar" ? "إضافة عميل جديد" : "New Lead Entry")}
             </DialogTitle>
-            <DialogDescription>
-              {lang === "ar"
-                ? "أدخل بيانات المريض وموعد الكشف لإضافته مباشرة إلى سجل العيادة ومتابعة حالته."
-                : "Fill in patient and booking details to record the appointment directly into the CRM."}
+            <DialogDescription className="text-xs sm:text-sm">
+              {crmMode === "clinic"
+                ? (lang === "ar"
+                    ? "أدخل بيانات المريض وموعد الكشف لإضافته مباشرة إلى سجل العيادة ومتابعة حالته."
+                    : "Fill in patient and booking details to record the appointment directly into the CRM.")
+                : (lang === "ar"
+                    ? "أدخل بيانات العميل واهتمامه لإضافته مباشرة إلى سجل العملاء."
+                    : "Fill in customer details to add the lead directly into the CRM.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1297,9 +1307,9 @@ export default function ClientLeads() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog: Edit Booking / Patient ── */}
+      {/* ── Dialog: Edit Booking / Lead ── */}
       <Dialog open={Boolean(editingLead)} onOpenChange={(open) => !open && setEditingLead(null)}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[550px] max-h-[90dvh] overflow-y-auto modal-custom-scroll p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Edit3 className="w-5 h-5 text-teal-600" />
