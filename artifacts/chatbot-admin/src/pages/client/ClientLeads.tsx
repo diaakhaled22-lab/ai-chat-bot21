@@ -1127,7 +1127,9 @@ export default function ClientLeads() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "اسم المريض *" : "Patient Name *"}
+                {crmMode === "clinic"
+                  ? (lang === "ar" ? "اسم المريض *" : "Patient Name *")
+                  : (lang === "ar" ? "اسم العميل *" : "Customer Name *")}
               </label>
               <Input
                 placeholder={lang === "ar" ? "مثال: محمد أحمد علي" : "e.g. John Doe"}
@@ -1153,45 +1155,53 @@ export default function ClientLeads() {
                 {lang === "ar" ? "البريد الإلكتروني" : "Email"}
               </label>
               <Input
-                placeholder="patient@example.com"
+                placeholder={crmMode === "clinic" ? "patient@example.com" : "customer@example.com"}
                 dir="ltr"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "الطبيب المعالج" : "Doctor / Specialist"}
-              </label>
-              <Input
-                placeholder={lang === "ar" ? "مثال: د. أحمد فؤاد (باطنة)" : "e.g. Dr. John"}
-                value={formData.doctor}
-                onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
-              />
-            </div>
+            {crmMode === "clinic" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  {lang === "ar" ? "الطبيب المعالج" : "Doctor / Specialist"}
+                </label>
+                <Input
+                  placeholder={lang === "ar" ? "مثال: د. أحمد فؤاد (باطنة)" : "e.g. Dr. John"}
+                  value={formData.doctor}
+                  onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                />
+              </div>
+            )}
 
-            <div className="space-y-1.5">
+            <div className={`space-y-1.5 ${crmMode === "clinic" ? "" : "sm:col-span-2"}`}>
               <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "التخصص أو الشكوى" : "Specialty / Service"}
+                {crmMode === "clinic"
+                  ? (lang === "ar" ? "التخصص أو الشكوى" : "Specialty / Service")
+                  : (lang === "ar" ? "المنتج أو الخدمة المطلوبة" : "Product / Service Interest")}
               </label>
               <Input
-                placeholder={lang === "ar" ? "مثال: كشف أسنان، زراعة" : "e.g. Dental checkup"}
+                placeholder={crmMode === "clinic"
+                  ? (lang === "ar" ? "مثال: كشف أسنان، زراعة" : "e.g. Dental checkup")
+                  : (lang === "ar" ? "مثال: عرض أسعار، منتج محدد" : "e.g. Pricing, product inquiry")}
                 value={formData.interest}
                 onChange={(e) => setFormData({ ...formData, interest: e.target.value })}
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "موعد وتاريخ الكشف" : "Appointment Date & Time"}
-              </label>
-              <Input
-                placeholder={lang === "ar" ? "مثال: غداً الساعة 6 مساءً أو 2026-10-30 18:00" : "e.g. 2026-10-30 18:00"}
-                value={formData.appointmentDate}
-                onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
-              />
-            </div>
+            {crmMode === "clinic" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  {lang === "ar" ? "موعد وتاريخ الكشف" : "Appointment Date & Time"}
+                </label>
+                <Input
+                  placeholder={lang === "ar" ? "مثال: غداً الساعة 6 مساءً أو 2026-10-30 18:00" : "e.g. 2026-10-30 18:00"}
+                  value={formData.appointmentDate}
+                  onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground">
@@ -1293,17 +1303,23 @@ export default function ClientLeads() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Edit3 className="w-5 h-5 text-teal-600" />
-              {lang === "ar" ? "تعديل بيانات الحجز / المريض" : "Edit Booking Details"}
+              {crmMode === "clinic"
+                ? (lang === "ar" ? "تعديل بيانات الحجز / المريض" : "Edit Booking Details")
+                : (lang === "ar" ? "تعديل بيانات العميل" : "Edit Lead Details")}
             </DialogTitle>
             <DialogDescription>
-              {lang === "ar" ? "تعديل موعد الكشف، الطبيب، الحالة، أو الملاحظات." : "Update appointment details, doctor, status, or notes."}
+              {crmMode === "clinic"
+                ? (lang === "ar" ? "تعديل موعد الكشف، الطبيب، الحالة، أو الملاحظات." : "Update appointment details, doctor, status, or notes.")
+                : (lang === "ar" ? "تعديل بيانات العميل، الاهتمام، الحالة، أو الملاحظات." : "Update customer details, interest, status, or notes.")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "اسم المريض" : "Patient Name"}
+                {crmMode === "clinic"
+                  ? (lang === "ar" ? "اسم المريض" : "Patient Name")
+                  : (lang === "ar" ? "اسم العميل" : "Customer Name")}
               </label>
               <Input
                 value={formData.name}
@@ -1333,19 +1349,23 @@ export default function ClientLeads() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "الطبيب المعالج" : "Doctor"}
-              </label>
-              <Input
-                value={formData.doctor}
-                onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
-              />
-            </div>
+            {crmMode === "clinic" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  {lang === "ar" ? "الطبيب المعالج" : "Doctor"}
+                </label>
+                <Input
+                  value={formData.doctor}
+                  onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                />
+              </div>
+            )}
 
-            <div className="space-y-1.5">
+            <div className={`space-y-1.5 ${crmMode === "clinic" ? "" : "sm:col-span-2"}`}>
               <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "التخصص أو الشكوى" : "Specialty / Service"}
+                {crmMode === "clinic"
+                  ? (lang === "ar" ? "التخصص أو الشكوى" : "Specialty / Service")
+                  : (lang === "ar" ? "المنتج أو الخدمة المطلوبة" : "Product / Service Interest")}
               </label>
               <Input
                 value={formData.interest}
@@ -1353,26 +1373,29 @@ export default function ClientLeads() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "موعد وتاريخ الكشف" : "Appointment Time"}
-              </label>
-              <Input
-                value={formData.appointmentDate}
-                onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
-              />
-            </div>
+            {crmMode === "clinic" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  {lang === "ar" ? "موعد وتاريخ الكشف" : "Appointment Time"}
+                </label>
+                <Input
+                  value={formData.appointmentDate}
+                  onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
+                />
+              </div>
+            )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "نوع الحجز" : "Booking Type"}
-              </label>
-              <Select
-                value={formData.bookingType}
-                onValueChange={(val) => setFormData({ ...formData, bookingType: val })}
-              >
-                <SelectTrigger className="h-10 text-xs">
-                  <SelectValue />
+            {crmMode === "clinic" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  {lang === "ar" ? "نوع الحجز" : "Booking Type"}
+                </label>
+                <Select
+                  value={formData.bookingType}
+                  onValueChange={(val) => setFormData({ ...formData, bookingType: val })}
+                >
+                  <SelectTrigger className="h-10 text-xs">
+                    <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new_checkup">{lang === "ar" ? "كشف جديد" : "New Checkup"}</SelectItem>
@@ -1381,10 +1404,13 @@ export default function ClientLeads() {
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "حالة الحجز" : "Status"}
+                {crmMode === "clinic"
+                  ? (lang === "ar" ? "حالة الحجز" : "Status")
+                  : (lang === "ar" ? "الحالة" : "Status")}
               </label>
               <Select
                 value={formData.status}
@@ -1395,8 +1421,16 @@ export default function ClientLeads() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pending">{lang === "ar" ? "⏳ قيد الانتظار" : "Pending"}</SelectItem>
-                  <SelectItem value="confirmed">{lang === "ar" ? "✅ حجز مؤكد" : "Confirmed"}</SelectItem>
-                  <SelectItem value="completed">{lang === "ar" ? "🩺 تم الكشف" : "Completed"}</SelectItem>
+                  <SelectItem value="confirmed">
+                    {crmMode === "clinic"
+                      ? (lang === "ar" ? "✅ حجز مؤكد" : "Confirmed")
+                      : (lang === "ar" ? "✅ مؤكد" : "Confirmed")}
+                  </SelectItem>
+                  <SelectItem value="completed">
+                    {crmMode === "clinic"
+                      ? (lang === "ar" ? "🩺 تم الكشف" : "Completed")
+                      : (lang === "ar" ? "✅ مكتمل" : "Completed")}
+                  </SelectItem>
                   <SelectItem value="cancelled">{lang === "ar" ? "❌ ملغي" : "Cancelled"}</SelectItem>
                 </SelectContent>
               </Select>
@@ -1404,7 +1438,9 @@ export default function ClientLeads() {
 
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-semibold text-foreground">
-                {lang === "ar" ? "ملاحظات طبية أو أعراض المريض" : "Notes / Symptoms"}
+                {crmMode === "clinic"
+                  ? (lang === "ar" ? "ملاحظات طبية أو أعراض المريض" : "Notes / Symptoms")
+                  : (lang === "ar" ? "ملاحظات" : "Notes")}
               </label>
               <Textarea
                 rows={3}
